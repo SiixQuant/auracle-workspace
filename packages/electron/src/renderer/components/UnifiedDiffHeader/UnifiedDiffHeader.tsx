@@ -17,7 +17,7 @@
  */
 
 import React from 'react';
-import { MaterialSymbol } from '@nimbalyst/runtime';
+import { MaterialSymbol, ProviderIcon } from '@nimbalyst/runtime';
 import { usePostHog } from 'posthog-js/react';
 import type { UnifiedDiffHeaderProps } from './DiffCapabilities';
 
@@ -102,8 +102,7 @@ export const UnifiedDiffHeader: React.FC<UnifiedDiffHeaderProps> = ({
 
   const renderSessionInfo = () => {
     if (sessionInfo?.sessionTitle) {
-      // Use provider icon if available, otherwise fallback to smart_toy
-      const iconName = sessionInfo.provider || 'smart_toy';
+      const provider = sessionInfo.provider;
       const canNavigate = sessionInfo.sessionId && onGoToSession;
 
       const sessionLink = (
@@ -114,7 +113,11 @@ export const UnifiedDiffHeader: React.FC<UnifiedDiffHeaderProps> = ({
           disabled={!canNavigate}
           title={canNavigate ? `Open "${sessionInfo.sessionTitle}" session` : undefined}
         >
-          <MaterialSymbol icon={iconName} size={18} className="unified-diff-header-session-icon shrink-0" />
+          {provider ? (
+            <ProviderIcon provider={provider} size={18} className="unified-diff-header-session-icon shrink-0" />
+          ) : (
+            <MaterialSymbol icon="smart_toy" size={18} className="unified-diff-header-session-icon shrink-0" />
+          )}
           <span className="unified-diff-header-session-name font-semibold text-[var(--nim-primary)] overflow-hidden text-ellipsis whitespace-nowrap @[max-350px]/diff-header:max-w-[120px]">{sessionInfo.sessionTitle}</span>
           {canNavigate && (
             <MaterialSymbol icon="open_in_new" size={14} className="unified-diff-header-session-open-icon opacity-0 text-[var(--nim-text-faint)] transition-opacity duration-150 shrink-0 group-hover/session:opacity-100" />

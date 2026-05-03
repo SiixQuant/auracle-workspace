@@ -136,6 +136,33 @@ public final class TranscriptWebViewPool {
         return webView
     }
 
+    /// Return a live transcript web view to the pool instead of tearing it down.
+    /// Reusing the existing WebKit content process avoids a noticeable main-thread
+    /// stall during SessionDetail back navigation on iPhone.
+    public func returnWebView(_ webView: WKWebView) {
+        if isContentProcessDead {
+            logger.warning("Discarding returned web view: content process was terminated")
+            discardWarmWebView()
+            return
+        }
+
+        guard warmWebView == nil else { return }
+
+        let delegate = WarmupNavigationDelegate { [weak self] in
+            self?.isWarm = true
+        }
+        warmupDelegate = delegate
+
+        webView.navigationDelegate = delegate
+        webView.uiDelegate = nil
+        webView.frame = CGRect(x: 0, y: 0, width: 1, height: 1)
+
+        warmWebView = webView
+        isWarm = true
+        isContentProcessDead = false
+        onWarm = nil
+    }
+
     /// Whether a pre-warmed web view is available.
     public var hasWarmWebView: Bool {
         warmWebView != nil

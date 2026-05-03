@@ -80,10 +80,9 @@ public struct TranscriptWebView: UIViewRepresentable {
     public func makeUIView(context: Context) -> WKWebView {
         // Try to use a pre-warmed web view from the pool.
         if let pooled = TranscriptWebViewPool.shared.takeWebView() {
-            Self.logger.debug("Using pre-warmed web view from pool")
-
             // The pooled web view already has HTML loaded. We just need to
             // register our bridge message handler and wire up the coordinator.
+            pooled.configuration.userContentController.removeScriptMessageHandler(forName: "bridge")
             pooled.configuration.userContentController.add(context.coordinator, name: "bridge")
             context.coordinator.webView = pooled
             pooled.navigationDelegate = context.coordinator
@@ -161,6 +160,13 @@ public struct TranscriptWebView: UIViewRepresentable {
         context.coordinator.startReadyTimeout()
 
         return webView
+    }
+
+    public static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
+        coordinator.prepareForPooling()
+        let contentController = webView.configuration.userContentController
+        contentController.removeScriptMessageHandler(forName: "bridge")
+        TranscriptWebViewPool.shared.returnWebView(webView)
     }
 
     public func updateUIView(_ webView: WKWebView, context: Context) {
@@ -481,13 +487,9 @@ public struct TranscriptWebView: UIViewRepresentable {
                     return
                 }
 
-                let type = result as? String ?? "nil"
-                self.logger.info("Pool probe result: '\(type)' (retry \(retryCount), pending=\(self.pendingSession != nil))")
-
-                if type == "object" {
+                if (result as? String ?? "nil") == "object" {
                     self.webViewReady = true
                     if let (session, messages) = self.pendingSession {
-                        self.logger.info("Pool probe: flushing pending session \(session.id) with \(messages.count) messages")
                         self.loadSessionIntoWebView(session: session, messages: messages)
                     }
                     return
@@ -496,7 +498,6 @@ public struct TranscriptWebView: UIViewRepresentable {
                 // React app hasn't mounted yet. Retry with backoff.
                 if retryCount < Self.maxProbeRetries {
                     let delay = min(0.1 * pow(1.5, Double(retryCount)), 2.0)
-                    self.logger.info("Pool probe: nimbalyst not ready, retry \(retryCount + 1) in \(String(format: "%.1f", delay))s")
                     DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
                         self?.probePooledWebView(webView, retryCount: retryCount + 1)
                     }
@@ -715,6 +716,17 @@ public struct TranscriptWebView: UIViewRepresentable {
             }
             let generator = UIImpactFeedbackGenerator(style: feedbackStyle)
             generator.impactOccurred()
+        }
+
+        func prepareForPooling() {
+            readyTimeoutItem?.cancel()
+            readyTimeoutItem = nil
+            pendingSession = nil
+            webViewReady = false
+            isReady = false
+            isLoadingSession = false
+            lastMessageCount = 0
+            webView = nil
         }
     }
 }

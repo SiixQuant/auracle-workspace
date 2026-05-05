@@ -46,7 +46,7 @@ vi.mock('electron', () => ({
   BrowserWindow: { getAllWindows: () => [] },
 }));
 
-import { handleTrackerCreate, handleTrackerGet } from '../trackerToolHandlers';
+import { handleTrackerCreate, handleTrackerGet, handleTrackerLinkSession } from '../trackerToolHandlers';
 
 function makeRow(overrides: Record<string, unknown> = {}) {
   return {
@@ -170,5 +170,100 @@ describe('handleTrackerCreate session linking', () => {
     expect(result.isError).toBe(false);
     const sqls = mockQuery.mock.calls.map((c) => String(c[0]));
     expect(sqls.some((s) => s.includes('UPDATE ai_sessions'))).toBe(false);
+  });
+});
+
+describe('handleTrackerLinkSession', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('links the explicit target sessionId, not the ambient session', async () => {
+    const trackerRow = makeRow({ id: 'bug_target', workspace: '/tmp/ws' });
+    mockQuery
+      // resolveTrackerRowByReference (existing item lookup)
+      .mockResolvedValueOnce({ rows: [trackerRow] })
+      // explicit-session existence check
+      .mockResolvedValueOnce({ rows: [{ '?column?': 1 }] })
+      // createBidirectionalLink: SELECT data FROM tracker_items
+      .mockResolvedValueOnce({ rows: [{ data: {} }] })
+      // createBidirectionalLink: UPDATE tracker_items
+      .mockResolvedValueOnce({ rows: [] })
+      // createBidirectionalLink: SELECT metadata FROM ai_sessions
+      .mockResolvedValueOnce({ rows: [{ metadata: {} }] })
+      // createBidirectionalLink: UPDATE ai_sessions
+      .mockResolvedValueOnce({ rows: [] })
+      // post-link SELECT data FROM tracker_items (for linkedSessions count)
+      .mockResolvedValueOnce({ rows: [{ data: { linkedSessions: ['session_explicit'] } }] })
+      // notifyTrackerItemUpdated read
+      .mockResolvedValueOnce({ rows: [trackerRow] })
+      // notifySessionLinkedTrackerChanged read
+      .mockResolvedValueOnce({ rows: [{ metadata: { linkedTrackerItemIds: ['bug_target'] } }] });
+
+    const result = await handleTrackerLinkSession(
+      { trackerId: 'NIM-1', sessionId: 'session_explicit' },
+      'session_ambient',
+      '/tmp/ws',
+    );
+
+    expect(result.isError).toBe(false);
+    const updateSessionCalls = mockQuery.mock.calls.filter(
+      (c) => String(c[0]).includes('UPDATE ai_sessions'),
+    );
+    expect(updateSessionCalls).toHaveLength(1);
+    expect(updateSessionCalls[0][1]).toContain('session_explicit');
+    expect(updateSessionCalls[0][1]).not.toContain('session_ambient');
+
+    const payload = JSON.parse(result.content[0].text!);
+    expect(payload.structured.sessionId).toBe('session_explicit');
+  });
+
+  it('falls back to the ambient session when sessionId is omitted', async () => {
+    const trackerRow = makeRow({ id: 'bug_target', workspace: '/tmp/ws' });
+    mockQuery
+      .mockResolvedValueOnce({ rows: [trackerRow] })                              // resolveTrackerRowByReference
+      .mockResolvedValueOnce({ rows: [{ data: {} }] })                            // SELECT data
+      .mockResolvedValueOnce({ rows: [] })                                        // UPDATE tracker_items
+      .mockResolvedValueOnce({ rows: [{ metadata: {} }] })                        // SELECT metadata
+      .mockResolvedValueOnce({ rows: [] })                                        // UPDATE ai_sessions
+      .mockResolvedValueOnce({ rows: [{ data: { linkedSessions: ['session_ambient'] } }] }) // post-link tracker read
+      .mockResolvedValueOnce({ rows: [trackerRow] })                              // notifyTrackerItemUpdated
+      .mockResolvedValueOnce({ rows: [{ metadata: { linkedTrackerItemIds: ['bug_target'] } }] });
+
+    const result = await handleTrackerLinkSession(
+      { trackerId: 'NIM-1' },
+      'session_ambient',
+      '/tmp/ws',
+    );
+
+    expect(result.isError).toBe(false);
+    const sessionExistsChecks = mockQuery.mock.calls.filter((c) =>
+      String(c[0]).includes('SELECT 1 FROM ai_sessions'),
+    );
+    expect(sessionExistsChecks).toHaveLength(0);
+
+    const payload = JSON.parse(result.content[0].text!);
+    expect(payload.structured.sessionId).toBe('session_ambient');
+  });
+
+  it('returns an error when an explicit sessionId does not exist', async () => {
+    const trackerRow = makeRow({ id: 'bug_target', workspace: '/tmp/ws' });
+    mockQuery
+      // resolveTrackerRowByReference
+      .mockResolvedValueOnce({ rows: [trackerRow] })
+      // explicit session existence check returns no rows
+      .mockResolvedValueOnce({ rows: [] });
+
+    const result = await handleTrackerLinkSession(
+      { trackerId: 'NIM-1', sessionId: 'session_missing' },
+      undefined,
+      '/tmp/ws',
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Session not found');
+    const sqls = mockQuery.mock.calls.map((c) => String(c[0]));
+    expect(sqls.some((s) => s.includes('UPDATE ai_sessions'))).toBe(false);
+    expect(sqls.some((s) => s.includes('UPDATE tracker_items'))).toBe(false);
   });
 });

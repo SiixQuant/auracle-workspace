@@ -493,13 +493,17 @@ export const trackerToolSchemas = [
   {
     name: "tracker_link_session",
     description:
-      "Link the current AI session to a tracker item. This creates a bidirectional reference between the session and the work item.",
+      "Link an AI session to a tracker item. This creates a bidirectional reference between the session and the work item.\n\nBy default the link targets the current AI session. Pass sessionId to link a different session (e.g., a session id surfaced from tracker_get or tracker_list).",
     inputSchema: {
       type: "object" as const,
       properties: {
         trackerId: {
           type: "string",
-          description: "The tracker item ID or issue key to link to this session",
+          description: "The tracker item ID or issue key to link",
+        },
+        sessionId: {
+          type: "string",
+          description: "Optional. The AI session ID to link to the tracker item. Defaults to the current session if omitted.",
         },
       },
       required: ["trackerId"],
@@ -1349,12 +1353,22 @@ export async function handleTrackerLinkSession(
   workspacePath: string | undefined
 ): Promise<McpToolResult> {
   try {
-    if (!sessionId) {
+    // Prefer an explicit target sessionId from the caller; fall back to the
+    // ambient AI session this tool is being invoked from.
+    // Why: agents often need to link a tracker item to a session other than
+    // the current one (e.g., a session surfaced by tracker_get). The IPC layer
+    // already supports this; the MCP tool needs to expose it.
+    const targetSessionId =
+      typeof args.sessionId === "string" && args.sessionId.length > 0
+        ? args.sessionId
+        : sessionId;
+
+    if (!targetSessionId) {
       return {
         content: [
           {
             type: "text",
-            text: "Error: No session ID available. This tool is only available during an active AI session.",
+            text: "Error: No session ID available. Pass sessionId or invoke this tool during an active AI session.",
           },
         ],
         isError: true,
@@ -1378,8 +1392,28 @@ export async function handleTrackerLinkSession(
       };
     }
 
+    // When the caller specified an explicit sessionId, verify it exists so we
+    // fail loudly instead of silently no-op'ing the session-side write.
+    if (typeof args.sessionId === "string" && args.sessionId.length > 0) {
+      const sessionExists = await db.query<any>(
+        `SELECT 1 FROM ai_sessions WHERE id = $1`,
+        [targetSessionId]
+      );
+      if (sessionExists.rows.length === 0) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Session not found: ${targetSessionId}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+
     // Create bidirectional link
-    await createBidirectionalLink(existing.id, sessionId);
+    await createBidirectionalLink(existing.id, targetSessionId);
 
     // Get updated counts for the response
     const trackerResult = await db.query<any>(
@@ -1395,10 +1429,10 @@ export async function handleTrackerLinkSession(
     await notifyTrackerItemUpdated(workspacePath, existing.id);
     const sessionResult = await db.query<any>(
       `SELECT metadata FROM ai_sessions WHERE id = $1`,
-      [sessionId]
+      [targetSessionId]
     );
     const linkedIds = sessionResult.rows[0]?.metadata?.linkedTrackerItemIds || [];
-    await notifySessionLinkedTrackerChanged(sessionId, linkedIds);
+    await notifySessionLinkedTrackerChanged(targetSessionId, linkedIds);
 
     const structured = {
       action: "linked" as const,
@@ -1408,6 +1442,7 @@ export async function handleTrackerLinkSession(
       type: existing.type || "",
       title: trackerData.title || "",
       linkedCount: linkedSessions.length,
+      sessionId: targetSessionId,
     };
 
     return {
@@ -1416,7 +1451,7 @@ export async function handleTrackerLinkSession(
           type: "text",
           text: JSON.stringify({
             structured,
-            summary: `Linked session ${sessionId} to tracker item ${getTrackerDisplayRef({ id: existing.id, issueKey: existing.issue_key ?? undefined })}. Total linked sessions: ${linkedSessions.length}`,
+            summary: `Linked session ${targetSessionId} to tracker item ${getTrackerDisplayRef({ id: existing.id, issueKey: existing.issue_key ?? undefined })}. Total linked sessions: ${linkedSessions.length}`,
           }),
         },
       ],

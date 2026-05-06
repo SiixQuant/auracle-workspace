@@ -1147,8 +1147,14 @@ class ToolCallMatcherImpl {
 
       const lookup = parseToolCallLookupId(toolCallItemId, toolCallTimestamp);
 
+      // Pass both forms to the content lookup. session_files.metadata.toolUseId
+      // is the synthetic `nimtc|...` ID for Codex sessions written after the
+      // Phase 1.5 streaming wiring; legacy rows persisted the raw item id. The
+      // helper queries on either form so reading historical sessions still
+      // works.
       const directDiffs = await this.getDiffsFromToolCallContent(
         sessionId,
+        toolCallItemId,
         lookup.toolCallItemId,
         lookup.toolCallTimestamp
       );
@@ -1864,7 +1870,8 @@ class ToolCallMatcherImpl {
 
   private async getDiffsFromToolCallContent(
     sessionId: string,
-    toolCallItemId: string,
+    primaryLookupId: string,
+    fallbackLookupId: string,
     toolCallTimestamp?: number
   ): Promise<ToolCallDiffResult[]> {
     try {
@@ -1878,15 +1885,20 @@ class ToolCallMatcherImpl {
       );
       const workspacePath = sessionResult.rows[0]?.workspace_id;
 
-      // Get file paths from the file watcher (session_files) for this tool call
+      // Get file paths from the file watcher (session_files) for this tool call.
+      // Match on either the synthetic edit-group ID (Phase 1.5+ writes) OR the
+      // raw item id (legacy data) -- both map to the same logical tool call.
       // Use EXTRACT(EPOCH) for correct epoch ms (avoids PGLite tz interpretation bug).
+      const lookupIds = primaryLookupId === fallbackLookupId
+        ? [primaryLookupId]
+        : [primaryLookupId, fallbackLookupId];
       const linkResult = await database.query<{ file_path: string; timestamp_ms: number; metadata: any }>(
         `SELECT file_path, EXTRACT(EPOCH FROM timestamp) * 1000 AS timestamp_ms, metadata
          FROM session_files
          WHERE session_id = $1
            AND link_type = 'edited'
-           AND metadata->>'toolUseId' = $2`,
-        [sessionId, toolCallItemId]
+           AND metadata->>'toolUseId' = ANY($2)`,
+        [sessionId, lookupIds]
       );
 
       if (linkResult.rows.length === 0) return [];
@@ -1912,16 +1924,26 @@ class ToolCallMatcherImpl {
 
       if (filePaths.length === 0) return [];
 
-      // Try canonical event first for diff extraction (targeted lookup via indexed column)
+      // Try canonical event first for diff extraction (targeted lookup via indexed column).
+      // Phase 1 promoted Codex synthetic IDs (`nimtc|...`) to canonical
+      // providerToolCallId, but legacy events still use the raw item id; try
+      // the synthetic form first and fall back to raw.
       let canonicalPayload: ToolCallPayload | null = null;
       let toolName = 'edit';
       try {
-        if (TranscriptEventRepository.hasStore() && toolCallItemId) {
+        if (TranscriptEventRepository.hasStore()) {
           const store = TranscriptEventRepository.getStore();
-          const matchingEvent = await store.findByProviderToolCallId(toolCallItemId, sessionId);
-          if (matchingEvent) {
-            canonicalPayload = matchingEvent.payload as unknown as ToolCallPayload;
-            toolName = canonicalPayload.toolName;
+          const ids = primaryLookupId === fallbackLookupId
+            ? [primaryLookupId]
+            : [primaryLookupId, fallbackLookupId];
+          for (const id of ids) {
+            if (!id) continue;
+            const matchingEvent = await store.findByProviderToolCallId(id, sessionId);
+            if (matchingEvent) {
+              canonicalPayload = matchingEvent.payload as unknown as ToolCallPayload;
+              toolName = canonicalPayload.toolName;
+              break;
+            }
           }
         }
       } catch (canonicalError) {
@@ -1975,11 +1997,17 @@ class ToolCallMatcherImpl {
       }
 
       // History snapshot fallback for entries with no extractable diff data.
-      // Pass toolCallItemId so computeHistoryDiff finds the exact pre-edit
-      // snapshot for this tool call (not just the latest one).
+      // Try the synthetic ID first (matches the tagId pattern history tags
+      // are written with for new Codex sessions); fall back to raw for
+      // legacy data.
       for (const result of results) {
         if (result.diffs.length === 0 && !result.content) {
-          const historyDiff = await this.computeHistoryDiff(sessionId, result.filePath, toolCallItemId);
+          let historyDiff: { oldString: string; newString: string; linesAdded: number; linesRemoved: number } | null = null;
+          for (const id of (primaryLookupId === fallbackLookupId ? [primaryLookupId] : [primaryLookupId, fallbackLookupId])) {
+            if (!id) continue;
+            historyDiff = await this.computeHistoryDiff(sessionId, result.filePath, id);
+            if (historyDiff) break;
+          }
           if (historyDiff) {
             result.diffs = [{ oldString: historyDiff.oldString, newString: historyDiff.newString }];
             result.linesAdded = historyDiff.linesAdded;

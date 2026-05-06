@@ -19,6 +19,7 @@ import { useAtomValue } from 'jotai';
 import { usePostHog } from 'posthog-js/react';
 import { MaterialSymbol } from '../../../icons/MaterialSymbol';
 import type { CustomToolWidgetProps } from './index';
+import { buildCodexToolLookupId } from '../../../../ai/server/toolLookupIds';
 import { interactiveWidgetHostAtom } from '../../../../store/atoms/interactiveWidgetHost';
 import { useDiffPeek } from '../../../git/useDiffPeek';
 
@@ -496,9 +497,26 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
     };
   }, [isCompleted, toolResult, structuredResult]);
 
-  // The proposalId is simply the tool call ID - no need for a separate atom
-  // The MCP server uses toolUseId (which equals toolCall.providerToolCallId) as the proposalId
-  const proposalId = toolCall.providerToolCallId || '';
+  // Claude-style tool IDs are durable enough to send back directly. Codex
+  // canonical events now arrive with synthetic edit-group IDs of the form
+  // `nimtc|<item_n>|<ts>|<idx>` minted by CodexRawParser, so they also pass
+  // through unchanged. The fallback below wraps a bare `item_N` for legacy
+  // canonical events written before the synthetic-ID change so the
+  // main-process resolver can still map them to the correct proposal row.
+  const proposalId = useMemo(() => {
+    const providerToolCallId = toolCall.providerToolCallId || '';
+    if (!providerToolCallId) {
+      return '';
+    }
+    if (/^item_\d+$/.test(providerToolCallId)) {
+      return buildCodexToolLookupId(
+        providerToolCallId,
+        message.createdAt.getTime(),
+        message.id,
+      );
+    }
+    return providerToolCallId;
+  }, [message.createdAt, message.id, toolCall.providerToolCallId]);
 
   // If no proposal ID, cannot proceed
   if (!proposalId) {

@@ -499,6 +499,46 @@ export async function handleGitCommitProposal(
   // Persist the proposal to database for durability
   try {
     const now = new Date();
+
+    // Synthesize a nimbalyst_tool_use row so the transcript parser can produce
+    // a tool_call_started canonical event for the widget before the SDK's
+    // own assistant chunk (which carries the same tool_use block) clears
+    // the AgentMessageWriteQueue. The queue holds non-blocking chunk writes
+    // for up to 200ms of idle, and once the SDK pauses here waiting for the
+    // user response no further chunks arrive to drive a flush -- so without
+    // this synthetic write the widget would not appear until the next
+    // explicit `flushPendingWrites()` (turn end, abort, etc.).
+    //
+    // Same shape AskUserQuestion uses. Keyed by the SDK's toolUseId; the
+    // parser's existing cross-batch dedup (findByProviderToolCallId) keeps
+    // the later SDK chunk from creating a duplicate canonical event.
+    if (toolUseId) {
+      try {
+        await AgentMessagesRepository.create({
+          sessionId: targetSessionId,
+          source: "claude-code",
+          direction: "output",
+          content: JSON.stringify({
+            type: "nimbalyst_tool_use",
+            id: toolUseId,
+            name: "developer_git_commit_proposal",
+            input: {
+              filesToStage: proposalArgs.filesToStage,
+              commitMessage: proposalArgs.commitMessage,
+              reasoning: proposalArgs.reasoning,
+            },
+          }),
+          hidden: false,
+          createdAt: now,
+        });
+      } catch (err) {
+        console.warn(
+          "[MCP Server] Failed to persist synthetic developer_git_commit_proposal tool_use:",
+          err
+        );
+      }
+    }
+
     await AgentMessagesRepository.create({
       sessionId: targetSessionId,
       source: "mcp",

@@ -76,6 +76,10 @@ interface AgentTranscriptPanelProps {
     toolCallItemId: string,
     toolCallTimestamp?: number
   ) => Promise<ToolCallDiffResult[] | null>;
+  /** Optional: Render a file using a host-provided embedded editor surface */
+  renderEmbeddedFile?: (params: { filePath: string; defaultExpanded?: boolean }) => React.ReactNode;
+  /** Optional: Predicate identifying files the host will render via renderEmbeddedFile */
+  canEmbedFile?: (filePath: string) => boolean;
   /** Optional: merged teammate/worker statuses to drive transcript status UI */
   currentTeammates?: Array<{ agentId: string; status: 'running' | 'completed' | 'errored' | 'idle' }>;
   /** Optional: noun used in waiting text when teammates/workers are still running */
@@ -122,6 +126,8 @@ const AgentTranscriptPanelComponent = React.forwardRef<
   promptAdditions,
   appStartTime,
   getToolCallDiffs,
+  renderEmbeddedFile,
+  canEmbedFile,
   currentTeammates,
   waitingForNoun,
   currentPhase,
@@ -355,6 +361,8 @@ const AgentTranscriptPanelComponent = React.forwardRef<
           waitingForNoun={waitingForNoun}
           appStartTime={appStartTime}
           getToolCallDiffs={getToolCallDiffs}
+          renderEmbeddedFile={renderEmbeddedFile}
+          canEmbedFile={canEmbedFile}
         />
 
         {/* Floating Actions - show based on showFloatingActions prop */}

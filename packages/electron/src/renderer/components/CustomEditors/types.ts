@@ -41,6 +41,12 @@ export interface CustomEditorRegistration {
   // Optional: Whether to show the host-provided document header above the editor
   showDocumentHeader?: boolean;
 
+  // Optional: Whether this editor renders inline in the agent transcript for AI edits
+  supportsTranscriptEmbed?: boolean;
+
+  // Optional: Preferred height (px) for the inline transcript embed (default 360)
+  transcriptEmbedHeight?: number;
+
   // Optional: Extension ID for error attribution (added automatically for extension-provided editors)
   extensionId?: string;
 

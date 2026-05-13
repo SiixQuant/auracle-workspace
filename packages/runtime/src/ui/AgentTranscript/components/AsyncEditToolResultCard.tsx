@@ -26,6 +26,8 @@ interface AsyncEditToolResultCardProps {
   toolMessage: TranscriptViewMessage;
   workspacePath?: string;
   onOpenFile?: (filePath: string) => void;
+  renderEmbeddedFile?: (params: { filePath: string; defaultExpanded?: boolean }) => React.ReactNode;
+  canEmbedFile?: (filePath: string) => boolean;
   getToolCallDiffs: (
     toolCallItemId: string,
     toolCallTimestamp?: number
@@ -36,6 +38,8 @@ export const AsyncEditToolResultCard: React.FC<AsyncEditToolResultCardProps> = (
   toolMessage,
   workspacePath,
   onOpenFile,
+  renderEmbeddedFile,
+  canEmbedFile,
   getToolCallDiffs,
 }) => {
   const [edits, setEdits] = useState<any[] | null>(null);
@@ -85,6 +89,8 @@ export const AsyncEditToolResultCard: React.FC<AsyncEditToolResultCardProps> = (
       edits={edits}
       workspacePath={workspacePath}
       onOpenFile={onOpenFile}
+      renderEmbeddedFile={renderEmbeddedFile}
+      canEmbedFile={canEmbedFile}
     />
   );
 };

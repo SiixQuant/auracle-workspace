@@ -40,7 +40,9 @@
         "displayName": "Mockup Editor",
         "component": "MockupEditor",
         "supportsSourceMode": true,
-        "supportsDiffMode": true
+        "supportsDiffMode": true,
+        "supportsTranscriptEmbed": true,
+        "transcriptEmbedHeight": 480
       },
       {
         "filePatterns": ["*.mockupproject"],

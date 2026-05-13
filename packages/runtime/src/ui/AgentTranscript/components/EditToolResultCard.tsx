@@ -19,6 +19,14 @@ interface EditToolResultCardProps {
   edits: any[];
   workspacePath?: string;
   onOpenFile?: (filePath: string) => void;
+  renderEmbeddedFile?: (params: { filePath: string; defaultExpanded?: boolean }) => React.ReactNode;
+  /**
+   * Host-provided predicate: returns true if `filePath` will be rendered
+   * by `renderEmbeddedFile` so this card can suppress the redundant
+   * diff/new-file view in favor of the inline preview. The host knows
+   * its custom editor registry; the runtime does not, so we ask.
+   */
+  canEmbedFile?: (filePath: string) => boolean;
 }
 
 const resolveEditFilePath = (edit: any, toolMessage: TranscriptViewMessage): string | undefined => {
@@ -49,7 +57,16 @@ const truncateInstruction = (text: string, maxLength = 320) => {
   return `${text.slice(0, maxLength - 1)}…`;
 };
 
-export const EditToolResultCard: React.FC<EditToolResultCardProps> = ({ toolMessage, edits, workspacePath, onOpenFile }) => {
+export const EditToolResultCard: React.FC<EditToolResultCardProps> = ({
+  toolMessage,
+  edits,
+  workspacePath,
+  onOpenFile,
+  renderEmbeddedFile,
+  canEmbedFile,
+}) => {
+  const isEmbeddable = (filePath?: string) =>
+    typeof filePath === 'string' && !!canEmbedFile?.(filePath);
   const tool = toolMessage.toolCall;
   if (!tool || edits.length === 0) {
     return null;
@@ -67,6 +84,11 @@ export const EditToolResultCard: React.FC<EditToolResultCardProps> = ({ toolMess
   const editCountLabel = allNewFiles
     ? `${edits[0].content.split('\n').length} lines`
     : edits.length === 1 ? '1 edit' : `${edits.length} edits`;
+  const previewFilePaths = Array.from(new Set(
+    edits
+      .map((edit) => resolveEditFilePath(edit, toolMessage))
+      .filter((filePath): filePath is string => !!filePath && isEmbeddable(filePath))
+  ));
 
   const handleOpenFile = () => {
     if (firstEditPath && onOpenFile) {
@@ -131,32 +153,49 @@ export const EditToolResultCard: React.FC<EditToolResultCardProps> = ({ toolMess
         {edits.map((edit, idx) => {
           const absolutePath = resolveEditFilePath(edit, toolMessage);
           const relativePath = absolutePath ? toProjectRelative(absolutePath, workspacePath) : undefined;
+          const shouldUseEmbeddedPreview = !!renderEmbeddedFile && isEmbeddable(absolutePath);
+
+          if (shouldUseEmbeddedPreview) {
+            return null;
+          }
 
           if (isNewFileEdit(edit)) {
             return (
-              <NewFilePreview
-                key={`new-${idx}`}
-                content={edit.content}
+              <React.Fragment key={`new-${idx}`}>
+                <NewFilePreview
+                  content={edit.content}
+                  filePath={relativePath || absolutePath}
+                  maxHeight="18rem"
+                  onOpenFile={onOpenFile}
+                  absoluteFilePath={absolutePath}
+                />
+              </React.Fragment>
+            );
+          }
+
+          return (
+            <React.Fragment key={`edit-${idx}`}>
+              <DiffViewer
+                edit={edit}
                 filePath={relativePath || absolutePath}
                 maxHeight="18rem"
                 onOpenFile={onOpenFile}
                 absoluteFilePath={absolutePath}
               />
-            );
-          }
-
-          return (
-            <DiffViewer
-              key={`edit-${idx}`}
-              edit={edit}
-              filePath={relativePath || absolutePath}
-              maxHeight="18rem"
-              onOpenFile={onOpenFile}
-              absoluteFilePath={absolutePath}
-            />
+            </React.Fragment>
           );
         })}
       </div>
+
+      {renderEmbeddedFile && previewFilePaths.length > 0 && (
+        <div className="rich-transcript-edit-card__previews flex flex-col gap-2">
+          {previewFilePaths.map((filePath) => (
+            <React.Fragment key={filePath}>
+              {renderEmbeddedFile({ filePath, defaultExpanded: allNewFiles })}
+            </React.Fragment>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

@@ -22,6 +22,8 @@ import type { SessionData, ChatAttachment, TranscriptViewMessage } from '@nimbal
 import { isToolLikeMessage } from '@nimbalyst/runtime/ui/AgentTranscript/utils/messageTypeHelpers';
 import { AIInput, AIInputRef } from './AIInput';
 import { PromptQueueList } from './PromptQueueList';
+import { TranscriptEmbeddedFileCard } from './TranscriptEmbeddedFileCard';
+import { customEditorRegistry } from '../CustomEditors/registry';
 import { useDialog } from '../../contexts/DialogContext';
 import { FileGutter } from '../AIChat/FileGutter';
 import { recordClaudeActivity } from '../../store/listeners/claudeUsageListeners';
@@ -902,6 +904,21 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
     openInExternalEditor(filePath);
   }, [openInExternalEditor]);
 
+  const renderEmbeddedFile = useCallback(({ filePath, defaultExpanded }: { filePath: string; defaultExpanded?: boolean }) => {
+    return (
+      <TranscriptEmbeddedFileCard
+        filePath={filePath}
+        onOpenFile={handleFileClick}
+        defaultExpanded={defaultExpanded}
+      />
+    );
+  }, [handleFileClick]);
+
+  const canEmbedFile = useCallback((filePath: string) => {
+    const registration = customEditorRegistry.findRegistrationForFile(filePath);
+    return !!registration?.supportsTranscriptEmbed;
+  }, []);
+
   const handleCompact = useCallback(async () => {
     if (!sessionData) return;
 
@@ -1681,6 +1698,8 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
             waitingForNoun={waitingForNoun}
             appStartTime={appStartTime ?? undefined}
             getToolCallDiffs={getToolCallDiffs}
+            renderEmbeddedFile={renderEmbeddedFile}
+            canEmbedFile={canEmbedFile}
             currentPhase={currentPhase}
             phaseColumns={SESSION_PHASE_COLUMNS}
             onSetPhase={handleSetPhase}

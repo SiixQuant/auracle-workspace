@@ -29,6 +29,8 @@ import type {
 export interface EmbeddedFileHostOptions {
   /** Absolute path of the embedded file. */
   embedPath: string;
+  /** Whether the embedded editor should consider itself the active surface. */
+  isActive?: boolean;
   /** Workspace identifier (workspace path); used for storage scoping. */
   workspaceId?: string;
   /** Returns the current theme name. */
@@ -100,7 +102,7 @@ export function createEmbeddedFileHost(
     get readOnly() {
       return opts.getReadOnly();
     },
-    isActive: true,
+    isActive: opts.isActive ?? true,
 
     onThemeChanged(cb) {
       return opts.subscribeToThemeChanges(cb);

@@ -446,6 +446,16 @@ interface RichTranscriptViewProps {
     toolCallItemId: string,
     toolCallTimestamp?: number
   ) => Promise<ToolCallDiffResult[] | null>;
+  /** Optional: Render a file using a host-provided embedded editor surface */
+  renderEmbeddedFile?: (params: { filePath: string; defaultExpanded?: boolean }) => React.ReactNode;
+  /**
+   * Optional: Predicate the host uses to declare whether a given file
+   * will be rendered by `renderEmbeddedFile`. Lets the runtime suppress
+   * the redundant diff/new-file view when an embedded preview will take
+   * over. The host owns the custom editor registry; this is how the
+   * runtime asks without crossing the package boundary.
+   */
+  canEmbedFile?: (filePath: string) => boolean;
   // Note: Interactive widgets read their host from interactiveWidgetHostAtom(sessionId)
 }
 
@@ -939,7 +949,7 @@ export const extractEditsFromToolMessage = (message: TranscriptViewMessage): any
 export const RichTranscriptView = React.forwardRef<
   { scrollToMessage: (index: number) => void; scrollToTop: () => void },
   RichTranscriptViewProps
->(({ sessionId, sessionStatus, isProcessing, hasPendingInteractivePrompt, messages, provider, settings: propsSettings, onSettingsChange, showSettings, documentContext, workspacePath, renderEmptyExtra, readFile, onOpenFile, onOpenSession, onCompact, promptAdditions, currentTeammates, waitingForNoun, appStartTime, getToolCallDiffs }, ref) => {
+>(({ sessionId, sessionStatus, isProcessing, hasPendingInteractivePrompt, messages, provider, settings: propsSettings, onSettingsChange, showSettings, documentContext, workspacePath, renderEmptyExtra, readFile, onOpenFile, onOpenSession, onCompact, promptAdditions, currentTeammates, waitingForNoun, appStartTime, getToolCallDiffs, renderEmbeddedFile, canEmbedFile }, ref) => {
   const [collapsedMessages, setCollapsedMessages] = useState<Set<number>>(new Set());
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const scrollButtonRef = useRef<HTMLDivElement>(null);
@@ -1457,12 +1467,14 @@ export const RichTranscriptView = React.forwardRef<
           className={`rich-transcript-tool-container mb-2 ${depth > 0 ? 'nested ml-0' : ''}`}
           style={{ marginLeft: depth > 0 ? '1rem' : '0' }}
         >
-          <AsyncEditToolResultCard
-            toolMessage={toolMsg}
-            workspacePath={workspacePath}
-            onOpenFile={onOpenFile}
-            getToolCallDiffs={getToolCallDiffs}
-          />
+            <AsyncEditToolResultCard
+              toolMessage={toolMsg}
+              workspacePath={workspacePath}
+              onOpenFile={onOpenFile}
+              renderEmbeddedFile={renderEmbeddedFile}
+              canEmbedFile={canEmbedFile}
+              getToolCallDiffs={getToolCallDiffs}
+            />
         </div>
       );
     }
@@ -1483,6 +1495,8 @@ export const RichTranscriptView = React.forwardRef<
             edits={editEntries}
             workspacePath={workspacePath}
             onOpenFile={onOpenFile}
+            renderEmbeddedFile={renderEmbeddedFile}
+            canEmbedFile={canEmbedFile}
           />
         </div>
       );
@@ -1712,6 +1726,8 @@ export const RichTranscriptView = React.forwardRef<
                   isExpanded={isExpanded}
                   workspacePath={workspacePath}
                   onOpenFile={onOpenFile}
+                  renderEmbeddedFile={renderEmbeddedFile}
+                  canEmbedFile={canEmbedFile}
                 />
               )}
             </div>

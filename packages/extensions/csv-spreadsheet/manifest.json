@@ -39,7 +39,8 @@
         "filePatterns": ["*.csv", "*.tsv"],
         "displayName": "Spreadsheet Editor",
         "component": "SpreadsheetEditor",
-        "supportsSourceMode": true
+        "supportsSourceMode": true,
+        "supportsTranscriptEmbed": true
       }
     ],
     "fileIcons": {

@@ -266,6 +266,28 @@ function validateManifest(
                 suggestion: 'Use "showDocumentHeader": true or false',
               });
             }
+            if (
+              editorRecord.supportsTranscriptEmbed !== undefined &&
+              typeof editorRecord.supportsTranscriptEmbed !== 'boolean'
+            ) {
+              errors.push({
+                error: `customEditors[${index}] has invalid 'supportsTranscriptEmbed'`,
+                field: `contributions.customEditors[${index}].supportsTranscriptEmbed`,
+                suggestion: 'Use "supportsTranscriptEmbed": true or false',
+              });
+            }
+            if (
+              editorRecord.transcriptEmbedHeight !== undefined &&
+              (typeof editorRecord.transcriptEmbedHeight !== 'number' ||
+                !Number.isFinite(editorRecord.transcriptEmbedHeight) ||
+                editorRecord.transcriptEmbedHeight <= 0)
+            ) {
+              errors.push({
+                error: `customEditors[${index}] has invalid 'transcriptEmbedHeight'`,
+                field: `contributions.customEditors[${index}].transcriptEmbedHeight`,
+                suggestion: 'Use a positive number of pixels, e.g., "transcriptEmbedHeight": 360',
+              });
+            }
           });
         }
       }

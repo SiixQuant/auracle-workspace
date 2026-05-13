@@ -41,7 +41,8 @@
         "displayName": "Data Model Editor",
         "component": "DatamodelLMEditor",
         "supportsSourceMode": true,
-        "supportsDiffMode": false
+        "supportsDiffMode": false,
+        "supportsTranscriptEmbed": true
       }
     ],
     "aiTools": [

@@ -24,6 +24,14 @@ interface ToolCallChangesProps {
   isExpanded: boolean;
   workspacePath?: string;
   onOpenFile?: (filePath: string) => void;
+  renderEmbeddedFile?: (params: { filePath: string; defaultExpanded?: boolean }) => React.ReactNode;
+  /**
+   * Host-provided predicate: returns true if `filePath` will be rendered
+   * by `renderEmbeddedFile` so this row can show the inline preview
+   * instead of the regular diff/new-file view. The host owns the custom
+   * editor registry; the runtime asks.
+   */
+  canEmbedFile?: (filePath: string) => boolean;
 }
 
 function getOperationBadge(operation: string): { label: string; colorClass: string; bgClass: string } {
@@ -62,6 +70,8 @@ export const ToolCallChanges: React.FC<ToolCallChangesProps> = ({
   isExpanded,
   workspacePath,
   onOpenFile,
+  renderEmbeddedFile,
+  canEmbedFile,
 }) => {
   const [diffs, setDiffs] = useState<ToolCallDiffResult[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -139,6 +149,8 @@ export const ToolCallChanges: React.FC<ToolCallChangesProps> = ({
             const badge = getOperationBadge(diff.operation);
             const hasDiffContent = diff.diffs.length > 0;
             const hasNewContent = !hasDiffContent && !!diff.content;
+            const shouldUseEmbeddedPreview =
+              !!renderEmbeddedFile && !!canEmbedFile?.(diff.filePath);
 
             return (
               <div key={`${diff.filePath}-${idx}`} className="border-t border-nim first:border-t-0">
@@ -188,7 +200,13 @@ export const ToolCallChanges: React.FC<ToolCallChangesProps> = ({
                 </div>
 
                 {/* Diff content */}
-                {hasDiffContent && (
+                {shouldUseEmbeddedPreview && (
+                  <div className="px-2 pb-2">
+                    {renderEmbeddedFile?.({ filePath: diff.filePath, defaultExpanded: diff.operation === 'create' })}
+                  </div>
+                )}
+
+                {!shouldUseEmbeddedPreview && hasDiffContent && (
                   <div className="px-2 pb-2">
                     {diff.diffs.map((d, dIdx) => (
                       <DiffViewer
@@ -204,7 +222,7 @@ export const ToolCallChanges: React.FC<ToolCallChangesProps> = ({
                 )}
 
                 {/* New file content */}
-                {hasNewContent && (
+                {!shouldUseEmbeddedPreview && hasNewContent && (
                   <div className="px-2 pb-2">
                     <NewFilePreview
                       content={diff.content!}

@@ -396,6 +396,22 @@ export interface CustomEditorContribution {
    * Defaults to true when omitted for backward compatibility.
    */
   showDocumentHeader?: boolean;
+
+  /**
+   * Whether this editor opts in to render inline in the agent transcript
+   * when an AI edits a file it handles. The host renders the editor in a
+   * read-only, click-to-activate frame. Defaults to false; extensions must
+   * explicitly enable so heavyweight editors don't auto-instantiate for
+   * every scrolled edit.
+   */
+  supportsTranscriptEmbed?: boolean;
+
+  /**
+   * Preferred height in pixels for the inline transcript embed. Only
+   * applies when `supportsTranscriptEmbed` is true. Defaults to 360 when
+   * omitted.
+   */
+  transcriptEmbedHeight?: number;
 }
 
 export interface DocumentHeaderContribution {

@@ -58,6 +58,8 @@ function registerExtensionEditors(extensionId: string): string[] {
         supportsSourceMode: contribution.supportsSourceMode || false,
         supportsDiffMode: contribution.supportsDiffMode,
         showDocumentHeader: contribution.showDocumentHeader,
+        supportsTranscriptEmbed: contribution.supportsTranscriptEmbed || false,
+        transcriptEmbedHeight: contribution.transcriptEmbedHeight,
         extensionId: extensionId,
         componentName: contribution.component,
       });

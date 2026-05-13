@@ -2,6 +2,7 @@ import { BrowserWindow } from 'electron';
 import { safeHandle } from '../utils/ipcRegistry';
 import { logger } from '../utils/logger';
 import { getWindowId, windowStates } from '../window/WindowManager';
+import { clearGitStatusCache } from '../ipc/GitStatusHandlers';
 import { optimizedWorkspaceWatcher } from './OptimizedWorkspaceWatcher';
 import { gitRefWatcher } from './GitRefWatcher';
 import * as workspaceEventBus from './WorkspaceEventBus';
@@ -27,6 +28,16 @@ function bucketFileCount(count: number): string {
     if (count <= 100) return '51-100';
     return '100+';
 }
+
+workspaceEventBus.setGitignoreChangeHandler((workspacePath: string) => {
+    clearGitStatusCache(workspacePath);
+
+    for (const window of BrowserWindow.getAllWindows()) {
+        if (!window.isDestroyed()) {
+            window.webContents.send('git:status-changed', { workspacePath });
+        }
+    }
+});
 
 // Set up IPC handlers for folder expand/collapse events
 export function registerWorkspaceWatcherHandlers() {

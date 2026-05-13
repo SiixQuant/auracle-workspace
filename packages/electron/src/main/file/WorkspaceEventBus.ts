@@ -182,6 +182,8 @@ function recordEvent(cb: CircuitBreakerState): boolean {
 
 export type WorkspaceEventType = 'change' | 'add' | 'unlink';
 
+type GitignoreChangeHandler = (workspacePath: string) => void;
+
 export interface WorkspaceEventListener {
   onChange: (filePath: string, gitignoreBypassed?: boolean) => void;
   onAdd: (filePath: string, gitignoreBypassed?: boolean) => void;
@@ -212,6 +214,8 @@ interface DroppedGitignoreEvent {
 const REPLAY_BUFFER_MAX = 50;
 /** TTL for replay buffer entries (ms). */
 const REPLAY_BUFFER_TTL_MS = 5000;
+
+let gitignoreChangeHandler: GitignoreChangeHandler | null = null;
 
 interface BusEntry {
   watcher: fs.FSWatcher | ChokidarFSWatcher;
@@ -281,6 +285,16 @@ async function loadGitignoreFilter(workspacePath: string): Promise<Ignore> {
   const gitignorePath = path.join(workspacePath, '.gitignore');
   try {
     const content = await fsPromises.readFile(gitignorePath, 'utf-8');
+    return ignore().add(content);
+  } catch {
+    return ignore().add(FALLBACK_IGNORE_PATTERNS);
+  }
+}
+
+function loadWorkspaceGitignoreFilterSync(workspacePath: string): Ignore {
+  const gitignorePath = path.join(workspacePath, '.gitignore');
+  try {
+    const content = fs.readFileSync(gitignorePath, 'utf-8');
     return ignore().add(content);
   } catch {
     return ignore().add(FALLBACK_IGNORE_PATTERNS);
@@ -399,12 +413,63 @@ function isGitignoredScoped(
   return nestedFilter.ignores(rootRel) || nestedFilter.ignores(rootRel + '/');
 }
 
+function isGitignoreFile(absolutePath: string): boolean {
+  return path.basename(absolutePath) === '.gitignore';
+}
+
+function reloadGitignoreFiltersForPath(absolutePath: string, entry: BusEntry): boolean {
+  if (!isGitignoreFile(absolutePath)) return false;
+
+  const normalizedPath = path.resolve(absolutePath);
+  const workspaceGitignorePath = path.join(entry.workspaceAbs, '.gitignore');
+  let reloaded = false;
+
+  if (normalizedPath === workspaceGitignorePath) {
+    entry.workspaceGitignoreFilter = loadWorkspaceGitignoreFilterSync(entry.workspaceAbs);
+    reloaded = true;
+  } else {
+    const candidateRoot = path.dirname(normalizedPath);
+    if (entry.nestedGitignoreCache.has(candidateRoot) || fs.existsSync(path.join(candidateRoot, '.git'))) {
+      entry.nestedGitignoreCache.set(candidateRoot, loadGitignoreFilterSync(candidateRoot));
+      reloaded = true;
+    }
+  }
+
+  if (!reloaded) return false;
+
+  // Ignore semantics changed; dropped-event replay is no longer valid.
+  entry.replayBuffer = [];
+  gitignoreChangeHandler?.(entry.workspaceAbs);
+  return true;
+}
+
+function refreshGitignoreFiltersForEvent(
+  absolutePath: string,
+  eventType: 'change' | 'add' | 'unlink' | 'rename',
+  entry: BusEntry,
+): void {
+  if (!isGitignoreFile(absolutePath)) return;
+
+  if (eventType === 'rename') {
+    void pathExistsAfterRename(absolutePath).finally(() => {
+      reloadGitignoreFiltersForPath(absolutePath, entry);
+    });
+    return;
+  }
+
+  reloadGitignoreFiltersForPath(absolutePath, entry);
+}
+
 // ---------------------------------------------------------------------------
 // WorkspaceEventBus
 // ---------------------------------------------------------------------------
 
 /** Global registry of shared watchers, keyed by normalized workspace path. */
 const busEntries = new Map<string, BusEntry>();
+
+export function setGitignoreChangeHandler(handler: GitignoreChangeHandler | null): void {
+  gitignoreChangeHandler = handler;
+}
 
 /**
  * WorkspaceEventBus owns a single fs.watch/chokidar watcher per workspace,
@@ -821,6 +886,7 @@ function startRecursiveWatch(
       if (shouldIgnoreHardcoded(relativePath)) return;
 
       const absolutePath = path.join(workspacePath, filename);
+      refreshGitignoreFiltersForEvent(absolutePath, eventType === 'change' ? 'change' : 'rename', entry);
 
       // Stage 2: gitignore check (workspace + nested-repo) with bypass support
       let bypassed = false;
@@ -1004,16 +1070,19 @@ function startChokidarWatch(
     watcher
       .on('change', (filePath: string) => {
         if (checkBreaker()) return;
+        refreshGitignoreFiltersForEvent(filePath, 'change', entry);
         const bypassed = isBypassed(filePath) || undefined;
         for (const l of entry.listeners.values()) l.onChange(filePath, bypassed);
       })
       .on('add', (filePath: string) => {
         if (checkBreaker()) return;
+        refreshGitignoreFiltersForEvent(filePath, 'add', entry);
         const bypassed = isBypassed(filePath) || undefined;
         for (const l of entry.listeners.values()) l.onAdd(filePath, bypassed);
       })
       .on('unlink', (filePath: string) => {
         if (checkBreaker()) return;
+        refreshGitignoreFiltersForEvent(filePath, 'unlink', entry);
         const bypassed = isBypassed(filePath) || undefined;
         for (const l of entry.listeners.values()) l.onUnlink(filePath, bypassed);
       })

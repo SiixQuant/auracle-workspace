@@ -168,6 +168,24 @@ describe('WorkspaceEventBus nested-repo .gitignore (issue #207)', () => {
     unsubscribe(layout.workspace, 'sub-1');
   });
 
+  it('reloads a nested repo .gitignore when it changes on disk', async () => {
+    const listener = createListener();
+    await subscribe(layout.workspace, 'sub-1', listener);
+
+    fireWatchEvent('change', 'nested/rootfs/etc/foo.txt');
+    expect(listener.onChange).not.toHaveBeenCalled();
+
+    fs.writeFileSync(path.join(layout.workspace, 'nested', '.gitignore'), '/dist\n');
+    fireWatchEvent('change', 'nested/.gitignore');
+    fireWatchEvent('change', 'nested/rootfs/etc/foo.txt');
+
+    expect(listener.onChange).toHaveBeenCalledWith(
+      path.join(layout.workspace, 'nested/rootfs/etc/foo.txt'),
+      undefined,
+    );
+    unsubscribe(layout.workspace, 'sub-1');
+  });
+
   it('does not deliver structure events for nested-ignored paths to listeners that did not opt in', async () => {
     const listener = createListener();
     listener.receiveGitignoredStructureEvents = false;

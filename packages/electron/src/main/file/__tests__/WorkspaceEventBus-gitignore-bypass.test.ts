@@ -15,7 +15,14 @@ import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vites
 // Hoisted mocks — must run before vi.mock() factories
 // ---------------------------------------------------------------------------
 
-const { mockFsWatch, mockWatcherCallbacks, mockFsAccess, originalPlatform } = vi.hoisted(() => {
+const {
+  mockFsWatch,
+  mockWatcherCallbacks,
+  mockFsAccess,
+  mockGitignoreReadFile,
+  mockGitignoreReadFileSync,
+  originalPlatform,
+} = vi.hoisted(() => {
   // Force fs.watch recursive path (macOS/Windows) even on Linux CI,
   // since this test mocks fs.watch, not chokidar.
   const originalPlatform = process.platform;
@@ -30,8 +37,19 @@ const { mockFsWatch, mockWatcherCallbacks, mockFsAccess, originalPlatform } = vi
   });
 
   const mockFsAccess = vi.fn(() => Promise.resolve());
+  const mockGitignoreReadFile = vi.fn().mockRejectedValue(new Error('no .gitignore'));
+  const mockGitignoreReadFileSync = vi.fn(() => {
+    throw new Error('no .gitignore');
+  });
 
-  return { mockFsWatch, mockWatcherCallbacks, mockFsAccess, originalPlatform };
+  return {
+    mockFsWatch,
+    mockWatcherCallbacks,
+    mockFsAccess,
+    mockGitignoreReadFile,
+    mockGitignoreReadFileSync,
+    originalPlatform,
+  };
 });
 
 // Mock fs module
@@ -40,6 +58,7 @@ vi.mock('fs', async () => {
   return {
     ...actual,
     watch: mockFsWatch,
+    readFileSync: mockGitignoreReadFileSync,
   };
 });
 
@@ -47,7 +66,7 @@ vi.mock('fs/promises', async () => {
   const actual = await vi.importActual<typeof import('fs/promises')>('fs/promises');
   return {
     ...actual,
-    readFile: vi.fn().mockRejectedValue(new Error('no .gitignore')),
+    readFile: mockGitignoreReadFile,
     access: mockFsAccess,
   };
 });
@@ -90,15 +109,22 @@ vi.mock('../../utils/workspaceDetection', () => ({
   },
 }));
 
-// Mock the `ignore` package to simulate .gitignore behavior
-// We'll make it ignore anything under `dist/` and `build/`
+// Mock the `ignore` package with enough behavior for our test patterns.
 vi.mock('ignore', () => {
   const createMatcher = () => {
+    const rules: string[] = [];
     const matcher = {
-      add: vi.fn().mockReturnThis(),
+      add: vi.fn((input: string | string[]) => {
+        const lines = Array.isArray(input) ? input : String(input).split('\n');
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith('#')) continue;
+          rules.push(trimmed.replace(/^\//, '').replace(/\/$/, ''));
+        }
+        return matcher;
+      }),
       ignores: (p: string) => {
-        return p.startsWith('dist/') || p.startsWith('build/') ||
-               p === 'dist' || p === 'build';
+        return rules.some((rule) => p === rule || p.startsWith(`${rule}/`));
       },
     };
     return matcher;
@@ -117,6 +143,7 @@ import {
   removeGitignoreBypass,
   hasGitignoreBypass,
   resetBus,
+  setGitignoreChangeHandler,
 } from '../WorkspaceEventBus';
 import type { WorkspaceEventListener } from '../WorkspaceEventBus';
 
@@ -161,6 +188,13 @@ describe('WorkspaceEventBus gitignore bypass', () => {
     mockFsWatch.mockClear();
     mockFsAccess.mockReset();
     mockFsAccess.mockResolvedValue(undefined);
+    mockGitignoreReadFile.mockReset();
+    mockGitignoreReadFile.mockRejectedValue(new Error('no .gitignore'));
+    mockGitignoreReadFileSync.mockReset();
+    mockGitignoreReadFileSync.mockImplementation(() => {
+      throw new Error('no .gitignore');
+    });
+    setGitignoreChangeHandler(null);
     resetBus();
   });
 
@@ -169,6 +203,7 @@ describe('WorkspaceEventBus gitignore bypass', () => {
   });
 
   afterEach(() => {
+    setGitignoreChangeHandler(null);
     resetBus();
   });
 
@@ -202,6 +237,32 @@ describe('WorkspaceEventBus gitignore bypass', () => {
   });
 
   describe('event dispatch with bypass', () => {
+    it('reloads the workspace .gitignore matcher when the file changes', async () => {
+      const listener = createListener();
+      const onGitignoreChange = vi.fn();
+      setGitignoreChangeHandler(onGitignoreChange);
+
+      mockGitignoreReadFile.mockResolvedValue('build/\n');
+      mockGitignoreReadFileSync.mockReturnValue('dist/\n');
+
+      await subscribe(WORKSPACE, 'test-sub', listener);
+
+      fireWatchEvent('change', 'dist/bundle.js');
+      expect(listener.onChange).toHaveBeenLastCalledWith(
+        `${WORKSPACE}/dist/bundle.js`,
+        undefined,
+      );
+
+      fireWatchEvent('change', '.gitignore');
+      fireWatchEvent('change', 'dist/bundle.js');
+
+      expect(onGitignoreChange).toHaveBeenCalledWith(WORKSPACE);
+      expect(listener.changes.filter((change) => change.path.endsWith('dist/bundle.js'))).toHaveLength(1);
+      expect(listener.changes.some((change) => change.path.endsWith('/.gitignore'))).toBe(true);
+
+      unsubscribe(WORKSPACE, 'test-sub');
+    });
+
     it('dispatches non-gitignored events without bypass flag', async () => {
       const listener = createListener();
       await subscribe(WORKSPACE, 'test-sub', listener);

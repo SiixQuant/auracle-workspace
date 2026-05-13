@@ -38,7 +38,7 @@ const {
 
   const mockFsAccess = vi.fn(() => Promise.resolve());
   const mockGitignoreReadFile = vi.fn().mockRejectedValue(new Error('no .gitignore'));
-  const mockGitignoreReadFileSync = vi.fn(() => {
+  const mockGitignoreReadFileSync = vi.fn<(...args: any[]) => string>(() => {
     throw new Error('no .gitignore');
   });
 

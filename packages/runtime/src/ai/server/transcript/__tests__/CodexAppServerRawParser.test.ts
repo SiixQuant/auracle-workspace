@@ -174,4 +174,67 @@ describe('CodexAppServerRawParser', () => {
       expect(descs).toEqual([]);
     }
   });
+
+  it('emits tool_call_started for item/started on mcpToolCall items and does not duplicate on later completion', async () => {
+    // Custom widgets (developer_git_commit_proposal, AskUserQuestion) render
+    // off `tool_call_started`. For MCP tools that block on the user, the
+    // started canonical event MUST exist before item/completed (which only
+    // fires after the user clicks through the widget). Without this path the
+    // tool deadlocks: agent is waiting on MCP, MCP is waiting on user, user
+    // is waiting on a widget that has no canonical event to render from.
+    const parser = new CodexAppServerRawParser();
+    const startMsg = makeRawMessage({
+      id: 10,
+      content: envelope('item/started', {
+        threadId: 't-1',
+        turnId: 'turn-1',
+        item: {
+          id: 'mcp-pending-1',
+          type: 'mcpToolCall',
+          status: 'in_progress',
+          server: 'nimbalyst-mcp',
+          tool: 'developer_git_commit_proposal',
+          arguments: { commitMessage: 'feat: x', filesToStage: ['a.ts'] },
+        },
+      }),
+    });
+    const startedDescs = await parser.parseMessage(startMsg, makeContext());
+    expect(startedDescs).toHaveLength(1);
+    expect(startedDescs[0]).toMatchObject({
+      type: 'tool_call_started',
+      toolName: 'mcp__nimbalyst-mcp__developer_git_commit_proposal',
+      mcpServer: 'nimbalyst-mcp',
+      mcpTool: 'developer_git_commit_proposal',
+    });
+    const startedProviderId = (startedDescs[0] as { providerToolCallId: string }).providerToolCallId;
+    expect(startedProviderId).toMatch(/^nimtc\|/);
+
+    // item/completed for the same rawItemId on the SAME parser instance must
+    // NOT re-emit a started descriptor (would create two canonical
+    // tool_call_started rows for the same call) and must reuse the original
+    // providerToolCallId.
+    const completedMsg = makeRawMessage({
+      id: 11,
+      content: envelope('item/completed', {
+        threadId: 't-1',
+        turnId: 'turn-1',
+        item: {
+          id: 'mcp-pending-1',
+          type: 'mcpToolCall',
+          status: 'completed',
+          server: 'nimbalyst-mcp',
+          tool: 'developer_git_commit_proposal',
+          arguments: { commitMessage: 'feat: x', filesToStage: ['a.ts'] },
+          result: { content: [{ type: 'text', text: 'committed abc123' }] },
+        },
+      }),
+    });
+    const completedDescs = await parser.parseMessage(completedMsg, makeContext());
+    expect(completedDescs).toHaveLength(1);
+    expect(completedDescs[0]).toMatchObject({
+      type: 'tool_call_completed',
+      providerToolCallId: startedProviderId,
+      status: 'completed',
+    });
+  });
 });

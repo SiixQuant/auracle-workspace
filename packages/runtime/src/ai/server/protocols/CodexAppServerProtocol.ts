@@ -161,14 +161,33 @@ export class CodexAppServerProtocol implements AgentProtocol {
 
   /**
    * Spawn a fresh codex app-server and resume an existing thread by id.
+   *
+   * Every resume spawns a fresh codex child (the previous one died with the
+   * previous Nimbalyst process), so the new child has no MCP servers, no
+   * sandbox config, no approval policy, etc. attached until we tell it. The
+   * codex v2 ThreadResumeParams schema accepts the same configuration surface
+   * as ThreadStartParams (minus `ephemeral`), so we forward everything we
+   * pass on first start. Without this, resumed threads start with codex's
+   * defaults and the agent sees zero MCP tools available -- breaking
+   * `developer_git_commit_proposal`, AskUserQuestion, and every other
+   * Nimbalyst-internal tool that ships through nimbalyst-mcp.
    */
   async resumeSession(sessionId: string, options: SessionOptions): Promise<ProtocolSession> {
     const raw = await this.spawnAndInit(options);
+    const startParams = this.buildThreadStartParams(options);
+    // ThreadResumeParams accepts the same surface as ThreadStartParams minus
+    // `ephemeral`. Drop it and replace `model: null` with omission so codex
+    // can fall back to the persisted thread's model when we have no override.
+    const { ephemeral: _ephemeral, model, ...resumeBase } = startParams as ThreadStartParams & { ephemeral?: boolean };
+    const resumeParams: Record<string, unknown> = {
+      ...resumeBase,
+      threadId: sessionId,
+    };
+    if (model !== null && model !== undefined) {
+      resumeParams.model = model;
+    }
     try {
-      const resumeResponse = await raw.client.request<ThreadResumeResponse>('thread/resume', {
-        threadId: sessionId,
-        cwd: options.workspacePath,
-      });
+      const resumeResponse = await raw.client.request<ThreadResumeResponse>('thread/resume', resumeParams);
       raw.threadId = resumeResponse?.thread?.id ?? sessionId;
       console.log('[CODEX][APPSERVER] thread resumed:', raw.threadId);
       return { id: raw.threadId, platform: this.platform, raw: raw as unknown as ProtocolSession['raw'] };
@@ -643,8 +662,45 @@ export class CodexAppServerProtocol implements AgentProtocol {
       });
       return;
     }
-    // Other item types are surfaced via item/completed for parity with the
-    // SDK adapter, which only emits tool_call once a result is known.
+
+    if (item.type === 'mcpToolCall') {
+      // Emit an in-flight tool_call (no result yet) the moment codex enters
+      // the MCP tool. Custom widgets like the GitCommitConfirmation and the
+      // AskUserQuestion flow render off `tool_call_started`; without this
+      // event the MCP tool blocks on the user's response while the widget --
+      // which can't render until the canonical event lands -- never appears.
+      // Mirrors the SDK adapter's `codexEventParser.ts:199-225` behavior of
+      // surfacing mcp_tool_call on item.started with no `result` field.
+      const mcp = item as AnyItem & {
+        server: string;
+        tool: string;
+        arguments?: unknown;
+      };
+      if (!mcp.server || !mcp.tool) return;
+      push({
+        kind: 'event',
+        event: {
+          type: 'tool_call',
+          toolCall: {
+            id: (mcp as { id?: string }).id,
+            name: `mcp__${mcp.server}__${mcp.tool}`,
+            arguments: mcp.arguments as Record<string, unknown> | undefined,
+          },
+          metadata: {
+            transport: 'app-server',
+            stage: 'started',
+            threadId: n.threadId,
+            turnId: n.turnId,
+            itemId: (mcp as { id?: string }).id,
+            method: 'item/started',
+          },
+        },
+      });
+      return;
+    }
+    // commandExecution etc. continue to surface only on item/completed --
+    // those don't gate on user interaction so the widget-render race doesn't
+    // apply.
   }
 
   private handleItemCompleted(

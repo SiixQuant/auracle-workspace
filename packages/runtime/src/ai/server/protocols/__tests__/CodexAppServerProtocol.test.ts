@@ -283,6 +283,136 @@ describe('CodexAppServerProtocol', () => {
     protocol.cleanupSession(session);
   });
 
+  it('forwards mcp_servers and other thread config on thread/resume so the resumed agent has tools', async () => {
+    // Each resume spawns a fresh codex app-server child; without re-attaching
+    // mcp_servers (and the rest of the config we pass on first start), the
+    // resumed agent has zero MCP tools available -- meaning every internal
+    // Nimbalyst tool (developer_git_commit_proposal, AskUserQuestion, etc.)
+    // silently disappears after the first user message in a session resumed
+    // across a Nimbalyst restart.
+    const protocol = new CodexAppServerProtocol();
+    const sessionPromise = protocol.resumeSession('thread-resume-tools', {
+      workspacePath: '/tmp/ws',
+      model: 'gpt-5.4',
+      systemPrompt: 'be helpful',
+      permissionMode: 'auto',
+      raw: {
+        codexConfigOverrides: {
+          mcp_servers: {
+            'nimbalyst-mcp': { command: 'npx', args: ['mcp-remote', 'http://127.0.0.1:3456/mcp?sessionId=s1'] },
+          },
+          show_raw_agent_reasoning: true,
+        },
+        effortLevel: 'high',
+      },
+    } as never);
+    const initReq = await nextWrittenMatching(child, 'initialize');
+    child.emitLine({ id: initReq.id, result: { codexHome: '/fake', platformFamily: 'unix', platformOs: 'macos', userAgent: 'fake/0' } });
+    const resumeReq = await nextWrittenMatching(child, 'thread/resume');
+    const params = resumeReq.params as {
+      threadId: string;
+      cwd: string;
+      sandbox?: string;
+      approvalPolicy?: string;
+      developerInstructions?: string;
+      model?: string;
+      config?: { mcp_servers?: Record<string, unknown>; show_raw_agent_reasoning?: boolean; model_reasoning_effort?: string };
+    };
+    expect(params.threadId).toBe('thread-resume-tools');
+    expect(params.cwd).toBe('/tmp/ws');
+    expect(params.sandbox).toBe('workspace-write');
+    expect(params.approvalPolicy).toBe('never');
+    expect(params.developerInstructions).toBe('be helpful');
+    expect(params.model).toBe('gpt-5.4');
+    expect(params.config).toBeDefined();
+    expect(params.config!.mcp_servers).toEqual({
+      'nimbalyst-mcp': { command: 'npx', args: ['mcp-remote', 'http://127.0.0.1:3456/mcp?sessionId=s1'] },
+    });
+    expect(params.config!.show_raw_agent_reasoning).toBe(true);
+    expect(params.config!.model_reasoning_effort).toBe('high');
+    // ThreadResumeParams does NOT accept `ephemeral`; codex would reject the
+    // params if we forwarded it. Verify we strip it.
+    expect((params as Record<string, unknown>).ephemeral).toBeUndefined();
+    child.emitLine({ id: resumeReq.id, result: { thread: { id: 'thread-resume-tools' } } });
+    const session = await sessionPromise;
+    protocol.cleanupSession(session);
+  });
+
+  it('emits a result-less tool_call on item/started for mcpToolCall so blocking widgets can render', async () => {
+    // Custom widgets (developer_git_commit_proposal, AskUserQuestion) render
+    // off the tool_call event with no result. If the protocol waits until
+    // item/completed -- which only fires AFTER the MCP tool returns -- the
+    // widget never appears and the user can't respond, deadlocking the turn.
+    const protocol = new CodexAppServerProtocol();
+    const sessionPromise = protocol.createSession({ workspacePath: '/tmp/ws' });
+    const initReq = await nextWrittenMatching(child, 'initialize');
+    child.emitLine({ id: initReq.id, result: { codexHome: '/fake', platformFamily: 'unix', platformOs: 'macos', userAgent: 'fake/0' } });
+    const startReq = await nextWrittenMatching(child, 'thread/start');
+    child.emitLine({ id: startReq.id, result: { thread: { id: 't-blocking' } } });
+    const session = await sessionPromise;
+
+    const events: ProtocolEvent[] = [];
+    const collector = (async () => {
+      for await (const ev of protocol.sendMessage(session, { content: 'commit' })) {
+        events.push(ev);
+      }
+    })();
+
+    const turnReq = await nextWrittenMatching(child, 'turn/start');
+    child.emitLine({ id: turnReq.id, result: { turn: { id: 'turn-1', items: [], status: 'inProgress' } } });
+
+    // Codex emits item/started for the MCP tool *before* the tool returns.
+    child.emitLine({
+      method: 'item/started',
+      params: {
+        threadId: 't-blocking',
+        turnId: 'turn-1',
+        item: {
+          id: 'mcp_blocking_1',
+          type: 'mcpToolCall',
+          status: 'pending',
+          server: 'nimbalyst-mcp',
+          tool: 'developer_git_commit_proposal',
+          arguments: { commitMessage: 'feat: x', filesToStage: ['a.ts'] },
+        },
+      },
+    });
+
+    // Verify the started-stage tool_call landed before any completed event.
+    await new Promise((r) => setTimeout(r, 20));
+    const toolCallsAtStart = events.filter((e) => e.type === 'tool_call');
+    expect(toolCallsAtStart).toHaveLength(1);
+    expect(toolCallsAtStart[0].toolCall?.name).toBe('mcp__nimbalyst-mcp__developer_git_commit_proposal');
+    expect(toolCallsAtStart[0].toolCall?.result).toBeUndefined();
+    expect((toolCallsAtStart[0].metadata as { stage?: string })?.stage).toBe('started');
+
+    // Then item/completed arrives (after the user clicks through the widget,
+    // the MCP tool returns, and codex emits the completion).
+    child.emitLine({
+      method: 'item/completed',
+      params: {
+        threadId: 't-blocking',
+        turnId: 'turn-1',
+        item: {
+          id: 'mcp_blocking_1',
+          type: 'mcpToolCall',
+          status: 'completed',
+          server: 'nimbalyst-mcp',
+          tool: 'developer_git_commit_proposal',
+          arguments: { commitMessage: 'feat: x', filesToStage: ['a.ts'] },
+          result: { success: true },
+        },
+      },
+    });
+    child.emitLine({ method: 'turn/completed', params: { threadId: 't-blocking', turn: { id: 'turn-1', status: 'completed' } } });
+    await collector;
+
+    const allToolCalls = events.filter((e) => e.type === 'tool_call');
+    expect(allToolCalls).toHaveLength(2);
+    expect(allToolCalls[1].toolCall?.result).toBeDefined();
+    protocol.cleanupSession(session);
+  });
+
   it('emits mcpToolCall events with the canonical mcp__server__tool name format', async () => {
     const protocol = new CodexAppServerProtocol();
     const sessionPromise = protocol.createSession({ workspacePath: '/tmp/ws' });

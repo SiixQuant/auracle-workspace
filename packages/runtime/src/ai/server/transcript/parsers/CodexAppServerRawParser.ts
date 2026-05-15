@@ -129,6 +129,12 @@ export class CodexAppServerRawParser implements IRawMessageParser {
     if (!method || !params) return descriptors;
 
     switch (method) {
+      case 'item/started': {
+        const item = params.item;
+        if (!item || typeof item !== 'object') break;
+        descriptors.push(...await this.parseItemStarted(msg, item, context));
+        break;
+      }
       case 'item/completed': {
         const item = params.item;
         if (!item || typeof item !== 'object') break;
@@ -153,14 +159,50 @@ export class CodexAppServerRawParser implements IRawMessageParser {
         break;
       }
       default: {
-        // Other notifications (item/started, deltas, mcpServer status, etc.)
-        // do not produce canonical events; they're preserved as raw rows for
-        // re-parse but not surfaced in the transcript.
+        // Other notifications (deltas, mcpServer status, etc.) do not produce
+        // canonical events; they're preserved as raw rows for re-parse but
+        // not surfaced in the transcript.
         break;
       }
     }
 
     return descriptors;
+  }
+
+  /**
+   * Emit a `tool_call_started` descriptor when we see `item/started` for
+   * tool-like items. Required for MCP tools that block on the user (commit
+   * proposal, AskUserQuestion): their widgets render off the canonical
+   * tool_call_started event, and `item/completed` won't fire until *after*
+   * the user clicks through the widget -- so without this path the user
+   * sees only "Thinking..." and can never respond.
+   *
+   * We track the rawItemId in `inFlightSyntheticIds` so the subsequent
+   * `item/completed` reuses the same editGroupId and skips re-emitting the
+   * started descriptor.
+   */
+  private async parseItemStarted(
+    msg: RawMessage,
+    item: AppServerItem,
+    context: ParseContext,
+  ): Promise<CanonicalEventDescriptor[]> {
+    if (item.type !== 'mcpToolCall') return [];
+    if (!item.id || !item.server || !item.tool) return [];
+    const rawItemId = item.id;
+    const editGroupId = await this.resolveEditGroupId(msg, rawItemId, context);
+    const toolName = `mcp__${item.server}__${item.tool}`;
+    const parsed = parseMcpToolName(toolName);
+    return [{
+      type: 'tool_call_started',
+      toolName,
+      toolDisplayName: toolName,
+      arguments: (item.arguments as Record<string, unknown> | undefined) ?? {},
+      targetFilePath: null,
+      mcpServer: parsed?.server ?? item.server,
+      mcpTool: parsed?.tool ?? item.tool,
+      providerToolCallId: editGroupId,
+      createdAt: msg.createdAt,
+    }];
   }
 
   private async parseItemCompleted(
@@ -256,21 +298,30 @@ export class CodexAppServerRawParser implements IRawMessageParser {
   ): Promise<CanonicalEventDescriptor[]> {
     if (!item.id || !item.server || !item.tool) return [];
     const rawItemId = item.id;
+    // If `parseItemStarted` already emitted a tool_call_started for this
+    // rawItemId in the same batch, skip re-emitting it -- otherwise we'd
+    // produce two started descriptors for the same providerToolCallId. The
+    // writer dedupes by id, but emitting cleanly here keeps reparse output
+    // identical to live-stream output.
+    const startedAlreadyEmitted = this.inFlightSyntheticIds.has(rawItemId);
     const editGroupId = await this.resolveEditGroupId(msg, rawItemId, context);
     const toolName = `mcp__${item.server}__${item.tool}`;
     const parsed = parseMcpToolName(toolName);
 
-    const descriptors: CanonicalEventDescriptor[] = [{
-      type: 'tool_call_started',
-      toolName,
-      toolDisplayName: toolName,
-      arguments: (item.arguments as Record<string, unknown> | undefined) ?? {},
-      targetFilePath: null,
-      mcpServer: parsed?.server ?? item.server,
-      mcpTool: parsed?.tool ?? item.tool,
-      providerToolCallId: editGroupId,
-      createdAt: msg.createdAt,
-    }];
+    const descriptors: CanonicalEventDescriptor[] = [];
+    if (!startedAlreadyEmitted) {
+      descriptors.push({
+        type: 'tool_call_started',
+        toolName,
+        toolDisplayName: toolName,
+        arguments: (item.arguments as Record<string, unknown> | undefined) ?? {},
+        targetFilePath: null,
+        mcpServer: parsed?.server ?? item.server,
+        mcpTool: parsed?.tool ?? item.tool,
+        providerToolCallId: editGroupId,
+        createdAt: msg.createdAt,
+      });
+    }
 
     if (item.status === 'completed' || item.status === 'failed') {
       const { resultText, isError } = this.extractToolResult(item);

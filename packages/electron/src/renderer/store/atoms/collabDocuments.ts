@@ -49,6 +49,10 @@ const workspaceHasTeamAtomFamily = atomFamily((_workspacePath: string) =>
   atom<boolean>(false)
 );
 
+const teamOrgIdAtomFamily = atomFamily((_workspacePath: string) =>
+  atom<string | null>(null)
+);
+
 // ============================================================
 // Public atoms — derived from the active workspace
 // ============================================================
@@ -109,6 +113,25 @@ export const workspaceHasTeamAtom = atom<boolean, [boolean], void>(
     set(workspaceHasTeamAtomFamily(path), value);
   }
 );
+
+/**
+ * The team org ID currently in use for the active workspace, if it has a team.
+ * Populated alongside team sync initialization. Used to build shareable deep
+ * links to shared documents.
+ */
+export const activeTeamOrgIdAtom = atom<string | null>((get) => {
+  const path = get(activeWorkspacePathAtom);
+  if (!path) return null;
+  return get(teamOrgIdAtomFamily(path));
+});
+
+/**
+ * Build a deep link to a shared document. The recipient's Nimbalyst app uses
+ * the orgId to find the matching team workspace and verify access.
+ */
+export function buildSharedDocumentDeepLink(documentId: string, orgId: string): string {
+  return `nimbalyst://doc/${encodeURIComponent(documentId)}?orgId=${encodeURIComponent(orgId)}`;
+}
 
 /**
  * Pending document to auto-open in CollabMode after switching modes.
@@ -313,6 +336,7 @@ export async function initSharedDocuments(workspacePath: string, retryCount = 0)
 
     store.set(workspaceHasTeamAtomFamily(workspacePath), true);
     const { orgId, orgKeyBase64, orgKeyFingerprint, serverUrl, userId } = result.config;
+    store.set(teamOrgIdAtomFamily(workspacePath), orgId);
 
     const { TeamSyncProvider } = await import('@nimbalyst/runtime/sync');
 
@@ -490,6 +514,7 @@ export function destroyTeamSync(workspacePath?: string): void {
 
   store.set(teamSyncStatusAtomFamily(path), 'disconnected');
   store.set(workspaceHasTeamAtomFamily(path), false);
+  store.set(teamOrgIdAtomFamily(path), null);
 }
 
 /**

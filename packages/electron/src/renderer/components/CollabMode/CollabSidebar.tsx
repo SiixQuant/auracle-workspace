@@ -1,15 +1,19 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAtomValue } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import { InputModal } from '../InputModal';
 import { WorkspaceSummaryHeader } from '../WorkspaceSummaryHeader';
+import { useFloatingMenu, FloatingPortal, virtualElement } from '../../hooks/useFloatingMenu';
 import {
   sharedDocumentsAtom,
   teamSyncStatusAtom,
   removeSharedDocument,
   updateSharedDocumentTitle,
+  activeTeamOrgIdAtom,
+  buildSharedDocumentDeepLink,
   type SharedDocument,
 } from '../../store/atoms/collabDocuments';
+import { errorNotificationService } from '../../services/ErrorNotificationService';
 import {
   buildCollabTree,
   getCollabDocumentPath,
@@ -59,12 +63,12 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
 }) => {
   const sharedDocuments = useAtomValue(sharedDocumentsAtom);
   const teamSyncStatus = useAtomValue(teamSyncStatusAtom);
+  const teamOrgId = useAtomValue(activeTeamOrgIdAtom);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
     node: CollabTreeNode;
   } | null>(null);
-  const contextMenuRef = useRef<HTMLDivElement>(null);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [customFolders, setCustomFolders] = useState<string[]>([]);
   const [selectedFolderPath, setSelectedFolderPath] = useState<string | null>(null);
@@ -117,24 +121,18 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
     return false;
   }, [teamSyncStatus]);
 
-  // Close context menu on click outside or Escape
-  useEffect(() => {
-    if (!contextMenu) return;
-    const handleClick = (e: MouseEvent) => {
-      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
-        setContextMenu(null);
-      }
-    };
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setContextMenu(null);
-    };
-    document.addEventListener('mousedown', handleClick);
-    document.addEventListener('keydown', handleKey);
-    return () => {
-      document.removeEventListener('mousedown', handleClick);
-      document.removeEventListener('keydown', handleKey);
-    };
-  }, [contextMenu]);
+  const contextMenuReference = useMemo(
+    () => (contextMenu ? virtualElement(contextMenu.x, contextMenu.y) : null),
+    [contextMenu]
+  );
+  const contextMenuFloating = useFloatingMenu({
+    placement: 'right-start',
+    reference: contextMenuReference,
+    open: contextMenu !== null,
+    onOpenChange: (open) => {
+      if (!open) setContextMenu(null);
+    },
+  });
 
   useEffect(() => {
     setHasLoadedState(false);
@@ -226,6 +224,32 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
     }
     setContextMenu({ x: e.clientX, y: e.clientY, node });
   }, []);
+
+  const handleCopyLink = useCallback(async (document: SharedDocument) => {
+    if (!teamOrgId) {
+      errorNotificationService.showWarning(
+        'No team configured',
+        'This workspace is not connected to a team, so no shareable link is available.',
+        { duration: 4000 }
+      );
+      return;
+    }
+    const url = buildSharedDocumentDeepLink(document.documentId, teamOrgId);
+    try {
+      await navigator.clipboard.writeText(url);
+      errorNotificationService.showInfo(
+        'Link copied',
+        'Paste it anywhere to open this document in Nimbalyst.',
+        { duration: 3000 }
+      );
+    } catch (err) {
+      console.error('[CollabSidebar] Failed to copy link:', err);
+      errorNotificationService.showError(
+        'Copy failed',
+        'Could not write the link to the clipboard.'
+      );
+    }
+  }, [teamOrgId]);
 
   const handleDelete = useCallback(() => {
     if (!contextMenu || contextMenu.node.type !== 'document') return;
@@ -601,14 +625,13 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
 
       {/* Context menu */}
       {contextMenu && (
-        <div
-          ref={contextMenuRef}
-          className="fixed min-w-[160px] rounded-md z-[10000] text-[13px] p-1 bg-nim-secondary border border-nim text-nim backdrop-blur-[10px] shadow-lg"
-          style={{
-            left: contextMenu.x,
-            top: contextMenu.y,
-          }}
-        >
+        <FloatingPortal>
+          <div
+            ref={contextMenuFloating.refs.setFloating}
+            style={contextMenuFloating.floatingStyles}
+            {...contextMenuFloating.getFloatingProps()}
+            className="min-w-[160px] rounded-md z-[10000] text-[13px] p-1 bg-nim-secondary border border-nim text-nim backdrop-blur-[10px] shadow-lg"
+          >
           {contextMenu.node.type === 'folder' ? (
             <>
               <button
@@ -644,6 +667,20 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
               </button>
               <button
                 type="button"
+                className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded border-none bg-transparent cursor-pointer transition-colors text-left text-nim hover:bg-nim-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!teamOrgId}
+                title={teamOrgId ? undefined : 'No team is connected to this workspace'}
+                onClick={() => {
+                  if (!contextDocument) return;
+                  setContextMenu(null);
+                  void handleCopyLink(contextDocument);
+                }}
+              >
+                <MaterialSymbol icon="link" size={18} />
+                <span>Copy Link</span>
+              </button>
+              <button
+                type="button"
                 className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded border-none bg-transparent cursor-pointer transition-colors text-left text-nim hover:bg-nim-hover"
                 onClick={() => {
                   if (!contextDocument) return;
@@ -664,7 +701,8 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
               </button>
             </>
           )}
-        </div>
+          </div>
+        </FloatingPortal>
       )}
 
       <InputModal

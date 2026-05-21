@@ -60,6 +60,7 @@ import { initFileTreeListeners } from '../../store/listeners/fileTreeListeners';
 import { initSessionListListeners } from '../../store/listeners/sessionListListeners';
 import { initSessionTranscriptListeners } from '../../store/listeners/sessionTranscriptListeners';
 import { initTrayListeners, trayNewSessionRequestAtom } from '../../store/listeners/trayListeners';
+import { initDeepLinkListeners } from '../../store/listeners/deepLinkListeners';
 import { requestOpenSessionAtom } from '../../store/atoms/agentMode';
 import { fetchSessionSharesAtom } from '../../store';
 import type { WorktreeCreateResult, SessionCreateResult } from '../../../shared/ipc/types';
@@ -206,6 +207,12 @@ export const AgentMode = forwardRef<AgentModeRef, AgentModeProps>(function Agent
   // Initialize tray navigation listeners (global, runs once)
   useEffect(() => {
     const cleanup = initTrayListeners();
+    return cleanup;
+  }, []);
+
+  // Initialize deep-link navigation listeners (global, runs once)
+  useEffect(() => {
+    const cleanup = initDeepLinkListeners();
     return cleanup;
   }, []);
 

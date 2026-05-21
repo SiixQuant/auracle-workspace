@@ -142,10 +142,12 @@ import { AnalyticsService } from "./services/analytics/AnalyticsService.ts";
 import { registerAnalyticsHandlers } from "./ipc/AnalyticsHandlers.ts";
 import { registerFeatureUsageHandlers } from "./ipc/FeatureUsageHandlers.ts";
 import { FeatureUsageService, FEATURES } from "./services/FeatureUsageService.ts";
-import { shutdownStytchAuth, handleAuthCallback } from './services/StytchAuthService';
+import { shutdownStytchAuth, handleAuthCallback, isAuthenticated } from './services/StytchAuthService';
 import { registerTrackerSyncHandlers, initializeTrackerSync } from './services/TrackerSyncManager';
 import { initTrackerSchemaService, updateTrackerSchemaWorkspace } from './services/TrackerSchemaService';
-import { registerTeamHandlers, autoMatchTeamForWorkspace, getOrgScopedJwt } from './services/TeamService';
+import { registerTeamHandlers, autoMatchTeamForWorkspace, getOrgScopedJwt, findTeamForWorkspace } from './services/TeamService';
+import { windowStates, windows, resolveActiveWorkspacePath } from './window/windowState';
+import { getRecentItems } from './utils/store';
 import { registerOrgKeyHandlers, getOrgKey } from './services/OrgKeyService';
 import { registerDocumentSyncHandlers } from './ipc/DocumentSyncHandlers';
 import { getPermissionService } from './services/PermissionService';
@@ -640,6 +642,19 @@ if (!allowMultipleInstances) {
 // Track pending deep link URL
 let pendingDeepLinkUrl: string | null = null;
 
+// Per-workspace queue of shared-document deep links waiting for the renderer
+// to be ready (e.g., a window we just created for the project). Drained via
+// the `deep-link:consume-pending-shared-doc` IPC during listener init.
+const pendingSharedDocLinks = new Map<string, { documentId: string; orgId: string }>();
+
+safeHandle('deep-link:consume-pending-shared-doc', (_event, workspacePath: string) => {
+    if (!workspacePath) return null;
+    const pending = pendingSharedDocLinks.get(workspacePath);
+    if (!pending) return null;
+    pendingSharedDocLinks.delete(workspacePath);
+    return { ...pending, workspacePath };
+});
+
 // Sensitive query params that must not be logged verbatim. Anything not in
 // this set is logged as-is so worker-supplied error codes/messages are visible.
 const SENSITIVE_DEEP_LINK_PARAMS = new Set([
@@ -766,12 +781,112 @@ async function handleDeepLink(url: string): Promise<void> {
             } else {
                 logger.main.warn('[DeepLink] Extension install missing extension ID');
             }
+        } else if (parsed.host === 'doc' || parsed.pathname?.startsWith('/doc/')) {
+            // Handle shared document link: nimbalyst://doc/{documentId}?orgId={orgId}
+            const encoded = parsed.host === 'doc'
+                ? parsed.pathname?.replace(/^\//, '')
+                : parsed.pathname?.replace('/doc/', '');
+            let documentId: string | undefined;
+            try {
+                documentId = encoded ? decodeURIComponent(encoded) : undefined;
+            } catch {
+                logger.main.warn('[DeepLink] Shared doc link has malformed documentId:', summarizeDeepLink(url));
+                return;
+            }
+            const orgId = parsed.searchParams.get('orgId');
+
+            if (!documentId || !orgId) {
+                logger.main.warn('[DeepLink] Shared doc link missing documentId or orgId:', summarizeDeepLink(url));
+                return;
+            }
+
+            await openSharedDocumentFromDeepLink(documentId, orgId);
         } else {
             logger.main.warn('[DeepLink] Unknown deep link:', summarizeDeepLink(url));
         }
     } catch (error) {
         logger.main.error('[DeepLink] Failed to handle deep link:', error);
     }
+}
+
+/**
+ * Find a workspace path whose team matches the given orgId. Looks first
+ * across all open windows (active + rail-warm), then falls back to the
+ * user's recent workspaces. Returns null if no known workspace matches.
+ */
+async function findWorkspaceForOrgId(orgId: string): Promise<string | null> {
+    const seen = new Set<string>();
+
+    // Open windows first — both active and rail-warm paths.
+    for (const state of windowStates.values()) {
+        const paths = new Set<string>();
+        const active = resolveActiveWorkspacePath(state);
+        if (active) paths.add(active);
+        if (state?.workspacePath) paths.add(state.workspacePath);
+        for (const p of state?.additionalWorkspacePaths ?? []) paths.add(p);
+
+        for (const workspacePath of paths) {
+            if (seen.has(workspacePath)) continue;
+            seen.add(workspacePath);
+            const team = await findTeamForWorkspace(workspacePath);
+            if (team?.orgId === orgId) return workspacePath;
+        }
+    }
+
+    // Fall back to recent workspaces the user has opened before.
+    const recent = getRecentItems('workspaces');
+    for (const item of recent) {
+        if (seen.has(item.path)) continue;
+        seen.add(item.path);
+        const team = await findTeamForWorkspace(item.path);
+        if (team?.orgId === orgId) return item.path;
+    }
+
+    return null;
+}
+
+/**
+ * Route a shared-document deep link to the renderer holding the matching
+ * team workspace. Queues the payload in `pendingSharedDocLinks` so a freshly
+ * created window's renderer can drain it on listener init.
+ */
+async function openSharedDocumentFromDeepLink(documentId: string, orgId: string): Promise<void> {
+    const reason = !isAuthenticated() ? 'not-authenticated' : 'no-workspace';
+    const workspacePath = isAuthenticated() ? await findWorkspaceForOrgId(orgId) : null;
+
+    if (!workspacePath) {
+        logger.main.warn('[DeepLink] Cannot route shared doc:', { reason, orgId, documentId });
+        const fallback = getMostRecentlyFocusedWorkspaceWindow();
+        if (fallback) {
+            if (fallback.isMinimized()) fallback.restore();
+            fallback.focus();
+            fallback.webContents.send('deep-link:shared-document-not-available', { documentId, orgId, reason });
+        }
+        return;
+    }
+
+    // Queue first; the renderer drains by workspacePath on listener init.
+    // For an already-loaded window we also fire the live event below; the
+    // renderer treats it as idempotent against the pending queue.
+    pendingSharedDocLinks.set(workspacePath, { documentId, orgId });
+
+    const existing = findWindowByWorkspace(workspacePath);
+    if (existing && !existing.isDestroyed()) {
+        if (existing.isMinimized()) existing.restore();
+        existing.focus();
+        existing.webContents.send('deep-link:open-shared-document', {
+            documentId,
+            orgId,
+            workspacePath,
+        });
+        logger.main.info('[DeepLink] Routed shared doc to existing window:', { workspacePath, documentId });
+        return;
+    }
+
+    // No window has this workspace open — create one. The renderer's
+    // deep-link listener will drain the pending queue once it mounts.
+    logger.main.info('[DeepLink] Opening new window for shared doc workspace:', { workspacePath, documentId });
+    createWindow(false, true, workspacePath);
 }
 
 // Handle file open from OS (macOS)

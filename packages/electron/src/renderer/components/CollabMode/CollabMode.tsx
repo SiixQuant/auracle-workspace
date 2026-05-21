@@ -397,24 +397,31 @@ const CollabModeInner: React.FC<CollabModeProps> = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspacePath]); // Only run on mount (tabsActions is stable ref-based)
 
-  // Auto-open a pending document (set by "Share to Team" action)
+  // Auto-open a pending document. Set by "Share to Team" (carries title +
+  // initialContent for first-share seeding) and by deep links (documentId
+  // only -- title arrives later via the shared-docs sync, which the
+  // sharedDocuments rename effect picks up).
   useEffect(() => {
     if (!pendingDoc || !isActive) return;
 
-    // Find the document in the shared documents atom
     const docs = store.get(sharedDocumentsAtom);
     const found = docs.find(d => d.documentId === pendingDoc.documentId);
-    if (found) {
-      // Clear the pending flag before opening to avoid re-triggering.
-      // The pending payload carries the authoritative documentType the
-      // sharer just chose (the shared docs atom may still be syncing the
-      // newly registered entry from the server), so prefer it.
-      const doc: SharedDocument = pendingDoc.documentType
-        ? { ...found, documentType: pendingDoc.documentType }
-        : found;
-      store.set(pendingCollabDocumentAtom, null);
-      handleDocumentSelect(doc, pendingDoc.initialContent);
-    }
+
+    // Prefer the synced doc (it has the canonical title), but fall back to
+    // a synthetic doc so cold-start deep links still open immediately.
+    const docToOpen: SharedDocument = found
+      ? (pendingDoc.documentType ? { ...found, documentType: pendingDoc.documentType } : found)
+      : {
+          documentId: pendingDoc.documentId,
+          title: pendingDoc.documentId,
+          documentType: pendingDoc.documentType ?? 'markdown',
+          createdBy: '',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+
+    store.set(pendingCollabDocumentAtom, null);
+    handleDocumentSelect(docToOpen, pendingDoc.initialContent);
   }, [pendingDoc, isActive, handleDocumentSelect]);
 
   const handleTabClose = useCallback((tabId: string) => {

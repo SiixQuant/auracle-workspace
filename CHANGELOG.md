@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Shared documents have revision history: Cmd/Ctrl+S saves a named version, auto snapshots run after idle, and any past revision can be restored from the History dialog.
 <!-- New features go here -->
 
 ### Changed
@@ -16,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Auto-update now downloads in the background and shows only the "Ready to install" toast; the redundant "Update Available" toast has been removed. (#327)
 
 ### Fixed
+- Session history search bar no longer overlaps floating popovers (e.g. Claude Usage).
 <!-- Bug fixes go here -->
 - Codex session-naming reminder no longer leaks into the chat transcript; its turn output is tagged so the transcript hides it. (#420)
 

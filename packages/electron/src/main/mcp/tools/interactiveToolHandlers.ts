@@ -1071,6 +1071,74 @@ export async function handleRequestUserInput(
     };
   }
 
+  // Per-type required-shape validation. The MCP input schema is intentionally
+  // flat (all per-type properties optional, only type/id/label required) because
+  // OpenAI's function-calling schema converter mangles `oneOf` unions and the
+  // agent ends up guessing -- see the comment above REQUEST_USER_INPUT_FIELD_SCHEMA.
+  // That permissiveness means the agent occasionally emits a field like
+  // `{ type: "singleSelect", id, label }` with no `options` array, and the
+  // widget then throws "Cannot read properties of undefined (reading 'map')"
+  // when it tries to seed/render the field. Catch it here and return a precise
+  // error so the agent can retry with the right shape.
+  const fieldShapeErrors: string[] = [];
+  for (const field of fields) {
+    if (!field || typeof field !== "object") {
+      fieldShapeErrors.push("each field must be an object");
+      continue;
+    }
+    const fieldId = typeof field.id === "string" ? field.id : "<missing id>";
+    switch (field.type) {
+      case "multiSelect":
+        if (!Array.isArray(field.items) || field.items.length === 0) {
+          fieldShapeErrors.push(
+            `multiSelect field '${fieldId}' requires a non-empty items[] array of { id, title }`,
+          );
+        }
+        break;
+      case "singleSelect":
+        if (!Array.isArray(field.options) || field.options.length === 0) {
+          fieldShapeErrors.push(
+            `singleSelect field '${fieldId}' requires a non-empty options[] array of { id, label }`,
+          );
+        }
+        break;
+      case "reorder":
+        if (!Array.isArray(field.items) || field.items.length === 0) {
+          fieldShapeErrors.push(
+            `reorder field '${fieldId}' requires a non-empty items[] array of { id, title }`,
+          );
+        }
+        break;
+      case "editText":
+        if (typeof field.initialText !== "string") {
+          fieldShapeErrors.push(
+            `editText field '${fieldId}' requires an initialText string (may be empty)`,
+          );
+        }
+        break;
+      case "confirm":
+        // No required-by-type properties beyond the base { type, id, label }.
+        break;
+      default:
+        fieldShapeErrors.push(
+          `field '${fieldId}' has unknown or missing type '${String(field.type)}' (expected one of multiSelect, singleSelect, reorder, editText, confirm)`,
+        );
+    }
+  }
+  if (fieldShapeErrors.length > 0) {
+    return {
+      content: [
+        {
+          type: "text",
+          text:
+            "Error: PromptForUserInput received malformed field(s). Fix and retry:\n  - "
+            + fieldShapeErrors.join("\n  - "),
+        },
+      ],
+      isError: true,
+    };
+  }
+
   const promptId =
     await resolveToolUseIdFromMcpRequest(request, sessionId, "PromptForUserInput") ||
     `rui-${sessionId || "unknown"}-${Date.now()}`;

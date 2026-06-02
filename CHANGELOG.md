@@ -16,6 +16,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 <!-- Bug fixes go here -->
+
+### Removed
+<!-- Removed features go here -->
+
+## [0.63.9] - 2026-06-02
+
+
+### Added
+<!-- New features go here -->
+
+### Changed
+<!-- Changes to existing functionality go here -->
+
+### Fixed
+<!-- Bug fixes go here -->
 - Public builds no longer spam logs with normal-path AI, sync, auth, git, and diff-trace diagnostics.
 - OpenAI Codex settings panel no longer triggers an infinite re-render loop.
 

@@ -10,6 +10,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 <!-- New features go here -->
+
+### Changed
+<!-- Changes to existing functionality go here -->
+
+### Fixed
+<!-- Bug fixes go here -->
+
+### Removed
+<!-- Removed features go here -->
+
+## [0.65.1] - 2026-06-12
+
+
+### Added
+<!-- New features go here -->
 - Claude Fable 5 is now selectable across all Claude providers, including a Fable 5 (1M) variant; existing Fable defaults migrate to 1M automatically.
 - Switch models mid-session on Claude Code CLI sessions from the model picker.
 - Claude Code CLI sessions receive your active document and selection as context, support workspace slash commands and the memory widget, and auto-name themselves from the first prompt.

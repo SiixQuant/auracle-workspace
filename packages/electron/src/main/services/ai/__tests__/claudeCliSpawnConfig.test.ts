@@ -27,6 +27,21 @@ describe('buildClaudeCliSpawnConfig', () => {
     expect(cfg.args[cfg.args.indexOf('--model') + 1]).toBe('opus');
   });
 
+  // NIM-843: without --strict-mcp-config the genuine `claude` binary merges its
+  // own MCP discovery (~/.claude.json, project .mcp.json, claude.ai connectors)
+  // on top of our --mcp-config snapshot and ignores the `disabled` flag we write,
+  // so user-disabled third-party servers leak into CLI sessions. Strict mode makes
+  // the binary use ONLY the snapshot (which already carries the enabled set,
+  // filtered by isMCPServerEnabledForProvider).
+  it('passes --strict-mcp-config alongside --mcp-config so the binary uses ONLY our snapshot', () => {
+    const cfg = buildClaudeCliSpawnConfig({ ...base, mcpConfigPath: '/tmp/mcp.json' });
+    expect(cfg.args).toContain('--strict-mcp-config');
+  });
+
+  it('omits --strict-mcp-config when there is no --mcp-config snapshot', () => {
+    expect(buildClaudeCliSpawnConfig(base).args).not.toContain('--strict-mcp-config');
+  });
+
   it('resumes a session with --resume <id>', () => {
     const cfg = buildClaudeCliSpawnConfig({ ...base, resumeSessionId: 'abc-123' });
     expect(cfg.args).toContain('--resume');

@@ -222,6 +222,15 @@ export function buildClaudeCliSpawnConfig(input: ClaudeCliSpawnInput): ClaudeCli
   }
   if (input.mcpConfigPath) {
     args.push('--mcp-config', input.mcpConfigPath);
+    // NIM-843: pair with --strict-mcp-config so the genuine `claude` binary uses
+    // ONLY this snapshot and does NOT merge its own discovery (~/.claude.json,
+    // project .mcp.json, .claude/settings.json, claude.ai connectors). Without it
+    // the binary loads every server it finds in ~/.claude.json — ignoring the
+    // `disabled` flag Nimbalyst writes — so user-disabled third-party servers leak
+    // into CLI sessions and eat context. The snapshot already carries the enabled
+    // set (filtered by isMCPServerEnabledForProvider), so strict mode gives the
+    // Nimbalyst toggle the same authority over CLI sessions as the SDK path.
+    args.push('--strict-mcp-config');
   }
   if (input.resumeSessionId) {
     args.push('--resume', input.resumeSessionId);

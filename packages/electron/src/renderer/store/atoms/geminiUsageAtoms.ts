@@ -40,50 +40,11 @@ export interface GeminiUsageData {
 
 export const geminiUsageAtom = atom<GeminiUsageData | null>(null);
 
-export const geminiUsageIndicatorEnabledAtom = atom<boolean>(true);
-
-let geminiUsageIndicatorPersistTimer: ReturnType<typeof setTimeout> | null = null;
-const GEMINI_USAGE_INDICATOR_PERSIST_DEBOUNCE_MS = 500;
-
-function scheduleGeminiUsageIndicatorPersist(enabled: boolean): void {
-  if (geminiUsageIndicatorPersistTimer) {
-    clearTimeout(geminiUsageIndicatorPersistTimer);
-  }
-  geminiUsageIndicatorPersistTimer = setTimeout(async () => {
-    geminiUsageIndicatorPersistTimer = null;
-    if (typeof window !== 'undefined' && window.electronAPI) {
-      try {
-        // Send only the changed field -- ai:saveSettings handles partial updates
-        await window.electronAPI.aiSaveSettings({ showGeminiUsageIndicator: enabled });
-      } catch (error) {
-        console.error('[geminiUsageAtoms] Failed to save usage indicator setting:', error);
-      }
-    }
-  }, GEMINI_USAGE_INDICATOR_PERSIST_DEBOUNCE_MS);
-}
-
-export const setGeminiUsageIndicatorEnabledAtom = atom(
-  null,
-  (_get, set, enabled: boolean) => {
-    set(geminiUsageIndicatorEnabledAtom, enabled);
-    scheduleGeminiUsageIndicatorPersist(enabled);
-  }
-);
-
-export async function initGeminiUsageIndicatorSetting(): Promise<boolean> {
-  if (typeof window === 'undefined' || !window.electronAPI) {
-    return false;
-  }
-
-  try {
-    const settings = await window.electronAPI.aiGetSettings();
-    return (settings as Record<string, unknown>)?.showGeminiUsageIndicator as boolean ?? true;
-  } catch (error) {
-    console.error('[geminiUsageAtoms] Failed to load usage indicator setting:', error);
-  }
-
-  return true;
-}
+// The usage-indicator enabled toggle now lives in the flat-key SettingsService
+// under `ai.showGeminiUsageIndicator`. Read it with
+// `useSetting('ai.showGeminiUsageIndicator')` and write it with
+// `useSetSetting('ai.showGeminiUsageIndicator')` -- it hydrates before React
+// mounts and stays in lockstep across windows via the broadcast.
 
 export const geminiUsageAvailableAtom = atom((get) => {
   const usage = get(geminiUsageAtom);

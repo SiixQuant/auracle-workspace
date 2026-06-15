@@ -340,6 +340,14 @@ interface ElectronAPI {
   aiDeleteSession: (sessionId: string, workspacePath?: string) => Promise<{ success: boolean }>;
   aiCancelRequest: (sessionId: string) => Promise<{ success: boolean; error?: string }>;
   aiApplyEdit: (edit: any) => Promise<any>;
+
+  // Flat-key settings -- single read-everything snapshot, single per-key write,
+  // single per-key broadcast. See shared/settings/keys.ts for the registry.
+  settingsGetAll: () => Promise<Record<string, unknown>>;
+  settingsSet: (key: string, value: unknown) => Promise<{ ok: true }>;
+  settingsDelete: (key: string) => Promise<{ ok: true }>;
+  onSettingsChanged: (callback: (payload: { key: string; value: unknown }) => void) => () => void;
+
   getAISettings: () => Promise<any>;
   saveAISettings: (settings: any) => Promise<void>;
   testAIConnection: (provider: 'claude' | 'claude-code' | 'openai' | 'lmstudio') => Promise<any>;

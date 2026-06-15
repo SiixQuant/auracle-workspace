@@ -52,6 +52,7 @@ import { flushNextClaudeCliQueuedPromptForSession } from './claudeCliQueueFlushS
 import { notificationService } from '../NotificationService';
 import { TrayManager } from '../../tray/TrayManager';
 import { logger } from '../../utils/logger';
+import { getSettingsService } from '../SettingsService';
 import { windowStates, findWindowByWorkspace, getWindowId, createWindow } from '../../window/WindowManager';
 import { resolveActiveWorkspacePathForWindowId } from '../../window/windowState';
 import { sessionFileTracker } from '../SessionFileTracker';
@@ -2856,143 +2857,114 @@ export class AIService {
     });
 
     safeHandle('ai:saveSettings', async (event, settings: any) => {
+      // Legacy compat shim: this used to spread the incoming blob over the
+      // stored blob (`{...currentProviderSettings, ...settings.providerSettings}`),
+      // which silently dropped fields whenever the renderer's view was stale
+      // (NIM-801, codex-lost). Now every field is routed through the per-key
+      // SettingsService -- one validated write per key, broadcast to every
+      // window, no blob in the wire payload to lose anything from.
+      //
+      // Renderer code that wants to be safe should call `window.electronAPI.settingsSet`
+      // directly; this handler stays only for callers that haven't been
+      // migrated yet (and as the implementation behind the convenience helpers
+      // like `scheduleAIDebugPersist` until those are removed too).
+      const svc = getSettingsService();
+
+      const safeSet = (key: string, value: unknown): void => {
+        try {
+          svc.set(key as any, value as any);
+        } catch (err) {
+          logger.main.error(`[ai:saveSettings] svc.set(${key}) rejected:`, err);
+        }
+      };
+
       if (settings.defaultProvider !== undefined) {
-        this.getSettingsStore().set('defaultProvider', settings.defaultProvider);
+        safeSet('ai.defaultProvider', settings.defaultProvider);
       }
 
       if (settings.apiKeys) {
-        // Only update changed API keys
-        const currentKeys = this.getSettingsStore().get('apiKeys', {}) as Record<string, string>;
-
-        // Save Anthropic key
-        if (settings.apiKeys.anthropic !== undefined) {
-          const key = settings.apiKeys.anthropic;
-          if (!key) {
-            delete currentKeys['anthropic'];
-          } else if (key !== this.maskApiKey(currentKeys['anthropic'] || '')) {
-            currentKeys['anthropic'] = key as string;
+        // The renderer sends the masked form of unchanged keys so it can show
+        // them in form fields. Don't overwrite real keys with masks; compare
+        // each incoming value against the stored mask before writing.
+        const stored = (this.getSettingsStore().get('apiKeys', {}) as Record<string, string>) ?? {};
+        const writeApiKey = (name: string, incoming: unknown): void => {
+          if (incoming === undefined) return;
+          if (!incoming) {
+            // Empty string / null clears the key.
+            safeSet(`ai.apiKey.${name}`, '');
+            return;
           }
-        }
-
-        // Save Claude Code key (kept separate from anthropic)
-        if (settings.apiKeys['claude-code'] !== undefined) {
-          const key = settings.apiKeys['claude-code'];
-          if (!key) {
-            delete currentKeys['claude-code'];
-          } else if (key !== this.maskApiKey(currentKeys['claude-code'] || '')) {
-            currentKeys['claude-code'] = key as string;
-          }
-        }
-
-        // Save OpenAI key
-        if (settings.apiKeys.openai !== undefined) {
-          const key = settings.apiKeys.openai;
-          if (!key) {
-            delete currentKeys['openai'];
-          } else if (key !== this.maskApiKey(currentKeys['openai'] || '')) {
-            currentKeys['openai'] = key as string;
-            // Sync to mobile devices for voice mode
+          if (typeof incoming !== 'string') return;
+          if (incoming === this.maskApiKey(stored[name] || '')) return; // unchanged
+          safeSet(`ai.apiKey.${name}`, incoming);
+          if (name === 'openai') {
+            // Sync openai key to mobile devices for voice mode.
             import('../SyncManager').then(({ syncSettingsToMobile }) => {
-              syncSettingsToMobile(key as string);
-            }).catch(() => {
-              // Sync manager may not be available
-            });
+              syncSettingsToMobile(incoming);
+            }).catch(() => { /* sync manager may not be available */ });
           }
-        }
-
-        // Save OpenAI Codex key
-        if (settings.apiKeys['openai-codex'] !== undefined) {
-          const key = settings.apiKeys['openai-codex'];
-          if (!key) {
-            delete currentKeys['openai-codex'];
-          } else if (key !== this.maskApiKey(currentKeys['openai-codex'] || '')) {
-            currentKeys['openai-codex'] = key as string;
-          }
-        }
-
-        // Save LMStudio URL
-        if (settings.apiKeys.lmstudio_url !== undefined) {
-          currentKeys['lmstudio_url'] = settings.apiKeys.lmstudio_url as string;
-        }
-
-        this.getSettingsStore().set('apiKeys', currentKeys);
-      }
-
-      if (settings.providerSettings) {
-        // Renderer sends only the provider slices it touched; merge at the
-        // provider-id level so untouched providers are preserved on disk.
-        // Each incoming slice replaces the stored slice wholesale -- the
-        // renderer owns the full config for any provider it sends.
-        //
-        // Cache invalidation order matters: getNormalizedProviderSettings()
-        // re-populates the cache from disk, so we must invalidate AFTER the
-        // disk write or subsequent reads return the pre-save snapshot
-        // (toggled-off providers reappear as enabled, etc.).
-        this.cachedNormalizedProviderSettings = null;
-        const currentProviderSettings = this.getNormalizedProviderSettings();
-        const mergedProviderSettings: Record<string, unknown> = {
-          ...currentProviderSettings,
-          ...(settings.providerSettings as Record<string, unknown>),
         };
+        writeApiKey('anthropic', settings.apiKeys.anthropic);
+        writeApiKey('claude-code', settings.apiKeys['claude-code']);
+        writeApiKey('openai', settings.apiKeys.openai);
+        writeApiKey('openai-codex', settings.apiKeys['openai-codex']);
+        if (settings.apiKeys.lmstudio_url !== undefined) {
+          // lmstudio_url is a regular setting -- no masking, just write it.
+          safeSet('ai.apiKey.lmstudio_url', settings.apiKeys.lmstudio_url);
+        }
+      }
 
-        this.getSettingsStore().set('providerSettings', this.normalizeProviderSettings(mergedProviderSettings));
+      if (settings.providerSettings && typeof settings.providerSettings === 'object') {
+        // Each incoming slice replaces the stored slice wholesale -- the
+        // renderer owns the full config for any provider it sends. By writing
+        // per provider id we never touch providers the caller didn't name.
+        //
+        // normalizeProviderSettings runs per-slice so transient/UI-only fields
+        // (testStatus: 'testing', etc.) don't reach disk.
+        const normalizedAll = this.normalizeProviderSettings(
+          settings.providerSettings as Record<string, unknown>,
+        ) as Record<string, unknown>;
+        for (const [providerId, config] of Object.entries(normalizedAll)) {
+          if (config === undefined) continue;
+          safeSet(`ai.provider.${providerId}`, config);
+        }
+        // Provider cache must be invalidated after writes so the next read
+        // returns the new value rather than the pre-save snapshot.
         this.cachedNormalizedProviderSettings = null;
       }
 
-      if (settings.showToolCalls !== undefined) {
-        this.getSettingsStore().set('showToolCalls', settings.showToolCalls);
-      }
+      if (settings.showToolCalls !== undefined)        safeSet('ai.showToolCalls', settings.showToolCalls);
+      if (settings.chatShowToolCalls !== undefined)    safeSet('ai.chatShowToolCalls', settings.chatShowToolCalls);
+      if (settings.aiDebugLogging !== undefined)       safeSet('ai.aiDebugLogging', settings.aiDebugLogging);
+      if (settings.showPromptAdditions !== undefined)  safeSet('ai.showPromptAdditions', settings.showPromptAdditions);
+      if (settings.customClaudeCodePath !== undefined) safeSet('ai.customClaudeCodePath', settings.customClaudeCodePath);
+      if (settings.autoCommitEnabled !== undefined)    safeSet('ai.autoCommitEnabled', settings.autoCommitEnabled);
 
-      if (settings.chatShowToolCalls !== undefined) {
-        this.getSettingsStore().set('chatShowToolCalls', settings.chatShowToolCalls);
-      }
+      if (settings.showUsageIndicator !== undefined)       safeSet('ai.showUsageIndicator', settings.showUsageIndicator);
+      if (settings.showCodexUsageIndicator !== undefined)  safeSet('ai.showCodexUsageIndicator', settings.showCodexUsageIndicator);
+      if (settings.showGeminiUsageIndicator !== undefined) safeSet('ai.showGeminiUsageIndicator', settings.showGeminiUsageIndicator);
 
-      if (settings.aiDebugLogging !== undefined) {
-        this.getSettingsStore().set('aiDebugLogging', settings.aiDebugLogging);
-      }
-
-      if (settings.showPromptAdditions !== undefined) {
-        this.getSettingsStore().set('showPromptAdditions', settings.showPromptAdditions);
-      }
-
-      if (settings.showUsageIndicator !== undefined) {
-        this.getSettingsStore().set('showUsageIndicator', settings.showUsageIndicator);
-      }
-
-      if (settings.showCodexUsageIndicator !== undefined) {
-        this.getSettingsStore().set('showCodexUsageIndicator', settings.showCodexUsageIndicator);
-      }
-
-      if (settings.showGeminiUsageIndicator !== undefined) {
-        this.getSettingsStore().set('showGeminiUsageIndicator', settings.showGeminiUsageIndicator);
-      }
-
-      if (settings.customClaudeCodePath !== undefined) {
-        this.getSettingsStore().set('customClaudeCodePath', settings.customClaudeCodePath);
-      }
-
-      if (settings.autoCommitEnabled !== undefined) {
-        this.getSettingsStore().set('autoCommitEnabled', settings.autoCommitEnabled);
-      }
-
-      if (settings.trackerAutomation !== undefined) {
-        // Merge with existing to allow partial updates
-        const current = this.getSettingsStore().get('trackerAutomation', {
+      if (settings.trackerAutomation !== undefined && typeof settings.trackerAutomation === 'object') {
+        // Merge with current for partial updates (callers may send just the
+        // toggled field). Whole-object write through SettingsService below.
+        const current = (this.getSettingsStore().get('trackerAutomation', {
           enabled: false,
           autoCloseOnCommit: true,
-        }) as Record<string, unknown>;
-        this.getSettingsStore().set('trackerAutomation', { ...current, ...settings.trackerAutomation });
+        }) as Record<string, unknown>) ?? {};
+        safeSet('ai.trackerAutomation', { ...current, ...settings.trackerAutomation });
       }
 
       if (settings.diffPeekSize !== undefined) {
-        // Allow null to clear; otherwise expect { width, height }.
+        // null clears, otherwise expect { width, height }. SettingsService's
+        // Zod schema validates the structure too -- safeSet is just additional
+        // input shaping.
         if (
           settings.diffPeekSize === null ||
           (typeof settings.diffPeekSize === 'object' &&
             typeof settings.diffPeekSize.width === 'number' &&
             typeof settings.diffPeekSize.height === 'number')
         ) {
-          this.getSettingsStore().set('diffPeekSize', settings.diffPeekSize);
+          safeSet('ai.diffPeekSize', settings.diffPeekSize);
         }
       }
 

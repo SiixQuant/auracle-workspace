@@ -12,10 +12,10 @@ import { useAtomValue } from 'jotai';
 import {
   geminiUsageAtom,
   geminiUsageAvailableAtom,
-  geminiUsageIndicatorEnabledAtom,
   geminiUsageSessionColorAtom,
   formatResetTime,
 } from '../../store/atoms/geminiUsageAtoms';
+import { useSetting } from '../../hooks/useSetting';
 import { GeminiUsagePopover } from './GeminiUsagePopover';
 import { refreshGeminiUsage } from '../../store/listeners/geminiUsageListeners';
 
@@ -29,7 +29,7 @@ interface GeminiUsageIndicatorProps {
 export const GeminiUsageIndicator: React.FC<GeminiUsageIndicatorProps> = ({ className }) => {
   const usage = useAtomValue(geminiUsageAtom);
   const isAvailable = useAtomValue(geminiUsageAvailableAtom);
-  const isEnabled = useAtomValue(geminiUsageIndicatorEnabledAtom);
+  const isEnabled = useSetting('ai.showGeminiUsageIndicator');
   const sessionColor = useAtomValue(geminiUsageSessionColorAtom);
 
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);

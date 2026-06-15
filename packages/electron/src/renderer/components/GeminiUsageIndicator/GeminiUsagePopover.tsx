@@ -7,15 +7,15 @@
  */
 
 import React, { useEffect, RefObject } from 'react';
-import { useAtomValue, useSetAtom } from 'jotai';
+import { useAtomValue } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime';
 import {
   geminiUsageAtom,
   geminiUsageSessionColorAtom,
   geminiUsageWeeklyColorAtom,
   formatResetTime,
-  setGeminiUsageIndicatorEnabledAtom,
 } from '../../store/atoms/geminiUsageAtoms';
+import { useSetSetting } from '../../hooks/useSetting';
 import { useFloatingMenu, FloatingPortal } from '../../hooks/useFloatingMenu';
 
 interface GeminiUsagePopoverProps {
@@ -102,7 +102,7 @@ export const GeminiUsagePopover: React.FC<GeminiUsagePopoverProps> = ({
   const usage = useAtomValue(geminiUsageAtom);
   const sessionColor = useAtomValue(geminiUsageSessionColorAtom);
   const weeklyColor = useAtomValue(geminiUsageWeeklyColorAtom);
-  const setUsageIndicatorEnabled = useSetAtom(setGeminiUsageIndicatorEnabledAtom);
+  const setUsageIndicatorEnabled = useSetSetting('ai.showGeminiUsageIndicator');
   const [isRefreshing, setIsRefreshing] = React.useState(false);
 
   const menu = useFloatingMenu({

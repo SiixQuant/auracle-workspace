@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Contextual tips now fill empty AI sessions immediately and on every empty session, instead of after a delay and only once per app launch.
 
 ### Fixed
+- Sign-in now completes on Linux AppImage builds — the `nimbalyst://` URL handler is registered at startup so the OAuth browser callback reopens the app correctly.
 - Startup is fast again after restart: a transcript maintenance pass that could stall the app for tens of seconds on large histories is now deferred until after the first window loads.
 - AI tools for custom editors (diagrams, CAD, etc.) no longer revert a change the agent just wrote to a file that isn't open in a tab.
 - The Themes, Shared Links, and Database settings panels now open instead of snapping back to the first agent provider.

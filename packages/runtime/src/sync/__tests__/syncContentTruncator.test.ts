@@ -108,6 +108,22 @@ describe('truncateContentForSync', () => {
     ).toBe(false);
   });
 
+  it('drops the large non-rendering system/init chunk from sync', () => {
+    // system/init is ~17 KB of tools/mcp_servers/slash_commands metadata that
+    // no transcript consumer (desktop or mobile) renders. Syncing it wasted
+    // bytes and -- worse -- the whole-message clamp rewrote it into a bare
+    // "[Full claude-code message elided...]" marker string. On mobile that
+    // string fails JSON.parse and falls through to the plain-text branch,
+    // surfacing as a stray assistant bubble that desktop never shows.
+    expect(
+      shouldSyncMessageForSessionRoom(
+        'claude-code',
+        undefined,
+        JSON.stringify({ type: 'system', subtype: 'init', session_id: 'abc', tools: [] }),
+      ),
+    ).toBe(false);
+  });
+
   it('keeps durable Claude Code chunks syncable', () => {
     expect(
       shouldSyncMessageForSessionRoom(
@@ -122,14 +138,6 @@ describe('truncateContentForSync', () => {
         'claude-code',
         undefined,
         JSON.stringify({ type: 'result', subtype: 'success', num_turns: 1 }),
-      ),
-    ).toBe(true);
-
-    expect(
-      shouldSyncMessageForSessionRoom(
-        'claude-code',
-        undefined,
-        JSON.stringify({ type: 'system', subtype: 'init', session_id: 'abc' }),
       ),
     ).toBe(true);
 

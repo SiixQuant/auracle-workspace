@@ -64,6 +64,16 @@ const CLAUDE_CODE_TRANSIENT_SYSTEM_SUBTYPES = new Set([
   'task_notification',
 ]);
 
+// System subtypes that ARE persisted locally (so the desktop's own transcript
+// build can read e.g. the SDK session_id) but must NOT cross the sync wire.
+// `system/init` is ~17 KB of tools / mcp_servers / slash_commands metadata that
+// no transcript consumer renders (the raw-message parsers ignore it entirely).
+// Worse, it tripped MAX_SYNC_MESSAGE_BYTES and the whole-message clamp rewrote
+// it into a bare "[Full claude-code message elided...]" marker string. On
+// mobile that string fails JSON.parse and falls through to the plain-text
+// assistant branch, rendering a stray bubble desktop never shows. Drop it.
+const CLAUDE_CODE_NON_SYNCED_SYSTEM_SUBTYPES = new Set(['init']);
+
 export interface PerMessageTruncationStats {
   bytesBefore: number;
   bytesAfter: number;
@@ -102,7 +112,10 @@ export function shouldSyncMessageForSessionRoom(
       try {
         const parsed = JSON.parse(content) as { type?: string; subtype?: string };
         if (parsed?.type === 'system' && typeof parsed.subtype === 'string') {
-          return !CLAUDE_CODE_TRANSIENT_SYSTEM_SUBTYPES.has(parsed.subtype);
+          return (
+            !CLAUDE_CODE_TRANSIENT_SYSTEM_SUBTYPES.has(parsed.subtype)
+            && !CLAUDE_CODE_NON_SYNCED_SYSTEM_SUBTYPES.has(parsed.subtype)
+          );
         }
         if (typeof parsed?.type === 'string') {
           return !CLAUDE_CODE_TRANSIENT_CHUNK_TYPES.has(parsed.type);

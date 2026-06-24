@@ -15,7 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!-- Changes to existing functionality go here -->
 
 ### Fixed
-<!-- Bug fixes go here -->
+- Stop prompting to run the Gemini backend at startup; it now starts only when you actually use Gemini.
+- Remove a stray "[Full message elided...]" bubble that appeared in the mobile transcript but not on desktop.
 
 ### Removed
 <!-- Removed features go here -->

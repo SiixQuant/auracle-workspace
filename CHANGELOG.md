@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-<!-- New features go here -->
+- Search box on the Installed Extensions settings pane to filter the list.
 
 ### Changed
 <!-- Changes to existing functionality go here -->

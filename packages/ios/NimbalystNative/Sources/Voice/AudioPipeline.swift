@@ -497,6 +497,45 @@ final class AudioPipeline: @unchecked Sendable {
         isPlaying = false
     }
 
+    // MARK: - UI Chime
+
+    /// Play a short, soft two-note chime to signal the user that the session is
+    /// connected and it's their turn to talk. Routed through the VPIO playback
+    /// path (same as the agent's voice) so it plays to the active output route
+    /// AND is included in the AEC reference signal -- meaning the mic won't pick
+    /// it up and falsely trigger VAD. A separate AVAudioPlayer would not be in
+    /// the reference and could be heard as user speech.
+    ///
+    /// Must be called after `startCapture()` (the playback converter and ring
+    /// buffer are set up there). Does not call `markEndOfPlayback()`, so it
+    /// won't fire `onPlaybackFinished`.
+    func playReadyChime() {
+        enqueuePlayback(base64Audio: Self.readyChimeBase64PCM())
+    }
+
+    /// Synthesize a soft rising two-note chime as 24kHz PCM16 mono, base64
+    /// encoded (the same wire format as API audio, so it flows through
+    /// `enqueuePlayback`). Each note uses a half-sine envelope (0 -> 1 -> 0) so
+    /// there are no clicks at the boundaries or between notes.
+    private static func readyChimeBase64PCM() -> String {
+        let amplitude = 0.16 // soft
+        // Two ascending notes: G5 -> C6
+        let notes: [(freq: Double, dur: Double)] = [(783.99, 0.13), (1046.50, 0.20)]
+        var samples: [Int16] = []
+        for note in notes {
+            let frameCount = Int(kApiSampleRate * note.dur)
+            guard frameCount > 0 else { continue }
+            samples.reserveCapacity(samples.count + frameCount)
+            for i in 0..<frameCount {
+                let t = Double(i) / kApiSampleRate
+                let env = sin(Double.pi * Double(i) / Double(frameCount))
+                let value = sin(2.0 * Double.pi * note.freq * t) * amplitude * env
+                samples.append(Int16(max(-1.0, min(1.0, value)) * Double(Int16.max)))
+            }
+        }
+        return samples.withUnsafeBytes { Data($0) }.base64EncodedString()
+    }
+
     // MARK: - Lifecycle
 
     func shutdown() {

@@ -148,6 +148,28 @@ public final class VoiceAgent: ObservableObject {
         state = .disconnected
     }
 
+    /// User tapped to interrupt the agent mid-turn (while speaking or processing).
+    /// Stops playback, cancels any in-flight response, and returns to listening.
+    /// Mirrors the barge-in path used when the user speaks over the agent.
+    public func interrupt() {
+        guard state == .speaking || state == .processing else { return }
+        audioPipeline.stopPlayback()
+        if realtimeClient?.hasActiveResponse == true {
+            realtimeClient?.cancelResponse()
+        }
+        state = .listening
+        resetIdleTimer()
+    }
+
+    /// User tapped while listening to pause the mic and go idle.
+    /// Tapping again (or a wake event) resumes via `activate()` -> `resumeFromIdle()`.
+    public func pauseListening() {
+        guard state == .listening else { return }
+        cancelIdleTimer()
+        audioPipeline.stopCapture()
+        state = .idle
+    }
+
     // MARK: - Pending Prompt Actions
 
     /// Cancel the pending prompt before it auto-submits.
@@ -182,7 +204,13 @@ public final class VoiceAgent: ObservableObject {
 
         switch state {
         case .idle:
-            // Wake up and announce
+            // Wake up and announce. Going idle tore down the shared VPIO audio
+            // unit and the playback converter (stopCapture), so the audio
+            // pipeline MUST be restarted before the agent speaks -- otherwise
+            // its audio deltas are silently dropped (enqueuePlayback no-ops on a
+            // nil converter / there is no render callback) and the user hears
+            // nothing. This is the auto-wake counterpart to resumeFromIdle().
+            guard wakeAudioPipeline() else { return }
             let sessionTitle = sessionTitle(for: sessionId) ?? "Unknown session"
             realtimeClient?.sendUserMessage(
                 text: "[INTERNAL: Session \"\(sessionTitle)\" completed: \(summary)]"
@@ -308,10 +336,16 @@ public final class VoiceAgent: ObservableObject {
         let args = parseArguments(arguments)
 
         switch name {
-        case "submit_prompt":
+        // The advertised tool name is "submit_agent_prompt" (see
+        // buildCoreToolDefinitions); the bare "submit_prompt" alias is kept
+        // defensively. Matching only "submit_prompt" silently dropped every
+        // task submission to the "Unknown tool" default.
+        case "submit_agent_prompt", "submit_prompt":
             handleSubmitPrompt(args: args, callId: callId)
+        case "create_session":
+            handleCreateSession(args: args, callId: callId)
         case "list_sessions":
-            handleListSessions(callId: callId)
+            handleListSessions(args: args, callId: callId)
         case "switch_session":
             handleSwitchSession(args: args, callId: callId)
         case "get_session_summary":
@@ -320,6 +354,8 @@ public final class VoiceAgent: ObservableObject {
             handleStopVoiceSession(callId: callId)
         case "ask_coding_agent":
             handleAskCodingAgent(args: args, callId: callId)
+        case "search_project_knowledge", "recall", "remember":
+            handleMemoryTool(name: name, argumentsJson: arguments, callId: callId)
         default:
             logger.info("Unknown tool call: \(name)")
             realtimeClient?.sendFunctionCallResult(
@@ -368,8 +404,103 @@ public final class VoiceAgent: ObservableObject {
         )
     }
 
-    private func handleListSessions(callId: String) {
-        guard let database, let projectId else {
+    /// Create a new coding session on the desktop. The request is fire-and-forget
+    /// over the sync channel (the desktop's onCreateSessionRequest handler creates
+    /// the session and it syncs back into the session list). We optimistically
+    /// report success, mirroring submit_agent_prompt/ask_coding_agent.
+    ///
+    /// Limitations (follow-ups): the mobile create-session protocol has no title
+    /// field, so a requested title is not applied (the desktop default-names it);
+    /// and because the response arrives asynchronously, the voice agent does not
+    /// auto-switch its active session to the new one yet.
+    private func handleCreateSession(args: [String: Any], callId: String) {
+        guard let syncManager else {
+            logger.error("create_session: syncManager unavailable")
+            realtimeClient?.sendFunctionCallResult(
+                callId: callId,
+                output: "{\"success\":false,\"error\":\"Sync is unavailable\"}"
+            )
+            return
+        }
+
+        guard let resolvedProjectId = resolveProjectId() else {
+            logger.error("create_session: no projectId (configured=\(self.projectId ?? "nil"), activeSessionId=\(self.activeSessionId ?? "nil"))")
+            realtimeClient?.sendFunctionCallResult(
+                callId: callId,
+                output: "{\"success\":false,\"error\":\"No project configured\"}"
+            )
+            return
+        }
+
+        do {
+            try syncManager.createSession(projectId: resolvedProjectId)
+            logger.info("create_session: sent request for project \(resolvedProjectId)")
+            realtimeClient?.sendFunctionCallResult(
+                callId: callId,
+                output: "{\"success\":true,\"message\":\"Creating a new session on the desktop. It will appear in the session list shortly.\"}"
+            )
+        } catch {
+            logger.error("create_session: failed to send request: \(error.localizedDescription)")
+            realtimeClient?.sendFunctionCallResult(
+                callId: callId,
+                output: "{\"success\":false,\"error\":\"Failed to request a new session\"}"
+            )
+        }
+    }
+
+    /// Resolve the target project: the configured projectId, or fall back to the
+    /// active session's project. configure(projectId:) is only called when
+    /// navigating through the project list, so a voice session opened straight
+    /// from a session detail (or after relaunch) can have a nil projectId.
+    private func resolveProjectId() -> String? {
+        if let projectId { return projectId }
+        if let activeSessionId, let session = try? database?.session(byId: activeSessionId) {
+            return session.projectId
+        }
+        return nil
+    }
+
+    /// JSON-encode a tool-args dictionary for proxying over the sync channel.
+    private static func encodeArgs(_ dict: [String: Any]) -> String {
+        guard let data = try? JSONSerialization.data(withJSONObject: dict),
+              let json = String(data: data, encoding: .utf8) else { return "{}" }
+        return json
+    }
+
+    private func handleListSessions(args: [String: Any], callId: String) {
+        let query = (args["query"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // With a topic query, proxy to the desktop's semantic (memory-backed)
+        // session search -- the SAME lookup the desktop voice agent uses -- so a
+        // topic matches a session even when its title doesn't contain the words.
+        // Falls back to the local recency list when there's no query, no desktop
+        // connection, or the desktop doesn't respond (so it still works offline).
+        if let query, !query.isEmpty,
+           let syncManager, let projectId = resolveProjectId() {
+            let argsJson = Self.encodeArgs(["query": query])
+            Task { @MainActor in
+                let outcome = await syncManager.callVoiceTool(
+                    toolName: "list_sessions",
+                    argsJson: argsJson,
+                    projectId: projectId
+                )
+                if outcome.success, let result = outcome.result, !result.isEmpty {
+                    self.realtimeClient?.sendFunctionCallResult(callId: callId, output: result)
+                } else {
+                    self.logger.info("list_sessions: semantic search unavailable, using local list")
+                    self.sendLocalSessionList(callId: callId)
+                }
+            }
+            return
+        }
+
+        sendLocalSessionList(callId: callId)
+    }
+
+    /// Local fallback: this device's sessions ordered by recency (no semantic
+    /// matching). Used when no query is given or the desktop is unreachable.
+    private func sendLocalSessionList(callId: String) {
+        guard let database, let projectId = resolveProjectId() else {
             realtimeClient?.sendFunctionCallResult(
                 callId: callId,
                 output: "{\"success\":false,\"error\":\"No project configured\"}"
@@ -427,9 +558,10 @@ public final class VoiceAgent: ObservableObject {
     }
 
     private func handleGetSessionSummary(args: [String: Any], callId: String) {
-        let sessionId = args["session_id"] as? String ?? activeSessionId
+        let sessionId = (args["session_id"] as? String) ?? activeSessionId
 
-        guard let sessionId, let database else {
+        guard let sessionId else {
+            logger.error("get_session_summary: no session (active=\(self.activeSessionId ?? "nil"))")
             realtimeClient?.sendFunctionCallResult(
                 callId: callId,
                 output: "{\"success\":false,\"error\":\"No session specified\"}"
@@ -437,16 +569,49 @@ public final class VoiceAgent: ObservableObject {
             return
         }
 
-        do {
-            guard let session = try database.session(byId: sessionId) else {
-                realtimeClient?.sendFunctionCallResult(
-                    callId: callId,
-                    output: "{\"success\":false,\"error\":\"Session not found\"}"
-                )
-                return
-            }
+        // Local DB first (fast, offline-capable).
+        if let database, let session = try? database.session(byId: sessionId) {
+            sendLocalSessionSummary(session: session, sessionId: sessionId, callId: callId)
+            return
+        }
 
-            let messages = try database.messages(forSession: sessionId)
+        // Not stored on this device -- e.g. a session surfaced by the
+        // desktop-backed semantic list_sessions that never synced here. Proxy to
+        // the desktop, which can summarize any session in the workspace.
+        if let syncManager, let projectId = resolveProjectId() {
+            logger.info("get_session_summary: \(sessionId) not local, proxying to desktop")
+            let argsJson = Self.encodeArgs(["session_id": sessionId])
+            Task { @MainActor in
+                let outcome = await syncManager.callVoiceTool(
+                    toolName: "get_session_summary",
+                    argsJson: argsJson,
+                    projectId: projectId
+                )
+                if outcome.success, let result = outcome.result, !result.isEmpty {
+                    let payload: [String: Any] = ["success": true, "summary": result]
+                    self.realtimeClient?.sendFunctionCallResult(callId: callId, output: Self.encodeArgs(payload))
+                } else {
+                    self.logger.error("get_session_summary: desktop summary failed for \(sessionId): \(outcome.error ?? "no result")")
+                    self.realtimeClient?.sendFunctionCallResult(
+                        callId: callId,
+                        output: "{\"success\":false,\"error\":\"Could not get the session summary\"}"
+                    )
+                }
+            }
+            return
+        }
+
+        logger.error("get_session_summary: \(sessionId) not local and no desktop connection")
+        realtimeClient?.sendFunctionCallResult(
+            callId: callId,
+            output: "{\"success\":false,\"error\":\"Session not found\"}"
+        )
+    }
+
+    /// Build a summary from this device's local DB for a synced session.
+    private func sendLocalSessionSummary(session: Session, sessionId: String, callId: String) {
+        do {
+            let messages = (try? database?.messages(forSession: sessionId)) ?? []
             let lastAssistantMessage = messages.last { $0.source == "assistant" }
 
             var summary: [String: Any] = [
@@ -458,16 +623,12 @@ public final class VoiceAgent: ObservableObject {
                 "messageCount": messages.count,
                 "lastActivity": RelativeTimestamp.format(epochMs: session.updatedAt),
             ]
-
             if let lastMsg = lastAssistantMessage?.contentDecrypted {
-                // Truncate to first 500 chars for the summary
-                let truncated = String(lastMsg.prefix(500))
-                summary["lastAssistantMessage"] = truncated
+                summary["lastAssistantMessage"] = String(lastMsg.prefix(500))
             }
 
             let resultData = try JSONSerialization.data(withJSONObject: summary)
-            let resultString = String(data: resultData, encoding: .utf8) ?? "{}"
-            realtimeClient?.sendFunctionCallResult(callId: callId, output: resultString)
+            realtimeClient?.sendFunctionCallResult(callId: callId, output: String(data: resultData, encoding: .utf8) ?? "{}")
         } catch {
             realtimeClient?.sendFunctionCallResult(
                 callId: callId,
@@ -513,6 +674,33 @@ public final class VoiceAgent: ObservableObject {
         )
     }
 
+    /// Proxy a project-memory tool to the desktop memory engine over the sync
+    /// channel and return its result to the realtime agent. The raw arguments
+    /// JSON is forwarded verbatim so the desktop tool sees the exact schema.
+    private func handleMemoryTool(name: String, argumentsJson: String, callId: String) {
+        guard let syncManager, let projectId else {
+            realtimeClient?.sendFunctionCallResult(
+                callId: callId,
+                output: "{\"success\":false,\"error\":\"Project memory is unavailable right now.\"}"
+            )
+            return
+        }
+
+        Task { @MainActor in
+            let outcome = await syncManager.callVoiceTool(
+                toolName: name,
+                argsJson: argumentsJson.isEmpty ? "{}" : argumentsJson,
+                projectId: projectId
+            )
+            let payload: [String: Any] = outcome.success
+                ? ["success": true, "result": outcome.result ?? ""]
+                : ["success": false, "error": outcome.error ?? "Memory tool failed"]
+            let json = (try? JSONSerialization.data(withJSONObject: payload))
+                .flatMap { String(data: $0, encoding: .utf8) } ?? "{\"success\":false}"
+            self.realtimeClient?.sendFunctionCallResult(callId: callId, output: json)
+        }
+    }
+
     private func handleStopVoiceSession(callId: String) {
         realtimeClient?.sendFunctionCallResult(
             callId: callId,
@@ -553,13 +741,28 @@ public final class VoiceAgent: ObservableObject {
 
     private func resumeFromIdle() {
         logger.info("Resuming voice mode from idle")
+        guard wakeAudioPipeline() else { return }
+        state = .listening
+        resetIdleTimer()
+    }
+
+    /// Restart the audio pipeline after it was torn down while idle. Going idle
+    /// calls `stopCapture()`, which disposes the shared VoiceProcessingIO audio
+    /// unit (its render callback is what produces playback) and nils the
+    /// playback converter. Both wake paths -- user tap (`resumeFromIdle`) and
+    /// auto-wake on a coding-agent completion (`onSessionCompleted`) -- must
+    /// restart it before the agent speaks, or playback is silently dropped.
+    /// `startCapture()` no-ops if capture is already running. On failure it
+    /// deactivates voice mode and returns false.
+    @discardableResult
+    private func wakeAudioPipeline() -> Bool {
         do {
             try audioPipeline.startCapture()
-            state = .listening
-            resetIdleTimer()
+            return true
         } catch {
-            logger.error("Failed to resume capture: \(error.localizedDescription)")
+            logger.error("Failed to restart audio pipeline on wake: \(error.localizedDescription)")
             deactivate()
+            return false
         }
     }
 
@@ -616,8 +819,19 @@ public final class VoiceAgent: ObservableObject {
 
         Tools:
         - submit_agent_prompt: Queue a coding task for the desktop agent
+        - create_session: Start a brand new coding session on the desktop
+        - list_sessions: List this project's sessions (read from this device)
+        - switch_session: Focus a specific session for subsequent prompts
+        - get_session_summary: Summarize a session (read from this device)
         - ask_coding_agent: Ask the coding agent a question
+        - search_project_knowledge: Look up project docs/plans/decisions in the desktop's project memory (fast)
+        - recall: Recall saved project facts relevant to a query
+        - remember: Save a fact to project memory
         - stop_voice_session: End the conversation
+
+        For anything about sessions themselves (what sessions exist, whether a session was just created, a session's status or summary), use list_sessions / get_session_summary -- they read directly from this device. NEVER ask the coding agent to check whether a session exists or was created.
+
+        For questions about this project (how it works, what was decided, what's in flight), prefer search_project_knowledge or recall first -- they answer quickly from the desktop's memory. Fall back to ask_coding_agent only when memory returns nothing. Memory tools require the desktop to be connected; if one reports it's unavailable, say so briefly.
 
         Keep responses brief and conversational. Never read code verbatim.
         """
@@ -631,6 +845,13 @@ public final class VoiceAgent: ObservableObject {
             let title = sessionTitle(for: activeSessionId) ?? "Untitled"
             context += "\nThe user is viewing session: \"\(title)\""
         }
+
+        // Pin the spoken language to the desktop's configured default so the
+        // voice agent never auto-detects/drifts into a different language at
+        // startup. Empty/nil preference -> English.
+        let trimmedLanguage = settings.language?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let effectiveLanguage = (trimmedLanguage?.isEmpty == false ? trimmedLanguage! : "English")
+        context += "\n\nLANGUAGE: Always speak to the user in \(effectiveLanguage), regardless of the language the user speaks in. Begin and conduct the entire conversation in \(effectiveLanguage)."
 
         return context
     }
@@ -651,6 +872,61 @@ public final class VoiceAgent: ObservableObject {
                         ],
                     ],
                     "required": ["prompt"],
+                ] as [String: Any],
+            ],
+            [
+                "type": "function",
+                "name": "create_session",
+                "description": "Create a new coding session on the desktop and start fresh. Use when the user asks to start a new session, open a fresh chat, or begin a new task. The new session appears in the session list shortly after.",
+                "parameters": [
+                    "type": "object",
+                    "properties": [:] as [String: Any],
+                    "required": [] as [String],
+                ] as [String: Any],
+            ],
+            [
+                "type": "function",
+                "name": "list_sessions",
+                "description": "List or find coding sessions in this project (id, title, running status, last activity). With no query it returns the most recent sessions from this device. With a query it finds sessions by TOPIC -- semantically matching what each session was actually working on (its prompts and work done), not just the title -- by searching the desktop's project memory, so \"the session working on the collaborative document system\" resolves even when those words aren't in the title. Use this to answer what sessions exist or confirm a session was created -- do NOT ask the coding agent for that.",
+                "parameters": [
+                    "type": "object",
+                    "properties": [
+                        "query": [
+                            "type": "string",
+                            "description": "Optional topic to find sessions by. Describe what the session was about (e.g. \"voice mode bugs\"); matched semantically against session content, not just titles.",
+                        ],
+                    ],
+                    "required": [] as [String],
+                ] as [String: Any],
+            ],
+            [
+                "type": "function",
+                "name": "switch_session",
+                "description": "Switch the voice agent's focus to a specific existing session so subsequent prompts target it. Call list_sessions first to get the session_id.",
+                "parameters": [
+                    "type": "object",
+                    "properties": [
+                        "session_id": [
+                            "type": "string",
+                            "description": "The id of the session to switch to.",
+                        ],
+                    ],
+                    "required": ["session_id"],
+                ] as [String: Any],
+            ],
+            [
+                "type": "function",
+                "name": "get_session_summary",
+                "description": "Get a summary of a session (title, message count, last activity, recent assistant message), read from this device. Omit session_id to summarize the session the user is viewing.",
+                "parameters": [
+                    "type": "object",
+                    "properties": [
+                        "session_id": [
+                            "type": "string",
+                            "description": "Optional session id. Defaults to the active session.",
+                        ],
+                    ],
+                    "required": [] as [String],
                 ] as [String: Any],
             ],
             [
@@ -676,6 +952,52 @@ public final class VoiceAgent: ObservableObject {
                     "type": "object",
                     "properties": [:] as [String: Any],
                     "required": [] as [String],
+                ] as [String: Any],
+            ],
+            // Project-memory tools, proxied to the desktop memory engine over sync.
+            [
+                "type": "function",
+                "name": "search_project_knowledge",
+                "description": "Search this project's knowledge (design docs, plans, CLAUDE.md, notes) on the desktop. Use for questions about how the project works, decisions, or what's in flight. Requires the desktop to be connected.",
+                "parameters": [
+                    "type": "object",
+                    "properties": [
+                        "query": [
+                            "type": "string",
+                            "description": "Natural-language or keyword query.",
+                        ],
+                    ],
+                    "required": ["query"],
+                ] as [String: Any],
+            ],
+            [
+                "type": "function",
+                "name": "recall",
+                "description": "Recall saved project facts/memories relevant to a query (newest wins when facts conflict). Requires the desktop to be connected.",
+                "parameters": [
+                    "type": "object",
+                    "properties": [
+                        "query": [
+                            "type": "string",
+                            "description": "What to recall.",
+                        ],
+                    ],
+                    "required": ["query"],
+                ] as [String: Any],
+            ],
+            [
+                "type": "function",
+                "name": "remember",
+                "description": "Save a fact to project memory for later recall. Use when the user says to remember something. Requires the desktop to be connected.",
+                "parameters": [
+                    "type": "object",
+                    "properties": [
+                        "text": [
+                            "type": "string",
+                            "description": "The fact to remember.",
+                        ],
+                    ],
+                    "required": ["text"],
                 ] as [String: Any],
             ],
         ]
@@ -705,6 +1027,11 @@ public struct VoiceModeSettings: Codable {
     public var vadThreshold: Double
     public var silenceDurationMs: Int
     public var promptConfirmationDelay: TimeInterval
+    /// Preferred spoken language synced from the desktop (BCP-47 or common
+    /// language name). The voice agent pins its language to this. Nil/empty
+    /// means no preference -> English. Optional so older persisted settings
+    /// that lack the field still decode.
+    public var language: String?
 
     public init(
         voice: String = "sage",
@@ -712,7 +1039,8 @@ public struct VoiceModeSettings: Codable {
         autoAnnounceCompletions: Bool = true,
         vadThreshold: Double = 0.5,
         silenceDurationMs: Int = 500,
-        promptConfirmationDelay: TimeInterval = 5
+        promptConfirmationDelay: TimeInterval = 5,
+        language: String? = nil
     ) {
         self.voice = voice
         self.idleTimeout = idleTimeout
@@ -720,6 +1048,7 @@ public struct VoiceModeSettings: Codable {
         self.vadThreshold = vadThreshold
         self.silenceDurationMs = silenceDurationMs
         self.promptConfirmationDelay = promptConfirmationDelay
+        self.language = language
     }
 
     private static let userDefaultsKey = "voiceModeSettings"

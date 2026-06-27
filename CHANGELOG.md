@@ -15,7 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!-- Changes to existing functionality go here -->
 
 ### Fixed
-<!-- Bug fixes go here -->
+- Voice mode now always speaks in your configured preferred language, including on mobile, instead of sometimes starting up in a different language.
+- The iOS voice agent now reliably speaks its response when it wakes up after a coding agent finishes a task.
 
 ### Removed
 <!-- Removed features go here -->

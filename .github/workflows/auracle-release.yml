@@ -43,6 +43,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Build runtime library (ships as extraResources)
+        run: npm run build
+
       - name: Build dmg (unsigned unless signing secrets are configured)
         working-directory: packages/electron
         env:

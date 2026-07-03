@@ -1,0 +1,8 @@
+{
+  "name": "auracle",
+  "version": "0.1.0",
+  "description": "Auracle quantitative trading commands: research, backtests, walk-forwards, deploy preflight, and data ingestion through the local engine's MCP tools",
+  "author": { "name": "Auracle" },
+  "license": "LicenseRef-Proprietary",
+  "keywords": ["trading", "quant", "backtest", "futures", "strategy"]
+}

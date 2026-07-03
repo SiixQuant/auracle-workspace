@@ -12,6 +12,26 @@
   },
   "contributions": {
     "hostComponents": ["AuracleStatusChip"],
+    "claudePlugin": {
+      "path": "claude-plugin",
+      "displayName": "Auracle Quant Commands",
+      "description": "Research, backtest, walk-forward, preflight, ingestion, and manifest commands backed by the local Auracle engine",
+      "enabledByDefault": true,
+      "commands": [
+        { "name": "research-ideas", "description": "Scan recent research and synthesize strategy ideas" },
+        { "name": "run-backtest", "description": "Run a vectorized backtest on a strategy" },
+        { "name": "walk-forward", "description": "Rolling out-of-sample walk-forward with regime diagnosis" },
+        { "name": "premarket-check", "description": "One-shot pre-market readiness check" },
+        { "name": "open-tearsheet", "description": "Open the tearsheet for a recent job" },
+        { "name": "browse-templates", "description": "Browse bundled example strategies" },
+        { "name": "clone-template", "description": "Clone a bundled example strategy" },
+        { "name": "run-preflight", "description": "Pre-flight a strategy before deploying" },
+        { "name": "ingest-data", "description": "Download and store historical daily bars" },
+        { "name": "draft-manifest", "description": "Auto-draft a deployment manifest" },
+        { "name": "validate-manifest", "description": "Validate a deployment manifest" },
+        { "name": "backtest-manifest", "description": "Backtest a manifest with no broker calls" }
+      ]
+    },
     "settingsPanel": {
       "component": "AuracleConnections",
       "title": "Auracle",

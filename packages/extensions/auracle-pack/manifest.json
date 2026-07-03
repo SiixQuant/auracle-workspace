@@ -45,6 +45,46 @@
         "placement": "fullscreen",
         "order": 70,
         "tooltip": "Deploy strategies and monitor live/paper algorithms with their order ledgers."
+      },
+      {
+        "id": "blotter",
+        "title": "Blotter",
+        "icon": "receipt_long",
+        "placement": "bottom",
+        "order": 71,
+        "tooltip": "Order feed from the engine, with cancel-all."
+      },
+      {
+        "id": "incidents",
+        "title": "Incidents",
+        "icon": "warning",
+        "placement": "bottom",
+        "order": 72,
+        "tooltip": "Everything that needs your attention, dismissible."
+      },
+      {
+        "id": "schedules",
+        "title": "Schedules",
+        "icon": "schedule",
+        "placement": "bottom",
+        "order": 73,
+        "tooltip": "Cron schedules: run now, pause/resume, delete."
+      },
+      {
+        "id": "validation",
+        "title": "Validation",
+        "icon": "fact_check",
+        "placement": "bottom",
+        "order": 74,
+        "tooltip": "Overfitting checks for a strategy, with concrete fixes."
+      },
+      {
+        "id": "runway",
+        "title": "Runway",
+        "icon": "flight_takeoff",
+        "placement": "bottom",
+        "order": 75,
+        "tooltip": "The research-to-live spine with engine evidence per stage."
       }
     ]
   }

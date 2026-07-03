@@ -11,6 +11,11 @@
     "network": true
   },
   "contributions": {
-    "hostComponents": ["AuracleStatusChip"]
+    "hostComponents": ["AuracleStatusChip"],
+    "settingsPanel": {
+      "component": "AuracleConnections",
+      "title": "Auracle Connections",
+      "icon": "cable"
+    }
   }
 }

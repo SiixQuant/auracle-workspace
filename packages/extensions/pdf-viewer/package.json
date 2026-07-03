@@ -1,7 +1,7 @@
 {
   "name": "@nimbalyst/pdf-viewer",
   "version": "1.0.0",
-  "description": "PDF viewer extension for Nimbalyst",
+  "description": "PDF viewer extension for Auracle",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {

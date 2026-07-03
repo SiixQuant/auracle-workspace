@@ -1,5 +1,5 @@
 /**
- * nim — companion CLI for Nimbalyst trackers and agent interop.
+ * nim — companion CLI for Auracle trackers and agent interop.
  *
  * Entry point: parse argv, dispatch the noun, translate thrown CliErrors into
  * stable exit codes. All command output goes to stdout; diagnostics to stderr.
@@ -14,7 +14,7 @@ import { runSession, runDoc } from './commands/sessionDoc.js';
 
 export const VERSION = '0.1.0';
 
-const HELP = `nim — Nimbalyst companion CLI (v${VERSION})
+const HELP = `nim — Auracle companion CLI (v${VERSION})
 
 Usage:
   nim <noun> <verb> [--flags]

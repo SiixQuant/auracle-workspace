@@ -1,5 +1,5 @@
 /**
- * Nimbalyst Memory settings panel (live).
+ * Auracle Memory settings panel (live).
  *
  * The engine runs in a backend utility-process; this panel reaches it through
  * the renderer->backend READ bridge (`props.callBackendTool`, backed by the

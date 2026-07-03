@@ -1,7 +1,7 @@
 {
   "name": "@nimbalyst/extension-csv-spreadsheet",
   "version": "1.0.0",
-  "description": "CSV Spreadsheet extension for Nimbalyst - edit CSV files with formulas",
+  "description": "CSV Spreadsheet extension for Auracle - edit CSV files with formulas",
   "main": "dist/index.js",
   "type": "module",
   "exports": {

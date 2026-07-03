@@ -51,7 +51,7 @@ export function registerLinuxAppImageProtocolHandler(): void {
 
     const desktopEntry = [
         '[Desktop Entry]',
-        'Name=Nimbalyst',
+        'Name=Auracle',
         expectedExecLine,
         'Type=Application',
         'Terminal=false',

@@ -1,11 +1,11 @@
 /**
- * RTL Support — Nimbalyst Extension
+ * RTL Support — Auracle Extension
  * Entry point
  *
  * issue #237: automatic RTL/LTR direction detection for agent responses,
  * user prompts, and markdown content.
  *
- * Architecture (official Nimbalyst APIs):
+ * Architecture (official Auracle APIs):
  *  - hostComponent: RtlTranscriptHost — rehype plugin + component overrides
  *  - inputRtl: applies RTL to user input fields
  *  - settings: configuration service + localStorage + settingsPanel UI

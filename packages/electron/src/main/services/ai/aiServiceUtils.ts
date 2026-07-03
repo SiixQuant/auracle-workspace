@@ -168,7 +168,7 @@ export function bucketAgeInDays(timestampMs: number): string {
 /**
  * Detects which AI provider the user's shell environment is configured for.
  * Used ONLY for analytics telemetry — NOT for routing or billing decisions.
- * Nimbalyst never uses these env vars for API calls (see CLAUDE.md policy).
+ * Auracle never uses these env vars for API calls (see CLAUDE.md policy).
  *
  * Checks providers in order of specificity:
  * 1. Claude Code specific flags (Bedrock, Vertex) - most specific
@@ -284,7 +284,7 @@ export function extractModelForProvider(
 }
 
 /**
- * Detect if a message starts with a Nimbalyst package slash command.
+ * Detect if a message starts with an Auracle package slash command.
  *
  * NOTE: Tool packages have been replaced by extension-based Claude plugins.
  * This function now always returns null. Slash commands are handled by extensions.

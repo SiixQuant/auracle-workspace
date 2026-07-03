@@ -1,7 +1,7 @@
 /**
  * Ambient backend module types for the gemini-antigravity extension.
  *
- * These mirror what the Nimbalyst extension SDK will eventually publish once
+ * These mirror what the Auracle extension SDK will eventually publish once
  * the backend-module surface is fully baked. They are declared locally here so
  * this extension can compile independently of SDK release cadence; when the SDK
  * ships the canonical interfaces, this file can be deleted or narrowed to a

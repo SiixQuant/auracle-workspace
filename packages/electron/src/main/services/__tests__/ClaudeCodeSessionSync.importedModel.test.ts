@@ -1,6 +1,6 @@
 /**
  * Unit tests for importedClaudeCodeModel - the helper that derives a
- * Nimbalyst model id from the raw per-turn model on imported Claude Code
+ * Auracle model id from the raw per-turn model on imported Claude Code
  * entries. Before this, imported sessions had no model and the renderer
  * fell back to Sonnet, so an Opus session displayed as Sonnet (#394).
  */

@@ -3,7 +3,7 @@
   "name": "MockupLM",
   "version": "1.0.0",
   "description": "Visual UX mockup creation with HTML/CSS for planning and design",
-  "author": "Nimbalyst",
+  "author": "Auracle",
   "main": "dist/index.js",
   "apiVersion": "1.0.0",
   "marketplace": {

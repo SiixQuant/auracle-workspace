@@ -1,5 +1,5 @@
 /**
- * Vite configuration helpers for Nimbalyst extensions.
+ * Vite configuration helpers for Auracle extensions.
  */
 import type { UserConfig, PluginOption, Plugin } from 'vite';
 import { existsSync, readFileSync } from 'fs';
@@ -110,7 +110,7 @@ export interface ExtensionConfigOptions {
 }
 
 /**
- * Creates a Vite configuration for building a Nimbalyst extension.
+ * Creates a Vite configuration for building an Auracle extension.
  *
  * This sets up:
  * - Production mode and NODE_ENV for proper React JSX transform

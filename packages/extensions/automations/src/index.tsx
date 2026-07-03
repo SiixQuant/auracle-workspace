@@ -1,7 +1,7 @@
 /**
  * Automations Extension
  *
- * Schedule recurring AI-powered tasks in Nimbalyst.
+ * Schedule recurring AI-powered tasks in Auracle.
  * Automations are markdown files with YAML frontmatter that define
  * schedules, output modes, and AI prompts.
  */

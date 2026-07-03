@@ -119,7 +119,7 @@ export function parseApiServiceError(content: string): ApiServiceErrorInfo {
  * Returns true if `content` looks like an upstream API service error from
  * Claude (api_error, overloaded_error) where the right user action is
  * "retry / check status page / escalate with request_id", not "file a
- * Nimbalyst bug". Conservative on purpose - we'd rather miss a borderline
+ * Auracle bug". Conservative on purpose - we'd rather miss a borderline
  * case and render the raw error than mis-classify a real client bug as
  * "just a service hiccup".
  */
@@ -194,8 +194,8 @@ export const ApiServiceErrorWidget: React.FC<ApiServiceErrorWidgetProps> = ({ co
 
       <div className="text-[var(--nim-text-muted)] text-[0.85rem] leading-relaxed">
         {isOverloaded
-          ? 'This is an upstream capacity error on the API side, not a bug in Nimbalyst. The API will accept new requests once load eases. Retrying in a minute usually works; switching to a less-loaded model also helps.'
-          : 'This is a transient upstream error on the API side, not a bug in Nimbalyst. Most cases clear within a few minutes.'}
+          ? 'This is an upstream capacity error on the API side, not a bug in Auracle. The API will accept new requests once load eases. Retrying in a minute usually works; switching to a less-loaded model also helps.'
+          : 'This is a transient upstream error on the API side, not a bug in Auracle. Most cases clear within a few minutes.'}
       </div>
 
       <ul className="text-[var(--nim-text-muted)] text-[0.8rem] leading-relaxed list-disc pl-5 m-0">

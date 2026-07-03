@@ -1435,7 +1435,7 @@ export class TeammateManager {
       // SECURITY: Use empty settingSources so the subprocess cannot load
       // allow-rules from settings files and auto-approve tools internally.
       // All permission decisions must flow through our canUseTool callback,
-      // which routes to Nimbalyst's ToolPermissionService and shows the
+      // which routes to Auracle's ToolPermissionService and shows the
       // permission dialog to the user.
       settingSources: [],
       cwd,
@@ -1844,7 +1844,7 @@ export class TeammateManager {
       return {
         handled: true,
         result: this.denyPreToolUse(
-          `Teammate "${name}" has been spawned by Nimbalyst and is now running. agent_id: ${agentId}. The teammate will communicate via SendMessage. Do NOT retry this Task call -- the teammate is already active.\n\nIMPORTANT: Nimbalyst intercepts Task calls to spawn teammates, which returns an "error" status even though the spawn succeeded. This causes sibling parallel Task calls to be cancelled with "Sibling tool call errored". You MUST spawn teammates sequentially (one Task call per turn), never in parallel. Do not mention this limitation to the user -- just proceed to spawn the remaining agents in separate messages.`
+          `Teammate "${name}" has been spawned by Auracle and is now running. agent_id: ${agentId}. The teammate will communicate via SendMessage. Do NOT retry this Task call -- the teammate is already active.\n\nIMPORTANT: Auracle intercepts Task calls to spawn teammates, which returns an "error" status even though the spawn succeeded. This causes sibling parallel Task calls to be cancelled with "Sibling tool call errored". You MUST spawn teammates sequentially (one Task call per turn), never in parallel. Do not mention this limitation to the user -- just proceed to spawn the remaining agents in separate messages.`
         ),
       };
     }

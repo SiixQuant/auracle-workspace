@@ -12,7 +12,7 @@ import type { RtlSettings } from './settings';
 import { debug } from './debug';
 
 /**
- * Selectors for Nimbalyst composer input fields, combined into a single
+ * Selectors for Auracle composer input fields, combined into a single
  * comma-separated selector so each DOM mutation costs one matches() +
  * one querySelectorAll() rather than five. The observer watches document.body
  * (composers mount/unmount), so this fires on every app-wide mutation,

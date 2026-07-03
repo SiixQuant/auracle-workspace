@@ -407,7 +407,7 @@ export const ExtensionDevIndicator: React.FC<ExtensionDevIndicatorProps> = ({
               role="menuitem"
             >
               <MaterialSymbol icon="refresh" size={18} />
-              <span>{isRestarting ? 'Restarting...' : 'Restart Nimbalyst'}</span>
+              <span>{isRestarting ? 'Restarting...' : 'Restart Auracle'}</span>
             </button>
           </div>
         </div>

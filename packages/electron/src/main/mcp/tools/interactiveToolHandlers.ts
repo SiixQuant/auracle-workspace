@@ -555,10 +555,10 @@ function waitForToolPermissionAnswer(
 }
 
 /**
- * NIM-806 Phase 4 (Direction A): render a Nimbalyst ToolPermission widget for a
+ * NIM-806 Phase 4 (Direction A): render an Auracle ToolPermission widget for a
  * genuine claude-code-cli tool that needs approval, and return the decision.
  *
- * The CLI reaches this via its `PreToolUse` permission hook → Nimbalyst's local
+ * The CLI reaches this via its `PreToolUse` permission hook → Auracle's local
  * `/permission` endpoint (httpServer) → here. (We originally targeted
  * `--permission-prompt-tool`, but that flag is silently ignored by the
  * interactive CLI; the PreToolUse hook is the mechanism that works interactively.)

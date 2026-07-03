@@ -5,7 +5,7 @@
  *
  * The CLI rejects `--session-id <uuid>` once that id already exists on disk
  * (`Error: Session ID <uuid> is already in use.` → exit 1). On a relaunch of the
- * same Nimbalyst session (restart, IntersectionObserver re-mount, or
+ * same Auracle session (restart, IntersectionObserver re-mount, or
  * `ensureClaudeCliSession` after the prior PID is gone) re-passing the same
  * `--session-id` collides. So when the prior jsonl exists we switch to
  * `--resume <uuid>` instead — which ALSO restores prior context, which is what we
@@ -33,7 +33,7 @@ export interface ResolveClaudeCliJsonlPathInput {
   homedir: string;
   /** Working directory the CLI was/will-be launched in. */
   cwd: string;
-  /** The CLI session id (equals the Nimbalyst session id when it's a UUID). */
+  /** The CLI session id (equals the Auracle session id when it's a UUID). */
   sessionId: string;
 }
 

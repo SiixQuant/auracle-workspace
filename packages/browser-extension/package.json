@@ -1,7 +1,7 @@
 {
   "name": "@nimbalyst/browser-extension",
   "version": "0.1.0",
-  "description": "Nimbalyst browser extension for web clipping and AI extraction",
+  "description": "Auracle browser extension for web clipping and AI extraction",
   "private": true,
   "type": "module",
   "scripts": {

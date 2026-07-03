@@ -1,5 +1,5 @@
 /**
- * Nimbalyst - Main library entry point
+ * Auracle - Main library entry point
  *
  * A rich text editor built with Meta's Lexical framework, featuring markdown support,
  * tables, and comprehensive editing capabilities.
@@ -123,7 +123,7 @@ export {
   type EditorExtensionContributions,
 } from './extensions/extensionContributionsStore';
 
-// Lexical-extension contributions from Nimbalyst extensions. The
+// Lexical-extension contributions from Auracle extensions. The
 // electron-side bridge writes here; `NimbalystEditor` reads from here
 // and includes the contributions in the editor's extension graph.
 export {

@@ -289,9 +289,9 @@ describe('CodexAppServerProtocol', () => {
     // Each resume spawns a fresh codex app-server child; without re-attaching
     // mcp_servers (and the rest of the config we pass on first start), the
     // resumed agent has zero MCP tools available -- meaning every internal
-    // Nimbalyst tool (developer_git_commit_proposal, AskUserQuestion, etc.)
+    // Auracle tool (developer_git_commit_proposal, AskUserQuestion, etc.)
     // silently disappears after the first user message in a session resumed
-    // across a Nimbalyst restart.
+    // across an Auracle restart.
     const protocol = new CodexAppServerProtocol();
     const sessionPromise = protocol.resumeSession('thread-resume-tools', {
       workspacePath: '/tmp/ws',

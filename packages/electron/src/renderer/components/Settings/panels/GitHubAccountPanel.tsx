@@ -5,7 +5,7 @@
  * - User scope: pick the GLOBAL default account.
  * - Project scope: pick an OVERRIDE for this project (or fall back to default).
  *
- * Nimbalyst stores only the chosen login; the token is resolved from gh's
+ * Auracle stores only the chosen login; the token is resolved from gh's
  * keyring per request and never persisted.
  */
 

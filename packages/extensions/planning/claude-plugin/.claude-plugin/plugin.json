@@ -1,9 +1,9 @@
 {
   "name": "planning",
   "version": "1.0.0",
-  "description": "Structured planning and tracking system for Nimbalyst",
+  "description": "Structured planning and tracking system for Auracle",
   "author": {
-    "name": "Nimbalyst",
+    "name": "Auracle",
     "url": "https://nimbalyst.com"
   },
   "keywords": ["planning", "tracking", "project-management", "yaml", "frontmatter"]

@@ -1,5 +1,5 @@
 /**
- * Nodes for the Nimbalyst editor that are NOT already registered by an
+ * Nodes for the Auracle editor that are NOT already registered by an
  * extension's `nodes` list. Block / inline node classes that ship with a
  * dedicated extension (image, mermaid, page break, layout, collapsible,
  * kanban board, list, link, auto-link, horizontal rule) flow through that

@@ -3,7 +3,7 @@
   "name": "SQLite Browser",
   "version": "1.0.0",
   "description": "Browse and query SQLite databases with AI assistance",
-  "author": "Nimbalyst",
+  "author": "Auracle",
   "main": "dist/index.js",
   "apiVersion": "1.0.0",
   "marketplace": {

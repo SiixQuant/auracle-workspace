@@ -60,7 +60,7 @@ export const MCP_TRACKERS = 'nimbalyst-trackers';
 export const MCP_SITUATIONAL = 'nimbalyst-situational';
 export const MCP_EXTENSION_DEV = 'nimbalyst-extension-dev';
 
-/** Prefix shared by every Nimbalyst server config-key. */
+/** Prefix shared by every Auracle server config-key. */
 export const MCP_SERVER_CONFIG_PREFIX = 'nimbalyst-';
 
 /** Endpoint path prefix for per-extension servers (`/mcp/ext/<extensionId>`). */
@@ -84,7 +84,7 @@ export const MCP_RETIRED_SERVER_CONFIG_KEYS: readonly string[] = [
 
 /**
  * The eager core: universal agent↔host glue. ~90% of all internal MCP calls,
- * and the ONLY Nimbalyst surface that stays `alwaysLoad`.
+ * and the ONLY Auracle surface that stays `alwaysLoad`.
  */
 export const CORE_TOOLS: readonly string[] = [
   'AskUserQuestion',

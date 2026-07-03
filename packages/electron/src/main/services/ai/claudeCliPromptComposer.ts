@@ -70,7 +70,7 @@ export function composeClaudeCliContextPreamble(
   const rawSelection = selectionTextOf(context);
   if (!filePath && !rawSelection) return '';
 
-  const parts: string[] = ['[Nimbalyst context — appended automatically, not typed by the user]'];
+  const parts: string[] = ['[Auracle context — appended automatically, not typed by the user]'];
 
   if (filePath) {
     parts.push(

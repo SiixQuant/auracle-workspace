@@ -220,7 +220,7 @@ export function ImageGenerationSettings({ storage, theme }: SettingsPanelProps) 
         </h4>
         <p className="m-0 text-[13px] text-nim-muted leading-normal">
           This extension uses Google's Gemini and Imagen models to generate images from text prompts.
-          Create architecture diagrams, UI wireframes, illustrations, and more directly in Nimbalyst.
+          Create architecture diagrams, UI wireframes, illustrations, and more directly in Auracle.
         </p>
       </div>
     </div>

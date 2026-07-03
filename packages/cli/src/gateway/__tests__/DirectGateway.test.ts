@@ -2,7 +2,7 @@
  * DirectGateway unit tests against a real on-disk SQLite fixture built with the
  * actual tracker_items DDL (generated columns + JSON `data`), so list filters,
  * where-ops, status shorthand, relative-time and the JSON record shape are
- * exercised exactly as they'll behave against a live Nimbalyst DB.
+ * exercised exactly as they'll behave against a live Auracle DB.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import Database from 'better-sqlite3';

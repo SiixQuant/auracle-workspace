@@ -109,7 +109,7 @@ export class EmbeddedFileNode extends DecoratorNode<JSX.Element> {
   }
 
   exportDOM(): DOMExportOutput {
-    // Export as a plain anchor so non-Nimbalyst readers still get a link.
+    // Export as a plain anchor so non-Auracle readers still get a link.
     const a = document.createElement('a');
     a.href = this.__src;
     a.textContent = this.__label || this.__src;

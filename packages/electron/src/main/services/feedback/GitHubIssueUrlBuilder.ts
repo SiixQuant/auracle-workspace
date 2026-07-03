@@ -1,7 +1,7 @@
 export const FEEDBACK_REPO = 'nimbalyst/nimbalyst';
 export const FEEDBACK_ISSUES_URL = `https://github.com/${FEEDBACK_REPO}/issues`;
 export const FEEDBACK_DISCUSSIONS_URL = `https://github.com/${FEEDBACK_REPO}/discussions`;
-export const FEEDBACK_SUPPORT_EMAIL = 'support@nimbalyst.com';
+export const FEEDBACK_SUPPORT_EMAIL = 'support@aurapointcapital.com';
 
 export type FeedbackKind = 'bug' | 'feature';
 

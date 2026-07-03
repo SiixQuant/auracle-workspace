@@ -8,7 +8,7 @@
  *     -> ToolCallMatcher -> renderer EditToolResultCard -> DiffViewer/NewFilePreview
  *
  * Gate: requires `RUN_REAL_CODEX=1` and a host that already has Codex CLI
- * auth configured (Codex uses CLI-side auth, not a Nimbalyst-stored API key).
+ * auth configured (Codex uses CLI-side auth, not an Auracle-stored API key).
  * NEVER runs in CI by default. Skipped automatically without the env var.
  */
 

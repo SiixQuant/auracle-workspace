@@ -1,9 +1,9 @@
 {
   "name": "datamodellm",
   "version": "1.0.0",
-  "description": "Data modeling commands for creating Prisma-based data models in Nimbalyst",
+  "description": "Data modeling commands for creating Prisma-based data models in Auracle",
   "author": {
-    "name": "Nimbalyst",
+    "name": "Auracle",
     "email": "support@nimbalyst.com",
     "url": "https://nimbalyst.com"
   },

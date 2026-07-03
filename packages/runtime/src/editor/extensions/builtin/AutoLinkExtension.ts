@@ -1,7 +1,7 @@
 /**
  * Forked from `@lexical/react/LexicalAutoLinkPlugin` (and its v0.34-era
  * predecessor) so we can drop two classes of bogus auto-links that crashed
- * the editor in earlier Nimbalyst releases:
+ * the editor in earlier Auracle releases:
  *
  * 1. Pasted base64 image data URIs were sometimes long enough to match the
  *    URL regex and would be wrapped in giant `<a>` nodes that the diff

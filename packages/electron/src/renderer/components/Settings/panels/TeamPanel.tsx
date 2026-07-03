@@ -173,7 +173,7 @@ function TeamPricingNotice() {
     <div className="mt-2.5 flex items-start gap-1.5 text-[12px] leading-relaxed text-[var(--nim-text-faint)]">
       <MaterialSymbol icon="info" size={13} className="mt-[2px] shrink-0" />
       <span>
-        Nimbalyst Teams is <span className="text-[var(--nim-text-muted)]">free during alpha</span>. We plan to introduce a paid subscription tier for teams in the future; existing teams will get advance notice before any pricing change.
+        Auracle Teams is <span className="text-[var(--nim-text-muted)]">free during alpha</span>. We plan to introduce a paid subscription tier for teams in the future; existing teams will get advance notice before any pricing change.
       </span>
     </div>
   );
@@ -191,7 +191,7 @@ function EncryptionCard() {
       <p className="m-0 mb-2 text-[12px] text-[var(--nim-text-muted)] leading-relaxed">
         Team data (trackers and documents) is encrypted in transit and at rest and
         isolated per team. Depending on your team&apos;s setup, encryption keys are
-        either held only by members&apos; devices, or managed by Nimbalyst so the
+        either held only by members&apos; devices, or managed by Auracle so the
         team is reachable from the web, CLI, and cloud agents.
       </p>
       <ul className="m-0 pl-5 text-[12px] text-[var(--nim-text)] leading-7">

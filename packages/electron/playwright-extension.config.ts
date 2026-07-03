@@ -1,5 +1,5 @@
 /**
- * Playwright config for extension testing against a running Nimbalyst instance.
+ * Playwright config for extension testing against a running Auracle instance.
  *
  * This config connects to the running app via CDP (Chrome DevTools Protocol)
  * instead of launching a fresh Electron instance. Used by the extension_test_run

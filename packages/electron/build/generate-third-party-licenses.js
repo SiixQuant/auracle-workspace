@@ -393,7 +393,7 @@ function buildSummary(records) {
 
 function renderNotices(records, summary) {
   const sections = [
-    'Nimbalyst Third-Party Notices',
+    'Auracle Third-Party Notices',
     '',
     'This file aggregates license and notice texts for third-party packages reachable',
     'from the Electron app, runtime package, and built-in extensions.',

@@ -3,11 +3,11 @@
   "version": "0.66.9",
   "private": true,
   "license": "MIT",
-  "author": "Nimbalyst Team",
-  "description": "Electron app for Nimbalyst",
+  "author": "Auracle Team",
+  "description": "Auracle IDE \u2014 the visual workspace for AI-led trading strategy development",
   "main": "out/main/index.js",
   "bin": {
-    "nimbalyst": "./bin/nimbalyst"
+    "auracle": "./bin/auracle"
   },
   "scripts": {
     "start": "electron-vite preview",
@@ -159,17 +159,17 @@
     "vitest": "4.1.8"
   },
   "build": {
-    "appId": "com.nimbalyst.electron",
-    "productName": "Nimbalyst",
+    "appId": "com.aurapointcapital.auracle",
+    "productName": "Auracle IDE",
     "electronVersion": "41.8.0",
     "nodeGypRebuild": false,
     "buildDependenciesFromSource": false,
     "npmRebuild": true,
     "protocols": [
       {
-        "name": "Nimbalyst URL",
+        "name": "Auracle URL",
         "schemes": [
-          "nimbalyst"
+          "auracle"
         ]
       }
     ],
@@ -179,8 +179,8 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "nimbalyst",
-        "repo": "nimbalyst",
+        "owner": "SiixQuant",
+        "repo": "auracle-ide",
         "releaseType": "release"
       }
     ],
@@ -420,9 +420,9 @@
       "entitlementsInherit": "build/entitlements.mac.plist",
       "notarize": false,
       "extendInfo": {
-        "NSLocalNetworkUsageDescription": "Nimbalyst needs access to local network devices for features like MCP servers and local AI model connections.",
-        "NSMicrophoneUsageDescription": "Nimbalyst uses the microphone for Voice Mode, allowing you to interact with the AI assistant using your voice.",
-        "NSAppleEventsUsageDescription": "Nimbalyst opens Terminal.app to run the Claude Code login and logout flows."
+        "NSLocalNetworkUsageDescription": "Auracle needs access to local network devices for features like MCP servers and local AI model connections.",
+        "NSMicrophoneUsageDescription": "Auracle uses the microphone for Voice Mode, allowing you to interact with the AI assistant using your voice.",
+        "NSAppleEventsUsageDescription": "Auracle opens Terminal.app to run the Claude Code login and logout flows."
       }
     },
     "dmg": {
@@ -461,5 +461,6 @@
       "artifactName": "${productName}-Linux.${ext}"
     },
     "buildVersion": "0.36.5"
-  }
+  },
+  "productName": "Auracle IDE"
 }

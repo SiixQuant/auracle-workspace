@@ -1,5 +1,5 @@
 /**
- * Clipboard utilities for Nimbalyst extensions.
+ * Clipboard utilities for Auracle extensions.
  *
  * Routes through Electron's native clipboard via IPC when available,
  * falling back to the standard navigator.clipboard Web API for

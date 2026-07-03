@@ -1,9 +1,9 @@
 {
   "name": "automations",
   "version": "1.0.0",
-  "description": "Create and manage scheduled automations in Nimbalyst",
+  "description": "Create and manage scheduled automations in Auracle",
   "author": {
-    "name": "Nimbalyst",
+    "name": "Auracle",
     "url": "https://nimbalyst.com"
   },
   "keywords": ["automation", "schedule", "cron", "ai-task"]

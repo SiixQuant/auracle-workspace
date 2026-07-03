@@ -3,7 +3,7 @@
  * B3, Slice B). Ties the loopback SSE-tee proxy to the message assembler and
  * owns idempotency, so the production wiring only has to persist + signal.
  *
- * One observation session per CLI session (we spawn one `claude` per Nimbalyst
+ * One observation session per CLI session (we spawn one `claude` per Auracle
  * session, so a proxy-per-session is the simplest mapping). Start it BEFORE
  * spawning the CLI, hand `getBaseUrl()` to the spawn config as
  * `ANTHROPIC_BASE_URL`, and `stop()` it on PTY exit.
@@ -21,7 +21,7 @@ import {
 } from "./claudeApiMessageAssembler";
 
 export interface ClaudeCliProxyObservationDeps {
-  /** Nimbalyst session id this proxy observes (for logging / bridge routing). */
+  /** Auracle session id this proxy observes (for logging / bridge routing). */
   sessionId: string;
   /** Called once per reassembled assistant turn (after id-dedup). */
   onAssistantMessage: (msg: AssembledAssistantMessage) => void;

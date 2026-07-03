@@ -3,7 +3,7 @@
  *
  * The MCP bearer token is generated per-launch and held in memory only
  * (mcpAuth.ts) — it "dies with the process" and is not otherwise discoverable.
- * To let an out-of-process CLI talk to a *running* Nimbalyst over the loopback
+ * To let an out-of-process CLI talk to a *running* Auracle over the loopback
  * MCP-HTTP server, we write a small, user-only-readable descriptor at startup
  * and delete it on quit:
  *

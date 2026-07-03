@@ -14,12 +14,12 @@ describe('filterAtomFeedToAppVersionTags', () => {
   <entry>
     <id>tag:github.com,2008:Repository/1/extension-sdk-v0.2.0</id>
     <title>extension-sdk-v0.2.0</title>
-    <link rel="alternate" type="text/html" href="https://github.com/nimbalyst/nimbalyst/releases/tag/extension-sdk-v0.2.0"/>
+    <link rel="alternate" type="text/html" href="https://github.com/SiixQuant/auracle-workspace/releases/tag/extension-sdk-v0.2.0"/>
   </entry>
   <entry>
     <id>tag:github.com,2008:Repository/1/v0.60.4</id>
     <title>Release v0.60.4</title>
-    <link rel="alternate" type="text/html" href="https://github.com/nimbalyst/nimbalyst/releases/tag/v0.60.4"/>
+    <link rel="alternate" type="text/html" href="https://github.com/SiixQuant/auracle-workspace/releases/tag/v0.60.4"/>
   </entry>
 </feed>`;
     const filtered = filterAtomFeedToAppVersionTags(feed);

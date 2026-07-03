@@ -3,7 +3,7 @@
   "name": "Automations",
   "version": "1.0.0",
   "description": "Schedule recurring AI-powered tasks with file-based automation definitions",
-  "author": "Nimbalyst",
+  "author": "Auracle",
   "main": "dist/index.js",
   "styles": "dist/index.css",
   "apiVersion": "1.0.0",
@@ -13,7 +13,7 @@
     "icon": "schedule",
     "featured": false,
     "tagline": "Run recurring AI workflows from markdown automation definitions",
-    "longDescription": "Define recurring automations in markdown and let Nimbalyst run them on a schedule. Use them for routine reviews, status updates, content refreshes, and any repeatable AI workflow that should happen without starting a new session manually.",
+    "longDescription": "Define recurring automations in markdown and let Auracle run them on a schedule. Use them for routine reviews, status updates, content refreshes, and any repeatable AI workflow that should happen without starting a new session manually.",
     "highlights": [
       "Markdown-based automation definitions stored in your workspace",
       "Recurring AI workflows for routine checks and updates",

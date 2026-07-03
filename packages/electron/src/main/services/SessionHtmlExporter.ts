@@ -120,7 +120,7 @@ function formatShortTime(ts: number): string {
 }
 
 /**
- * Compact Nimbalyst icon SVG for inline use in exports.
+ * Compact Auracle icon SVG for inline use in exports.
  * A simplified version of the app icon (# on a blue splash shape).
  */
 function getNimbalystIconSvg(): string {
@@ -384,16 +384,16 @@ function buildHtmlDocument(session: SessionData, messagesHtml: string): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(title)} \u2013 Nimbalyst Export</title>
+<title>${escapeHtml(title)} \u2013 Auracle Export</title>
 ${getStylesheet()}
 </head>
 <body>
 <div class="container">
 
   <div class="nimbalyst-brand-bar">
-    <a href="https://nimbalyst.com" target="_blank" rel="noopener" class="nimbalyst-brand-link">
+    <a href="https://aurapointcapital.com" target="_blank" rel="noopener" class="nimbalyst-brand-link">
       ${getNimbalystIconSvg()}
-      <span class="nimbalyst-brand-text">Shared from <strong>Nimbalyst</strong></span>
+      <span class="nimbalyst-brand-text">Shared from <strong>Auracle</strong></span>
     </a>
   </div>
 
@@ -427,9 +427,9 @@ ${getStylesheet()}
 
   <footer class="export-footer">
     <div class="nimbalyst-brand-bar footer-brand">
-      <a href="https://nimbalyst.com" target="_blank" rel="noopener" class="nimbalyst-brand-link">
+      <a href="https://aurapointcapital.com" target="_blank" rel="noopener" class="nimbalyst-brand-link">
         ${getNimbalystIconSvg()}
-        <span class="nimbalyst-brand-text">Shared from <strong>Nimbalyst</strong></span>
+        <span class="nimbalyst-brand-text">Shared from <strong>Auracle</strong></span>
       </a>
       <span class="footer-date">Exported ${exportDate}</span>
     </div>
@@ -536,7 +536,7 @@ body {
 }
 
 /* ================================================================
-   Nimbalyst brand bar
+   Auracle brand bar
    ================================================================ */
 .nimbalyst-brand-bar {
   display: flex;

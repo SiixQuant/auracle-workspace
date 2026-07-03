@@ -2,14 +2,14 @@
  * GitHub Copilot CLI Agent Provider
  *
  * Integrates GitHub Copilot's ACP (Agent Communication Protocol) server mode
- * into Nimbalyst. Copilot runs as `copilot --acp --stdio` and communicates
+ * into Auracle. Copilot runs as `copilot --acp --stdio` and communicates
  * via JSON-RPC over stdin/stdout.
  *
  * Key features:
  * - ACP protocol transport (not PTY scraping)
  * - Session create/resume via protocol session IDs
  * - MCP server passthrough to Copilot's ACP session
- * - Nimbalyst permission prompts for tool/file actions
+ * - Auracle permission prompts for tool/file actions
  * - Canonical transcript storage via raw event logging
  */
 
@@ -520,7 +520,7 @@ export class CopilotCLIProvider extends BaseAgentProvider {
     delete env.OPENAI_API_KEY;
     // Do NOT scrub GH_TOKEN/GITHUB_TOKEN here -- per plan, we don't read them
     // as implicit auth, but Copilot CLI itself may legitimately need them from
-    // the user's shell. The plan's guardrail applies to Nimbalyst code, not to
+    // the user's shell. The plan's guardrail applies to Auracle code, not to
     // what the child process inherits from the shell.
 
     return env;

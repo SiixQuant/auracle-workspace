@@ -21,7 +21,7 @@ export function WorkspaceWelcome({ workspaceName }: WorkspaceWelcomeProps) {
           {iconUrl && (
             <img
               src={iconUrl}
-              alt="Nimbalyst"
+              alt="Auracle"
               className="w-full h-full object-contain"
               onError={(e) => {
                 // Hide the image if it fails to load

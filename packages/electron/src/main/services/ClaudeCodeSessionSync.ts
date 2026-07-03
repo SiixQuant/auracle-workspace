@@ -1,8 +1,8 @@
 /**
- * Service to synchronize Claude Code sessions to Nimbalyst database
+ * Service to synchronize Claude Code sessions to Auracle database
  *
  * This service handles the transformation and import of Claude Code JSONL sessions
- * into Nimbalyst's PGLite database format.
+ * into Auracle's PGLite database format.
  */
 
 import * as fs from 'fs/promises';
@@ -237,7 +237,7 @@ export function importedClaudeCodeModel(entries: ClaudeCodeEntry[]): string | un
 }
 
 /**
- * Convert Claude Code JSONL entry to Nimbalyst message format
+ * Convert Claude Code JSONL entry to Auracle message format
  *
  * IMPORTANT: This must produce the SAME format as ClaudeCodeProvider.logAgentMessage()
  * so that the canonical transcript system can parse it correctly.
@@ -508,7 +508,7 @@ export async function checkSyncStatus(
   metadata: SessionMetadata
 ): Promise<SyncStatus> {
   try {
-    // NOTE: Nimbalyst sessions store the Claude Code session ID in providerSessionId,
+    // NOTE: Auracle sessions store the Claude Code session ID in providerSessionId,
     // not in the main id field. We need to find the session by providerSessionId.
     // For now, we'll check by the main ID first (for imported sessions),
     // but we need a way to query by providerSessionId.

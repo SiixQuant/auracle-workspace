@@ -1,9 +1,9 @@
 {
   "name": "ios-dev",
   "version": "0.1.0",
-  "description": "iOS development tools for Nimbalyst including XcodeGen, simulator management, and deployment",
+  "description": "iOS development tools for Auracle including XcodeGen, simulator management, and deployment",
   "author": {
-    "name": "Nimbalyst",
+    "name": "Auracle",
     "url": "https://nimbalyst.com"
   },
   "keywords": ["ios", "xcode", "xcodegen", "simulator", "fastlane", "swift"]

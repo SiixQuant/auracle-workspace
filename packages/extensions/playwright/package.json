@@ -1,7 +1,7 @@
 {
   "name": "@nimbalyst/extension-playwright",
   "version": "0.1.0",
-  "description": "Playwright test runner extension for Nimbalyst",
+  "description": "Playwright test runner extension for Auracle",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {

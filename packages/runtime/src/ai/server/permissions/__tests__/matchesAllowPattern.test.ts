@@ -29,7 +29,7 @@ describe('matchesAllowPattern (issue #152)', () => {
 
     it('matches deeper-subcommand candidates against subcommand allows', () => {
       // User allow-listed `git diff` but a `git diff --stat HEAD` call
-      // generates the same `Bash(git diff:*)` pattern in Nimbalyst, so
+      // generates the same `Bash(git diff:*)` pattern in Auracle, so
       // exact equality already handles this case. The interesting one is
       // multi-word subcommands like `npm run build` against `npm run`.
       expect(matchesAllowPattern('Bash(npm run build:*)', 'Bash(npm run:*)')).toBe(true);

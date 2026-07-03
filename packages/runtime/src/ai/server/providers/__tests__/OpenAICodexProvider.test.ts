@@ -1272,7 +1272,7 @@ describe('OpenAICodexProvider', () => {
     });
   });
 
-  it('reuses the same live ProtocolSession across consecutive turns on one Nimbalyst session', async () => {
+  it('reuses the same live ProtocolSession across consecutive turns on one Auracle session', async () => {
     // Mock protocol -- the cache lives at the provider layer, so we want to
     // pin down its create/resume/reuse behavior without depending on the SDK
     // loader path. The bug we're protecting against: every turn calling

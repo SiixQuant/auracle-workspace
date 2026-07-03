@@ -1,7 +1,7 @@
 {
   "name": "@nimbalyst/extension-datamodellm",
   "version": "1.0.0",
-  "description": "DatamodelLM extension for Nimbalyst - AI-assisted data modeling",
+  "description": "DatamodelLM extension for Auracle - AI-assisted data modeling",
   "main": "dist/index.js",
   "type": "module",
   "exports": {

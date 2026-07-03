@@ -272,7 +272,7 @@ $ARGUMENTS
         name: 'legacy-tools',
         version: '0.1.0',
         description: 'Legacy tools',
-        author: { name: 'Nimbalyst' },
+        author: { name: 'Auracle' },
       }, null, 2),
       'utf-8',
     );
@@ -329,7 +329,7 @@ Use this when the user needs a helper workflow.
 
     fs.writeFileSync(
       path.join(pluginRoot, '.claude-plugin', 'plugin.json'),
-      JSON.stringify({ name: 'legacy-tools', version: '0.1.0', author: { name: 'Nimbalyst' } }, null, 2),
+      JSON.stringify({ name: 'legacy-tools', version: '0.1.0', author: { name: 'Auracle' } }, null, 2),
       'utf-8',
     );
     fs.writeFileSync(

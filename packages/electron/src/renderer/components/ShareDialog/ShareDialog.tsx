@@ -358,7 +358,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                   <p className="m-0 mt-1 text-[0.75rem] text-[var(--nim-text-faint)]">
                     Content is end-to-end encrypted.
                     <br />
-                    No one without the link -- including Nimbalyst Servers -- can see it.
+                    No one without the link -- including Auracle Servers -- can see it.
                   </p>
                 </div>
               </div>

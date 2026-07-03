@@ -1,7 +1,7 @@
 {
   "name": "@nimbalyst/opencode-plugin",
   "version": "0.1.0",
-  "description": "OpenCode plugin for Nimbalyst file edit snapshot tracking",
+  "description": "OpenCode plugin for Auracle file edit snapshot tracking",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "private": true,

@@ -2,7 +2,7 @@
   "id": "com.nimbalyst.extension-dev-kit",
   "name": "Extension Developer Kit",
   "version": "1.0.0",
-  "description": "Tools for building Nimbalyst extensions with AI assistance",
+  "description": "Tools for building Auracle extensions with AI assistance",
   "main": "dist/index.js",
   "apiVersion": "1.0.0",
   "permissions": {
@@ -18,7 +18,7 @@
       "commands": [
         {
           "name": "new-extension",
-          "description": "Create a new Nimbalyst extension project from a starter scaffold"
+          "description": "Create a new Auracle extension project from a starter scaffold"
         }
       ]
     }

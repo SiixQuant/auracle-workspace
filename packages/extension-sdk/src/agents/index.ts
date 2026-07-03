@@ -1,5 +1,5 @@
 /**
- * Public agent-provider surface for the Nimbalyst extension SDK.
+ * Public agent-provider surface for the Auracle extension SDK.
  *
  * Extensions that ship an `AiAgentProviderContribution` import the
  * `AgentProtocol`, `AgentProtocolHost`, and supporting types from

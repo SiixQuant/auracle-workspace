@@ -1,7 +1,7 @@
 {
   "name": "@nimbalyst/extension-github-issues-importer",
   "version": "1.0.0",
-  "description": "Built-in GitHub Issues importer for the Nimbalyst tracker",
+  "description": "Built-in GitHub Issues importer for the Auracle tracker",
   "main": "dist/index.js",
   "types": "src/index.ts",
   "type": "module",

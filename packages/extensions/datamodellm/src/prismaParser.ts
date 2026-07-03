@@ -4,7 +4,7 @@
  * Converts between Prisma schema format (.prisma) and internal DataModelFile format.
  * Supports SQL databases (PostgreSQL, MySQL, SQLite) and MongoDB.
  *
- * Nimbalyst metadata (positions, viewport) is stored in a comment:
+ * Auracle metadata (positions, viewport) is stored in a comment:
  * // @nimbalyst {"viewport":{"x":0,"y":0,"zoom":1},"positions":{"User":{"x":100,"y":100}}}
  */
 
@@ -71,7 +71,7 @@ interface ParsedDatasource {
 export function parsePrismaSchema(content: string): DataModelFile {
   const lines = content.split('\n');
 
-  // Extract Nimbalyst metadata from comment
+  // Extract Auracle metadata from comment
   const metadata = extractNimbalystMetadata(content);
 
   // Parse datasource to determine database type
@@ -102,7 +102,7 @@ export function parsePrismaSchema(content: string): DataModelFile {
 }
 
 /**
- * Extract Nimbalyst metadata from // @nimbalyst comment
+ * Extract Auracle metadata from // @nimbalyst comment
  */
 function extractNimbalystMetadata(content: string): NimbalystMetadata {
   const defaultMetadata: NimbalystMetadata = {
@@ -546,7 +546,7 @@ function mapCascadeAction(action: string): CascadeAction {
 export function serializeToPrismaSchema(model: DataModelFile): string {
   const lines: string[] = [];
 
-  // Add Nimbalyst metadata comment
+  // Add Auracle metadata comment
   const metadata: NimbalystMetadata = {
     viewport: model.viewport,
     positions: Object.fromEntries(
@@ -764,7 +764,7 @@ function camelCase(str: string): string {
 }
 
 /**
- * Create an empty Prisma schema with Nimbalyst metadata
+ * Create an empty Prisma schema with Auracle metadata
  */
 export function createEmptyPrismaSchema(database: Database = 'postgres'): string {
   const model: DataModelFile = {

@@ -135,7 +135,7 @@ export const DiscordInvitation: React.FC<DiscordInvitationProps> = ({
         </button>
 
         <div className="px-8 pt-10 pb-8 text-center">
-          <img src={logoSrc} alt="Nimbalyst" className="mx-auto mb-5 h-12 w-auto object-contain" />
+          <img src={logoSrc} alt="Auracle" className="mx-auto mb-5 h-12 w-auto object-contain" />
 
           <h2 id="discord-invitation-title" className="discord-invitation-title m-0 mb-3 text-2xl font-bold tracking-[-0.5px] text-[var(--nim-text)]">
             Join the Community
@@ -157,7 +157,7 @@ export const DiscordInvitation: React.FC<DiscordInvitationProps> = ({
 
           <div className="mb-6 px-4">
             <p className="m-0 mb-4 text-sm font-semibold uppercase tracking-[0.08em] text-[var(--nim-text-muted)]">
-              Follow Nimbalyst
+              Follow Auracle
             </p>
             <div className="flex items-center justify-center gap-3">
               {socialLinks.map((link) => (

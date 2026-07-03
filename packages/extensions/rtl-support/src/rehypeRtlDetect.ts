@@ -12,7 +12,7 @@
  *  - Sets the dir attribute on the node
  *  - Protects code blocks (pre/code) — always LTR
  *
- * Note: In Nimbalyst's MarkdownRenderer, hast properties.dir is ignored
+ * Note: In Auracle's MarkdownRenderer, hast properties.dir is ignored
  * because custom React components are used. This plugin is kept as a
  * fallback for standard react-markdown renderers; the component overrides
  * in RtlTranscriptHost.tsx are what actually apply dir to the DOM.

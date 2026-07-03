@@ -128,7 +128,7 @@ export const MonacoCodeEditor: React.FC<MonacoCodeEditorProps> = ({
   // Get Monaco language from file extension
   const language = getMonacoLanguage(filePath);
 
-  // Get Monaco theme from Nimbalyst theme (with custom theme support for extensions)
+  // Get Monaco theme from Auracle theme (with custom theme support for extensions)
   const monacoTheme = getMonacoTheme(theme, undefined, extensionThemeId);
 
   /**

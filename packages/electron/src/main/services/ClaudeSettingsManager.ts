@@ -6,8 +6,8 @@
  * - .claude/settings.local.json (project-level, personal)
  * - ~/.claude/settings.json (user-level)
  *
- * This allows Nimbalyst to be a UI layer on top of Claude Code's permission system,
- * ensuring permissions work consistently between Nimbalyst and the Claude CLI.
+ * This allows Auracle to be a UI layer on top of Claude Code's permission system,
+ * ensuring permissions work consistently between Auracle and the Claude CLI.
  *
  * WORKTREE SUPPORT: When a workspace is a git worktree, settings are read/written
  * from/to the parent project's .claude/ directory. This ensures worktrees share

@@ -131,11 +131,11 @@ export const activeTeamOrgIdAtom = atom<string | null>((get) => {
 });
 
 /**
- * Build a deep link to a shared document. The recipient's Nimbalyst app uses
+ * Build a deep link to a shared document. The recipient's Auracle app uses
  * the orgId to find the matching team workspace and verify access.
  */
 export function buildSharedDocumentDeepLink(documentId: string, orgId: string): string {
-  return `nimbalyst://doc/${encodeURIComponent(documentId)}?orgId=${encodeURIComponent(orgId)}`;
+  return `auracle://doc/${encodeURIComponent(documentId)}?orgId=${encodeURIComponent(orgId)}`;
 }
 
 /**
@@ -144,7 +144,7 @@ export function buildSharedDocumentDeepLink(documentId: string, orgId: string): 
  * workspace and opens the tracker in tracker mode.
  */
 export function buildTrackerDeepLink(trackerId: string, orgId: string): string {
-  return `nimbalyst://tracker/${encodeURIComponent(trackerId)}?orgId=${encodeURIComponent(orgId)}`;
+  return `auracle://tracker/${encodeURIComponent(trackerId)}?orgId=${encodeURIComponent(orgId)}`;
 }
 
 /**

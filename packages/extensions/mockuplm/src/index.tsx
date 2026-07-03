@@ -1,7 +1,7 @@
 /**
  * MockupLM Extension
  *
- * A Nimbalyst extension for creating and editing visual UX mockups using HTML/CSS.
+ * An Auracle extension for creating and editing visual UX mockups using HTML/CSS.
  *
  * This extension provides:
  * - A custom editor for .mockup.html files

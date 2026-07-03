@@ -21,11 +21,11 @@ import { ModelIdentifier } from '@nimbalyst/runtime/ai/server/types';
 import { normalizeClaudeCodeVariant } from '@nimbalyst/runtime/ai/modelConstants';
 
 /**
- * Resolve a Nimbalyst model id to the alias the genuine `claude` CLI accepts for
+ * Resolve an Auracle model id to the alias the genuine `claude` CLI accepts for
  * `--model` (`opus` / `sonnet` / `haiku`, with an optional `[1m]` suffix).
  *
- * Nimbalyst stores the combined `provider:variant` form (e.g.
- * `claude-code-cli:opus-1m`); the provider prefix and Nimbalyst's internal `-1m`
+ * Auracle stores the combined `provider:variant` form (e.g.
+ * `claude-code-cli:opus-1m`); the provider prefix and Auracle's internal `-1m`
  * suffix are not valid `claude --model` values. For extended-context variants we
  * translate `-1m` to the CLI's own `[1m]` form (e.g. `opus[1m]`) so the launched
  * session actually runs at 1M context — the CLI strips `[1m]` before sending the
@@ -66,10 +66,10 @@ export interface ClaudeCliSpawnInput {
   /** Path to the sessionId-bearing MCP config file written for this session. */
   mcpConfigPath?: string;
   /**
-   * Nimbalyst session id. When it is a valid UUID and we're not resuming, it is
+   * Auracle session id. When it is a valid UUID and we're not resuming, it is
    * passed as `--session-id` so the CLI's own session id equals ours — making
    * the proxy/jsonl observation paths deterministically attributable to this
-   * Nimbalyst session. Ignored if `resumeSessionId` is set (the two conflict).
+   * Auracle session. Ignored if `resumeSessionId` is set (the two conflict).
    */
   sessionId?: string;
   /** Resolved Claude model variant (e.g. `opus`, `sonnet`). */
@@ -91,7 +91,7 @@ export interface ClaudeCliSpawnInput {
    * Names of trusted MCP servers to pre-allow (NIM-806 BUG 2). Each becomes a
    * server-level `mcp__<server>` entry in `--allowedTools`, so the genuine CLI
    * never shows its built-in TUI permission prompt for those servers' tools (our
-   * own Nimbalyst MCP servers — they render durable-prompt widgets and are answered
+   * own Auracle MCP servers — they render durable-prompt widgets and are answered
    * over IPC, so a second TUI gate double-prompts on top of the widget). Built-in
    * Bash/Edit/Write are deliberately NOT included — they keep the normal gate.
    */
@@ -99,7 +99,7 @@ export interface ClaudeCliSpawnInput {
   /**
    * JSON string for `--settings` (NIM-806 Phase 4, Direction A). Used to register
    * a `PreToolUse` permission hook so built-in Bash/Edit/Write requests route to
-   * a Nimbalyst ToolPermission widget instead of the native TUI prompt. (The
+   * an Auracle ToolPermission widget instead of the native TUI prompt. (The
    * interactive CLI ignores `--permission-prompt-tool`; a PreToolUse hook is the
    * mechanism that works interactively.) The CLI accepts a JSON string or a file
    * path here. Omit to keep the native gate.
@@ -158,7 +158,7 @@ export interface ClaudeCliSpawnConfig {
  * - `ANTHROPIC_API_KEY` — CLAUDE.md implicit-API-key rule: a stray shell key must
  *   never override (or get billed against) the CLI's own subscription login.
  * - `CLAUDECODE` — the running `claude` CLI sets this in its child env so nested
- *   processes know they're inside a Claude Code session. If Nimbalyst itself was
+ *   processes know they're inside a Claude Code session. If Auracle itself was
  *   launched from inside a `claude` session (e.g. dev started from Claude Code),
  *   the main process inherits `CLAUDECODE=1` and would forward it to our spawned
  *   CLI, which can then refuse to start.
@@ -169,7 +169,7 @@ const FORBIDDEN_ENV_KEYS: readonly string[] = ['ANTHROPIC_API_KEY', 'CLAUDECODE'
  * Built-in CLI tools we deny so the model uses our MCP equivalents instead.
  *
  * The genuine `claude` CLI ships its own built-in `AskUserQuestion` that renders
- * in the TUI and never routes through MCP — so a Nimbalyst durable-prompt widget
+ * in the TUI and never routes through MCP — so an Auracle durable-prompt widget
  * can't observe or answer it. Denying it forces the model onto our
  * `mcp__nimbalyst__AskUserQuestion`, which blocks on IPC and is answered by
  * the widget rendered above the terminal (NIM-806).
@@ -193,7 +193,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  * reliability.
  */
 const CLAUDE_CLI_INTERACTIVE_TOOLS_NUDGE = [
-  'You are running inside Nimbalyst, a desktop GUI that manages your session.',
+  'You are running inside Auracle, a desktop GUI that manages your session.',
   'When you need user input, a decision, or disambiguation, call the',
   'mcp__nimbalyst__AskUserQuestion tool (multiple-choice) or the',
   'mcp__nimbalyst__PromptForUserInput tool (richer structured input) —',
@@ -203,7 +203,7 @@ const CLAUDE_CLI_INTERACTIVE_TOOLS_NUDGE = [
 
 /**
  * Session-naming nudge. Unlike the Agent-SDK path, the genuine CLI never
- * receives Nimbalyst's full system prompt (we only `--append-system-prompt` a
+ * receives Auracle's full system prompt (we only `--append-system-prompt` a
  * snippet), and it has no out-of-band naming path (the SDK names sessions via
  * the in-process `generateSessionTitle`, which an external process can't reach).
  * So without this nudge a `claude-code-cli` session is never named at all. The
@@ -243,10 +243,10 @@ export function buildClaudeCliSpawnConfig(input: ClaudeCliSpawnInput): ClaudeCli
     // ONLY this snapshot and does NOT merge its own discovery (~/.claude.json,
     // project .mcp.json, .claude/settings.json, claude.ai connectors). Without it
     // the binary loads every server it finds in ~/.claude.json — ignoring the
-    // `disabled` flag Nimbalyst writes — so user-disabled third-party servers leak
+    // `disabled` flag Auracle writes — so user-disabled third-party servers leak
     // into CLI sessions and eat context. The snapshot already carries the enabled
     // set (filtered by isMCPServerEnabledForProvider), so strict mode gives the
-    // Nimbalyst toggle the same authority over CLI sessions as the SDK path.
+    // Auracle toggle the same authority over CLI sessions as the SDK path.
     args.push('--strict-mcp-config');
   }
   if (input.resumeSessionId) {
@@ -267,7 +267,7 @@ export function buildClaudeCliSpawnConfig(input: ClaudeCliSpawnInput): ClaudeCli
     args.push('--dangerously-skip-permissions');
   }
   // Register the PreToolUse permission hook via --settings so built-in tool
-  // prompts route to a Nimbalyst widget (NIM-806 Phase 4). Value-bearing flag —
+  // prompts route to an Auracle widget (NIM-806 Phase 4). Value-bearing flag —
   // MUST precede the `--allowedTools`/`--disallowedTools` variadics below so its
   // single JSON value isn't swallowed by a variadic.
   if (input.settingsJson) {
@@ -298,7 +298,7 @@ export function buildClaudeCliSpawnConfig(input: ClaudeCliSpawnInput): ClaudeCli
   for (const dir of pluginDirs) {
     args.push('--plugin-dir', dir);
   }
-  // Pre-allow our trusted Nimbalyst MCP servers at the server level so the genuine
+  // Pre-allow our trusted Auracle MCP servers at the server level so the genuine
   // CLI doesn't double-prompt (its built-in TUI permission gate) on top of the
   // durable-prompt widget we render (NIM-806 BUG 2). Server-level `mcp__<server>`
   // allows all of that server's tools; built-in Bash/Edit/Write are NOT listed and
@@ -333,7 +333,7 @@ export function buildClaudeCliSpawnConfig(input: ClaudeCliSpawnInput): ClaudeCli
   // Defer MCP tool descriptions out of the upfront context, matching the Agent
   // SDK path (sdkOptionsBuilder.ts sets the same `auto:2`). Without this the
   // genuine CLI loads EVERY enabled server's full tool schema into the system
-  // prompt on turn 1: with Nimbalyst's core MCP servers in the `--mcp-config`
+  // prompt on turn 1: with Auracle's core MCP servers in the `--mcp-config`
   // snapshot that is ~30K+ tokens of "MCP tools" baseline (observed via
   // `/context`) — whereas the SDK session shows the same servers as deferred
   // (~800 active). `auto:N` defers a server's tools when their descriptions
@@ -361,7 +361,7 @@ export function buildClaudeCliSpawnConfig(input: ClaudeCliSpawnInput): ClaudeCli
 
   // On Windows, node-pty runs a `.cmd`/`.bat` through cmd.exe, which is
   // line-oriented: a newline inside an argument truncates the command line at
-  // that point, dropping everything after it. Nimbalyst passes a multi-line
+  // that point, dropping everything after it. Auracle passes a multi-line
   // `--append-system-prompt`, so collapse CR/LF runs to a single space for the
   // `.cmd`/`.bat` launch path. The append is plain instructions, so single-lining
   // is semantically harmless; a real `.exe` or the SDK path is unaffected. (#684)

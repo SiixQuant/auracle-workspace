@@ -1,6 +1,6 @@
 /**
- * Background service worker for Nimbalyst Web Clipper
- * Handles context menus, message routing, and sending clips to Nimbalyst
+ * Background service worker for Auracle Web Clipper
+ * Handles context menus, message routing, and sending clips to Auracle
  */
 
 /**
@@ -9,21 +9,21 @@
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: 'clip-page',
-    title: 'Clip page to Nimbalyst',
+    title: 'Clip page to Auracle',
     contexts: ['page', 'selection'],
   });
 
   chrome.contextMenus.create({
     id: 'clip-selection',
-    title: 'Clip selection to Nimbalyst',
+    title: 'Clip selection to Auracle',
     contexts: ['selection'],
   });
 
-  console.log('Nimbalyst Web Clipper installed');
+  console.log('Auracle Web Clipper installed');
 });
 
 /**
- * Send clip to Nimbalyst via its local HTTP server.
+ * Send clip to Auracle via its local HTTP server.
  * Tries ports 3456-3465 to find the running MCP server.
  */
 async function sendClipToNimbalyst(clipData) {
@@ -45,15 +45,15 @@ async function sendClipToNimbalyst(clipData) {
 
       clearTimeout(timeout);
 
-      // Any JSON response from /clip means we found Nimbalyst
+      // Any JSON response from /clip means we found Auracle
       const result = await response.json().catch(() => null);
 
       if (response.ok) {
-        console.log(`Clip sent to Nimbalyst on port ${port}:`, result?.path);
+        console.log(`Clip sent to Auracle on port ${port}:`, result?.path);
         return { success: true };
       } else {
         // Server responded but with an error
-        console.error(`Nimbalyst responded with error on port ${port}:`, result);
+        console.error(`Auracle responded with error on port ${port}:`, result);
         return { success: false, error: result?.error || `Server error: ${response.status}` };
       }
     } catch {
@@ -61,8 +61,8 @@ async function sendClipToNimbalyst(clipData) {
     }
   }
 
-  console.error('Could not connect to Nimbalyst. Is it running?');
-  return { success: false, error: 'Could not connect to Nimbalyst. Is it running?' };
+  console.error('Could not connect to Auracle. Is it running?');
+  return { success: false, error: 'Could not connect to Auracle. Is it running?' };
 }
 
 /**
@@ -116,4 +116,4 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-console.log('Nimbalyst Web Clipper background service worker loaded');
+console.log('Auracle Web Clipper background service worker loaded');

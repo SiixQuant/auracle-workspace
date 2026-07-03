@@ -160,7 +160,7 @@ export class TrayManager {
     if (this.tray) return;
     const icon = this.getIconForState('idle');
     this.tray = new Tray(icon);
-    this.tray.setToolTip('Nimbalyst');
+    this.tray.setToolTip('Auracle');
     this.rebuildMenu();
   }
 
@@ -467,7 +467,7 @@ export class TrayManager {
       click: () => this.handleNewSession(),
     });
     menuItems.push({
-      label: 'Open Nimbalyst',
+      label: 'Open Auracle',
       click: () => {
         const windows = BrowserWindow.getAllWindows();
         if (windows.length > 0) {

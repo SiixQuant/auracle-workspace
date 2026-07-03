@@ -1,8 +1,8 @@
 /**
- * GhApiService - Single source of truth for every GitHub call from Nimbalyst.
+ * GhApiService - Single source of truth for every GitHub call from Auracle.
  *
  * All requests are routed through `gh api ...` subprocesses, which means
- * Nimbalyst never sees or stores a GitHub credential — `gh` handles auth,
+ * Auracle never sees or stores a GitHub credential — `gh` handles auth,
  * rate-limit headers, host routing (GitHub Enterprise), and ETag caching
  * via its `--cache <seconds>` flag.
  *
@@ -546,7 +546,7 @@ async function resolveGhToken(login: string): Promise<string | null> {
   });
 }
 
-/** Resolves the gh account login Nimbalyst should use for a workspace's calls. */
+/** Resolves the gh account login Auracle should use for a workspace's calls. */
 export type GhAccountResolver = (workspaceId: string) => string | undefined;
 
 export class GhApiService {
@@ -897,7 +897,7 @@ export class GhApiService {
 
   // ----- Review / merge actions + access control -------------------------
 
-  /** The login of the gh account Nimbalyst uses for this workspace's calls. */
+  /** The login of the gh account Auracle uses for this workspace's calls. */
   async getViewerLogin(workspaceId: string): Promise<string | null> {
     const stdout = await this.ghApi(
       buildApiArgs('user', { cacheSeconds: 300 }),

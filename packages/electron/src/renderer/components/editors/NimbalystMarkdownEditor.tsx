@@ -1,7 +1,7 @@
 /**
  * NimbalystMarkdownEditor - Pre-configured MarkdownEditor for extensions.
  *
- * Wraps the raw MarkdownEditor with Nimbalyst platform integrations so
+ * Wraps the raw MarkdownEditor with Auracle platform integrations so
  * extensions get the full editing experience without manual wiring:
  * - Image double-click opens in default app
  * - Image drag triggers native drag

@@ -89,11 +89,11 @@ export function QRPairingModal({ isOpen, onClose, serverUrl, preventSleepMode, o
       const payload = await window.electronAPI.credentials.generateQRPayload(effectiveUrl);
       setQRPayload(payload);
 
-      // Wrap payload in a nimbalyst:// deep link URL so the iOS Camera app
-      // can open Nimbalyst directly when scanning. The payload stays local —
+      // Wrap payload in a auracle:// deep link URL so the iOS Camera app
+      // can open Auracle directly when scanning. The payload stays local —
       // it goes from screen -> camera -> app, never touches a server.
       const payloadBase64 = btoa(JSON.stringify(payload));
-      const deepLinkUrl = `nimbalyst://pair?data=${encodeURIComponent(payloadBase64)}`;
+      const deepLinkUrl = `auracle://pair?data=${encodeURIComponent(payloadBase64)}`;
 
       // Generate QR code data URL
       const dataUrl = await QRCode.toDataURL(deepLinkUrl, {
@@ -223,7 +223,7 @@ export function QRPairingModal({ isOpen, onClose, serverUrl, preventSleepMode, o
               </div>
 
               <div className="qr-instructions text-sm text-nim-muted space-y-1 mb-4">
-                <p className="qr-step">1. Open Nimbalyst on your mobile device</p>
+                <p className="qr-step">1. Open Auracle on your mobile device</p>
                 <p className="qr-step">2. Go to Settings and tap "Scan QR Code"</p>
                 <p className="qr-step">3. Point your camera at this QR code</p>
                 <p className="qr-step">4. Sign in with the same account as desktop</p>

@@ -1,5 +1,5 @@
 /**
- * TranscriptMathHost is mounted by the host as a Nimbalyst `hostComponent`.
+ * TranscriptMathHost is mounted by the host as an Auracle `hostComponent`.
  *
  * On mount it contributes `remark-math` / `rehype-katex` to the transcript
  * markdown registry; on unmount it clears its own registrations. The shared

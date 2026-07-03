@@ -1,7 +1,7 @@
 {
   "name": "@nimbalyst/extension-browser",
   "version": "1.0.0",
-  "description": "Browser extension for Nimbalyst -- WebContentsView-backed editor for HTML files and browser sessions",
+  "description": "Browser extension for Auracle -- WebContentsView-backed editor for HTML files and browser sessions",
   "main": "dist/index.mjs",
   "type": "module",
   "scripts": {

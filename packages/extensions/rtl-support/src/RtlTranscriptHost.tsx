@@ -1,11 +1,11 @@
 /**
- * RtlTranscriptHost — a host component mounted by Nimbalyst that registers
+ * RtlTranscriptHost — a host component mounted by Auracle that registers
  * transcript markdown contributions.
  *
  * Three-pronged strategy:
  *  1. rehypePlugin: dir attribute on hAST nodes (fallback for standard renderers)
  *  2. component overrides: p, li, blockquote, h1-h6, table/td/th — the main path
- *     (Nimbalyst's MarkdownRenderer uses custom React components)
+ *     (Auracle's MarkdownRenderer uses custom React components)
  *  3. inline detection (optional): isolates RTL runs within LTR paragraphs
  */
 

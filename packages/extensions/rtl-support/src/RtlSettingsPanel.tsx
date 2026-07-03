@@ -1,5 +1,5 @@
 /**
- * RtlSettingsPanel — the extension settings panel inside Nimbalyst Settings.
+ * RtlSettingsPanel — the extension settings panel inside Auracle Settings.
  *
  * Lets users configure RTL settings without editing JSON:
  *  - enabled (toggle)

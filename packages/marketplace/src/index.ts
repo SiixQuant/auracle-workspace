@@ -1,5 +1,5 @@
 /**
- * Nimbalyst Extension Marketplace Worker
+ * Auracle Extension Marketplace Worker
  *
  * Serves the extension registry and .nimext packages from R2,
  * with KV-based download counting.

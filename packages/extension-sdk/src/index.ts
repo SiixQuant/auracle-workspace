@@ -1,7 +1,7 @@
 /**
- * Nimbalyst Extension SDK
+ * Auracle Extension SDK
  *
- * This package provides utilities for building Nimbalyst extensions:
+ * This package provides utilities for building Auracle extensions:
  * - Vite configuration helpers
  * - TypeScript types
  * - Build validation

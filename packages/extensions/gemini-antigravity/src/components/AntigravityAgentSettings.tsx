@@ -188,7 +188,7 @@ export function AntigravityAgentSettings({
               Gemini 3.5 Flash (Agent)
             </h3>
             <p className="provider-panel-description text-sm leading-relaxed text-[var(--nim-text-muted)]">
-              Agent provider that runs a Nimbalyst-orchestrated tool loop
+              Agent provider that runs an Auracle-orchestrated tool loop
               over Gemini 3.5 Flash. Auth uses your existing ~/.gemini
               login.
             </p>
@@ -202,7 +202,7 @@ export function AntigravityAgentSettings({
               Native code grant required
             </h4>
             <p className="text-[13px] leading-relaxed text-[var(--nim-text-muted)] mb-3">
-              This provider ships a backend module that Nimbalyst runs
+              This provider ships a backend module that Auracle runs
               in an isolated <code>utilityProcess</code>. Enabling it
               grants the extension permission to execute native code on
               your machine.
@@ -213,7 +213,7 @@ export function AntigravityAgentSettings({
             <ul className="text-[13px] leading-relaxed text-[var(--nim-text-muted)] mb-3 ml-5 list-disc">
               <li>
                 <code>nimbalyst-database-write</code> - persist agent
-                transcripts and tool-call records to the local Nimbalyst
+                transcripts and tool-call records to the local Auracle
                 database.
               </li>
             </ul>
@@ -244,7 +244,7 @@ export function AntigravityAgentSettings({
               </button>
             ) : (
               <p className="text-[12px] text-[var(--nim-text-muted)] italic">
-                Consent flow is unavailable in this host. Update Nimbalyst
+                Consent flow is unavailable in this host. Update Auracle
                 to the latest version to enable the Antigravity backend
                 module.
               </p>
@@ -266,8 +266,8 @@ export function AntigravityAgentSettings({
             Gemini 3.5 Flash (Agent)
           </h3>
           <p className="provider-panel-description text-sm leading-relaxed text-[var(--nim-text-muted)]">
-            Agent provider that runs a Nimbalyst-orchestrated tool loop over
-            Gemini 3.5 Flash. Supports meta-agent mode and the full Nimbalyst
+            Agent provider that runs an Auracle-orchestrated tool loop over
+            Gemini 3.5 Flash. Supports meta-agent mode and the full Auracle
             tool registry. Auth uses your existing ~/.gemini login.
           </p>
         </div>

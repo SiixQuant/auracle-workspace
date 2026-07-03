@@ -1,7 +1,7 @@
 /**
  * Shared internal-MCP-server configuration.
  *
- * Single source of truth for the deps that decide WHICH internal Nimbalyst MCP
+ * Single source of truth for the deps that decide WHICH internal Auracle MCP
  * servers/tools an agent session gets. Previously every agent provider
  * (ClaudeCode, OpenAICodex, OpenAICodexACP, OpenCode, CopilotCLI) plus the
  * `claude-code-cli` launcher carried its own static copy of each port/loader,
@@ -57,7 +57,7 @@ export function configureMcpServers(partial: Partial<SharedMcpServerConfig>): vo
 
 /**
  * True once the unified internal MCP HTTP server is up. Proxy for "the agent
- * gets Nimbalyst's internal tools" — e.g. `update_session_meta` (eager core),
+ * gets Auracle's internal tools" — e.g. `update_session_meta` (eager core),
  * which providers use to decide whether to include the session-naming prompt.
  */
 export function isInternalMcpServerEnabled(): boolean {

@@ -246,7 +246,7 @@ export function useOnboarding({
           },
           onDownload: () => {
             posthog?.capture('rosetta_warning_download_clicked');
-            window.electronAPI.openExternal('https://nimbalyst.com');
+            window.electronAPI.openExternal('https://aurapointcapital.com');
           },
         });
       }

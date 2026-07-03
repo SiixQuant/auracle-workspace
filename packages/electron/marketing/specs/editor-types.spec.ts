@@ -1,7 +1,7 @@
 /**
  * Editor Type Screenshots
  *
- * Showcase the variety of editors and file types Nimbalyst handles.
+ * Showcase the variety of editors and file types Auracle handles.
  * Each is captured in both dark and light themes.
  */
 

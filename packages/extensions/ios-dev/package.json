@@ -1,7 +1,7 @@
 {
   "name": "@nimbalyst/extension-ios-dev",
   "version": "0.1.0",
-  "description": "iOS development tools extension for Nimbalyst",
+  "description": "iOS development tools extension for Auracle",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsup",

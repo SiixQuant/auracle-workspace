@@ -38,7 +38,7 @@ export default defineConfig({
         // Lexical - extensions contribute nodes to host's editor
         'lexical',
         /^@lexical\//,
-        // Nimbalyst services
+        // Auracle services
         /^@nimbalyst\/runtime/,
         '@nimbalyst/editor-context',
         // yJS must resolve to the host's copy at runtime -- `instanceof Y.Doc`

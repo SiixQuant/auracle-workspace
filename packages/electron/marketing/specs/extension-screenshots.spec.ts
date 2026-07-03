@@ -161,7 +161,7 @@ test.beforeAll(async () => {
   const git = (cmd: string) => execSync(cmd, { cwd: workspaceDir, stdio: 'pipe' });
   git('git init');
   git('git config user.email "demo@nimbalyst.com"');
-  git('git config user.name "Nimbalyst Demo"');
+  git('git config user.name "Auracle Demo"');
 
   // Create a series of realistic commits
   const commits = [

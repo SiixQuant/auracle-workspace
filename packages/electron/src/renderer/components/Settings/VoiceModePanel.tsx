@@ -413,10 +413,10 @@ export const VoiceModePanel: React.FC<VoiceModePanelProps> = ({
               <h4 className="text-sm font-medium text-[var(--nim-text)] mb-1">Microphone access not granted</h4>
               <p className="text-xs text-[var(--nim-text-muted)] mb-3">
                 {micStatus === 'denied'
-                  ? 'Voice Mode needs microphone access. Enable it for Nimbalyst in System Settings, then re-check below.'
+                  ? 'Voice Mode needs microphone access. Enable it for Auracle in System Settings, then re-check below.'
                   : micStatus === 'restricted'
                   ? 'Microphone access is restricted on this device (e.g. by parental controls or MDM). Voice Mode cannot capture audio.'
-                  : 'Voice Mode needs microphone access. Open System Settings to grant it for Nimbalyst.'}
+                  : 'Voice Mode needs microphone access. Open System Settings to grant it for Auracle.'}
               </p>
               <div className="flex items-center gap-2">
                 {micPlatform === 'darwin' && (

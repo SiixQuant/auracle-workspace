@@ -17,7 +17,7 @@ import * as os from 'os';
 import { encodeWorkspaceDir, scanAllSessions } from '../ClaudeCodeSessionScanner';
 import { syncSession } from '../ClaudeCodeSessionSync';
 
-const WORKSPACE_PATH = '/Users/test/Desktop/Nimbalyst Projects/Test Nimbalyst';
+const WORKSPACE_PATH = '/Users/test/Desktop/Auracle Projects/Test Auracle';
 const ENCODED = encodeWorkspaceDir(WORKSPACE_PATH);
 const SESSION_ID = '218341c0-aaaa-4bbb-8ccc-dddddddddddd';
 const TIMESTAMP = '2026-04-01T10:00:00.000Z';
@@ -66,7 +66,7 @@ afterEach(async () => {
 
 describe('Claude Code import for workspace paths with spaces', () => {
   it('encodes the workspace path the same way Claude Code does', () => {
-    expect(ENCODED).toBe('-Users-test-Desktop-Nimbalyst-Projects-Test-Nimbalyst');
+    expect(ENCODED).toBe('-Users-test-Desktop-Auracle-Projects-Test-Auracle');
   });
 
   it('scanner finds the session under the spaced workspace path', async () => {

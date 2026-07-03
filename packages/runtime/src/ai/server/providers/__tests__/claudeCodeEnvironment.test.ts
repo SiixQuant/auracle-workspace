@@ -52,15 +52,15 @@ describe('claudeCodeEnvironment', () => {
 
   it('uses unpacked node_modules in packaged mode', async () => {
     mockApp.isPackaged = true;
-    mockApp.getAppPath.mockReturnValue('/Applications/Nimbalyst.app/Contents/Resources/app.asar');
+    mockApp.getAppPath.mockReturnValue('/Applications/Auracle.app/Contents/Resources/app.asar');
 
     vi.spyOn(fs, 'existsSync').mockImplementation((candidate) => (
-      String(candidate) === '/Applications/Nimbalyst.app/Contents/Resources/app.asar.unpacked/node_modules'
+      String(candidate) === '/Applications/Auracle.app/Contents/Resources/app.asar.unpacked/node_modules'
     ));
 
     const { setupClaudeCodeEnvironment } = await import('../../../../electron/claudeCodeEnvironment');
     const env = setupClaudeCodeEnvironment();
 
-    expect(env.NODE_PATH).toBe('/Applications/Nimbalyst.app/Contents/Resources/app.asar.unpacked/node_modules');
+    expect(env.NODE_PATH).toBe('/Applications/Auracle.app/Contents/Resources/app.asar.unpacked/node_modules');
   });
 });

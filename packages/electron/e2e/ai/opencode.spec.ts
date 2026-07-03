@@ -145,7 +145,7 @@ test('opencode: AskUserQuestion roundtrip and file edit tracking', async () => {
   );
 
   // Wait for the session-files tracker to register the edit. This is the
-  // actual point of the test: it proves Nimbalyst saw OpenCode's `write`
+  // actual point of the test: it proves Auracle saw OpenCode's `write`
   // tool call and recorded it via SessionFileTracker. The
   // FilesEditedSidebar reads from this same IPC.
   await expect.poll(

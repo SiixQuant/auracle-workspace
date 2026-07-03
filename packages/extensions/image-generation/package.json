@@ -1,7 +1,7 @@
 {
   "name": "@nimbalyst/image-generation-extension",
   "version": "1.0.0",
-  "description": "AI-powered image generation extension for Nimbalyst",
+  "description": "AI-powered image generation extension for Auracle",
   "main": "dist/index.js",
   "types": "src/index.tsx",
   "scripts": {

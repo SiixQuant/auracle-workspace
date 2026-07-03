@@ -1,7 +1,7 @@
 /**
  * Round-trip tests for tracker reference markdown handling.
  *
- * A tracker reference is stored as `[NIM-123](nimbalyst://NIM-123)` and must:
+ * A tracker reference is stored as `[NIM-123](auracle://NIM-123)` and must:
  *  - import into a TrackerReferenceNode carrying ONLY the reference key,
  *  - export back to the same markdown,
  *  - not be captured by the document-link transformer (which excludes `://`).
@@ -50,11 +50,11 @@ describe('TrackerReferenceTransformer', () => {
     editor = makeEditor();
   });
 
-  it('imports a nimbalyst:// link into a TrackerReferenceNode with only the key', () => {
+  it('imports a auracle:// link into a TrackerReferenceNode with only the key', () => {
     editor.update(
       () => {
         $convertFromEnhancedMarkdownString(
-          'See [NIM-123](nimbalyst://NIM-123) for details.',
+          'See [NIM-123](auracle://NIM-123) for details.',
           getTestTransformers(),
         );
       },
@@ -80,11 +80,11 @@ describe('TrackerReferenceTransformer', () => {
     expect(found!.getReferenceKey()).toBe('NIM-123');
   });
 
-  it('round-trips [NIM-123](nimbalyst://NIM-123) back to identical markdown', () => {
+  it('round-trips [NIM-123](auracle://NIM-123) back to identical markdown', () => {
     editor.update(
       () => {
         $convertFromEnhancedMarkdownString(
-          'See [NIM-123](nimbalyst://NIM-123) for details.',
+          'See [NIM-123](auracle://NIM-123) for details.',
           getTestTransformers(),
         );
       },
@@ -99,14 +99,14 @@ describe('TrackerReferenceTransformer', () => {
       { discrete: true },
     );
 
-    expect(exported).toContain('[NIM-123](nimbalyst://NIM-123)');
+    expect(exported).toContain('[NIM-123](auracle://NIM-123)');
   });
 
   it('supports local short-id reference keys (tk_...)', () => {
     editor.update(
       () => {
         $convertFromEnhancedMarkdownString(
-          '[tk_a1b2c3](nimbalyst://tk_a1b2c3)',
+          '[tk_a1b2c3](auracle://tk_a1b2c3)',
           getTestTransformers(),
         );
       },
@@ -121,6 +121,6 @@ describe('TrackerReferenceTransformer', () => {
       { discrete: true },
     );
 
-    expect(exported).toContain('[tk_a1b2c3](nimbalyst://tk_a1b2c3)');
+    expect(exported).toContain('[tk_a1b2c3](auracle://tk_a1b2c3)');
   });
 });

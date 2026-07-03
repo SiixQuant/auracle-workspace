@@ -22,7 +22,7 @@ export interface MCPRemoteConfigDescriptor {
 
 export interface MCPRemoteConfigOptions {
   /**
-   * Codex cannot use native remote OAuth client metadata directly, so Nimbalyst
+   * Codex cannot use native remote OAuth client metadata directly, so Auracle
    * wraps those servers with mcp-remote at runtime. In that provider path, auth
    * status must be checked against mcp-remote's cache instead of treating the
    * native OAuth config as provider-managed.

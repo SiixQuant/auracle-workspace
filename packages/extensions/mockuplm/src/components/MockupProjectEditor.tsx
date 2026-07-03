@@ -1,7 +1,7 @@
 /**
  * MockupProjectEditor - Main editor for .mockupproject files.
  *
- * Integrates with Nimbalyst's EditorHost via useEditorLifecycle.
+ * Integrates with Auracle's EditorHost via useEditorLifecycle.
  * Content state lives in a Zustand store (same pattern as DataModelLM).
  */
 

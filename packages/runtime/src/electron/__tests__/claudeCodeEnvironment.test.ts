@@ -5,7 +5,7 @@ const {
   getAppPathMock,
 } = vi.hoisted(() => ({
   existsSyncMock: vi.fn<(candidate: string) => boolean>(),
-  getAppPathMock: vi.fn(() => '/Applications/Nimbalyst.app/Contents/Resources/app.asar'),
+  getAppPathMock: vi.fn(() => '/Applications/Auracle.app/Contents/Resources/app.asar'),
 }));
 
 vi.mock('electron', () => ({

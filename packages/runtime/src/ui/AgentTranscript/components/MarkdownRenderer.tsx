@@ -304,8 +304,8 @@ const WINDOWS_DRIVE_PATH_RE = /^\/?([A-Za-z]:[\\/].*)$/;
  * react-markdown's `defaultUrlTransform` treats a Windows drive letter (`D:`)
  * as a URL scheme. Since `d:` isn't an allowed protocol it blanks the href to
  * `''`, which made Windows file links render as `<a href="">` and open a blank
- * window on click (GitHub #744). It likewise blanks our `nimbalyst://` tracker
- * reference URNs, which made `[NIM-123](nimbalyst://NIM-123)` links fall through
+ * window on click (GitHub #744). It likewise blanks our `auracle://` tracker
+ * reference URNs, which made `[NIM-123](auracle://NIM-123)` links fall through
  * to a blank `<a>` (the tracker-chip check in the `a` renderer never saw the
  * href) and open an empty window on click. Preserve Windows absolute paths and
  * tracker reference URNs verbatim, and delegate everything else to the default
@@ -323,7 +323,7 @@ export function transcriptUrlTransform(url: string): string {
 }
 
 /**
- * Returns the tracker reference key for a `nimbalyst://<key>` href, or null.
+ * Returns the tracker reference key for a `auracle://<key>` href, or null.
  */
 export function parseTrackerReferenceHref(href?: string): string | null {
   if (!href) return null;
@@ -625,7 +625,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           ),
           // Links
           a: ({ href, children, node }: any) => {
-            // Tracker reference links (`nimbalyst://NIM-123`) render as a live
+            // Tracker reference links (`auracle://NIM-123`) render as a live
             // status chip instead of an anchor.
             const trackerKey = parseTrackerReferenceHref(href);
             if (trackerKey) {

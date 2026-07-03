@@ -15,7 +15,7 @@ describe('extractItemCustomFields (NIM-863)', () => {
       title: 'fix: thing (#321)',
       status: 'backlog',
       customFields: {
-        prUrl: { url: 'https://github.com/nimbalyst/nimbalyst/pull/335', label: '#335' },
+        prUrl: { url: 'https://github.com/SiixQuant/auracle-workspace/pull/335', label: '#335' },
         author: 'ademczuk',
         prNumber: 335,
       },
@@ -24,7 +24,7 @@ describe('extractItemCustomFields (NIM-863)', () => {
 
     const cf = extractItemCustomFields(data, KNOWN);
     // The PR fields are lifted to the top level of the customFields bag...
-    expect(cf?.prUrl).toEqual({ url: 'https://github.com/nimbalyst/nimbalyst/pull/335', label: '#335' });
+    expect(cf?.prUrl).toEqual({ url: 'https://github.com/SiixQuant/auracle-workspace/pull/335', label: '#335' });
     expect(cf?.author).toBe('ademczuk');
     expect(cf?.prNumber).toBe(335);
     // ...top-level extras are still preserved...

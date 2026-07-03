@@ -267,7 +267,7 @@ export const CollabSidebar: React.FC<CollabSidebarProps> = ({
       await navigator.clipboard.writeText(url);
       errorNotificationService.showInfo(
         'Link copied',
-        'Paste it anywhere to open this document in Nimbalyst.',
+        'Paste it anywhere to open this document in Auracle.',
         { duration: 3000 }
       );
     } catch (err) {

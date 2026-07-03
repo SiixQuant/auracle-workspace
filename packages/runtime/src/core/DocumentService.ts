@@ -91,7 +91,7 @@ export interface ExternalSourceRef {
 }
 
 /**
- * How a local tracker item entered Nimbalyst. Replaces the loose
+ * How a local tracker item entered Auracle. Replaces the loose
  * `source`/`sourceRef` pair (kept deprecated for one release for back-compat).
  * Absent on legacy items — default to `{ kind: 'native' }` at read time via
  * {@link normalizeTrackerOrigin}.
@@ -173,7 +173,7 @@ export interface TrackerItem {
   /** When the item was archived */
   archivedAt?: string;
   /**
-   * Structured origin record: how the item entered Nimbalyst and, for imports,
+   * Structured origin record: how the item entered Auracle and, for imports,
    * a pointer back to the upstream source. Absent on legacy items — default to
    * `{ kind: 'native' }` at read time via {@link normalizeTrackerOrigin}.
    */

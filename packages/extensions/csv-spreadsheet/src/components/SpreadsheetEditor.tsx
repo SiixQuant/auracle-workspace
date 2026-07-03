@@ -1,7 +1,7 @@
 /**
  * SpreadsheetEditor Component
  *
- * The main editor component for CSV files. Integrates with Nimbalyst's
+ * The main editor component for CSV files. Integrates with Auracle's
  * custom editor system and provides a spreadsheet-like editing experience.
  *
  * Architecture:

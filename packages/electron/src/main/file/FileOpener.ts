@@ -1,5 +1,5 @@
 /**
- * FileOpener - Single, clean API for opening files in Nimbalyst
+ * FileOpener - Single, clean API for opening files in Auracle
  *
  * This is the ONLY way files should be opened in the application.
  * All other file-opening code paths should route through this service.
@@ -141,7 +141,7 @@ export async function openFile(options: OpenFileOptions): Promise<OpenFileResult
   // Note: Extensions can register custom editors for file types
   if (shouldExcludeFile(filePath)) {
     const ext = extname(filePath).toLowerCase();
-    throw new Error(`Cannot open ${ext} files. Nimbalyst does not support that file type yet.`);
+    throw new Error(`Cannot open ${ext} files. Auracle does not support that file type yet.`);
   }
 
   // Determine target window

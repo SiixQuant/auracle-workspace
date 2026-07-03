@@ -1,5 +1,5 @@
 /**
- * Root extension for the Nimbalyst editor shell.
+ * Root extension for the Auracle editor shell.
  *
  * `LexicalExtensionComposer` accepts a single root `LexicalExtension`. We
  * build it here so adding or removing a plugin is a one-line change in
@@ -95,7 +95,7 @@ export interface NimbalystRootExtensionOptions {
    */
   onUploadAsset?: (file: File) => Promise<UploadedEditorAsset>;
   /**
-   * Additional `LexicalExtension` instances contributed by Nimbalyst
+   * Additional `LexicalExtension` instances contributed by Auracle
    * extensions (via `contributions.lexicalExtensions` in their manifest).
    * Appended to the built-in dependency list. Changing this array rebuilds
    * the editor instance, which matches the Phase 7 design decision that
@@ -130,7 +130,7 @@ export function buildNimbalystRootExtension(
         ? { rel: 'noopener noreferrer', target: '_blank' }
         : undefined,
     }),
-    // Nimbalyst headless extensions (formerly React plugins or
+    // Auracle headless extensions (formerly React plugins or
     // pluginRegistry entries)
     AutoLinkExtension,
     CollabAssetLinkExtension,
@@ -178,7 +178,7 @@ export function buildNimbalystRootExtension(
 
   return defineExtension({
     name: '@nimbalyst/editor/root',
-    namespace: 'Nimbalyst',
+    namespace: 'Auracle',
     nodes: EditorNodes,
     theme: NimbalystEditorTheme,
     editable: options.editable ?? true,

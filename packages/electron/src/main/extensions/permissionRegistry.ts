@@ -48,14 +48,14 @@ const CATALOG: readonly PermissionDescriptor[] = [
   },
   {
     id: 'nimbalyst-database-read',
-    label: 'Read Nimbalyst database',
-    description: "Read Nimbalyst's local PGLite store (sessions, documents, trackers).",
+    label: 'Read Auracle database',
+    description: "Read Auracle's local PGLite store (sessions, documents, trackers).",
     risk: 'high',
   },
   {
     id: 'nimbalyst-database-write',
-    label: 'Write Nimbalyst database',
-    description: "Modify Nimbalyst's local PGLite store. Can change sessions, documents, trackers.",
+    label: 'Write Auracle database',
+    description: "Modify Auracle's local PGLite store. Can change sessions, documents, trackers.",
     risk: 'high',
   },
   {

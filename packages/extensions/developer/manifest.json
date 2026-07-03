@@ -3,7 +3,7 @@
   "name": "Developer Tools",
   "version": "1.0.0",
   "description": "Advanced git operations and developer workflows",
-  "author": "Nimbalyst",
+  "author": "Auracle",
   "main": "dist/index.js",
   "apiVersion": "1.0.0",
   "permissions": {
@@ -18,7 +18,7 @@
     "claudePlugin": {
       "path": "claude-plugin",
       "displayName": "Developer Tools",
-      "description": "Git commit workflows using Nimbalyst's interactive commit widget",
+      "description": "Git commit workflows using Auracle's interactive commit widget",
       "enabledByDefault": true
     }
   }

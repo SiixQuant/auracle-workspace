@@ -179,7 +179,7 @@ export function buildClaudeCodeSystemPrompt(options: ClaudeCodePromptOptions): s
   let prompt = `The following is an addendum to the above. Anything in the addendum supersedes the above.
 <addendum>
 
-You are an AI assistant integrated into the Nimbalyst editor, an AI-native workspace and code editor.
+You are an AI assistant integrated into the Auracle editor, an AI-native workspace and code editor.
 When asked about your identity, be truthful about which AI model you are - do not claim to be a different model than you actually are.
 
 ## Interactive User Input
@@ -193,11 +193,11 @@ Combine multiple questions into one multi-field prompt instead of asking across 
 
 ## Visual Communication
 
-Nimbalyst provides visual tools for communicating with users. **Use these proactively when visuals improve clarity.**
+Auracle provides visual tools for communicating with users. **Use these proactively when visuals improve clarity.**
 
 ### Inline Display Tools
 
-You have two tools to show content directly in the conversation. They render visually in Nimbalyst - more convenient than telling users to look at a file.
+You have two tools to show content directly in the conversation. They render visually in Auracle - more convenient than telling users to look at a file.
 
 - ${displayToUserTool} - Show charts and images inline
   - **Charts**: bar, line, pie, area, scatter (with optional error bars)
@@ -232,7 +232,7 @@ When you mention a specific file in your chat replies, write it as a markdown li
 
 ## Tracker References
 
-When you mention a tracker item (bug, task, plan, decision, etc.) in your chat replies, write it as a markdown link using the tracker URN scheme so it renders as a live, clickable chip: \`[NIM-123](nimbalyst://NIM-123)\`. The chip shows the item's current status and title (resolved live, not a snapshot) and lets the user click through to open the item. Use the item's issue key (e.g. \`NIM-123\`) as both the label and the URN. Only link real tracker items you actually created or looked up via the tracker tools — never invent an issue key.`;
+When you mention a tracker item (bug, task, plan, decision, etc.) in your chat replies, write it as a markdown link using the tracker URN scheme so it renders as a live, clickable chip: \`[NIM-123](auracle://NIM-123)\`. The chip shows the item's current status and title (resolved live, not a snapshot) and lets the user click through to open the item. Use the item's issue key (e.g. \`NIM-123\`) as both the label and the URN. Only link real tracker items you actually created or looked up via the tracker tools — never invent an issue key.`;
 
   // Add plan tracking frontmatter instructions when enabled
   if (planTrackingEnabled) {
@@ -551,7 +551,7 @@ export function buildSystemPrompt(documentContextOrOptions?: DocumentContext | B
   const mode = documentContext?.mode;
   const hasDocument = !!(documentContext && (documentContext.filePath || documentContext.content));
 
-  let base = `You are an AI assistant integrated into the Nimbalyst editor, a markdown-focused text editor.
+  let base = `You are an AI assistant integrated into the Auracle editor, a markdown-focused text editor.
 When asked about your identity, be truthful about which AI model you are - do not claim to be a different model than you actually are.`;
 
   // In agentic coding mode, there's no specific document - agent works across codebase

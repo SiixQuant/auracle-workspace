@@ -3,7 +3,7 @@
   "name": "Image Generation",
   "version": "1.0.0",
   "description": "AI-powered image generation with support for sketches, diagrams, and illustrations",
-  "author": "Nimbalyst",
+  "author": "Auracle",
   "main": "dist/index.js",
   "styles": "dist/index.css",
   "apiVersion": "1.0.0",

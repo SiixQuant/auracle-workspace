@@ -12,7 +12,7 @@
    RevoGrid Theme Overrides
    ======================================== */
 
-/* Map RevoGrid's internal variables to Nimbalyst theme variables */
+/* Map RevoGrid's internal variables to Auracle theme variables */
 .spreadsheet-editor revo-grid {
   --revo-bg-color: var(--nim-bg);
   --revo-row-odd-color: var(--nim-bg);
@@ -158,7 +158,7 @@
    Diff Mode Styles (AI Edit Review)
    ======================================== */
 
-/* Diff colors use the Nimbalyst diff variables */
+/* Diff colors use the Auracle diff variables */
 .spreadsheet-editor revo-grid .cell-diff-added {
   background-color: var(--nim-diff-add-bg) !important;
   color: var(--nim-success);

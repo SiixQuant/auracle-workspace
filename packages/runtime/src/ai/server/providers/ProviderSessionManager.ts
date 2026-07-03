@@ -2,7 +2,7 @@
  * Shared session ID management for agent-style AI providers.
  *
  * Both ClaudeCodeProvider and OpenAICodexProvider need the same fundamental
- * pieces: mapping Nimbalyst session IDs to provider-specific session IDs
+ * pieces: mapping Auracle session IDs to provider-specific session IDs
  * (Claude SDK session ID, Codex thread ID), persisting them via events,
  * and restoring them from the database on resume.
  *
@@ -71,7 +71,7 @@ export class ProviderSessionManager {
   }
 
   /**
-   * Get the stored provider session ID for a Nimbalyst session, or undefined.
+   * Get the stored provider session ID for an Auracle session, or undefined.
    */
   getSessionId(sessionId: string): string | undefined {
     return this.sessionIds.get(sessionId);

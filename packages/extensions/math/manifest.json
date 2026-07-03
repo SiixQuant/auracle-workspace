@@ -3,7 +3,7 @@
   "name": "Math",
   "version": "1.0.0",
   "description": "Render LaTeX-style math in the agent transcript and Lexical editor via KaTeX.",
-  "author": "Nimbalyst",
+  "author": "Auracle",
   "main": "dist/index.js",
   "styles": "dist/index.css",
   "apiVersion": "1.0.0",

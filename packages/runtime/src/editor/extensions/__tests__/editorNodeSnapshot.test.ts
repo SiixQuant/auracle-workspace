@@ -1,5 +1,5 @@
 /**
- * Regression guard for the node set the Nimbalyst editor instantiates.
+ * Regression guard for the node set the Auracle editor instantiates.
  *
  * Phase 7 collapsed `EditorNodes.ts` + `pluginRegistry.getAllNodes()` into
  * a single composed dependency graph rooted in
@@ -23,7 +23,7 @@ import '../registerBuiltinExtensions';
 /**
  * Node types that the editor MUST register. Includes Lexical built-ins
  * (root, text, paragraph, linebreak, tab, artificial) plus every node
- * owned by a Nimbalyst built-in extension. Sorted alphabetically.
+ * owned by an Auracle built-in extension. Sorted alphabetically.
  */
 const EXPECTED_NODE_TYPES = [
   'artificial',
@@ -65,7 +65,7 @@ const EXPECTED_NODE_TYPES = [
   'text',
 ];
 
-describe('Nimbalyst editor node-set snapshot', () => {
+describe('Auracle editor node-set snapshot', () => {
   it('registers exactly the expected node set in standalone mode', () => {
     const root = buildNimbalystRootExtension({ editable: true });
     const editor = buildEditorFromExtensions(root);

@@ -29,7 +29,7 @@ export function selectGateway(opts: ModeOptions): TrackerGateway {
   if (opts.live) {
     if (!descriptor) {
       throw connectionError(
-        '--live requested but no running Nimbalyst found (no valid endpoint descriptor). Start the app or drop --live.',
+        '--live requested but no running Auracle found (no valid endpoint descriptor). Start the app or drop --live.',
       );
     }
     return new LiveGateway(descriptor);

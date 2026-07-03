@@ -18,7 +18,7 @@
  * Requires: Vite on 5273 + wrangler dev (started by this test).
  * Run ONE spec per command (see the sibling spec's note on PGLite locks).
  *
- * IMPORTANT: no OTHER Nimbalyst Electron instance may be running. A running
+ * IMPORTANT: no OTHER Auracle Electron instance may be running. A running
  * `npm run dev` (or `dev:user2`) holds the Electron remote-debugging port 9222
  * and the fixed internal MCP ports (3456-3559); the test app then fails to
  * launch with `bind() failed: Address already in use` -> `electron.launch`

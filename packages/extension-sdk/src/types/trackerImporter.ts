@@ -1,7 +1,7 @@
 /**
  * Tracker importer contract.
  *
- * An importer lets Nimbalyst pull items from an external system (GitHub Issues,
+ * An importer lets Auracle pull items from an external system (GitHub Issues,
  * Linear, ...) into the native tracker as ordinary items that carry a back-link
  * to their upstream source (see the `origin` field on tracker items).
  *

@@ -9,7 +9,7 @@
  * - Pre-rendered markdown (via `marked`)
  * - Syntax-highlighted code blocks (via `highlight.js`)
  * - Theme toggle button
- * - Nimbalyst brand bar
+ * - Auracle brand bar
  */
 import { Marked, type Tokens } from 'marked';
 import hljs from 'highlight.js';
@@ -125,9 +125,9 @@ ${getStylesheet()}
 <div class="container">
 
   <div class="brand-bar">
-    <a href="https://nimbalyst.com" target="_blank" rel="noopener" class="brand-link">
+    <a href="https://aurapointcapital.com" target="_blank" rel="noopener" class="brand-link">
       ${getNimbalystIconSvg()}
-      <span class="brand-text">Shared from <strong>Nimbalyst</strong></span>
+      <span class="brand-text">Shared from <strong>Auracle</strong></span>
     </a>
     <div class="brand-actions">
       <button onclick="downloadMarkdown()" class="download-btn" title="Download as Markdown">
@@ -146,9 +146,9 @@ ${getStylesheet()}
   </article>
 
   <footer class="footer">
-    <a href="https://nimbalyst.com" target="_blank" rel="noopener" class="brand-link">
+    <a href="https://aurapointcapital.com" target="_blank" rel="noopener" class="brand-link">
       ${getNimbalystIconSvg()}
-      <span class="brand-text">Shared from <strong>Nimbalyst</strong></span>
+      <span class="brand-text">Shared from <strong>Auracle</strong></span>
     </a>
   </footer>
 

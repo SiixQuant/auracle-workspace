@@ -222,7 +222,7 @@ export async function buildSdkOptions(
     // uncertain ones to `canUseTool` (which renders the normal permission prompt
     // for the user). It does not silently deny destructive tools by default --
     // silent auto-deny is reserved for SDK-level deny rules / dontAsk mode.
-    // Because escalation still hits `canUseTool`, Nimbalyst's workspace rules
+    // Because escalation still hits `canUseTool`, Auracle's workspace rules
     // (allow-all / bypass-all in immediateToolDecision.ts) continue to apply on
     // the escalation path.
     permissionMode: resolvePermissionMode(currentMode),
@@ -282,7 +282,7 @@ export async function buildSdkOptions(
 
   // Set up environment variables.
   // Strip API keys from every env source we compose so we never silently use
-  // a key the user didn't explicitly configure in Nimbalyst settings. A user's
+  // a key the user didn't explicitly configure in Auracle settings. A user's
   // .env file with ANTHROPIC_API_KEY was picked up here and billed their
   // personal Anthropic account $100+.
   //
@@ -320,8 +320,8 @@ export async function buildSdkOptions(
     // `cli` traffic as first-party and `sdk-ts` traffic as third-party,
     // which puts the latter into a deprioritized lane that gets throttled
     // first under load. Users on Pro/Max OAuth report rate-limit errors when
-    // running Nimbalyst alongside the standalone Claude Code CLI even at low
-    // usage; setting this to `cli` aligns Nimbalyst's classification with
+    // running Auracle alongside the standalone Claude Code CLI even at low
+    // usage; setting this to `cli` aligns Auracle's classification with
     // the official CLI and removes that asymmetry. The user can still
     // override via their own env var if they want the original sdk-ts label.
     ...(process.env.CLAUDE_CODE_ENTRYPOINT == null && { CLAUDE_CODE_ENTRYPOINT: 'cli' }),
@@ -331,7 +331,7 @@ export async function buildSdkOptions(
   };
 
   // NIM-376: Overlay enhanced PATH so the Claude Code SDK can find stdio MCP
-  // subprocess binaries (`npx`, `uvx`, `docker`, ...) when Nimbalyst is launched
+  // subprocess binaries (`npx`, `uvx`, `docker`, ...) when Auracle is launched
   // from Dock/Finder. GUI-launched Electron on macOS has a minimal PATH
   // (/usr/bin:/bin:/usr/sbin:/sbin) that doesn't include Homebrew/nvm/volta,
   // and CLIManager's cachedShellEnvironment deliberately strips PATH so

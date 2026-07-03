@@ -1,5 +1,5 @@
 /**
- * In-process registry of Nimbalyst-side editor contributions that aren't
+ * In-process registry of Auracle-side editor contributions that aren't
  * expressible through `LexicalExtension` alone -- specifically the
  * component-picker surface (`userCommands`, `getDynamicOptions`) and the
  * live list of markdown transformers consumed by import/export.

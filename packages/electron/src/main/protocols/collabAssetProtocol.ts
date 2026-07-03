@@ -10,7 +10,7 @@
  *   4. Hand the plaintext bytes back to the renderer with the right Content-Type.
  *
  * Why a custom protocol: the production worker only allows CORS from
- * `https://app.nimbalyst.com`, `https://nimbalyst.com`, `capacitor://localhost`.
+ * `https://app.nimbalyst.com`, `https://aurapointcapital.com`, `capacitor://localhost`.
  * The renderer at `http://localhost:5273` (dev) / `file://` (packaged) is
  * disallowed. Routing through main same-origins the request from Chromium's
  * perspective and lets us keep `webSecurity: true`.

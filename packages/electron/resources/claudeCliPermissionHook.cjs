@@ -6,11 +6,11 @@
  * `--permission-prompt-tool` is silently ignored by the interactive CLI (verified
  * live, 2.1.168 — the native TUI prompt still showed). A `PreToolUse` hook,
  * however, IS honored interactively: returning `permissionDecision: "allow"|"deny"`
- * suppresses the native prompt (only `defer` is print-mode-only). So Nimbalyst
+ * suppresses the native prompt (only `defer` is print-mode-only). So Auracle
  * registers this hook via `--settings` and routes the decision to a GUI widget.
  *
  * Flow: the CLI runs this command before a matched tool (Bash/Edit/Write/…),
- * passing the tool call as JSON on stdin. We POST it to Nimbalyst's local
+ * passing the tool call as JSON on stdin. We POST it to Auracle's local
  * `/permission` endpoint (same loopback server + bearer as the MCP server), which
  * renders the ToolPermission widget and blocks until the user answers, then
  * returns `{decision}`. We translate that to the hook's permission contract.
@@ -120,7 +120,7 @@ function postPermission(payload) {
 
 (async () => {
   if (!ENDPOINT) {
-    emit('ask', 'Nimbalyst permission endpoint not configured');
+    emit('ask', 'Auracle permission endpoint not configured');
     return;
   }
   let input = {};
@@ -151,6 +151,6 @@ function postPermission(payload) {
     emit(decision, result && result.reason ? String(result.reason) : undefined);
   } catch (e) {
     // Endpoint unreachable / errored → defer to the CLI's native prompt.
-    emit('ask', `Nimbalyst permission unavailable: ${e instanceof Error ? e.message : 'error'}`);
+    emit('ask', `Auracle permission unavailable: ${e instanceof Error ? e.message : 'error'}`);
   }
 })();

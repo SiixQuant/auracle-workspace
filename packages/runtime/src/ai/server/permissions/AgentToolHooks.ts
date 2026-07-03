@@ -275,7 +275,7 @@ export class AgentToolHooks {
 
         // In Auto session mode, the SDK classifier is the sole decision-maker
         // for Bash. Running our compound-bash splitter here would preempt the
-        // classifier and surface a Nimbalyst permission prompt for benign
+        // classifier and surface an Auracle permission prompt for benign
         // sub-commands (cd, echo, npx ...) that the classifier would have
         // approved silently. Defer to the classifier; if it denies, the
         // PermissionDenied hook will re-prompt with the classifier's reason.
@@ -320,7 +320,7 @@ export class AgentToolHooks {
    * through `canUseTool`. The SDK then emits a `permission_denied` system
    * message and the tool fails. Claude Code CLI mirrors this case by asking
    * the user to approve the original call -- this hook reproduces that flow
-   * inside Nimbalyst.
+   * inside Auracle.
    *
    * Behaviour:
    * - Only re-prompts when the session is in `auto` mode.

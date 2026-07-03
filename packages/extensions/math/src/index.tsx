@@ -1,7 +1,7 @@
 /**
  * Math extension entry.
  *
- * Owns LaTeX math rendering for Nimbalyst in both the transcript and the
+ * Owns LaTeX math rendering for Auracle in both the transcript and the
  * Lexical editor.
  */
 

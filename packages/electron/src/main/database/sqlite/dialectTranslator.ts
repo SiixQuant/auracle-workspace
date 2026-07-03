@@ -1,7 +1,7 @@
 /**
  * PG -> SQLite SQL dialect translator.
  *
- * Mechanical rewrite of the common subset of PGLite SQL used by Nimbalyst's
+ * Mechanical rewrite of the common subset of PGLite SQL used by Auracle's
  * stores into better-sqlite3-compatible SQL. Designed to keep the existing
  * PGLite store code unchanged while still working against SQLite.
  *

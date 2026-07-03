@@ -1,5 +1,5 @@
 /**
- * Head-of-line blocking bench against the real Nimbalyst SQLite schema.
+ * Head-of-line blocking bench against the real Auracle SQLite schema.
  *
  * Reproduces the workload from ademczuk/nimbalyst-1#1: a slow FTS5 rewrite
  * on ai_agent_messages running alongside concurrent hot writers

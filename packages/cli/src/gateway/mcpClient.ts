@@ -58,7 +58,7 @@ export class McpHttpClient {
         body: JSON.stringify(body),
       });
     } catch (err: any) {
-      throw connectionError(`Could not reach Nimbalyst MCP server at ${this.baseUrl}: ${err?.message ?? err}`);
+      throw connectionError(`Could not reach Auracle MCP server at ${this.baseUrl}: ${err?.message ?? err}`);
     }
     if (res.status === 401 || res.status === 403) {
       throw connectionError('MCP server rejected the bearer token (stale endpoint descriptor?). Try --offline.');

@@ -1,5 +1,5 @@
 /**
- * Type exports for Nimbalyst extensions.
+ * Type exports for Auracle extensions.
  */
 
 export * from './extension.js';

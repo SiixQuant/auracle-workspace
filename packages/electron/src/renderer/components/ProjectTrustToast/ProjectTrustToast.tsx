@@ -516,7 +516,7 @@ export const ProjectTrustToast: React.FC<ProjectTrustToastProps> = ({
                     <path d="M8 5.5v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                     <path d="M8 11h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                   </svg>
-                  <span>Uses Nimbalyst permissions instead of Claude Code settings</span>
+                  <span>Uses Auracle permissions instead of Claude Code settings</span>
                 </li>
                 <li
                   className="flex items-start gap-2 text-[13px] leading-relaxed text-nim-muted"

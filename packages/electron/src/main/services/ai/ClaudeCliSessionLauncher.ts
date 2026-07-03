@@ -1,9 +1,9 @@
 /**
  * ClaudeCliSessionLauncher — main-process orchestrator that launches the genuine
- * interactive `claude` CLI on the user's subscription as a Nimbalyst session
+ * interactive `claude` CLI on the user's subscription as an Auracle session
  * (NIM-806, Phase 1).
  *
- * The single load-bearing step is **allocating the Nimbalyst session id BEFORE
+ * The single load-bearing step is **allocating the Auracle session id BEFORE
  * launch** and injecting the same `sessionId`-bearing MCP URL the in-process
  * Agent-SDK path uses. The CLI then calls `mcp__nimbalyst__*` tools that hit
  * the identical handlers — so commit-proposal / AskUserQuestion widgets render in
@@ -76,13 +76,13 @@ export interface ClaudeCliSessionLauncherDeps {
    * Absolute path to the PreToolUse permission hook script (NIM-806 Phase 4).
    * When set (and the nimbalyst core server is configured), the launcher registers
    * the hook via `--settings` and injects the endpoint URL/token into the CLI env,
-   * so built-in tool prompts route to a Nimbalyst widget. Omit → native gate.
+   * so built-in tool prompts route to an Auracle widget. Omit → native gate.
    */
   permissionHookScriptPath?: string;
   /** Node-capable executable to run the hook under (Electron-as-Node). Defaults to process.execPath. */
   electronExecPath?: string;
   /**
-   * Resolve the workspace's Nimbalyst permission mode (NIM-806 Phase 4). In
+   * Resolve the workspace's Auracle permission mode (NIM-806 Phase 4). In
    * production this is `PermissionService.getPermissionMode`. When it returns
    * `allow-all` or `bypass-all`, the user has explicitly trusted the workspace, so
    * we skip the gate entirely (`--dangerously-skip-permissions`) and DROP the
@@ -111,7 +111,7 @@ export interface ClaudeCliSessionLauncherDeps {
 }
 
 export interface LaunchClaudeCliSessionInput {
-  /** Nimbalyst session id — must be allocated before this call. */
+  /** Auracle session id — must be allocated before this call. */
   sessionId: string;
   workspacePath: string;
   /** Working directory for the CLI. Defaults to `workspacePath`. */
@@ -161,7 +161,7 @@ export class ClaudeCliSessionLauncher {
 
     // BUG 3 (NIM-806): `--session-id <uuid>` is rejected once that id already
     // exists on disk (`Error: Session ID <uuid> is already in use.` → exit 1). On
-    // a relaunch of the same Nimbalyst session (restart / re-mount / PID gone) the
+    // a relaunch of the same Auracle session (restart / re-mount / PID gone) the
     // CLI's prior jsonl is still there, so switch to `--resume <uuid>` — which also
     // restores prior context. Honor an explicit caller-provided resumeSessionId
     // first; otherwise resume iff the deterministic jsonl already exists.
@@ -178,7 +178,7 @@ export class ClaudeCliSessionLauncher {
     // 1 + 2. Build the sessionId-bearing MCP config and persist it to a temp file.
     const mcpServers = await this.deps.getMcpServersConfig({ sessionId, workspacePath });
     const mcpConfigPath = await this.writeMcpConfig(sessionId, mcpServers);
-    // The map's keys are the trusted Nimbalyst MCP server names — pre-allow them so
+    // The map's keys are the trusted Auracle MCP server names — pre-allow them so
     // the genuine CLI doesn't double-prompt on top of our widgets (NIM-806 BUG 2).
     const allowedMcpServerNames = Object.keys(mcpServers);
 
@@ -192,7 +192,7 @@ export class ClaudeCliSessionLauncher {
       permissionMode === 'allow-all' || permissionMode === 'bypass-all';
 
     // NIM-806 Phase 4 (Direction A): register a PreToolUse permission hook (via
-    // --settings) that routes built-in tool prompts to a Nimbalyst widget. The
+    // --settings) that routes built-in tool prompts to an Auracle widget. The
     // hook POSTs to the loopback `/permission` endpoint — same host + bearer as the
     // unified internal MCP server, so we lift both straight out of the eager core
     // `nimbalyst` config (the monolithic `nimbalyst-mcp` is retired). Only when

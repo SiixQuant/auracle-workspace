@@ -1,7 +1,7 @@
 /**
- * Panel Types for Nimbalyst Extensions
+ * Panel Types for Auracle Extensions
  *
- * Panels are non-file-based UIs that extensions can contribute to Nimbalyst.
+ * Panels are non-file-based UIs that extensions can contribute to Auracle.
  * Unlike custom editors (which are tied to file types), panels provide
  * persistent interfaces for things like database browsers, deployment
  * dashboards, home automation controls, etc.
@@ -352,7 +352,7 @@ export interface PanelHost {
   // ============ DATA ACCESS ============
 
   /**
-   * Read-only access to Nimbalyst's local PGLite database.
+   * Read-only access to Auracle's local PGLite database.
    *
    * Requires the extension to declare `"nimbalyst-database-read"` in
    * `permissions.catalog` in manifest.json. Queries run inside a
@@ -361,7 +361,7 @@ export interface PanelHost {
    *
    * Tables and columns are not part of any stable contract -- this surface
    * is intended for built-in extensions today and will be redesigned when
-   * Nimbalyst's storage layer ports to native SQLite. Pin to the host
+   * Auracle's storage layer ports to native SQLite. Pin to the host
    * version you tested against.
    */
   readonly data: ExtensionDataAccess;

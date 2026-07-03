@@ -1,5 +1,5 @@
 /**
- * Application menu builder for Nimbalyst Electron app.
+ * Application menu builder for Auracle Electron app.
  *
  * Creates and manages the native application menu bar with support for:
  * - File operations (new, open, save, recent items)
@@ -1101,7 +1101,7 @@ export async function createApplicationMenu() {
             label: 'Developer',
             submenu: [
                 {
-                    label: 'For assisting the development of Nimbalyst',
+                    label: 'For assisting the development of Auracle',
                     enabled: false
                 },
                 { type: 'separator' },
@@ -1173,7 +1173,7 @@ export async function createApplicationMenu() {
 
                         // Create the log file if it doesn't exist
                         if (!fs.existsSync(logPath)) {
-                            fs.writeFileSync(logPath, `=== Nimbalyst Debug Log ===\nNo debug messages yet.\n\nDebug logging is only active in development mode.\nTo enable debug logging in production, set NODE_ENV=development\n`);
+                            fs.writeFileSync(logPath, `=== Auracle Debug Log ===\nNo debug messages yet.\n\nDebug logging is only active in development mode.\nTo enable debug logging in production, set NODE_ENV=development\n`);
                         }
 
                         shell.openPath(logPath).catch((err: any) => {
@@ -1193,7 +1193,7 @@ export async function createApplicationMenu() {
                             if (!fs.existsSync(logsDir)) {
                                 fs.mkdirSync(logsDir, { recursive: true });
                             }
-                            fs.writeFileSync(logPath, `=== Nimbalyst Main Log ===\nNo log messages yet.\n\nThis log contains main process and application logs.\n`);
+                            fs.writeFileSync(logPath, `=== Auracle Main Log ===\nNo log messages yet.\n\nThis log contains main process and application logs.\n`);
                         }
 
                         shell.openPath(logPath).catch((err: any) => {
@@ -1493,7 +1493,7 @@ export async function createApplicationMenu() {
             label: app.getName(),
             submenu: [
                 {
-                    label: 'About Nimbalyst',
+                    label: 'About Auracle',
                     click: async () => {
                         createAboutWindow();
                     }
@@ -1566,7 +1566,7 @@ export async function createApplicationMenu() {
                             helpType: 'docs',
                             context: 'menu',
                         });
-                        shell.openExternal('https://docs.nimbalyst.com/');
+                        shell.openExternal('https://github.com/SiixQuant/auracle-workspace');
                     }
                 },
                 {
@@ -1595,7 +1595,7 @@ export async function createApplicationMenu() {
                         } else {
                             dialog.showErrorBox(
                                 'SDK Documentation Not Found',
-                                'The Extension SDK documentation could not be found. Please reinstall Nimbalyst.'
+                                'The Extension SDK documentation could not be found. Please reinstall Auracle.'
                             );
                         }
                     }
@@ -1636,7 +1636,7 @@ export async function createApplicationMenu() {
                             helpType: 'github_issues',
                             context: 'menu',
                         });
-                        shell.openExternal('https://github.com/nimbalyst/nimbalyst/issues');
+                        shell.openExternal('https://github.com/SiixQuant/auracle-workspace/issues');
                     }
                 },
                 {
@@ -1646,7 +1646,7 @@ export async function createApplicationMenu() {
                             helpType: 'github_discussions',
                             context: 'menu',
                         });
-                        shell.openExternal('https://github.com/nimbalyst/nimbalyst/discussions');
+                        shell.openExternal('https://github.com/SiixQuant/auracle-workspace/discussions');
                     }
                 },
                 { type: 'separator' },
@@ -1728,7 +1728,7 @@ export async function createApplicationMenu() {
                             helpType: 'docs',
                             context: 'menu',
                         });
-                        shell.openExternal('https://docs.nimbalyst.com/');
+                        shell.openExternal('https://github.com/SiixQuant/auracle-workspace');
                     }
                 },
                 {
@@ -1757,7 +1757,7 @@ export async function createApplicationMenu() {
                         } else {
                             dialog.showErrorBox(
                                 'SDK Documentation Not Found',
-                                'The Extension SDK documentation could not be found. Please reinstall Nimbalyst.'
+                                'The Extension SDK documentation could not be found. Please reinstall Auracle.'
                             );
                         }
                     }
@@ -1798,7 +1798,7 @@ export async function createApplicationMenu() {
                             helpType: 'github_issues',
                             context: 'menu',
                         });
-                        shell.openExternal('https://github.com/nimbalyst/nimbalyst/issues');
+                        shell.openExternal('https://github.com/SiixQuant/auracle-workspace/issues');
                     }
                 },
                 {
@@ -1808,7 +1808,7 @@ export async function createApplicationMenu() {
                             helpType: 'github_discussions',
                             context: 'menu',
                         });
-                        shell.openExternal('https://github.com/nimbalyst/nimbalyst/discussions');
+                        shell.openExternal('https://github.com/SiixQuant/auracle-workspace/discussions');
                     }
                 },
                 { type: 'separator' },
@@ -1862,7 +1862,7 @@ export async function createApplicationMenu() {
                 },
                 { type: 'separator' },
                 {
-                    label: 'About Nimbalyst',
+                    label: 'About Auracle',
                     click: async () => {
                         createAboutWindow();
                     }
@@ -1890,7 +1890,7 @@ function isAboutWindow(window: BrowserWindow): boolean {
         return false;
     }
     // Check if this is the about window by checking the title
-    return window.getTitle() === 'About Nimbalyst';
+    return window.getTitle() === 'About Auracle';
 }
 
 // Helper to check if window is workspace manager window
@@ -1900,5 +1900,5 @@ function isWorkspaceManagerWindow(window: BrowserWindow): boolean {
         return false;
     }
     // Check if this is the workspace manager window by checking the title
-    return window.getTitle() === 'Project Manager - Nimbalyst';
+    return window.getTitle() === 'Project Manager - Auracle';
 }

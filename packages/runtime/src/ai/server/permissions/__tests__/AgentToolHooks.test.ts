@@ -94,7 +94,7 @@ describe('AgentToolHooks', () => {
       );
 
       // No-op return lets the SDK classifier own the decision; compound-bash
-      // would otherwise have surfaced a Nimbalyst permission prompt for `cd`.
+      // would otherwise have surfaced an Auracle permission prompt for `cd`.
       expect(result).toEqual({});
       expect(options.emit).not.toHaveBeenCalled();
       expect(options.logAgentMessage).not.toHaveBeenCalled();

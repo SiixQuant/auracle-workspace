@@ -3,7 +3,7 @@
   "name": "CSV Spreadsheet",
   "version": "1.0.0",
   "description": "Edit CSV files with a spreadsheet interface and formula support",
-  "author": "Nimbalyst",
+  "author": "Auracle",
   "main": "dist/index.js",
   "styles": "dist/index.css",
   "apiVersion": "1.0.0",

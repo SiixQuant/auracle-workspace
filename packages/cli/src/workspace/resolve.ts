@@ -32,7 +32,7 @@ export async function resolveWorkspace(
 
   if (candidates.length === 0) {
     throw usageError(
-      'Could not resolve a workspace. Pass --workspace <path>, set NIM_WORKSPACE, or run from inside a Nimbalyst project.',
+      'Could not resolve a workspace. Pass --workspace <path>, set NIM_WORKSPACE, or run from inside an Auracle project.',
     );
   }
 

@@ -532,7 +532,7 @@ export class AIService {
     // Return the explicitly-configured global API key.
     // NEVER fall back to process.env — users must explicitly set keys in settings.
     // Implicit env-var usage caused a user to burn $100+ on their personal Anthropic
-    // account because Nimbalyst silently picked up ANTHROPIC_API_KEY from a .env file.
+    // account because Auracle silently picked up ANTHROPIC_API_KEY from a .env file.
 
     // Extension-agent providers (aiAgentProviders contributions) defer auth to
     // the extension itself (e.g. Antigravity rides ~/.gemini OAuth). The host
@@ -3121,7 +3121,7 @@ export class AIService {
           const defaultModel = await ModelRegistry.getDefaultModel('openai-codex');
           const testProvider = new OpenAICodexProvider(apiKey ? { apiKey } : undefined);
           // Honor the project rail's active selection (#544). windowStates is
-          // keyed by Nimbalyst's window id, not webContents.id, so resolve the
+          // keyed by Auracle's window id, not webContents.id, so resolve the
           // window id via getWindowId before the lookup.
           const browserWindow = BrowserWindow.fromWebContents(event.sender);
           const windowId = browserWindow ? getWindowId(browserWindow) : null;

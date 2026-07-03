@@ -5,7 +5,7 @@
  * durable facts the user confirms before they are stored. mem0-style: a single
  * extraction pass, ADD-only (we never mutate/delete existing facts here), and
  * contradictions resolve at retrieval by recency. The actual LLM call + source
- * selection live in `src/backend.ts` (Nimbalyst-facing); these pieces are pure
+ * selection live in `src/backend.ts` (Auracle-facing); these pieces are pure
  * so they're unit-testable and stay out of the host-agnostic `engine/`.
  */
 

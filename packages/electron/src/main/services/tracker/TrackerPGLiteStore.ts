@@ -187,7 +187,7 @@ export class TrackerPGLiteStore implements TrackerPersistence {
       `SELECT (data->'labelsMap') AS labels_map FROM tracker_items WHERE id = $1`,
       [envelope.itemId],
     );
-    // Nimbalyst runs over either PGLite or better-sqlite3. The `data->'key'`
+    // Auracle runs over either PGLite or better-sqlite3. The `data->'key'`
     // sub-extraction is NOT shape-uniform across the two backends: PGLite
     // returns a parsed JS object, but SQLite's JSON1 `->` operator returns
     // the sub-value as TEXT (a JSON string). If we let a string through,

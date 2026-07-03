@@ -19,7 +19,7 @@ describe('codexBinaryPath', () => {
   });
 
   it('prefers app.asar.unpacked binary path when present', () => {
-    const resourcesPath = '/Applications/Nimbalyst.app/Contents/Resources';
+    const resourcesPath = '/Applications/Auracle.app/Contents/Resources';
     const unpackedBinary = path.join(
       resourcesPath,
       'app.asar.unpacked',
@@ -43,7 +43,7 @@ describe('codexBinaryPath', () => {
   });
 
   it('falls back to resources/node_modules when unpacked path is unavailable', () => {
-    const resourcesPath = '/Applications/Nimbalyst.app/Contents/Resources';
+    const resourcesPath = '/Applications/Auracle.app/Contents/Resources';
     const fallbackBinary = path.join(
       resourcesPath,
       'node_modules',
@@ -66,9 +66,9 @@ describe('codexBinaryPath', () => {
   });
 
   it('normalizes resourcesPath when it points to app.asar', () => {
-    const resourcesPath = '/Applications/Nimbalyst.app/Contents/Resources/app.asar';
+    const resourcesPath = '/Applications/Auracle.app/Contents/Resources/app.asar';
     const normalizedBinary = path.join(
-      '/Applications/Nimbalyst.app/Contents/Resources',
+      '/Applications/Auracle.app/Contents/Resources',
       'app.asar.unpacked',
       'node_modules',
       '@openai',
@@ -90,7 +90,7 @@ describe('codexBinaryPath', () => {
   });
 
   it('supports flattened vendor binary layout', () => {
-    const resourcesPath = '/Applications/Nimbalyst.app/Contents/Resources';
+    const resourcesPath = '/Applications/Auracle.app/Contents/Resources';
     const flattenedBinary = path.join(
       resourcesPath,
       'app.asar.unpacked',
@@ -113,7 +113,7 @@ describe('codexBinaryPath', () => {
   });
 
   it('resolves Codex CLI binary from platform package layout', () => {
-    const resourcesPath = '/Applications/Nimbalyst.app/Contents/Resources';
+    const resourcesPath = '/Applications/Auracle.app/Contents/Resources';
     const platformBinary = path.join(
       resourcesPath,
       'app.asar.unpacked',

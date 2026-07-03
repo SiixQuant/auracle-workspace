@@ -3,7 +3,7 @@
   "name": "Playwright",
   "version": "0.1.0",
   "description": "Test runner, trace viewer, and screenshot automation for Playwright",
-  "author": "Nimbalyst",
+  "author": "Auracle",
   "main": "dist/index.js",
   "styles": "dist/index.css",
   "apiVersion": "1.0.0",

@@ -162,7 +162,7 @@ class PGLiteWorker {
 
   /**
    * Acquire exclusive lock on the database using a PID file.
-   * This prevents multiple Nimbalyst instances from corrupting the database.
+   * This prevents multiple Auracle instances from corrupting the database.
    *
    * Lock file format:
    *   Line 1: PID of the owning process
@@ -209,7 +209,7 @@ class PGLiteWorker {
           // against, and the closed PR #316 review thread for the
           // 'ambiguous' branch that asks the user instead of guessing.
           const { decideLockIsRunning } = require('./lockStaleness');
-          // Identify the PID holder so a reused PID (the original Nimbalyst died
+          // Identify the PID holder so a reused PID (the original Auracle died
           // and the OS handed its PID to another process) is detected as stale
           // instead of falsely "running". Returns the image name or null; null
           // makes decideLockIsRunning fail closed (stay 'running').
@@ -257,7 +257,7 @@ class PGLiteWorker {
             // Another instance is confirmed alive (kill(0) succeeded, OR
             // unrecognised errno). Refuse the launch unconditionally.
             const error = new Error(
-              `Database is locked by another Nimbalyst process.\n\n` +
+              `Database is locked by another Auracle process.\n\n` +
               `Lock holder PID: ${lockPid}\n` +
               `Lock acquired: ${lockTimestamp}\n` +
               `Lock host: ${lockHostname}\n\n` +
@@ -278,7 +278,7 @@ class PGLiteWorker {
             // (force-unlock) and "Cancel". Per @ghinkle's review on the
             // closed PR #316.
             const error = new Error(
-              `Cannot tell whether another Nimbalyst is running.\n\n` +
+              `Cannot tell whether another Auracle is running.\n\n` +
               `Lock holder PID: ${lockPid}\n` +
               `Lock acquired: ${lockTimestamp}\n` +
               `Lock host: ${lockHostname}\n\n` +
@@ -434,7 +434,7 @@ class PGLiteWorker {
       console.log('[PGLite Worker] Fresh database:', isFreshDb);
 
       // Acquire our exclusive lock BEFORE touching PGLite
-      // This prevents multiple Nimbalyst instances from corrupting the database
+      // This prevents multiple Auracle instances from corrupting the database
       const lockStartTime = performance.now();
       const lockResult = this.acquireLock();
       console.log(`[PGLite Worker] Lock acquisition took ${(performance.now() - lockStartTime).toFixed(0)}ms`);

@@ -13,7 +13,7 @@
  * - Server subprocess lifecycle (spawn, reference counting, shutdown)
  * - Session creation/resumption via the SDK
  * - SSE event parsing and conversion to protocol events
- * - Custom Nimbalyst plugin integration for file edit tracking
+ * - Custom Auracle plugin integration for file edit tracking
  */
 
 import { ChildProcess, spawn } from 'child_process';
@@ -258,7 +258,7 @@ async function loadOpenCodeSdkModule(): Promise<{ createOpencodeClient: OpenCode
 }
 
 /**
- * Convert a Nimbalyst-style OpenCode model id (e.g. `opencode:anthropic/claude-sonnet-4-5`
+ * Convert an Auracle-style OpenCode model id (e.g. `opencode:anthropic/claude-sonnet-4-5`
  * or just `anthropic/claude-sonnet-4-5`) into the `{ providerID, modelID }` shape
  * the OpenCode SDK expects in the prompt body. Returns null when the id can't be
  * parsed -- callers should omit the field so OpenCode picks its config default.
@@ -279,7 +279,7 @@ export function parseOpenCodeModelId(
 
 /**
  * Build the `parts` array for an OpenCode prompt body from the user's message
- * text plus any Nimbalyst attachments (paste-as-file, drag/drop, etc).
+ * text plus any Auracle attachments (paste-as-file, drag/drop, etc).
  *
  * Attachments live on disk in app userData (outside the workspace), so they
  * cannot be reached by OpenCode's filesystem tools. We have to inline the
@@ -427,11 +427,11 @@ export class OpenCodeSDKProtocol implements AgentProtocol {
 
   // Pushes MCP servers from SessionOptions into the OpenCode server's
   // dynamic registration via POST /mcp. Without this, OpenCode never sees
-  // any of Nimbalyst's internal MCP tools (AskUserQuestion, tracker_*,
+  // any of Auracle's internal MCP tools (AskUserQuestion, tracker_*,
   // capture_editor_screenshot, etc.) because the SDK has no per-session
   // MCP config -- registration is workspace-scoped at the server level.
   //
-  // Nimbalyst hands us configs in SSE shape ({ type: 'sse', url, headers? }).
+  // Auracle hands us configs in SSE shape ({ type: 'sse', url, headers? }).
   // OpenCode wants HTTP/remote shape ({ type: 'remote', url, headers? }),
   // so we translate. Idempotent calls -- if the server is already
   // registered with the same name, the add is a no-op or replaces in place.

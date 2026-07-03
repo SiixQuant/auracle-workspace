@@ -1127,7 +1127,7 @@ export const SessionTranscript = forwardRef<SessionTranscriptRef, SessionTranscr
       if (startedCliSessionId !== sessionId) {
         setStartedCliSessionId(sessionId);
       }
-      // Route through the Nimbalyst queue when the CLI isn't ready for a direct
+      // Route through the Auracle queue when the CLI isn't ready for a direct
       // PTY write — before its first turn has run (the strip is still spawning) or
       // while a turn is in flight. The main-process PID-idle flusher drains the
       // queue to the PTY once the CLI is idle (same store + UI as the SDK path;

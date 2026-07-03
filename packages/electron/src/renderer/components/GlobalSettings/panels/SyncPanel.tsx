@@ -498,7 +498,7 @@ export function SyncPanel() {
       <div className="provider-panel-header mb-5 pb-4 border-b border-[var(--nim-border)]">
         <h3 className="provider-panel-title text-xl font-semibold leading-tight mb-1.5 text-[var(--nim-text)]">Account & Sync</h3>
         <p className="provider-panel-description text-[13px] leading-relaxed text-[var(--nim-text-muted)]">
-          Access and control Nimbalyst from the mobile app.
+          Access and control Auracle from the mobile app.
           Share sessions and documents via encrypted share links.
           All data is end-to-end encrypted.
         </p>
@@ -758,7 +758,7 @@ export function SyncPanel() {
               </div>
               <div className="flex-1">
                 <div className="text-[13px] font-semibold text-nim mb-0.5">
-                  Nimbalyst for iOS
+                  Auracle for iOS
                 </div>
                 <div className="text-[11px] text-nim-faint mb-2">
                   View and respond to AI sessions from your phone

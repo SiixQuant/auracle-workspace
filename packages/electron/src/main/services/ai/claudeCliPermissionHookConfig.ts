@@ -6,7 +6,7 @@
  * Why a hook (not `--permission-prompt-tool`): the latter is silently ignored by
  * the interactive CLI (verified live — native TUI prompt still showed). A
  * `PreToolUse` hook returning `permissionDecision` IS honored interactively, so
- * we register one via `--settings` that calls back into Nimbalyst's loopback
+ * we register one via `--settings` that calls back into Auracle's loopback
  * `/permission` endpoint (which renders the ToolPermission widget).
  */
 

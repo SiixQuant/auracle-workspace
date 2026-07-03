@@ -7,7 +7,7 @@
  * {@link TrackerReferenceResolver}, so editing or closing the item elsewhere
  * updates every chip pointing at it with no document edit.
  *
- * Serializes to a portable markdown link `[NIM-123](nimbalyst://NIM-123)` via
+ * Serializes to a portable markdown link `[NIM-123](auracle://NIM-123)` via
  * {@link TrackerReferenceTransformer}, so the document stays valid markdown and
  * degrades to a plain link in any other viewer.
  */
@@ -29,7 +29,7 @@ import * as React from 'react';
 
 import { TrackerReferenceChip } from './TrackerReferenceChip';
 
-export const TRACKER_REFERENCE_URN_SCHEME = 'nimbalyst://';
+export const TRACKER_REFERENCE_URN_SCHEME = 'auracle://';
 
 export type SerializedTrackerReferenceNode = Spread<
   {

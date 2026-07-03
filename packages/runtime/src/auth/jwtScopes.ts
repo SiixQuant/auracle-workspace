@@ -1,7 +1,7 @@
 /**
  * The two-JWT model — compiler-enforced.
  *
- * Nimbalyst auth uses Stytch B2B, where a user has a DIFFERENT member id per
+ * Auracle auth uses Stytch B2B, where a user has a DIFFERENT member id per
  * org. There are two completely different JWT scopes, and they must never be
  * interchanged:
  *

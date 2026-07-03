@@ -255,7 +255,7 @@ export function initVoiceModeService() {
           // the app intentionally omits the audio-input entitlement to prevent
           // permission prompts when Claude Agent SDK spawns subprocesses.
           // Users must manually grant permission in System Settings.
-          throw new Error('Microphone access is required for Voice Mode.\n\nPlease manually grant permission:\n1. Open System Settings\n2. Go to Privacy & Security > Microphone\n3. Enable access for Nimbalyst\n4. Try again');
+          throw new Error('Microphone access is required for Voice Mode.\n\nPlease manually grant permission:\n1. Open System Settings\n2. Go to Privacy & Security > Microphone\n3. Enable access for Auracle\n4. Try again');
         }
       }
 

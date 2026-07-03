@@ -582,7 +582,7 @@ interface ElectronAPI {
 
   // Environment utilities
   environment: {
-    /** Get the enhanced PATH that Nimbalyst uses for spawning processes */
+    /** Get the enhanced PATH that Auracle uses for spawning processes */
     getEnhancedPath: () => Promise<string>;
   };
 

@@ -1,7 +1,7 @@
 /**
  * Image Generation Extension Styles
  *
- * Uses CSS variables from Nimbalyst's unified theme system (--nim-*).
+ * Uses CSS variables from Auracle's unified theme system (--nim-*).
  * Provides fallback values for when running outside the main app context.
  */
 

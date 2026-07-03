@@ -58,7 +58,7 @@ export async function launchMarketingApp(options?: {
     : undefined;
 
   // Build env, stripping vars that interfere with Electron launch.
-  // ELECTRON_RUN_AS_NODE makes Electron act as plain Node.js (set when running inside packaged Nimbalyst).
+  // ELECTRON_RUN_AS_NODE makes Electron act as plain Node.js (set when running inside packaged Auracle).
   // These must be removed so the launched Electron process runs as a real Electron app.
   const { ELECTRON_RUN_AS_NODE, ELECTRON_NO_ATTACH_CONSOLE, NODE_PATH, ...cleanEnv } = process.env;
   const app = await _electron.launch({
@@ -314,17 +314,17 @@ async function findDevServer(): Promise<string> {
     }
   }
 
-  // Detect if running inside packaged Nimbalyst (ELECTRON_RUN_AS_NODE is set by the app)
+  // Detect if running inside packaged Auracle (ELECTRON_RUN_AS_NODE is set by the app)
   const isPackagedBuild = !!process.env.ELECTRON_RUN_AS_NODE;
   if (isPackagedBuild) {
     throw new Error(
-      '\n\nMarketing screenshots cannot be captured from the packaged Nimbalyst app.\n\n' +
+      '\n\nMarketing screenshots cannot be captured from the packaged Auracle app.\n\n' +
       'You need to switch to dev mode first:\n\n' +
-      '  1. Quit the packaged Nimbalyst app\n' +
+      '  1. Quit the packaged Auracle app\n' +
       '  2. Open a terminal and cd to the repo: cd ~/sources/nimbalyst\n' +
       '  3. Pull latest and install: git pull && npm install\n' +
       '  4. Start the dev server: cd packages/electron && npm run dev\n' +
-      '  5. Ask the agent in dev-mode Nimbalyst to capture the screenshots\n\n' +
+      '  5. Ask the agent in dev-mode Auracle to capture the screenshots\n\n' +
       'See docs/MARKETING_SCREENSHOTS.md for the full guide.\n'
     );
   }

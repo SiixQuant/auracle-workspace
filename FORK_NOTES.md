@@ -13,6 +13,17 @@ change stays independently revertable.
 | 1 | Auto-update | `packages/electron/src/main/services/autoUpdater.ts`, `packages/electron/src/main/menu/ApplicationMenu.ts` | `UPDATES_MANAGED_EXTERNALLY = true` no-ops feed configuration and every check entry point; the two "Check for Updates…" menu items are removed. | Updates for this distribution are installed by the desktop launcher, which verifies a checksum sidecar before swapping the bundle. Leaving electron-updater live would race the launcher and, worse, self-replace this build from the upstream feed. |
 | 2 | Telemetry | `packages/electron/src/renderer/index.tsx`, `packages/electron/src/main/services/analytics/AnalyticsService.ts` | Renderer PostHog runs with a disabled key, `before_send → null`, decide/surveys/external-deps off; main-process project key blanked so no client is ever constructed. Provider tree and session plumbing left intact. | The upstream project key would send this distribution's usage data to the upstream vendor's analytics project. |
 
+| 3 | Brand | word-level sweep across shipped packages (374+10 files) | Standalone display word "Nimbalyst" → "Auracle" in strings/JSX/comments (with a/an article fixes). Compound identifiers (`NimbalystEditor`, …), lowercase functional ids (`@nimbalyst/*`, `.nimext`, `NIMBALYST_*` env, `.nimbalyst/` dotfolder) untouched. | User-visible rebrand with the smallest possible upstream-merge cost. |
+| 4 | Identity | `packages/electron/package.json`, `packages/electron/bin/auracle` | `productName` "Auracle IDE", appId `com.aurapointcapital.auracle`, deep-link scheme `nimbalyst://` → `auracle://` (also in `src/main/index.ts` protocol registration and all URL builders), publish coordinates repointed, bin renamed. | The desktop launcher installs this app as "Auracle IDE.app" and the deep-link scheme is the product's own. |
+| 5 | Brand assets | `packages/electron/icon.icns`, `icon.png`, `nimbalyst-logo.png` (content replaced, filename kept) | Auracle mark (generated from the existing product icon at 1024px). | App/dock/about identity. |
+| 6 | Outbound links | onboarding ToS/Privacy, help menu docs, feedback email/issues, exporter footers | Point at aurapointcapital.com / SiixQuant repos / support@aurapointcapital.com. Collab/sync/marketplace hosts intentionally untouched (see below). | Links a user can click should not land on the upstream vendor's site. |
+
+## Known cosmetic TODOs
+
+- `packages/electron/icon.ico` (Windows) and `resources/trayTemplate*.png` (menu-bar glyph)
+  still carry the upstream artwork — Windows builds are not shipped, and the tray glyph is
+  an abstract mark; replace when a proper asset pass happens.
+
 ## Deliberately unchanged (for now)
 
 - **Marketplace, sync/share sign-in (Stytch), mobile companions** — left as upstream ships

@@ -14,7 +14,7 @@ describe('workerErrorSerialization', () => {
       lockHostname?: string;
     };
 
-    const original = new Error('Cannot tell whether another Nimbalyst is running.') as AmbiguousLockError;
+    const original = new Error('Cannot tell whether another Auracle is running.') as AmbiguousLockError;
     original.code = 'DATABASE_LOCKED_AMBIGUOUS';
     original.lockPid = 4242;
     original.lockFilePath = '/tmp/nimbalyst-db.pid';

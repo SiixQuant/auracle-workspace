@@ -1,7 +1,7 @@
 {
   "name": "@nimbalyst/extension-git",
   "version": "1.0.0",
-  "description": "Git log viewer extension for Nimbalyst",
+  "description": "Git log viewer extension for Auracle",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {

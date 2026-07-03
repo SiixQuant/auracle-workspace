@@ -148,7 +148,7 @@ export const SETTINGS_REGISTRY = {
     { store: 'ai-settings', path: 'apiKeys.openai-codex' },
     '',
   ),
-  // OpenCode's API key is optional (only used by Nimbalyst's connection test);
+  // OpenCode's API key is optional (only used by Auracle's connection test);
   // the panel still lets the user enter one, so it needs a registry entry or the
   // per-key flush would be rejected as an unknown key. See OpenCodePanel.tsx.
   'ai.apiKey.opencode': setting(

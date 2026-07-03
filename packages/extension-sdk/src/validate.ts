@@ -99,7 +99,7 @@ export async function validateExtensionBundle(
   if (!fs.existsSync(manifestPath)) {
     warnings.push(
       `No manifest.json found at ${manifestPath}. ` +
-        'Extensions need a manifest.json to be loaded by Nimbalyst.'
+        'Extensions need a manifest.json to be loaded by Auracle.'
     );
   } else {
     // Validate manifest

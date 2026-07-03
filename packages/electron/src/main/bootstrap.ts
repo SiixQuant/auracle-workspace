@@ -32,8 +32,8 @@ import { createUncaughtExceptionHandler } from './uncaughtException';
 // "Never Use Environment Variables as Implicit API Key Sources".
 //
 // A user had ANTHROPIC_API_KEY in a local .env file for unrelated work.
-// Nimbalyst silently picked it up via process.env and billed the user's
-// personal Anthropic account $100+ instead of their Nimbalyst subscription.
+// Auracle silently picked it up via process.env and billed the user's
+// personal Anthropic account $100+ instead of their Auracle subscription.
 //
 // As of claude-agent-sdk 0.2.111, `options.env` overlays `process.env`
 // instead of replacing it, so per-session scrubbing in providers is no
@@ -94,7 +94,7 @@ try {
 
 // Enable CDP remote debugging in dev mode for Playwright extension testing.
 // This allows `playwright connectOverCDP("http://localhost:9222")` to drive
-// the running Nimbalyst instance without launching a separate Electron process.
+// the running Auracle instance without launching a separate Electron process.
 if (process.env.NODE_ENV !== 'production') {
   const cdpPort = process.env.NIMBALYST_CDP_PORT || '9222';
   app.commandLine.appendSwitch('remote-debugging-port', cdpPort);

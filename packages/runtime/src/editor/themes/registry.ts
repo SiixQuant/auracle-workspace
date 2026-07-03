@@ -1,5 +1,5 @@
 /**
- * Nimbalyst Theme Registry
+ * Auracle Theme Registry
  *
  * Manages theme registration and provides APIs for accessing themes.
  * Built-in themes are pre-registered; extensions can add custom themes.

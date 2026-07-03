@@ -155,7 +155,7 @@ export function UpdateToast(): React.ReactElement | null {
                 </svg>
               </div>
               <div className="update-toast-title text-sm font-semibold text-[var(--nim-text)] mb-1 pr-7">You're up to date!</div>
-              <div className="update-toast-subtitle text-xs text-[var(--nim-text-muted)] leading-normal mb-0">Nimbalyst {currentVersion} is the latest version.</div>
+              <div className="update-toast-subtitle text-xs text-[var(--nim-text-muted)] leading-normal mb-0">Auracle {currentVersion} is the latest version.</div>
             </div>
           )}
 
@@ -208,7 +208,7 @@ export function UpdateToast(): React.ReactElement | null {
               <div className="update-toast-subtitle text-xs text-[var(--nim-text-muted)] leading-normal mb-1" data-testid="error-message">{errorMessage}</div>
               <div className="text-xs text-[var(--nim-text-muted)] leading-normal mb-4">
                 You can <a
-                  href="https://nimbalyst.com/download"
+                  href="https://github.com/SiixQuant/auracle-ide/releases"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-[var(--nim-primary)] hover:underline cursor-pointer"

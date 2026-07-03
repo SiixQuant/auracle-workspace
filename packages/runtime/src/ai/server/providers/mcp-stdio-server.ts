@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Standalone MCP stdio server for Nimbalyst
+ * Standalone MCP stdio server for Auracle
  * This can be spawned by Codex as an MCP server
  */
 
@@ -24,7 +24,7 @@ function debug(...args: any[]): void {
   }
 }
 
-debug('Starting Nimbalyst MCP stdio server...');
+debug('Starting Auracle MCP stdio server...');
 
 // Define available tools
 const tools: Tool[] = [

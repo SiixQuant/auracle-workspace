@@ -22,8 +22,8 @@
  *    runtime expects AND is executable.
  *
  * Run: node validate-packaged-sdks.js <path-to-packaged-app> [--platform <p>] [--arch <a>]
- *   - macOS:   /path/to/Nimbalyst.app
- *   - Linux:   /path/to/Nimbalyst-Linux.AppImage (extracted dir)
+ *   - macOS:   /path/to/Auracle.app
+ *   - Linux:   /path/to/Auracle-Linux.AppImage (extracted dir)
  *   - Windows: /path/to/install/dir
  *
  * Pass --platform/--arch when the caller knows the build target (afterPack

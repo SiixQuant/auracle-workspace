@@ -52,7 +52,7 @@ const BUILTIN_THEME_TO_MONACO: Record<string, string> = {
 };
 
 /**
- * Map Nimbalyst theme to Monaco editor theme.
+ * Map Auracle theme to Monaco editor theme.
  *
  * Resolution order for `extensionThemeId`:
  *   1. Built-in/legacy mapping in `BUILTIN_THEME_TO_MONACO`.

@@ -1,7 +1,7 @@
 /**
  * MCP server adapter over MemoryEngine. Thin: it maps tool calls to engine
  * methods and serializes results as JSON text content. Any MCP client (the
- * Nimbalyst coding agent today, the voice bridge later, or a third-party agent)
+ * Auracle coding agent today, the voice bridge later, or a third-party agent)
  * gets the same surface.
  */
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';

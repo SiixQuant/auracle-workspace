@@ -332,7 +332,7 @@ export class ClaudeProvider extends BaseAIProvider {
       // Anthropic deprecated `temperature` for `claude-opus-4-7` and is
       // expected to do so on future reasoning Opus releases. Sending it
       // returns HTTP 400 `"temperature is deprecated for this model"`,
-      // which surfaces in Nimbalyst as a misleading "Test Connection:
+      // which surfaces in Auracle as a misleading "Test Connection:
       // Failed" against valid API keys -- users blame their key. The
       // default model on a fresh install is Opus 4.7, so every new user
       // hits this until they switch to Sonnet. See nimbalyst#199.

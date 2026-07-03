@@ -10,7 +10,7 @@
  * executeExtensionTool directly through the same bridge as MCP tool calls.
  *
  * Run with: npx playwright test e2e/extensions/hidden-editor-tools.spec.ts
- * Requires: Nimbalyst dev server running (npm run dev)
+ * Requires: Auracle dev server running (npm run dev)
  */
 
 import { test, expect } from '@nimbalyst/extension-sdk/testing';

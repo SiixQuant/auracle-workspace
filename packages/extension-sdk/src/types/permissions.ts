@@ -1,12 +1,12 @@
 /**
  * Extension permission types.
  *
- * The catalog of valid permission ids is owned by the host (Nimbalyst core).
+ * The catalog of valid permission ids is owned by the host (Auracle core).
  * Extensions reference permission ids; they cannot register new ids.
  *
  * Scope of what this catalog actually enforces
  * --------------------------------------------
- * The catalog only contains permissions for capabilities Nimbalyst exposes
+ * The catalog only contains permissions for capabilities Auracle exposes
  * through main-process brokers (database, workspace files, MCP registration,
  * secrets). Brokers can refuse a call when the grant is missing, so these
  * checks are real.
@@ -92,7 +92,7 @@ export interface BackendModuleEnablement {
  *
  * Granting a backend module is itself the consent to run native code on the
  * user's machine. The catalog ids in `permissions` only cover ADDITIONAL
- * host-brokered capabilities (Nimbalyst DB, secrets, MCP registration). They
+ * host-brokered capabilities (Auracle DB, secrets, MCP registration). They
  * do NOT enumerate raw Node capabilities the module already has via standard
  * `require()`. See the catalog docs at the top of this file.
  *

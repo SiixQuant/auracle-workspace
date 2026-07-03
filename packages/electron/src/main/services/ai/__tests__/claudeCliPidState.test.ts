@@ -11,7 +11,7 @@ import {
 
 /**
  * The `claude` CLI writes `~/.claude/sessions/{pid}.json`; we poll it for
- * busy/idle/waiting and map to Nimbalyst turn states. This is the stable
+ * busy/idle/waiting and map to Auracle turn states. This is the stable
  * turn-level state source for the CLI path (the SDK-only MessageStreamingHandler
  * does not see CLI turns).
  */
@@ -73,7 +73,7 @@ describe('isClaudePidFileStale', () => {
 });
 
 describe('mapPidStatusToTurnState', () => {
-  it('maps PID statuses to Nimbalyst turn states', () => {
+  it('maps PID statuses to Auracle turn states', () => {
     expect(mapPidStatusToTurnState('busy')).toBe('running');
     expect(mapPidStatusToTurnState('idle')).toBe('idle');
     expect(mapPidStatusToTurnState('waiting')).toBe('waiting_for_input');

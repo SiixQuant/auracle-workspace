@@ -3,7 +3,7 @@
   "name": "Feedback",
   "version": "1.0.0",
   "description": "In-app feedback flow that drives bug reports and feature requests through a Claude agent",
-  "author": "Nimbalyst",
+  "author": "Auracle",
   "apiVersion": "1.0.0",
   "permissions": {
     "filesystem": false,

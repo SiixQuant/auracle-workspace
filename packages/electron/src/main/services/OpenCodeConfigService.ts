@@ -69,7 +69,7 @@ export function pickFirstExisting(candidates: string[], existsFn: (p: string) =>
 }
 
 export interface LMStudioBridgeOptions {
-  /** LM Studio server base URL as configured in Nimbalyst (e.g. http://127.0.0.1:1234). */
+  /** LM Studio server base URL as configured in Auracle (e.g. http://127.0.0.1:1234). */
   baseUrl: string;
   /** Model ids discovered from LM Studio's /v1/models response. */
   modelIds: string[];
@@ -223,7 +223,7 @@ function deepMerge(target: Record<string, unknown>, patch: Record<string, unknow
 }
 
 /**
- * LM Studio's OpenAI-compatible endpoint lives at `/v1`. Nimbalyst stores the
+ * LM Studio's OpenAI-compatible endpoint lives at `/v1`. Auracle stores the
  * server root (e.g. `http://127.0.0.1:1234`), so we append `/v1` if it's missing.
  */
 function normalizeOpenAICompatibleBaseUrl(input: string): string {

@@ -1,7 +1,7 @@
 /**
  * Libraries that MUST be externalized by extensions.
  *
- * These libraries are provided by the Nimbalyst host and must not be bundled
+ * These libraries are provided by the Auracle host and must not be bundled
  * by extensions. Bundling them would cause runtime errors due to:
  * - React: Multiple instances break hooks ("rendered more hooks than previous render")
  * - Lexical: Extensions contribute nodes to the host's editor instance

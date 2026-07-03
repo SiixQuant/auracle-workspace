@@ -538,7 +538,7 @@ export function transformAgentMessagesToUI(agentMessages: any[]): Message[] {
               errorMessage: errorContent
             });
           } else if (parsed.type === 'nimbalyst_tool_use') {
-            // Nimbalyst-specific tool call (e.g., AskUserQuestion, ToolPermission)
+            // Auracle-specific tool call (e.g., AskUserQuestion, ToolPermission)
             // These are our own tool calls that won't conflict with SDK messages
             // Skip if we already have a tool with this ID (deduplication)
             if (parsed.id && allToolMessages.has(parsed.id)) {
@@ -564,7 +564,7 @@ export function transformAgentMessagesToUI(agentMessages: any[]): Message[] {
 
             uiMessages.push(toolMessage);
           } else if (parsed.type === 'nimbalyst_tool_result') {
-            // Nimbalyst-specific tool result - find corresponding nimbalyst_tool_use and add result
+            // Auracle-specific tool result - find corresponding nimbalyst_tool_use and add result
             const toolUseId = parsed.tool_use_id || parsed.id;
             const toolMsg = allToolMessages.get(toolUseId);
             if (toolMsg && toolMsg.toolCall) {

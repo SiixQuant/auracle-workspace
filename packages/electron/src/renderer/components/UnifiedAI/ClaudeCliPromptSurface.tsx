@@ -18,7 +18,7 @@ export interface ClaudeCliPromptSurfaceProps {
  * normally renders interactive widgets) is not mounted. But the CLI still calls
  * the same sessionId-bearing `mcp__nimbalyst-mcp__*` interactive tools the Agent
  * SDK does (commit proposal, AskUserQuestion, PromptForUserInput, ExitPlanMode,
- * tool permission) — and those MCP handlers BLOCK until a Nimbalyst widget answers
+ * tool permission) — and those MCP handlers BLOCK until an Auracle widget answers
  * them. This surface renders just the *pending* interactive prompts above the
  * terminal so the user can answer them; the `InteractiveWidgetHost` that wires the
  * answer back is already registered for every session in `SessionTranscript`.

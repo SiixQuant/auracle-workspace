@@ -2,7 +2,7 @@
  * In-process registry of `LexicalExtension` instances contributed outside
  * of `NimbalystEditorExtensions.ts`'s built-in dependency list. Used both
  * by the renderer-side extension bridge (which publishes contributions
- * loaded from on-disk Nimbalyst extensions) and by app-level plugins like
+ * loaded from on-disk Auracle extensions) and by app-level plugins like
  * the tracker that need to attach a node class without forking the editor
  * shell.
  *

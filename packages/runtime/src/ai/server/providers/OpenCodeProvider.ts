@@ -1,7 +1,7 @@
 /**
  * OpenCode Agent Provider
  *
- * Integrates the open source OpenCode coding agent into Nimbalyst.
+ * Integrates the open source OpenCode coding agent into Auracle.
  * OpenCode runs as a local HTTP+SSE server, and we communicate
  * via the @opencode-ai/sdk client library.
  *
@@ -188,7 +188,7 @@ export class OpenCodeProvider extends BaseAgentProvider {
     if (!config) {
       // No file found or unreadable. Surface this in the log so the user can
       // tell the difference between "I have no providers configured" and
-      // "Nimbalyst can't find the file you wrote". See #284.
+      // "Auracle can't find the file you wrote". See #284.
       if (OpenCodeProvider.configLoader) {
         // eslint-disable-next-line no-console -- runtime package logger is renderer-only
         console.warn(

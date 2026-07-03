@@ -5,7 +5,7 @@
  * `@zed-industries/codex-acp` binary) and speaks the ACP protocol over stdio
  * via JSON-RPC framing.
  *
- * ACP gives Nimbalyst native pre/post file-edit hooks (via the writeTextFile
+ * ACP gives Auracle native pre/post file-edit hooks (via the writeTextFile
  * client method), so we can capture pre-edit baselines for diff rendering and
  * attribute edits to the producing session deterministically -- something the
  * @openai/codex-sdk transport doesn't expose.
@@ -102,8 +102,8 @@ interface ActiveTurnState {
   /** ACP session id (used for activeTurns keying and ACP-side correlation). */
   sessionId: string;
   /**
-   * Nimbalyst session id (passed via ProtocolMessage.sessionId). Hooks like
-   * onBeforeFileWrite/onTurnFilesEdited operate on Nimbalyst sessions
+   * Auracle session id (passed via ProtocolMessage.sessionId). Hooks like
+   * onBeforeFileWrite/onTurnFilesEdited operate on Auracle sessions
    * (session_files, document_history), so this is what they get.
    */
   nimbalystSessionId?: string;
@@ -1001,7 +1001,7 @@ export class CodexACPProtocol implements AgentProtocol {
       blocks.push({
         type: 'resource',
         resource: {
-          uri: 'nimbalyst://system-instructions',
+          uri: 'auracle://system-instructions',
           text: systemPrompt,
           mimeType: 'text/plain',
         },
@@ -1055,7 +1055,7 @@ export class CodexACPProtocol implements AgentProtocol {
     sessionId: string,
     permissionMode: string
   ): Promise<void> {
-    // Map Nimbalyst permission modes to Codex ACP approval presets.
+    // Map Auracle permission modes to Codex ACP approval presets.
     // Codex exposes approval as a config option (id: "mode") rather than
     // a standard ACP session mode.
     //

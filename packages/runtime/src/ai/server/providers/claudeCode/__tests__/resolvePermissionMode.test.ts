@@ -1,7 +1,7 @@
 /**
  * Tests for `resolvePermissionMode`.
  *
- * Maps the Nimbalyst session mode (planning | agent | auto | undefined)
+ * Maps the Auracle session mode (planning | agent | auto | undefined)
  * to the Claude Agent SDK's `permissionMode` parameter.
  */
 

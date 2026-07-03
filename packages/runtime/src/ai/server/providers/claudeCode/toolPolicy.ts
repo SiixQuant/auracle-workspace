@@ -8,7 +8,7 @@
  * via `permissionMode: 'plan'`. No manual tool filtering is needed.
  */
 
-// Internal Nimbalyst MCP tools that are auto-allowed (no permission prompt):
+// Internal Auracle MCP tools that are auto-allowed (no permission prompt):
 // they are display-only or confirm within their own widget, and the SDK's
 // canUseTool path otherwise falls through to a dialog handler that has no UI for
 // nimbalyst-owned tools — the Promise never resolves and the SDK surfaces "user

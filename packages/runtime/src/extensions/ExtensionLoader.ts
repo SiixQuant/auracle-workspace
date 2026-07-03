@@ -1,7 +1,7 @@
 /**
  * Extension Loader
  *
- * Platform-agnostic extension loading system for Nimbalyst.
+ * Platform-agnostic extension loading system for Auracle.
  * Handles discovery, loading, and lifecycle management of extensions.
  *
  * The loader uses an ExtensionPlatformService for platform-specific

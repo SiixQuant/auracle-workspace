@@ -2,7 +2,7 @@
  * Mobile voice-tool dispatch (desktop side).
  *
  * The iOS voice agent connects directly to OpenAI but cannot run desktop-hosted
- * voice tools (e.g. the Nimbalyst Memory extension's project-knowledge tools).
+ * voice tools (e.g. the Auracle Memory extension's project-knowledge tools).
  * It proxies those calls over the CollabV3 sync channel as a generic
  * `voiceToolRequest`; this module runs the requested tool on the desktop and
  * returns the result, mirroring the dispatch path VoiceModeService uses for a

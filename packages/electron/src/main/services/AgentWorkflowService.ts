@@ -536,9 +536,9 @@ export class AgentWorkflowService {
     }
 
     // Always scan Claude CLI plugins (~/.claude/plugins) regardless of the
-    // Nimbalyst extension-workflows toggle. The Claude Agent SDK auto-loads
+    // Auracle extension-workflows toggle. The Claude Agent SDK auto-loads
     // these plugins based on the user's enabledPlugins settings, so the
-    // Nimbalyst typeahead must mirror that to avoid showing plugin commands
+    // Auracle typeahead must mirror that to avoid showing plugin commands
     // only on the global panel but not on project-scoped workspaces.
     await this.scanLegacyClaudePluginSources(snapshot);
 
@@ -1032,7 +1032,7 @@ export class AgentWorkflowService {
           name: source.namespace,
           version: '1.0.0',
           description: source.description || source.displayName,
-          author: { name: 'Nimbalyst' },
+          author: { name: 'Auracle' },
         }, null, 2),
       );
       await removeUnexpectedEntries(path.join(pluginRoot, '.claude-plugin'), new Set(['plugin.json']));

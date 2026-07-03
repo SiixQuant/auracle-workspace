@@ -310,7 +310,7 @@ async function checkForRestartContinuation(aiService: AIService): Promise<void> 
                 await queuedPromptsStore.create({
                     id: `restart-continuation-${sessionId}-${Date.now()}`,
                     sessionId,
-                    prompt: 'Nimbalyst has restarted. Please continue with your work.'
+                    prompt: 'Auracle has restarted. Please continue with your work.'
                 });
                 successCount++;
                 logger.main.info(`[RestartContinuation] Queued continuation prompt for session ${sessionId}`);
@@ -385,7 +385,7 @@ export { getMcpConfigService } from './mcpConfigServiceRef';
 // This must be done before app is ready and before any calls to app.getPath('userData')
 if (process.env.RUN_ONE_DEV_MODE === 'true') {
     const defaultUserData = app.getPath('userData');
-    const devUserData = path.join(path.dirname(defaultUserData), 'Nimbalyst-Dev');
+    const devUserData = path.join(path.dirname(defaultUserData), 'Auracle-Dev');
     app.setPath('userData', devUserData);
     console.log(`Dev mode enabled: Using isolated userData path: ${devUserData}`);
 }
@@ -515,19 +515,19 @@ function initializeLogging() {
     logger.main.info(`Debug logs will be written to: ${debugLogPath}`);
 }
 
-// Register custom URL protocol handler (nimbalyst://)
+// Register custom URL protocol handler (auracle://)
 // Must be done before app is ready on macOS
 if (process.defaultApp) {
     if (process.argv.length >= 2) {
         // Remove any stale registration first (e.g. from packaged builds or Electron Fiddle)
-        app.removeAsDefaultProtocolClient('nimbalyst', process.execPath, [path.resolve(process.argv[1])]);
-        app.setAsDefaultProtocolClient('nimbalyst', process.execPath, [path.resolve(process.argv[1])]);
-        logger.main.info(`[DeepLink] Registered nimbalyst:// protocol for dev mode (exec: ${process.execPath}, arg: ${path.resolve(process.argv[1])})`);
-        logger.main.info(`[DeepLink] isDefaultProtocolClient: ${app.isDefaultProtocolClient('nimbalyst', process.execPath, [path.resolve(process.argv[1])])}`);
+        app.removeAsDefaultProtocolClient('auracle', process.execPath, [path.resolve(process.argv[1])]);
+        app.setAsDefaultProtocolClient('auracle', process.execPath, [path.resolve(process.argv[1])]);
+        logger.main.info(`[DeepLink] Registered auracle:// protocol for dev mode (exec: ${process.execPath}, arg: ${path.resolve(process.argv[1])})`);
+        logger.main.info(`[DeepLink] isDefaultProtocolClient: ${app.isDefaultProtocolClient('auracle', process.execPath, [path.resolve(process.argv[1])])}`);
     }
 } else {
-    app.removeAsDefaultProtocolClient('nimbalyst');
-    app.setAsDefaultProtocolClient('nimbalyst');
+    app.removeAsDefaultProtocolClient('auracle');
+    app.setAsDefaultProtocolClient('auracle');
 }
 
 registerLinuxAppImageProtocolHandler();
@@ -562,7 +562,7 @@ if (!allowMultipleInstances) {
             logger.main.info(`[SingleInstance] Found file in argv: ${fileArg}`);
             try { writeFileSync(pendingOpenFilePath, fileArg, 'utf-8'); } catch (_) {}
             app.quit();
-        } else if (process.argv.find(arg => arg.startsWith('nimbalyst://'))) {
+        } else if (process.argv.find(arg => arg.startsWith('auracle://'))) {
             // Primary instance will handle via second-instance event; quit immediately
             logger.main.info('[SingleInstance] Second instance has deep link arg, quitting immediately');
             app.quit();
@@ -597,7 +597,7 @@ if (!allowMultipleInstances) {
             logger.main.info('[SingleInstance] second-instance event, argv:', argv);
 
             // On Windows the protocol URL is passed as the last argument
-            const deepLinkUrl = argv.find(arg => arg.startsWith('nimbalyst://'));
+            const deepLinkUrl = argv.find(arg => arg.startsWith('auracle://'));
             if (deepLinkUrl) {
                 logger.main.info('[SingleInstance] Found deep link in argv:', summarizeDeepLink(deepLinkUrl));
                 handleDeepLink(deepLinkUrl);
@@ -606,7 +606,7 @@ if (!allowMultipleInstances) {
             // Check argv for file paths (Windows/Linux pass files as args)
             const fileArg = argv.find(arg =>
                 !arg.startsWith('-') &&
-                !arg.startsWith('nimbalyst://') &&
+                !arg.startsWith('auracle://') &&
                 arg !== argv[0] &&
                 path.isAbsolute(arg) &&
                 existsSync(arg) &&
@@ -693,7 +693,7 @@ safeHandle('deep-link:consume-pending-shared-doc', (_event, workspacePath: strin
     return { ...pending, workspacePath };
 });
 
-// Same pattern for tracker deep links: nimbalyst://tracker/{trackerId}?orgId=...
+// Same pattern for tracker deep links: auracle://tracker/{trackerId}?orgId=...
 const pendingTrackerLinks = new Map<string, { trackerId: string; orgId: string }>();
 
 safeHandle('deep-link:consume-pending-tracker', (_event, workspacePath: string) => {
@@ -734,7 +734,7 @@ function summarizeDeepLink(url: string): { host: string; pathname: string; param
     }
 }
 
-// Handle deep link URLs (nimbalyst://...)
+// Handle deep link URLs (auracle://...)
 app.on('open-url', (event, url) => {
     event.preventDefault();
     logger.main.info('[DeepLink] open-url event:', summarizeDeepLink(url));
@@ -752,7 +752,7 @@ async function handleDeepLink(url: string): Promise<void> {
     try {
         const parsed = new URL(url);
 
-        // Handle auth callback: nimbalyst://auth/callback?session_token=...
+        // Handle auth callback: auracle://auth/callback?session_token=...
         if (parsed.host === 'auth' && parsed.pathname === '/callback') {
             const sessionToken = parsed.searchParams.get('session_token');
             const sessionJwt = parsed.searchParams.get('session_jwt');
@@ -819,7 +819,7 @@ async function handleDeepLink(url: string): Promise<void> {
                 logger.main.error('[DeepLink] Auth callback missing session_token; full params:', summarizeDeepLink(url));
             }
         } else if (parsed.host === 'install' || parsed.pathname?.startsWith('/install/')) {
-            // Handle extension install: nimbalyst://install/com.nimbalyst.excalidraw
+            // Handle extension install: auracle://install/com.nimbalyst.excalidraw
             const extensionId = parsed.host === 'install'
                 ? parsed.pathname?.replace(/^\//, '')
                 : parsed.pathname?.replace('/install/', '');
@@ -831,7 +831,7 @@ async function handleDeepLink(url: string): Promise<void> {
                 logger.main.warn('[DeepLink] Extension install missing extension ID');
             }
         } else if (parsed.host === 'doc' || parsed.pathname?.startsWith('/doc/')) {
-            // Handle shared document link: nimbalyst://doc/{documentId}?orgId={orgId}
+            // Handle shared document link: auracle://doc/{documentId}?orgId={orgId}
             const encoded = parsed.host === 'doc'
                 ? parsed.pathname?.replace(/^\//, '')
                 : parsed.pathname?.replace('/doc/', '');
@@ -851,7 +851,7 @@ async function handleDeepLink(url: string): Promise<void> {
 
             await openSharedDocumentFromDeepLink(documentId, orgId);
         } else if (parsed.host === 'tracker' || parsed.pathname?.startsWith('/tracker/')) {
-            // Handle tracker link: nimbalyst://tracker/{trackerId}?orgId={orgId}
+            // Handle tracker link: auracle://tracker/{trackerId}?orgId={orgId}
             const encoded = parsed.host === 'tracker'
                 ? parsed.pathname?.replace(/^\//, '')
                 : parsed.pathname?.replace('/tracker/', '');
@@ -1171,7 +1171,7 @@ function parseCommandLineArgs() {
         } else if (arg === '--filter' && i + 1 < args.length) {
             pendingFilter = args[i + 1];
             logger.main.info(`✓ Filter from CLI: ${pendingFilter}`);
-        } else if (arg.startsWith('nimbalyst://')) {
+        } else if (arg.startsWith('auracle://')) {
             pendingDeepLinkUrl = arg;
             logger.main.info(`[SingleInstance] Found deep link in argv: ${arg.substring(0, 60)}...`);
         } else if (!arg.startsWith('--') && !arg.startsWith('-')) {
@@ -1243,7 +1243,7 @@ app.whenReady().then(async () => {
     checkpoint('app-ready');
 
     // Raise the file descriptor soft limit from the macOS default of 256.
-    // Nimbalyst uses recursive fs.watch, chokidar per open tab, terminal PTYs,
+    // Auracle uses recursive fs.watch, chokidar per open tab, terminal PTYs,
     // and database connections — 256 FDs is far too low and causes silent
     // watcher failures (EMFILE) on machines that haven't manually raised it.
     if (process.platform === 'darwin' || process.platform === 'linux') {
@@ -1425,22 +1425,22 @@ app.whenReady().then(async () => {
             const dbPath = join(app.getPath('userData'), 'pglite-db');
 
             dialog.showErrorBox(
-                'Nimbalyst - Database Initialization Failed',
+                'Auracle - Database Initialization Failed',
                 `The database system failed to start.\n\n` +
                 `This usually indicates:\n` +
                 `1. Another process has the database locked\n` +
                 `2. Database files are corrupted\n` +
                 `3. Insufficient file system permissions\n\n` +
                 `To fix this:\n` +
-                `1. Close any other Nimbalyst windows\n` +
+                `1. Close any other Auracle windows\n` +
                 `2. Restart your computer (clears stale locks)\n` +
                 `3. If the problem persists, delete the database folder:\n` +
                 `   ${dbPath}\n\n` +
-                `Nimbalyst will now close.`
+                `Auracle will now close.`
             );
         } else {
             dialog.showErrorBox(
-                'Nimbalyst - Database Initialization Failed',
+                'Auracle - Database Initialization Failed',
                 `Failed to initialize the database system.\n\nError: ${errorMessage}\n\nNimbalyst cannot continue without the database.`
             );
         }
@@ -1750,7 +1750,7 @@ app.whenReady().then(async () => {
 
     // Inject shell environment loader to pass the user's full login shell env vars
     // (AWS credentials, NODE_EXTRA_CA_CERTS, etc.) to the Claude Code subprocess.
-    // Without this, Dock/Finder-launched Nimbalyst has a minimal environment.
+    // Without this, Dock/Finder-launched Auracle has a minimal environment.
     ClaudeCodeProvider.setShellEnvironmentLoader(() => getShellEnvironment());
     OpenAICodexProvider.setShellEnvironmentLoader(() => getShellEnvironment());
     OpenAICodexACPProvider.setShellEnvironmentLoader(() => getShellEnvironment());
@@ -1761,7 +1761,7 @@ app.whenReady().then(async () => {
     // (docker, homebrew, nvm, etc.) that are missing from Electron's GUI PATH.
     // For Claude Code this is critical: the SDK spawns stdio MCP subprocesses
     // (`npx`, `uvx`, ...) using options.env.PATH and fails with "Executable not
-    // found in $PATH: npx" otherwise when Nimbalyst is launched from Dock.
+    // found in $PATH: npx" otherwise when Auracle is launched from Dock.
     ClaudeCodeProvider.setEnhancedPathLoader(() => getEnhancedPath());
     OpenAICodexProvider.setEnhancedPathLoader(() => getEnhancedPath());
     OpenAICodexACPProvider.setEnhancedPathLoader(() => getEnhancedPath());
@@ -1904,7 +1904,7 @@ app.whenReady().then(async () => {
     // that server. The old `.includes(pattern)` check only ever matched
     // exact strings, so a user with broad allows in `~/.claude/settings.json`
     // still saw a permission dialog for every distinct subcommand. The
-    // wildcard-aware `matchesAllowPattern` brings Nimbalyst's pre-screen
+    // wildcard-aware `matchesAllowPattern` brings Auracle's pre-screen
     // in line with Claude Code's own pattern semantics. Fixes #152.
     const patternChecker = async (workspacePath: string, pattern: string) => {
       const effectiveSettings = await claudeSettingsManager.getEffectiveSettings(workspacePath);

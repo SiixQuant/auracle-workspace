@@ -1,7 +1,7 @@
 /**
  * Extension System
  *
- * Platform-agnostic extension loading system for Nimbalyst.
+ * Platform-agnostic extension loading system for Auracle.
  * Extensions can provide custom editors, AI tools, and more.
  */
 

@@ -6,7 +6,7 @@ import type { Doc } from 'yjs';
 import type { CommentsConfig } from './commenting/types';
 
 /**
- * Configuration interface for the Nimbalyst component.
+ * Configuration interface for the Auracle component.
  * This replaces the reactive settings system with static configuration props.
  */
 
@@ -32,7 +32,7 @@ export interface UploadedEditorAsset {
  * - isCharLimit: Can be external
  * - isCharLimitUtf8: Can be external
  *
- * - isCollab: Not supported yet in Nimbalyst (See Lexical Playground)
+ * - isCollab: Not supported yet in Auracle (See Lexical Playground)
  *
  * - shouldUseLexicalContextMenu: Not implemented as pluggable (or that useful)
  *

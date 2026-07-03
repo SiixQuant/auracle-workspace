@@ -4,7 +4,7 @@
  * This intermediate class sits between BaseAIProvider and concrete agent implementations,
  * consolidating shared infrastructure that all agent providers need:
  * - Abort controller management
- * - Session ID mapping (Nimbalyst session ID <-> provider session ID)
+ * - Session ID mapping (Auracle session ID <-> provider session ID)
  * - Permission management (pending requests, session cache, resolve/reject lifecycle)
  * - Permission response polling (for cross-device and mobile support)
  * - Security logging

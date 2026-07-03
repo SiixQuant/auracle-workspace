@@ -1,7 +1,7 @@
 /**
- * Nimbalyst Theme Type Definitions
+ * Auracle Theme Type Definitions
  *
- * These types define the structure of themes in Nimbalyst.
+ * These types define the structure of themes in Auracle.
  * Extensions can use these types to contribute custom themes.
  */
 

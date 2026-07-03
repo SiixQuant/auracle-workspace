@@ -22,7 +22,7 @@ interface AlphaBadgeProps {
 
 const DEFAULT_TOOLTIP = 'Alpha feature — may change or be removed.';
 export const SETTINGS_ALPHA_TOOLTIP =
-  'Alpha features may be incomplete, and shared data may be lost.\n\nTeam features are free during alpha and will be part of a Nimbalyst Team subscription in the future.';
+  'Alpha features may be incomplete, and shared data may be lost.\n\nTeam features are free during alpha and will be part of an Auracle Team subscription in the future.';
 
 const PILL_BASE = 'inline-flex items-center font-medium lowercase bg-[var(--nim-bg-tertiary)] border border-[var(--nim-border)]';
 

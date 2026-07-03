@@ -1,5 +1,5 @@
 /**
- * Core types for Nimbalyst theme system.
+ * Core types for Auracle theme system.
  *
  * Themes are separate from extensions - they provide styling only, no code.
  * This module defines the schema for theme.json manifests and theme metadata.

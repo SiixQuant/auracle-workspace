@@ -1,5 +1,5 @@
 /**
- * Live mode: drive a running Nimbalyst over its loopback MCP-HTTP server so
+ * Live mode: drive a running Auracle over its loopback MCP-HTTP server so
  * reads reflect in-app state (and, in phase 2, writes flow through the
  * WriteCoordinator + collab sync).
  *

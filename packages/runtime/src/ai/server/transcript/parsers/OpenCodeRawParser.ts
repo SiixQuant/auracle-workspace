@@ -270,7 +270,7 @@ export class OpenCodeRawParser implements IRawMessageParser {
   ): CanonicalEventDescriptor[] {
     const rawToolName = typeof part.tool === 'string' ? part.tool : 'unknown';
     // OpenCode names MCP tools as `<server>_<tool>` (single underscore),
-    // but every other provider in Nimbalyst -- and our widget registry --
+    // but every other provider in Auracle -- and our widget registry --
     // uses Claude/Codex's canonical `mcp__<server>__<tool>` format.
     // Normalize here so a single canonical name flows through the rest of
     // the system: tool widgets match, persistence is consistent, and the

@@ -120,7 +120,7 @@ const activeStreamableTransports = new Map<
   StreamableTransportMetadata
 >();
 
-// Store MCP Server instances by Nimbalyst session ID
+// Store MCP Server instances by Auracle session ID
 // Used to send notifications (e.g., tools/list_changed) when document state changes
 const serverByNimbalystSession = new Map<string, Server>();
 

@@ -173,7 +173,7 @@ export class OpenAICodexProvider extends BaseAgentProvider {
   >();
 
   /**
-   * In-memory cache of live `ProtocolSession` objects, keyed by Nimbalyst
+   * In-memory cache of live `ProtocolSession` objects, keyed by Auracle
    * session id. This is the lifecycle the codex app-server protocol is designed
    * around: one child process per session, reused across turns. Without this
    * cache, every turn calls `protocol.resumeSession` which spawns a *new*
@@ -182,8 +182,8 @@ export class OpenAICodexProvider extends BaseAgentProvider {
    * this session).
    *
    * `this.sessions` (`ProviderSessionManager`) is a separate, serializable
-   * mapping of Nimbalyst session id -> codex thread id; that one persists
-   * across Nimbalyst restarts so we can `resumeSession` after a relaunch.
+   * mapping of Auracle session id -> codex thread id; that one persists
+   * across Auracle restarts so we can `resumeSession` after a relaunch.
    * `liveProtocolSessions` is in-memory only.
    */
   private readonly liveProtocolSessions = new Map<string, ProtocolSession>();
@@ -198,7 +198,7 @@ export class OpenAICodexProvider extends BaseAgentProvider {
     transport: CodexTransport;
   } | null = null;
 
-  // Internal Nimbalyst MCP-server enablement (ports, kill-switches, tokens) lives
+  // Internal Auracle MCP-server enablement (ports, kill-switches, tokens) lives
   // in the shared `mcpServerConfig` registry now — see `getMcpConfigService`.
 
   // MCP config loader (injected from electron main process)
@@ -262,7 +262,7 @@ export class OpenAICodexProvider extends BaseAgentProvider {
   }
 
   // Host-supplied dispatcher that maps codex's server-to-client approval/
-  // dynamic-tool RPCs onto Nimbalyst's permission system. Only consulted for
+  // dynamic-tool RPCs onto Auracle's permission system. Only consulted for
   // the `app-server` transport.
   private static appServerHostBindings: CodexAppServerHostBindings | null = null;
 
@@ -963,11 +963,11 @@ export class OpenAICodexProvider extends BaseAgentProvider {
       // Get or create protocol session.
       //
       // Order of preference:
-      //   1. A live cached `ProtocolSession` (same Nimbalyst process, prior
+      //   1. A live cached `ProtocolSession` (same Auracle process, prior
       //      turn already spawned the child). Reuse it -- this is the
       //      "one child per session" invariant the protocol assumes.
       //   2. A persisted thread id (`this.sessions.getSessionId`) from a prior
-      //      Nimbalyst process. Call `resumeSession` to attach to it.
+      //      Auracle process. Call `resumeSession` to attach to it.
       //   3. Otherwise, `createSession`.
       const cachedLiveSession = sessionId ? this.liveProtocolSessions.get(sessionId) : undefined;
       const existingSessionId = this.sessions.getSessionId(sessionId || '');
@@ -1092,7 +1092,7 @@ export class OpenAICodexProvider extends BaseAgentProvider {
         session = await this.protocol.createSession(sessionOptions);
         isResumedThread = false;
       }
-      // Stash live sessions so future turns on the same Nimbalyst session reuse
+      // Stash live sessions so future turns on the same Auracle session reuse
       // the same child. Skip when sessionId is absent (anonymous turns -- nothing
       // to key by) and when we just hit the cache (no-op).
       if (sessionId && !cachedLiveSession) {
@@ -1330,7 +1330,7 @@ export class OpenAICodexProvider extends BaseAgentProvider {
   }
 
   /**
-   * Drop and kill the cached `ProtocolSession` for a Nimbalyst session, if any.
+   * Drop and kill the cached `ProtocolSession` for an Auracle session, if any.
    * Used on stream errors (likely-dead child) and from `cleanupSession`.
    */
   private evictLiveProtocolSession(sessionId: string | undefined): void {
@@ -1684,7 +1684,7 @@ export class OpenAICodexProvider extends BaseAgentProvider {
 
   /**
    * Build system prompt for Codex using the same addendum as Claude Code.
-   * Uses buildClaudeCodeSystemPrompt to include Nimbalyst-specific instructions
+   * Uses buildClaudeCodeSystemPrompt to include Auracle-specific instructions
    * for visual tools, worktrees, session naming, etc.
    */
   protected buildSystemPrompt(documentContext?: DocumentContext, isMetaAgent: boolean = false, workflowPreset: MetaAgentWorkflowPreset = 'default'): string {
@@ -1797,7 +1797,7 @@ export class OpenAICodexProvider extends BaseAgentProvider {
     }
 
     // Defense-in-depth against silently inheriting API keys the user did not
-    // configure in Nimbalyst settings. The main-process bootstrap already
+    // configure in Auracle settings. The main-process bootstrap already
     // strips these from process.env, but shellEnv may re-introduce a shell
     // export, so we force-clear them here. Per-session keys from provider
     // config are injected at the call site, not here.
@@ -2792,7 +2792,7 @@ export class OpenAICodexProvider extends BaseAgentProvider {
       });
       return {
         decision: 'deny',
-        reason: 'OpenAI Codex requires "Allow Edits" permission mode in Nimbalyst. Please change the permission mode in workspace settings to use Codex.'
+        reason: 'OpenAI Codex requires "Allow Edits" permission mode in Auracle. Please change the permission mode in workspace settings to use Codex.'
       };
     }
 

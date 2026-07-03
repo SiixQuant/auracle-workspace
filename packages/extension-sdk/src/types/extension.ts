@@ -1,5 +1,5 @@
 /**
- * Core types for Nimbalyst extensions.
+ * Core types for Auracle extensions.
  */
 
 import type { ComponentType } from 'react';
@@ -70,7 +70,7 @@ export interface AiAgentProviderModel {
  * Manifest contribution for an AI agent provider.
  *
  * An `AiAgentProviderContribution` makes an extension's coding-agent
- * implementation available as a selectable provider in Nimbalyst's
+ * implementation available as a selectable provider in Auracle's
  * agentic coding session UI. The contribution is metadata only -- it
  * describes the provider's identity, capabilities, and supported
  * models -- while the protocol implementation lives in a backend
@@ -193,13 +193,13 @@ export interface ExtensionManifest {
   /** Path to CSS file (relative to manifest) */
   styles?: string;
 
-  /** Minimum Nimbalyst API version required */
+  /** Minimum Auracle API version required */
   apiVersion?: string;
 
   /** Permissions the extension requires */
   permissions?: ExtensionPermissions;
 
-  /** What the extension contributes to Nimbalyst */
+  /** What the extension contributes to Auracle */
   contributions?: ExtensionContributions;
 
   /**
@@ -291,7 +291,7 @@ export interface MarketplaceScreenshot {
   /**
    * Relative path to a sample file to open for the screenshot.
    * Used by the automated screenshot pipeline (internal extensions).
-   * The pipeline opens this file in Nimbalyst and captures the editor.
+   * The pipeline opens this file in Auracle and captures the editor.
    */
   fileToOpen?: string;
 

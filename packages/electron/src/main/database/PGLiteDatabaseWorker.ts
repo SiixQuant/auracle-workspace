@@ -241,7 +241,7 @@ export class PGLiteDatabaseWorker {
   private showErrorAndQuit(title: string, message: string, detail?: string): void {
     dialog.showMessageBox({
       type: 'error',
-      title: `Nimbalyst - ${title}`,
+      title: `Auracle - ${title}`,
       message,
       detail,
       buttons: ['Quit']
@@ -257,7 +257,7 @@ export class PGLiteDatabaseWorker {
   private showInfoDialog(title: string, message: string, detail?: string): void {
     dialog.showMessageBox({
       type: 'info',
-      title: `Nimbalyst - ${title}`,
+      title: `Auracle - ${title}`,
       message,
       detail,
       buttons: ['OK']
@@ -271,7 +271,7 @@ export class PGLiteDatabaseWorker {
   private async showStartFreshConfirmation(): Promise<boolean> {
     const response = await dialog.showMessageBox({
       type: 'warning',
-      title: 'Nimbalyst - Start Fresh?',
+      title: 'Auracle - Start Fresh?',
       message: 'This will clear your AI chat sessions.',
       detail: 'Your files will not be affected, but all AI chat history will be permanently deleted.\n\nAre you sure you want to continue?',
       buttons: ['Cancel', 'Yes, Start Fresh'],
@@ -545,7 +545,7 @@ export class PGLiteDatabaseWorker {
 
           dialog.showMessageBox({
             type: 'warning',
-            title: 'Nimbalyst - Database Recovered',
+            title: 'Auracle - Database Recovered',
             message: 'The application database was corrupted and has been automatically repaired.',
             detail: `A fresh database has been created. Your old data has been backed up to:\n\n${initResult.dataDir}.backup-[timestamp]\n\nYour document files have not been lost - they are still on disk. Only the internal application database (AI chat sessions and document history) needs to be rebuilt.`,
             buttons: ['OK']
@@ -598,17 +598,17 @@ export class PGLiteDatabaseWorker {
         const lockFilePath = (error as any).lockFilePath as string | undefined;
         const response = await dialog.showMessageBox({
           type: 'question',
-          title: 'Nimbalyst - Database Locked (Ambiguous)',
-          message: 'Cannot tell whether another Nimbalyst is already running.',
+          title: 'Auracle - Database Locked (Ambiguous)',
+          message: 'Cannot tell whether another Auracle is already running.',
           detail:
-            `Nimbalyst found a database lock from a few seconds ago and cannot confirm whether ` +
+            `Auracle found a database lock from a few seconds ago and cannot confirm whether ` +
             `the process holding it (PID ${lockPid}, host ${lockHostname}, acquired ${lockTimestamp}) ` +
             `is still alive. Two scenarios are equally likely:\n\n` +
-            `  1. Another Nimbalyst window is open under a different user account or privilege level. ` +
+            `  1. Another Auracle window is open under a different user account or privilege level. ` +
             `Opening anyway will run two instances against the same database and may corrupt data.\n\n` +
-            `  2. A previous Nimbalyst crashed less than a minute ago and the OS has already reused ` +
+            `  2. A previous Auracle crashed less than a minute ago and the OS has already reused ` +
             `the original PID for a system process. In this case the lock is safe to clear.\n\n` +
-            `If unsure, choose Cancel and look for another Nimbalyst window before retrying.`,
+            `If unsure, choose Cancel and look for another Auracle window before retrying.`,
           buttons: ['Cancel', 'Open Anyway (clear lock)'],
           defaultId: 0,
           cancelId: 0,
@@ -630,7 +630,7 @@ export class PGLiteDatabaseWorker {
               'Database Locked',
               'Could not clear the database lock.',
               `Removing the lock file failed: ${this.formatError(unlockErr)}\n\n` +
-              `If another Nimbalyst window is open, close it manually before retrying.`
+              `If another Auracle window is open, close it manually before retrying.`
             );
             throw new HandledError('DATABASE_LOCKED_AMBIGUOUS_UNLOCK_FAILED');
           }
@@ -640,8 +640,8 @@ export class PGLiteDatabaseWorker {
         this.analytics.sendEvent('database_lock_ambiguous_cancel', { lockPid });
         this.showErrorAndQuit(
           'Database Locked',
-          'Nimbalyst cannot start while the database lock state is uncertain.',
-          'Close any other Nimbalyst windows you have open and try again. If you are sure no other Nimbalyst is running, restart this machine to clear any stale system locks.'
+          'Auracle cannot start while the database lock state is uncertain.',
+          'Close any other Auracle windows you have open and try again. If you are sure no other Auracle is running, restart this machine to clear any stale system locks.'
         );
         throw new HandledError('DATABASE_LOCKED_AMBIGUOUS');
       }
@@ -651,12 +651,12 @@ export class PGLiteDatabaseWorker {
         if (process.env.PLAYWRIGHT === '1') {
           // In Playwright tests, skip the dialog and exit immediately with a clear error
           // so the test runner knows it can't run multiple instances in parallel
-          console.error('FATAL: Another instance of Nimbalyst is already running. Cannot run multiple instances in parallel.');
+          console.error('FATAL: Another instance of Auracle is already running. Cannot run multiple instances in parallel.');
           process.exit(1);
         }
         this.showErrorAndQuit(
           'Database Locked',
-          'Another instance of Nimbalyst is already running.',
+          'Another instance of Auracle is already running.',
           'The database is locked by another process. Please close the other instance before starting a new one.\n\nRunning multiple instances simultaneously can cause data corruption.'
         );
         // Throw to prevent downstream code from continuing while quit dialog is pending.
@@ -1125,7 +1125,7 @@ export class PGLiteDatabaseWorker {
 
     return {
       type: 'info',
-      title: 'Nimbalyst - Restore Your Data',
+      title: 'Auracle - Restore Your Data',
       message: 'No file data has been lost.',
       detail: backupDateStr
         ? `Your files are safe, but your chat history will need to be restored from a backup dated ${backupDateStr}.`

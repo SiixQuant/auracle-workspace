@@ -83,7 +83,7 @@ interface AppStoreSchema {
   // User onboarding
   userRole?: string; // The user's selected role (or 'skipped' if permanently dismissed)
   userEmail?: string; // Optional email provided during onboarding
-  referralSource?: string; // Where user heard about Nimbalyst
+  referralSource?: string; // Where user heard about Auracle
   onboardingNextPrompt?: number; // Timestamp for when to show onboarding again (if deferred)
   unifiedOnboardingCompleted?: boolean; // Unified 3-step onboarding completed (separate from old onboarding)
   // Developer mode - enables git worktrees, terminal, and dev-specific features
@@ -136,7 +136,7 @@ interface AppStoreSchema {
   };
   // Extension Development Kit (EDK) - enables MCP tools for building/reloading extensions
   extensionDevToolsEnabled?: boolean;
-  // Kill-switch for the `nimbalyst-settings` MCP server that lets agents change Nimbalyst
+  // Kill-switch for the `nimbalyst-settings` MCP server that lets agents change Auracle
   // settings. Default false (MCP enabled). Set true from Settings > Advanced to disable.
   settingsAgentToolsDisabled?: boolean;
   // Share encryption keys: maps sessionId -> base64 AES-256 key (for re-sharing with stable URLs)

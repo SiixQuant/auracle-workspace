@@ -46,7 +46,7 @@ const EXTERNALS_MAP: Record<string, string> = {
   '@lexical/utils': '@lexical/utils',
   '@lexical/markdown': '@lexical/markdown',
 
-  // Nimbalyst runtime
+  // Auracle runtime
   '@nimbalyst/editor-context': '@nimbalyst/editor-context',
   '@nimbalyst/runtime/ui/icons/MaterialSymbol': '@nimbalyst/runtime/ui/icons/MaterialSymbol',
   '@nimbalyst/screenshot-service': '@nimbalyst/screenshot-service',

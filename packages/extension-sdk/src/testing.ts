@@ -1,8 +1,8 @@
 /**
  * Extension Testing Utilities
  *
- * Helpers for testing Nimbalyst extensions using Playwright against the running app.
- * Extensions connect to the live Nimbalyst instance via CDP (Chrome DevTools Protocol).
+ * Helpers for testing Auracle extensions using Playwright against the running app.
+ * Extensions connect to the live Auracle instance via CDP (Chrome DevTools Protocol).
  *
  * ## Quick Start
  *
@@ -19,11 +19,11 @@
  *
  * ## Setup
  *
- * Requires Nimbalyst running in dev mode (`npm run dev`), which enables CDP on port 9222.
+ * Requires Auracle running in dev mode (`npm run dev`), which enables CDP on port 9222.
  *
  * ## Multi-Window Support
  *
- * When multiple Nimbalyst windows are open, the fixture finds the correct window
+ * When multiple Auracle windows are open, the fixture finds the correct window
  * by checking which window's workspacePath is an ancestor of the test file's directory.
  * This works automatically — no configuration needed.
  *
@@ -38,7 +38,7 @@ const CDP_PORT = process.env.NIMBALYST_CDP_PORT || '9222';
 const CDP_ENDPOINT = `http://localhost:${CDP_PORT}`;
 
 /**
- * Playwright test fixture that connects to the running Nimbalyst instance via CDP.
+ * Playwright test fixture that connects to the running Auracle instance via CDP.
  *
  * Unlike standard Playwright tests that launch a browser, this fixture attaches
  * to the already-running Electron app. When multiple windows are open, the fixture
@@ -48,7 +48,7 @@ const CDP_ENDPOINT = `http://localhost:${CDP_PORT}`;
  * import { test, expect } from '@nimbalyst/extension-sdk/testing';
  *
  * test('my test', async ({ page }) => {
- *   // page is the Nimbalyst window whose workspace contains this test file
+ *   // page is the Auracle window whose workspace contains this test file
  *   await page.locator('.my-element').click();
  * });
  * ```
@@ -60,8 +60,8 @@ export const test = base.extend<{ page: Page }>({
       browser = await chromium.connectOverCDP(CDP_ENDPOINT);
     } catch (error) {
       throw new Error(
-        `Could not connect to Nimbalyst via CDP at ${CDP_ENDPOINT}.\n` +
-        `Make sure Nimbalyst is running in dev mode (npm run dev).\n` +
+        `Could not connect to Auracle via CDP at ${CDP_ENDPOINT}.\n` +
+        `Make sure Auracle is running in dev mode (npm run dev).\n` +
         `Original error: ${error instanceof Error ? error.message : String(error)}`
       );
     }
@@ -109,11 +109,11 @@ export const test = base.extend<{ page: Page }>({
 
     if (!target) {
       throw new Error(
-        `No Nimbalyst window found via CDP.\n` +
+        `No Auracle window found via CDP.\n` +
         (testFileDir
           ? `Looking for a window whose workspace contains: ${testFileDir}\n`
           : '') +
-        `Make sure a Nimbalyst window is open with the correct project.`
+        `Make sure an Auracle window is open with the correct project.`
       );
     }
 
@@ -129,7 +129,7 @@ export { expect };
 /**
  * Create a locator scoped to an extension's custom editor container.
  *
- * Uses the `data-extension-id` and `data-file-path` attributes set by Nimbalyst's
+ * Uses the `data-extension-id` and `data-file-path` attributes set by Auracle's
  * TabEditor on extension editor containers.
  *
  * ```ts
@@ -138,7 +138,7 @@ export { expect };
  * await expect(editor.locator('.header')).toHaveText('Name');
  * ```
  *
- * @param page - The Playwright page connected to Nimbalyst
+ * @param page - The Playwright page connected to Auracle
  * @param extensionId - The extension's manifest ID (e.g., 'com.nimbalyst.csv-spreadsheet')
  * @param filePath - Optional: scope to a specific file's editor (when multiple files are open)
  */
@@ -160,7 +160,7 @@ export function extensionEditor(
 /**
  * Create a locator scoped to an extension's panel container.
  *
- * Uses the `data-extension-id` and `data-panel` attributes set by Nimbalyst's
+ * Uses the `data-extension-id` and `data-panel` attributes set by Auracle's
  * PanelContainer on extension panel containers.
  *
  * ```ts
@@ -168,7 +168,7 @@ export function extensionEditor(
  * await panel.locator('.commit-row').first().click();
  * ```
  *
- * @param page - The Playwright page connected to Nimbalyst
+ * @param page - The Playwright page connected to Auracle
  * @param extensionId - The extension's manifest ID
  * @param panelId - The panel ID from the manifest
  */
@@ -192,7 +192,7 @@ export function extensionPanel(
  * expect(result.data.elements).toHaveLength(3);
  * ```
  *
- * @param page - The Playwright page connected to Nimbalyst
+ * @param page - The Playwright page connected to Auracle
  * @param toolName - Fully qualified tool name (e.g., 'excalidraw.get_elements')
  * @param args - Arguments to pass to the tool handler
  */
@@ -205,7 +205,7 @@ export async function callExtensionTool(
     async ({ toolName, args }) => {
       const bridge = (window as any).__nimbalyst_extension_tools__;
       if (!bridge) {
-        return { success: false, error: '__nimbalyst_extension_tools__ not found. Is Nimbalyst running in dev mode?' };
+        return { success: false, error: '__nimbalyst_extension_tools__ not found. Is Auracle running in dev mode?' };
       }
       return await bridge.executeExtensionTool(toolName, args, {});
     },

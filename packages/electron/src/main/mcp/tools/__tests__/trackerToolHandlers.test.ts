@@ -94,7 +94,7 @@ vi.mock('electron', () => ({
   app: {
     getPath: vi.fn(() => '/tmp'),
     isPackaged: false,
-    getName: vi.fn(() => 'Nimbalyst'),
+    getName: vi.fn(() => 'Auracle'),
   },
   BrowserWindow: { getAllWindows: () => [] },
 }));

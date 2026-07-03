@@ -1,7 +1,7 @@
 {
   "name": "@nimbalyst/developer-extension",
   "version": "1.0.0",
-  "description": "Developer tools extension for Nimbalyst",
+  "description": "Developer tools extension for Auracle",
   "main": "dist/index.js",
   "types": "src/index.tsx",
   "scripts": {

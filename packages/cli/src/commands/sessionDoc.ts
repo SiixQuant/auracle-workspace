@@ -4,7 +4,7 @@
  * These make the umbrella shape real without committing to write semantics yet.
  * Sessions read directly from the SQLite `ai_sessions` table (WAL-safe even when
  * the app is running). Documents are listed from the workspace filesystem, since
- * Nimbalyst documents are files on disk (there is no `documents` DB table).
+ * Auracle documents are files on disk (there is no `documents` DB table).
  *
  * Write access to sessions/documents is an explicit non-goal of v1.
  */
@@ -26,7 +26,7 @@ export async function runSession(args: ParsedArgs): Promise<number> {
   const verb = args.verb ?? 'list';
   const dbPath = flagStr(args, 'db') ?? resolveSqlitePath();
   if (!fs.existsSync(dbPath)) {
-    throw connectionError(`No Nimbalyst database at ${dbPath}.`);
+    throw connectionError(`No Auracle database at ${dbPath}.`);
   }
   const db = openDatabase(dbPath, { readonly: true, fileMustExist: true });
   db.pragma('query_only = true');

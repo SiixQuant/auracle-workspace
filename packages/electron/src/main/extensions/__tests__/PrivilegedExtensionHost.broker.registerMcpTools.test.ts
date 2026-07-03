@@ -77,7 +77,7 @@ function makeManaged(send: (m: unknown) => void) {
   return {
     args: {
       extensionId: 'com.nimbalyst.memory',
-      extensionName: 'Nimbalyst Memory',
+      extensionName: 'Auracle Memory',
       extensionPath: '/x',
       module: { id: 'memory-engine' },
       workspacePath: '/ws',

@@ -4,7 +4,7 @@
   "extensions": [
     {
       "id": "com.developer.nimbalyst-mindmap",
-      "name": "Nimbalyst Mindmap",
+      "name": "Auracle Mindmap",
       "description": "A freeform spatial mindmap editor with AI-assisted editing",
       "version": "1.0.0",
       "author": "Unknown",
@@ -44,7 +44,7 @@
     },
     {
       "id": "com.developer.nimbalyst-slides",
-      "name": "Nimbalyst Slides",
+      "name": "Auracle Slides",
       "description": "Presentation editor with live reveal.js preview",
       "version": "1.0.0",
       "author": "Unknown",
@@ -128,7 +128,7 @@
       "name": "Automations",
       "description": "Schedule recurring AI-powered tasks with file-based automation definitions",
       "version": "1.0.0",
-      "author": "Nimbalyst",
+      "author": "Auracle",
       "categories": [
         "other"
       ],
@@ -156,7 +156,7 @@
       "name": "CSV Spreadsheet",
       "description": "Edit CSV files with a spreadsheet interface and formula support",
       "version": "1.0.0",
-      "author": "Nimbalyst",
+      "author": "Auracle",
       "categories": [
         "data"
       ],
@@ -204,7 +204,7 @@
       "name": "DatamodelLM",
       "description": "AI-assisted data modeling with visual entity-relationship diagrams",
       "version": "1.0.0",
-      "author": "Nimbalyst",
+      "author": "Auracle",
       "categories": [
         "data"
       ],
@@ -252,7 +252,7 @@
       "name": "Developer Tools",
       "description": "Advanced git operations and developer workflows",
       "version": "1.0.0",
-      "author": "Nimbalyst",
+      "author": "Auracle",
       "categories": [
         "other"
       ],
@@ -280,7 +280,7 @@
       "name": "Excalidraw",
       "description": "Excalidraw diagram editor with AI-assisted editing",
       "version": "1.0.0",
-      "author": "Nimbalyst",
+      "author": "Auracle",
       "categories": [
         "diagrams"
       ],
@@ -328,7 +328,7 @@
       "name": "Git",
       "description": "Git log viewer with push, pull, and rebase support",
       "version": "1.0.0",
-      "author": "Nimbalyst",
+      "author": "Auracle",
       "categories": [
         "developer-tools"
       ],
@@ -373,7 +373,7 @@
       "name": "Image Generation",
       "description": "AI-powered image generation with support for sketches, diagrams, and illustrations",
       "version": "1.0.0",
-      "author": "Nimbalyst",
+      "author": "Auracle",
       "categories": [
         "ai-tools"
       ],
@@ -422,7 +422,7 @@
       "name": "iOS Development Tools",
       "description": "Tools for iOS development including XcodeGen, simulator management, and deployment",
       "version": "0.1.0",
-      "author": "Nimbalyst",
+      "author": "Auracle",
       "categories": [
         "other"
       ],
@@ -447,10 +447,10 @@
     },
     {
       "id": "com.nimbalyst.mindmap",
-      "name": "Nimbalyst Mindmap",
+      "name": "Auracle Mindmap",
       "description": "A freeform spatial mindmap editor with AI-assisted editing",
       "version": "1.0.1",
-      "author": "Nimbalyst",
+      "author": "Auracle",
       "categories": [
         "diagrams"
       ],
@@ -490,7 +490,7 @@
       "name": "MockupLM",
       "description": "Visual UX mockup creation with HTML/CSS for planning and design",
       "version": "1.0.0",
-      "author": "Nimbalyst",
+      "author": "Auracle",
       "categories": [
         "diagrams"
       ],
@@ -538,7 +538,7 @@
     {
       "id": "com.nimbalyst.namenym",
       "name": "Namenym",
-      "description": "AI-powered brand naming tool for Nimbalyst",
+      "description": "AI-powered brand naming tool for Auracle",
       "version": "0.1.0",
       "author": "Unknown",
       "categories": [
@@ -580,9 +580,9 @@
     {
       "id": "com.nimbalyst.pdf-viewer",
       "name": "PDF Viewer",
-      "description": "View PDF files directly in Nimbalyst",
+      "description": "View PDF files directly in Auracle",
       "version": "1.0.0",
-      "author": "Nimbalyst Team",
+      "author": "Auracle Team",
       "categories": [
         "data"
       ],
@@ -611,7 +611,7 @@
       "repositoryUrl": "",
       "changelog": "",
       "tagline": "View PDF documents directly in the editor",
-      "longDescription": "Open and read PDF files without leaving Nimbalyst. Renders PDF pages with full fidelity, supporting multi-page documents, zoom, and page navigation.",
+      "longDescription": "Open and read PDF files without leaving Auracle. Renders PDF pages with full fidelity, supporting multi-page documents, zoom, and page navigation.",
       "highlights": [
         "View PDF files inline without switching apps",
         "Multi-page navigation and zoom",
@@ -626,7 +626,7 @@
       "name": "Planning",
       "description": "Structured planning and tracking with YAML frontmatter",
       "version": "1.0.0",
-      "author": "Nimbalyst",
+      "author": "Auracle",
       "categories": [
         "other"
       ],
@@ -654,7 +654,7 @@
       "name": "Playwright",
       "description": "Test runner, trace viewer, and screenshot automation for Playwright",
       "version": "0.1.0",
-      "author": "Nimbalyst",
+      "author": "Auracle",
       "categories": [
         "other"
       ],
@@ -682,7 +682,7 @@
       "name": "SQLite Browser",
       "description": "Browse and query SQLite databases with AI assistance",
       "version": "1.0.0",
-      "author": "Nimbalyst",
+      "author": "Auracle",
       "categories": [
         "data"
       ],

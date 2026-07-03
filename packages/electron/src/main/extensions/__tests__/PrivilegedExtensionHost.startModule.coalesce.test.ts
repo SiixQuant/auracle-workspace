@@ -49,7 +49,7 @@ import { PrivilegedExtensionHost, type StartModuleArgs } from '../PrivilegedExte
 
 const ARGS: StartModuleArgs = {
   extensionId: 'com.nimbalyst.memory',
-  extensionName: 'Nimbalyst Memory',
+  extensionName: 'Auracle Memory',
   extensionPath: '/x',
   module: { id: 'memory-engine', entry: 'dist/backend.js', runtime: 'utility-process', permissions: [], enablement: { default: 'disabled', promptOn: 'firstUse', purpose: 'test' } } as any,
   workspacePath: '/ws',

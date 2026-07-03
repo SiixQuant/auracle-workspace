@@ -160,7 +160,7 @@ export function registerSettingsHandlers() {
         return getAppSetting<string>('preferredAgentLanguage') ?? '';
     });
 
-    // Get the enhanced PATH that Nimbalyst uses for spawning processes
+    // Get the enhanced PATH that Auracle uses for spawning processes
     // This includes custom user paths, detected paths, and common system paths
     safeHandle('environment:get-enhanced-path', () => {
         return getEnhancedPath();

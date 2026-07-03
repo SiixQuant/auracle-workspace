@@ -1,6 +1,6 @@
 /**
  * Pure helpers for picking a GitHub Release asset that we want to install as
- * a Nimbalyst extension. Split out from ExtensionMarketplaceHandlers.ts so it
+ * an Auracle extension. Split out from ExtensionMarketplaceHandlers.ts so it
  * can be unit-tested without pulling in `electron` and other side-effectful
  * dependencies.
  */

@@ -1,5 +1,5 @@
 /**
- * End-to-end test of the contract a third-party Nimbalyst extension uses
+ * End-to-end test of the contract a third-party Auracle extension uses
  * to ship a Lexical plugin. A fixture extension publishes:
  *
  * 1. A `LexicalExtension` that registers a custom decorator node and a
@@ -131,7 +131,7 @@ function unpublishFixture(): void {
   clearExtensionContributions(SOURCE);
 }
 
-describe('Nimbalyst extension contract (end-to-end)', () => {
+describe('Auracle extension contract (end-to-end)', () => {
   beforeEach(() => {
     // Make sure no leftover state from other test files biases assertions.
     setExtensionLexicalExtensions([]);

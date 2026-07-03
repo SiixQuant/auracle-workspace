@@ -147,7 +147,7 @@ export function SecurityEncryptionSection({ orgId, workspacePath, isAdmin }: Pro
       {!loading && serverManaged && (
         <p className="m-0 text-[12px] text-[var(--nim-text-muted)] leading-relaxed">
           Team trackers and documents are encrypted at rest and in transit, isolated per team, with
-          keys managed by Nimbalyst — reachable from the desktop app, web, CLI, and AI agents. Your
+          keys managed by Auracle — reachable from the desktop app, web, CLI, and AI agents. Your
           personal sync (sessions, drafts, settings) stays end-to-end encrypted.
         </p>
       )}
@@ -310,7 +310,7 @@ function IdleBody({
       <div className="px-6 py-2.5 flex flex-col gap-3.5">
         <p className="m-0 text-[13px] text-[var(--nim-text)] leading-relaxed">
           This turns on real-time team collaboration — including from the web, CLI, and AI agents — by
-          letting Nimbalyst manage this team&apos;s shared encryption keys instead of only your devices.
+          letting Auracle manage this team&apos;s shared encryption keys instead of only your devices.
           Your <b>personal</b> data (sessions, drafts, settings) stays end-to-end encrypted.
         </p>
 
@@ -322,7 +322,7 @@ function IdleBody({
             className="mt-0.5 w-4 h-4 accent-[var(--nim-primary)] cursor-pointer"
           />
           <span className="text-[12.5px] leading-relaxed text-[var(--nim-text)]">
-            Nimbalyst will manage this team&apos;s shared encryption keys to enable real-time
+            Auracle will manage this team&apos;s shared encryption keys to enable real-time
             collaboration — no longer zero-knowledge. My personal data stays end-to-end encrypted.
           </span>
         </label>
@@ -381,7 +381,7 @@ function MigratingBody() {
       </div>
       <p className="m-0 mt-3 text-[12px] text-[var(--nim-text-faint)] leading-relaxed">
         Your existing team data is being re-encrypted under the new model. This can take a moment;
-        keep Nimbalyst open until it finishes.
+        keep Auracle open until it finishes.
       </p>
     </div>
   );

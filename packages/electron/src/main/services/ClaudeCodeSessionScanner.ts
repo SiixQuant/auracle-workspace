@@ -2,7 +2,7 @@
  * Service to scan and import Claude Code sessions from ~/.claude/projects/
  *
  * This service discovers sessions created by the Claude Code CLI or other tools
- * and synchronizes them with Nimbalyst's database.
+ * and synchronizes them with Auracle's database.
  */
 
 import * as fs from 'fs/promises';

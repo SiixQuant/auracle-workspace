@@ -1,7 +1,7 @@
 {
   "name": "@nimbalyst/extension-math",
   "version": "1.0.0",
-  "description": "Built-in math rendering extension for Nimbalyst",
+  "description": "Built-in math rendering extension for Auracle",
   "main": "dist/index.js",
   "types": "src/index.tsx",
   "type": "module",

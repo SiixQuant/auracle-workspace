@@ -22,7 +22,7 @@ import path from 'path';
 /** Statuses the CLI writes into the PID file. */
 export type ClaudePidStatus = 'busy' | 'idle' | 'waiting';
 
-/** Nimbalyst-side turn states the CLI status maps to. */
+/** Auracle-side turn states the CLI status maps to. */
 export type ClaudeTurnState = 'running' | 'idle' | 'waiting_for_input';
 
 export interface ParsedClaudePidFile {
@@ -106,7 +106,7 @@ export function isClaudePidFileStale(
   return now - parsed.updatedAt > staleAfterMs;
 }
 
-/** Map the CLI PID status to a Nimbalyst turn state. */
+/** Map the CLI PID status to an Auracle turn state. */
 export function mapPidStatusToTurnState(status: ClaudePidStatus): ClaudeTurnState {
   switch (status) {
     case 'busy':

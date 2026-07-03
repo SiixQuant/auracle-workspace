@@ -2190,7 +2190,7 @@ export const RichTranscriptView = React.forwardRef<
           <div className="flex items-center gap-3 mb-3">
             <div className="flex-1 h-px bg-[var(--nim-error)]" />
             <span className="text-[11px] font-medium text-[var(--nim-error)] whitespace-nowrap">
-              Nimbalyst restarted {formatMessageTime(appStartTime!)}
+              Auracle restarted {formatMessageTime(appStartTime!)}
             </span>
             <div className="flex-1 h-px bg-[var(--nim-error)]" />
           </div>
@@ -2449,7 +2449,7 @@ export const RichTranscriptView = React.forwardRef<
                     <div key="restart-bottom" className="flex items-center gap-3 my-2 px-3">
                       <div className="flex-1 h-px bg-[var(--nim-error)]" />
                       <span className="text-[11px] font-medium text-[var(--nim-error)] whitespace-nowrap">
-                        Nimbalyst restarted {formatMessageTime(appStartTime!)}
+                        Auracle restarted {formatMessageTime(appStartTime!)}
                       </span>
                       <div className="flex-1 h-px bg-[var(--nim-error)]" />
                     </div>

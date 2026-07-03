@@ -218,7 +218,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
       await navigator.clipboard.writeText(url);
       errorNotificationService.showInfo(
         'Link copied',
-        'Paste it anywhere to open this tracker in Nimbalyst.',
+        'Paste it anywhere to open this tracker in Auracle.',
         { duration: 3000 }
       );
     } catch (err) {

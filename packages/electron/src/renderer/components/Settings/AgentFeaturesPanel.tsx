@@ -299,7 +299,7 @@ export function AgentFeaturesPanel() {
             checked={showPromptAdditions}
             onChange={(checked) => updateAIDebugSettings({ showPromptAdditions: checked })}
             name="Show Prompt Additions"
-            description="Display system prompt additions and context that Nimbalyst appends to Claude Code requests."
+            description="Display system prompt additions and context that Auracle appends to Claude Code requests."
           />
         </div>
       )}

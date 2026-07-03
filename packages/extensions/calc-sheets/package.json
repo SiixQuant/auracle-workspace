@@ -1,7 +1,7 @@
 {
   "name": "@nimbalyst/extension-calc-sheets",
   "version": "1.0.0",
-  "description": "Calc Sheets extension for Nimbalyst",
+  "description": "Calc Sheets extension for Auracle",
   "main": "dist/index.js",
   "type": "module",
   "exports": {

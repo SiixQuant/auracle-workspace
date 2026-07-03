@@ -1,7 +1,7 @@
 /**
  * DatamodelLM Editor
  *
- * The main editor component that integrates with Nimbalyst's custom editor system.
+ * The main editor component that integrates with Auracle's custom editor system.
  * Uses useEditorLifecycle for load/save/echo detection lifecycle.
  * Content state lives in a Zustand store, not React state.
  */

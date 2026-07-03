@@ -55,7 +55,7 @@ export class DirectGateway implements TrackerGateway {
     this.dbPath = dbPath ?? resolveSqlitePath();
     if (!fs.existsSync(this.dbPath)) {
       throw connectionError(
-        `No Nimbalyst database at ${this.dbPath}. Is Nimbalyst installed? Pass --db <file> to point elsewhere.`,
+        `No Auracle database at ${this.dbPath}. Is Auracle installed? Pass --db <file> to point elsewhere.`,
       );
     }
     try {
@@ -80,7 +80,7 @@ export class DirectGateway implements TrackerGateway {
     if (v == null) return;
     if (v < MIN_SUPPORTED_SCHEMA) {
       throw schemaError(
-        `Database schema v${v} is older than this nim build supports (min v${MIN_SUPPORTED_SCHEMA}). Upgrade Nimbalyst.`,
+        `Database schema v${v} is older than this nim build supports (min v${MIN_SUPPORTED_SCHEMA}). Upgrade Auracle.`,
       );
     }
     if (v > MAX_KNOWN_SCHEMA) {
@@ -341,8 +341,8 @@ export class DirectGateway implements TrackerGateway {
     const live = discoverEndpoint();
     if (live && this.dbPath === resolveDefaultSqlitePath()) {
       throw writeNotPermittedError(
-        'Nimbalyst is running and owns this database — writes must route through the app. ' +
-          'Re-run without --offline (live mode), or quit Nimbalyst to write directly.',
+        'Auracle is running and owns this database — writes must route through the app. ' +
+          'Re-run without --offline (live mode), or quit Auracle to write directly.',
       );
     }
     if (this.schemaVersion != null && this.schemaVersion > MAX_KNOWN_SCHEMA) {
@@ -577,7 +577,7 @@ export class DirectGateway implements TrackerGateway {
       if (row.document_path) {
         this.refuseWrite(
           'Offline update of file-backed tracker items (inline/frontmatter documents) is not ' +
-            'supported. Start Nimbalyst so the change flows through the document service (live mode).',
+            'supported. Start Auracle so the change flows through the document service (live mode).',
         );
       }
 
@@ -739,7 +739,7 @@ export class DirectGateway implements TrackerGateway {
 
   async linkSession(): Promise<void> {
     this.refuseWrite(
-      'link-session requires live mode (a running Nimbalyst). It links an in-app AI session.',
+      'link-session requires live mode (a running Auracle). It links an in-app AI session.',
     );
   }
 
@@ -763,8 +763,8 @@ export class DirectGateway implements TrackerGateway {
 
   private importersNeedLive(): never {
     throw connectionError(
-      'Importers require live mode (a running Nimbalyst). The importer backends are ' +
-        'hosted by the app and cannot run offline. Start Nimbalyst and retry.',
+      'Importers require live mode (a running Auracle). The importer backends are ' +
+        'hosted by the app and cannot run offline. Start Auracle and retry.',
     );
   }
 

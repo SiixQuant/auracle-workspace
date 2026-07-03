@@ -102,7 +102,7 @@ export function isAllowedToContributeBackendModules(
         reason: 'dev-symlink-in-packaged-build',
         detail:
           'Dev-installed extensions cannot contribute backend modules in a packaged build. ' +
-          'Run a dev build of Nimbalyst to test, then submit the extension for marketplace review.',
+          'Run a dev build of Auracle to test, then submit the extension for marketplace review.',
       };
     }
     if (process.env.NIMBALYST_ALLOW_DEV_BACKEND_MODULES !== '1') {
@@ -120,6 +120,6 @@ export function isAllowedToContributeBackendModules(
     reason: 'not-on-marketplace-allowlist',
     detail:
       'User-installed extensions must be on the marketplace allowlist to contribute backend modules. ' +
-      'Contact Nimbalyst core to request review.',
+      'Contact Auracle core to request review.',
   };
 }

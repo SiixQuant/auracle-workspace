@@ -16,7 +16,7 @@ export interface MCPServerEnv {
 /**
  * Optional OAuth settings for remote MCP servers.
  *
- * These map to mcp-remote flags so Nimbalyst can support servers that:
+ * These map to mcp-remote flags so Auracle can support servers that:
  * - require OAuth instead of API keys
  * - require a fixed callback port
  * - require pre-registered/static OAuth client information

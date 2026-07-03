@@ -317,7 +317,7 @@ export function suggestWorkspaceForFile(filePath: string): string {
 }
 
 /**
- * Checks if a workspace directory is a Nimbalyst extension project.
+ * Checks if a workspace directory is an Auracle extension project.
  * An extension project is identified by having a manifest.json with an 'id' field
  * that looks like an extension ID (contains a dot, e.g., 'com.example.my-extension').
  *
@@ -431,7 +431,7 @@ export function getAdditionalDirectoriesForWorkspace(workspacePath: string): str
 
 /**
  * List full filesystem paths of every sibling worktree directory for a
- * project, following Nimbalyst's `<project>_worktrees/<name>` convention.
+ * project, following Auracle's `<project>_worktrees/<name>` convention.
  * Returns an empty list if the worktrees directory does not exist or cannot
  * be read. Sync so it can be used from the synchronous additionalDirectories
  * loader contract.

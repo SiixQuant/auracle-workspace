@@ -24,7 +24,7 @@ export interface ClaudeCliTerminalStripProps {
  * Hosts the genuine `claude` CLI terminal for a `claude-code-cli` session
  * (NIM-806, Phase 1).
  *
- * The CLI is launched ONLY once this strip is actually on-screen. Nimbalyst keeps
+ * The CLI is launched ONLY once this strip is actually on-screen. Auracle keeps
  * all mode components mounted and toggles them with CSS `display`, so a
  * `claude-code-cli` session that is merely the *active* agent session while the
  * agent panel is hidden (after restart, or while the user is in editor mode) must

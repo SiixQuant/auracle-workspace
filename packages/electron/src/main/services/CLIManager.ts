@@ -1040,7 +1040,7 @@ export class CLIManager {
 
           shell.openExternal('https://nodejs.org/en/download/');
 
-          reject(new Error('Please download and install Node.js from the opened webpage (NOT via Homebrew), then restart Nimbalyst.'));
+          reject(new Error('Please download and install Node.js from the opened webpage (NOT via Homebrew), then restart Auracle.'));
         } else if (platform === 'win32') {
           // Windows - download the installer
           this.sendProgressToRenderer('nodejs' as CLITool, {
@@ -1051,7 +1051,7 @@ export class CLIManager {
 
           shell.openExternal('https://nodejs.org/en/download/');
 
-          reject(new Error('Please download and install Node.js from the opened webpage, then restart Nimbalyst.'));
+          reject(new Error('Please download and install Node.js from the opened webpage, then restart Auracle.'));
         } else if (platform === 'linux') {
           // Linux - try package managers
           this.sendProgressToRenderer('nodejs' as CLITool, {
@@ -1360,7 +1360,7 @@ export async function initEnhancedPath(): Promise<void> {
  * (PATH has its own enhanced handling via getEnhancedPath()).
  *
  * This ensures env vars like AWS credentials, NODE_EXTRA_CA_CERTS, etc.
- * are available even when Nimbalyst is launched from Dock/Finder.
+ * are available even when Auracle is launched from Dock/Finder.
  *
  * Returns null if detection hasn't completed or failed.
  */

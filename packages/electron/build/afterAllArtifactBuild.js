@@ -6,12 +6,12 @@ const path = require('path');
  *
  * electron-updater requires architecture suffixes (arm64/x64) in filenames to correctly
  * route updates to the right architecture. However, we previously published arm64 builds
- * without the suffix (e.g., Nimbalyst-macOS.dmg), and existing download links reference
+ * without the suffix (e.g., Auracle-macOS.dmg), and existing download links reference
  * these names.
  *
  * This hook creates copies (not renames) so both naming schemes work:
- * - Nimbalyst-macOS-arm64.dmg (used by electron-updater for auto-updates)
- * - Nimbalyst-macOS.dmg (copy, for backwards-compatible download links)
+ * - Auracle-macOS-arm64.dmg (used by electron-updater for auto-updates)
+ * - Auracle-macOS.dmg (copy, for backwards-compatible download links)
  *
  * The latest-mac.yml only references the arch-suffixed files, so electron-updater
  * is unaffected by these copies.

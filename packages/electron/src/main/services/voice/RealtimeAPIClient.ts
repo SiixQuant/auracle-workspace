@@ -1145,7 +1145,7 @@ Your job is to be a voice relay, not to interpret or improve the user's requests
         {
           type: 'function',
           name: 'navigate_to_session',
-          description: 'Switch the Nimbalyst UI to a specific AI session, bringing it into focus. Use this when the user asks to switch to, open, or go to a particular session. Call list_sessions first to find the session ID.',
+          description: 'Switch the Auracle UI to a specific AI session, bringing it into focus. Use this when the user asks to switch to, open, or go to a particular session. Call list_sessions first to find the session ID.',
           parameters: {
             type: 'object',
             properties: {

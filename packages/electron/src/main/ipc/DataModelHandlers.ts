@@ -99,7 +99,7 @@ export function registerDataModelHandlers(): void {
           // File doesn't exist, which is what we want
         }
 
-        // Create a basic data model template with Nimbalyst metadata
+        // Create a basic data model template with Auracle metadata
         const template = `// @nimbalyst {"viewport":{"x":0,"y":0,"zoom":1},"positions":{},"entityViewMode":"standard"}
 
 datasource db {

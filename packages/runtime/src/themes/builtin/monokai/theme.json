@@ -2,7 +2,7 @@
   "id": "monokai",
   "name": "Monokai",
   "version": "1.0.0",
-  "author": "Wimer Hazenberg (adapted for Nimbalyst)",
+  "author": "Wimer Hazenberg (adapted for Auracle)",
   "description": "The iconic dark theme for developers",
   "license": "MIT",
   "isDark": true,

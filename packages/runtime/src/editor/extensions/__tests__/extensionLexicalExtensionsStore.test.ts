@@ -1,7 +1,7 @@
 /**
  * Phase 7.6 integration test.
  *
- * Validates the API surface that lets Nimbalyst extensions contribute
+ * Validates the API surface that lets Auracle extensions contribute
  * `LexicalExtension` instances to the host editor:
  *
  * - The runtime store accepts an array of opaque extension values and

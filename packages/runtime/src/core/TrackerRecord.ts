@@ -36,7 +36,7 @@ export interface TrackerRecordSystem {
   documentId?: string;
   activity?: TrackerActivity[];
   comments?: TrackerComment[];
-  /** Structured origin (how the item entered Nimbalyst; pointer to upstream for imports). */
+  /** Structured origin (how the item entered Auracle; pointer to upstream for imports). */
   origin?: TrackerOrigin;
 }
 

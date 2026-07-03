@@ -44,7 +44,7 @@ Example trackers:
 - UserDocs/examples/recipe.yaml
 - UserDocs/examples/research-paper.yaml
 
-Copy an example file here and restart Nimbalyst to use it.
+Copy an example file here and restart Auracle to use it.
 `;
 
         await fs.writeFile(readmePath, readmeContent, 'utf8');

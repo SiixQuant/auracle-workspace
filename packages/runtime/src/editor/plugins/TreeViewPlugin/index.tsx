@@ -20,7 +20,7 @@ import { $getDiffState } from '../DiffPlugin/core';
  *
  * Thin wrapper around `@lexical/react/LexicalTreeView` (which has no
  * `@lexical/extension` equivalent today). The custom `customPrintNode`
- * surfaces Nimbalyst's diff-state annotations next to each node so the
+ * surfaces Auracle's diff-state annotations next to each node so the
  * dev tree shows pending AI edits inline.
  */
 export default function TreeViewPlugin(): JSX.Element {

@@ -24,7 +24,7 @@ describe('resolveTranscriptFilePathFromHref', () => {
   });
 
   it('returns null for external web links', () => {
-    expect(resolveTranscriptFilePathFromHref('https://nimbalyst.com/docs')).toBeNull();
+    expect(resolveTranscriptFilePathFromHref('https://aurapointcapital.com/docs')).toBeNull();
   });
 
   it('returns null for non-absolute local paths', () => {
@@ -130,8 +130,8 @@ describe('transcriptUrlTransform', () => {
   });
 
   it('still allows safe external protocols', () => {
-    expect(transcriptUrlTransform('https://nimbalyst.com/docs')).toBe(
-      'https://nimbalyst.com/docs'
+    expect(transcriptUrlTransform('https://aurapointcapital.com/docs')).toBe(
+      'https://aurapointcapital.com/docs'
     );
   });
 
@@ -139,12 +139,12 @@ describe('transcriptUrlTransform', () => {
     expect(transcriptUrlTransform('javascript:alert(1)')).toBe('');
   });
 
-  // Tracker reference links (`nimbalyst://NIM-123`) were blanked by the default
+  // Tracker reference links (`auracle://NIM-123`) were blanked by the default
   // transform (unknown protocol), so the tracker-chip check in the `a` renderer
   // never saw the href and the link opened a blank window on click.
-  it('preserves nimbalyst:// tracker reference URNs', () => {
-    expect(transcriptUrlTransform('nimbalyst://NIM-1315')).toBe(
-      'nimbalyst://NIM-1315'
+  it('preserves auracle:// tracker reference URNs', () => {
+    expect(transcriptUrlTransform('auracle://NIM-1315')).toBe(
+      'auracle://NIM-1315'
     );
   });
 });

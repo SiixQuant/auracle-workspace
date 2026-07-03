@@ -1,9 +1,9 @@
 /**
  * CSV Spreadsheet Extension - Live Integration Tests
  *
- * Run against a live Nimbalyst instance via CDP.
+ * Run against a live Auracle instance via CDP.
  *
- * Prerequisites: Nimbalyst running in dev mode (CDP on port 9222)
+ * Prerequisites: Auracle running in dev mode (CDP on port 9222)
  *
  * Run:
  *   npm run test:extensions -- csv
@@ -36,7 +36,7 @@ const test = base.extend<{ page: import('playwright').Page }>({
       }
       if (target) break;
     }
-    if (!target) throw new Error(`No Nimbalyst window found whose workspace contains ${TEST_DIR}`);
+    if (!target) throw new Error(`No Auracle window found whose workspace contains ${TEST_DIR}`);
     await use(target);
     browser.close();
   },

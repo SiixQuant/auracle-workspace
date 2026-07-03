@@ -1,9 +1,9 @@
 {
   "id": "com.nimbalyst.memory",
-  "name": "Nimbalyst Memory",
+  "name": "Auracle Memory",
   "version": "0.1.0",
   "description": "Local project-knowledge + facts brain. Indexes your markdown (design docs, plans, CLAUDE.md, trackers, voice-memory) into a rebuildable shadow index and serves fast hybrid retrieval + facts to AI agents over MCP. Voice-agent grounding lands in a later phase.",
-  "author": "Nimbalyst",
+  "author": "Auracle",
   "main": "dist/index.js",
   "apiVersion": "1.0.0",
   "defaultEnabled": false,

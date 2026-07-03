@@ -1,7 +1,7 @@
 /**
  * Image Generation Extension
  *
- * A Nimbalyst extension for AI-powered image generation.
+ * An Auracle extension for AI-powered image generation.
  *
  * This extension provides:
  * - A custom editor for .imgproj files (image generation projects)

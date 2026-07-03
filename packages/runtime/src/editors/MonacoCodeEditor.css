@@ -20,7 +20,7 @@
   min-height: 0;
 }
 
-/* Override Monaco's default background to match Nimbalyst theme */
+/* Override Monaco's default background to match Auracle theme */
 .monaco-code-editor .monaco-editor {
   background-color: var(--nim-bg) !important;
   -webkit-font-smoothing: antialiased;

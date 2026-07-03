@@ -5,7 +5,7 @@
  * pre-edit file + structured patch + redundant old/new strings) and a ~12 KB
  * `signature` blob on every thinking block. We persist the chunk verbatim into
  * `ai_agent_messages`, so on a real workload ~60% of the claude-code raw log is
- * data no part of Nimbalyst reads (transcript, UI, and resume all ignore it; the
+ * data no part of Auracle reads (transcript, UI, and resume all ignore it; the
  * rendered Edit diff comes from the tool_use CALL, and resume uses the SDK's own
  * history.jsonl).
  *

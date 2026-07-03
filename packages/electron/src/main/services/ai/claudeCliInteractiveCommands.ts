@@ -12,9 +12,9 @@
  */
 
 /**
- * Curated set of slash commands that open a native TUI picker with NO Nimbalyst
+ * Curated set of slash commands that open a native TUI picker with NO Auracle
  * equivalent. Output-only commands (`/clear`, `/compact`, `/cost`, `/context`,
- * `/help`, `/status`) are intentionally excluded — Nimbalyst already surfaces
+ * `/help`, `/status`) are intentionally excluded — Auracle already surfaces
  * their result in the transcript, so revealing the raw drawer for them is noise.
  *
  * Names are the bare command (no leading slash), lowercase.

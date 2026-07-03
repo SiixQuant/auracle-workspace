@@ -1,8 +1,8 @@
 /**
  * Excalidraw Extension Styles
  *
- * Uses CSS variables from Nimbalyst's unified theme system (--nim-*).
- * Variables are inherited from the parent Nimbalyst application.
+ * Uses CSS variables from Auracle's unified theme system (--nim-*).
+ * Variables are inherited from the parent Auracle application.
  */
 
 .excalidraw-editor {

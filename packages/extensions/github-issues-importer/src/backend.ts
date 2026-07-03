@@ -8,7 +8,7 @@
  *
  * Auth is delegated entirely to `gh` (no token is ever read or stored here).
  * The import target (binding) is derived from the workspace's GitHub git
- * remotes, so the importer is zero-config for any repo opened in Nimbalyst.
+ * remotes, so the importer is zero-config for any repo opened in Auracle.
  *
  * Method keys below MUST match TRACKER_IMPORTER_RPC_METHODS in the extension
  * SDK (`importer.isAuthenticated`, `importer.listBindings`, `importer.list`,

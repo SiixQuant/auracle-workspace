@@ -663,7 +663,7 @@ export class MessageStreamingHandler {
     // CRITICAL: Restore provider session data unconditionally (even when the provider
     // already exists in the factory cache). The `if (!provider)` block above only runs
     // on first creation, but the provider can outlive its in-memory session ID mapping
-    // across Nimbalyst restarts (process restart -> empty map). Running this on every
+    // across Auracle restarts (process restart -> empty map). Running this on every
     // message guarantees `options.resume` is populated.
     if (session.providerSessionId && (provider as any).setProviderSessionData) {
       (provider as any).setProviderSessionData(session.id, {
@@ -1087,7 +1087,7 @@ export class MessageStreamingHandler {
       ...(session.mode && { sessionMode: session.mode }),
       // Include file extension when document context is present
       ...(fileExtension && { fileExtension }),
-      // Slash command tracking - only included if a Nimbalyst package command was used
+      // Slash command tracking - only included if an Auracle package command was used
       ...(slashCommandInfo && {
         usedSlashCommand: true,
         slashCommandName: slashCommandInfo.commandName,

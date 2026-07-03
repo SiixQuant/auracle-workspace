@@ -50,19 +50,19 @@
         "name": "@anthropic-ai/claude-agent-sdk",
         "version": "0.2.126",
         "license": "Anthropic Commercial",
-        "reason": "Anthropic commercial license (https://code.claude.com/docs/en/legal-and-compliance). Permits use by developers writing code locally, which is exactly how Nimbalyst integrates the SDK. Used unmodified."
+        "reason": "Anthropic commercial license (https://code.claude.com/docs/en/legal-and-compliance). Permits use by developers writing code locally, which is exactly how Auracle integrates the SDK. Used unmodified."
       },
       {
         "name": "elkjs",
         "version": "0.11.1",
         "license": "EPL-2.0",
-        "reason": "Eclipse Public License 2.0. Bundled unmodified as a JavaScript library. EPL-2.0 is a file-level weak copyleft that permits this without affecting Nimbalyst's licensing; only modifications to elkjs itself would need to be released under EPL-2.0."
+        "reason": "Eclipse Public License 2.0. Bundled unmodified as a JavaScript library. EPL-2.0 is a file-level weak copyleft that permits this without affecting Auracle's licensing; only modifications to elkjs itself would need to be released under EPL-2.0."
       },
       {
         "name": "libheif-js",
         "version": "1.19.8",
         "license": "LGPL-3.0",
-        "reason": "GNU Lesser GPL 3.0. Bundled unmodified as a JavaScript module loaded at runtime from node_modules; users can substitute their own build. License text is included in THIRD_PARTY_NOTICES.txt. No copyleft contagion to Nimbalyst's source."
+        "reason": "GNU Lesser GPL 3.0. Bundled unmodified as a JavaScript module loaded at runtime from node_modules; users can substitute their own build. License text is included in THIRD_PARTY_NOTICES.txt. No copyleft contagion to Auracle's source."
       }
     ]
   },
@@ -126,7 +126,7 @@
       "reviewRequired": false,
       "reviewReasons": [],
       "approved": true,
-      "approvalReason": "Anthropic commercial license (https://code.claude.com/docs/en/legal-and-compliance). Permits use by developers writing code locally, which is exactly how Nimbalyst integrates the SDK. Used unmodified.",
+      "approvalReason": "Anthropic commercial license (https://code.claude.com/docs/en/legal-and-compliance). Permits use by developers writing code locally, which is exactly how Auracle integrates the SDK. Used unmodified.",
       "approvalLicense": "Anthropic Commercial",
       "issues": [],
       "installPaths": [
@@ -8770,7 +8770,7 @@
       "reviewRequired": false,
       "reviewReasons": [],
       "approved": true,
-      "approvalReason": "Eclipse Public License 2.0. Bundled unmodified as a JavaScript library. EPL-2.0 is a file-level weak copyleft that permits this without affecting Nimbalyst's licensing; only modifications to elkjs itself would need to be released under EPL-2.0.",
+      "approvalReason": "Eclipse Public License 2.0. Bundled unmodified as a JavaScript library. EPL-2.0 is a file-level weak copyleft that permits this without affecting Auracle's licensing; only modifications to elkjs itself would need to be released under EPL-2.0.",
       "approvalLicense": "EPL-2.0",
       "issues": [],
       "installPaths": [
@@ -12603,7 +12603,7 @@
       "reviewRequired": false,
       "reviewReasons": [],
       "approved": true,
-      "approvalReason": "GNU Lesser GPL 3.0. Bundled unmodified as a JavaScript module loaded at runtime from node_modules; users can substitute their own build. License text is included in THIRD_PARTY_NOTICES.txt. No copyleft contagion to Nimbalyst's source.",
+      "approvalReason": "GNU Lesser GPL 3.0. Bundled unmodified as a JavaScript module loaded at runtime from node_modules; users can substitute their own build. License text is included in THIRD_PARTY_NOTICES.txt. No copyleft contagion to Auracle's source.",
       "approvalLicense": "LGPL-3.0",
       "issues": [],
       "installPaths": [

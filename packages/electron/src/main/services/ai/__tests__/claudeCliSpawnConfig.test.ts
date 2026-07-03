@@ -48,7 +48,7 @@ describe('buildClaudeCliSpawnConfig', () => {
     expect(cfg.args[cfg.args.indexOf('--resume') + 1]).toBe('abc-123');
   });
 
-  it('pins the CLI session id to the Nimbalyst session id when it is a valid UUID', () => {
+  it('pins the CLI session id to the Auracle session id when it is a valid UUID', () => {
     const id = '21e3c905-7f60-4066-96e0-a645a7bdc382';
     const cfg = buildClaudeCliSpawnConfig({ ...base, sessionId: id });
     expect(cfg.args).toContain('--session-id');
@@ -90,7 +90,7 @@ describe('buildClaudeCliSpawnConfig', () => {
     expect(cfg.env.HOME).toBe('/Users/me');
   });
 
-  it('strips CLAUDECODE so a Nimbalyst process launched inside a Claude Code session does not make the child CLI refuse to start', () => {
+  it('strips CLAUDECODE so an Auracle process launched inside a Claude Code session does not make the child CLI refuse to start', () => {
     const cfg = buildClaudeCliSpawnConfig({
       ...base,
       baseEnv: { CLAUDECODE: '1', HOME: '/Users/me' },
@@ -144,7 +144,7 @@ describe('buildClaudeCliSpawnConfig', () => {
   // NIM-806: the genuine CLI ships its own built-in AskUserQuestion that renders
   // in the TUI and never routes through MCP. Disallow it so the model is forced
   // onto our mcp__nimbalyst-mcp__AskUserQuestion equivalent (which renders a
-  // Nimbalyst widget and answers over IPC). ExitPlanMode is deliberately NOT
+  // Auracle widget and answers over IPC). ExitPlanMode is deliberately NOT
   // disallowed -- there is no MCP replacement for it yet.
   it('disallows the built-in AskUserQuestion so it routes to our MCP widget instead of the TUI', () => {
     const cfg = buildClaudeCliSpawnConfig(base);
@@ -164,7 +164,7 @@ describe('buildClaudeCliSpawnConfig', () => {
   });
 
   it('nudges the model to name the session via update_session_meta on its first turn', () => {
-    // The CLI never receives Nimbalyst's full system prompt and has no
+    // The CLI never receives Auracle's full system prompt and has no
     // out-of-band naming path, so without this nudge a claude-code-cli session
     // is never named. The naming MCP server is in --mcp-config; the model just
     // needs to be told to call the tool.
@@ -185,7 +185,7 @@ describe('buildClaudeCliSpawnConfig', () => {
 
   // NIM-806 BUG 2: the genuine interactive CLI gates every MCP tool call behind
   // its own built-in TUI permission prompt ("Do you want to proceed?"), which
-  // double-prompts on top of our rendered widget. Pre-allow our trusted Nimbalyst
+  // double-prompts on top of our rendered widget. Pre-allow our trusted Auracle
   // MCP servers at the server level (`mcp__<server>`) so the CLI never prompts for
   // them; built-in Bash/Edit/Write are NOT pre-allowed and still get the gate.
   it('pre-allows trusted MCP servers via --allowedTools mcp__<server> (server-level)', () => {
@@ -216,7 +216,7 @@ describe('buildClaudeCliSpawnConfig', () => {
   });
 
   // NIM-806 Phase 4 (Direction A): register the PreToolUse permission hook via
-  // --settings so built-in tool prompts route to a Nimbalyst widget.
+  // --settings so built-in tool prompts route to an Auracle widget.
   it('emits --settings with the given JSON when provided', () => {
     const settings = JSON.stringify({ hooks: { PreToolUse: [] } });
     const cfg = buildClaudeCliSpawnConfig({ ...base, settingsJson: settings });
@@ -448,7 +448,7 @@ describe('resolveClaudeCliModelArg', () => {
 });
 
 // #684: node-pty runs a `.cmd`/`.bat` through cmd.exe, which is line-oriented, so
-// a newline inside an arg truncates the command line. Nimbalyst's multi-line
+// a newline inside an arg truncates the command line. Auracle's multi-line
 // `--append-system-prompt` must be single-lined for the `.cmd` launch path.
 describe('buildClaudeCliSpawnConfig Windows .cmd newline handling (#684)', () => {
   const base = { cwd: 'C:\\work', baseEnv: {} as Record<string, string | undefined> };
@@ -462,7 +462,7 @@ describe('buildClaudeCliSpawnConfig Windows .cmd newline handling (#684)', () =>
     expect(cfg.args.some((a) => /[\r\n]/.test(a))).toBe(false);
     const i = cfg.args.indexOf('--append-system-prompt');
     expect(i).toBeGreaterThan(-1);
-    expect(cfg.args[i + 1]).toContain('Nimbalyst');
+    expect(cfg.args[i + 1]).toContain('Auracle');
     expect(/[\r\n]/.test(cfg.args[i + 1])).toBe(false);
   });
 

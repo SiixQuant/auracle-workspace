@@ -2,7 +2,7 @@
   "id": "solarized-light",
   "name": "Solarized Light",
   "version": "1.0.0",
-  "author": "Ethan Schoonover (adapted for Nimbalyst)",
+  "author": "Ethan Schoonover (adapted for Auracle)",
   "description": "Precision colors for machines and people - light variant",
   "license": "MIT",
   "isDark": false,

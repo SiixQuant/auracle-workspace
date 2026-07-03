@@ -1,5 +1,5 @@
 /**
- * Nimbalyst Memory — extension shell (renderer/main half).
+ * Auracle Memory — extension shell (renderer/main half).
  *
  * The grounding ENGINE runs in the backend module (`src/backend.ts`, utility
  * process) and registers its tools onto the unified MCP surface — so the coding
@@ -68,8 +68,8 @@ function makeGroundingProvider(ai: ExtensionAIService): VoiceContextProvider {
 }
 
 /**
- * `get_task_status` — a Nimbalyst-aware voice tool. The host-agnostic engine
- * can't know about Nimbalyst sessions, so this lives in the extension shell and
+ * `get_task_status` — an Auracle-aware voice tool. The host-agnostic engine
+ * can't know about Auracle sessions, so this lives in the extension shell and
  * reaches the running-task state through the host AI service. Lets the voice
  * agent answer "is it done yet?" without blocking on the coding agent.
  */

@@ -8,8 +8,8 @@ import { getPackageRoot } from '../../utils/appPaths';
  * hook script (`claudeCliPermissionHook.cjs`).
  *
  * The genuine CLI runs this hook before a matched built-in tool (Bash/Edit/Write/…)
- * via `--settings`; the script POSTs to Nimbalyst's loopback `/permission` endpoint
- * and returns the user's decision, so a Nimbalyst ToolPermission widget replaces
+ * via `--settings`; the script POSTs to Auracle's loopback `/permission` endpoint
+ * and returns the user's decision, so an Auracle ToolPermission widget replaces
  * the native TUI prompt (NIM-806 Phase 4, Direction A). Mirrors the Codex
  * pre-edit hook resolution.
  *

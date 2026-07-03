@@ -1,9 +1,9 @@
 {
   "name": "feedback",
   "version": "1.0.0",
-  "description": "Guided bug reporting and feature request workflow for Nimbalyst",
+  "description": "Guided bug reporting and feature request workflow for Auracle",
   "author": {
-    "name": "Nimbalyst",
+    "name": "Auracle",
     "url": "https://nimbalyst.com"
   },
   "keywords": ["feedback", "bug-report", "feature-request", "github", "issues"]

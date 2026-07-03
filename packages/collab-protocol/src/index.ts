@@ -1,8 +1,8 @@
 /**
- * Wire-format types for the Nimbalyst collaboration sync protocol.
+ * Wire-format types for the Auracle collaboration sync protocol.
  *
  * This package is the single source of truth for the WebSocket message
- * contracts between Nimbalyst clients (desktop, mobile) and the sync
+ * contracts between Auracle clients (desktop, mobile) and the sync
  * server. Both sides must import from here; there is no other copy.
  */
 

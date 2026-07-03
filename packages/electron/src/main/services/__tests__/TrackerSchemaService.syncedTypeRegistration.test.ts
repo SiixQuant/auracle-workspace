@@ -17,7 +17,7 @@ const { mockWatch, mockWindowSend } = vi.hoisted(() => ({
 
 vi.mock('electron', () => ({
   app: {
-    getPath: vi.fn(() => '/tmp'), isPackaged: false, getName: vi.fn(() => 'Nimbalyst'),
+    getPath: vi.fn(() => '/tmp'), isPackaged: false, getName: vi.fn(() => 'Auracle'),
     getVersion: vi.fn(() => '0.0.0-test'), on: vi.fn(), off: vi.fn(), once: vi.fn(),
     whenReady: vi.fn(() => Promise.resolve()), isReady: vi.fn(() => true), quit: vi.fn(),
   },

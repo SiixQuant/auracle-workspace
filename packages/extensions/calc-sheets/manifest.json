@@ -3,7 +3,7 @@
   "name": "Calc Sheets",
   "version": "1.0.0",
   "description": "Line-oriented calculation worksheets with units, formulas, and live result gutters",
-  "author": "Nimbalyst",
+  "author": "Auracle",
   "main": "dist/index.js",
   "styles": "dist/index.css",
   "apiVersion": "1.0.0",

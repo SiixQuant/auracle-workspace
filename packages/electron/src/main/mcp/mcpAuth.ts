@@ -1,7 +1,7 @@
 /**
  * Per-launch bearer token authentication for the internal MCP HTTP servers.
  *
- * The five Nimbalyst MCP HTTP servers (`httpServer`, `sessionNamingServer`,
+ * The five Auracle MCP HTTP servers (`httpServer`, `sessionNamingServer`,
  * `extensionDevServer`, `sessionContextServer`, `metaAgentServer`) all listen on
  * 127.0.0.1 with no transport-level authentication. Without a bearer token, any
  * page open in the user's browser can fire a fetch at the localhost port and

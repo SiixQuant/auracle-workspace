@@ -1,9 +1,9 @@
 {
   "name": "excalidraw",
   "version": "1.0.0",
-  "description": "Excalidraw diagram creation and editing for Nimbalyst",
+  "description": "Excalidraw diagram creation and editing for Auracle",
   "author": {
-    "name": "Nimbalyst",
+    "name": "Auracle",
     "url": "https://nimbalyst.com"
   },
   "keywords": ["excalidraw", "diagram", "drawing", "flowchart", "architecture", "whiteboard"]

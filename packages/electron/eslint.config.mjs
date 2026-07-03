@@ -50,7 +50,7 @@ export default tseslint.config(
             // literal-emphasis encoding stay applied. Calling upstream's
             // $convertFromMarkdownString or $convertToMarkdownString directly
             // skips those steps and regresses round-trip stability on real
-            // Nimbalyst plan documents (see
+            // Auracle plan documents (see
             // packages/runtime/src/editor/markdown/FORKED_MARKDOWN_IMPORT.md).
             name: '@lexical/markdown',
             importNames: ['$convertFromMarkdownString', '$convertToMarkdownString'],
@@ -97,7 +97,7 @@ export default tseslint.config(
             name: '@lexical/react/LexicalHorizontalRuleNode',
             message: 'Import HorizontalRuleNode, $createHorizontalRuleNode, $isHorizontalRuleNode, and INSERT_HORIZONTAL_RULE_COMMAND from @lexical/extension instead (Phase 7.2). The React subclass is not registered on the editor.',
           },
-          // Phase 7.5 deleted the legacy Nimbalyst plugin system. These
+          // Phase 7.5 deleted the legacy Auracle plugin system. These
           // symbols no longer exist in the runtime; importing them is a
           // sign that a stale callsite still expects the old surface.
           // Migration target: publish into the runtime extension stores

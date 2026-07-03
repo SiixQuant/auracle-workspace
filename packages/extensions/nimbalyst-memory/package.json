@@ -1,7 +1,7 @@
 {
   "name": "@nimbalyst/extension-memory",
   "version": "0.1.0",
-  "description": "Voice/agent grounding: a local project-knowledge + facts brain for Nimbalyst. Wraps the host-agnostic memory engine (MCP server) and, later, bridges it to the voice agent.",
+  "description": "Voice/agent grounding: a local project-knowledge + facts brain for Auracle. Wraps the host-agnostic memory engine (MCP server) and, later, bridges it to the voice agent.",
   "private": true,
   "type": "module",
   "main": "dist/index.js",

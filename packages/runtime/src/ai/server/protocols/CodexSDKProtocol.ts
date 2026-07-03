@@ -405,7 +405,7 @@ export class CodexSDKProtocol implements AgentProtocol {
       model: options.model || 'gpt-5',
       workingDirectory: options.workspacePath,
       skipGitRepoCheck: true,
-      approvalPolicy: 'never', // Nimbalyst handles approvals
+      approvalPolicy: 'never', // Auracle handles approvals
       sandboxMode,
       modelReasoningEffort: reasoningEffort,
     };

@@ -1,5 +1,5 @@
 /**
- * Vite plugin for Nimbalyst monorepo
+ * Vite plugin for Auracle monorepo
  * Based on Lexical's approach but simplified
  */
 import { defineConfig, mergeConfig, type Plugin } from 'vite';

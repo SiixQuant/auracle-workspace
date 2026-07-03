@@ -19,7 +19,7 @@
  *     internal queue, the generator pulls and yields ProtocolEvents until
  *     `turn/completed` or `turn/failed` arrives.
  *   - Approval RPCs from codex (server -> client requests) are routed to a
- *     host-provided dispatcher so they flow through Nimbalyst's existing
+ *     host-provided dispatcher so they flow through Auracle's existing
  *     tool-permission system (mirrors Claude Code's canUseTool callback).
  *
  * Backed by Phase 0 spike findings; see
@@ -80,7 +80,7 @@ export interface DynamicToolSpec {
 
 /**
  * Host-provided dispatcher for codex's server-to-client requests. Maps each
- * approval/elicitation/tool-call request to a Nimbalyst surface (the existing
+ * approval/elicitation/tool-call request to an Auracle surface (the existing
  * tool-permission system, dialog system, etc.). Returns the response shape
  * codex expects for that method.
  */
@@ -223,14 +223,14 @@ export class CodexAppServerProtocol implements AgentProtocol {
    * Spawn a fresh codex app-server and resume an existing thread by id.
    *
    * Every resume spawns a fresh codex child (the previous one died with the
-   * previous Nimbalyst process), so the new child has no MCP servers, no
+   * previous Auracle process), so the new child has no MCP servers, no
    * sandbox config, no approval policy, etc. attached until we tell it. The
    * codex v2 ThreadResumeParams schema accepts the same configuration surface
    * as ThreadStartParams (minus `ephemeral`), so we forward everything we
    * pass on first start. Without this, resumed threads start with codex's
    * defaults and the agent sees zero MCP tools available -- breaking
    * `developer_git_commit_proposal`, AskUserQuestion, and every other
-   * Nimbalyst-internal tool that ships through the nimbalyst MCP servers.
+   * Auracle-internal tool that ships through the nimbalyst MCP servers.
    */
   async resumeSession(sessionId: string, options: SessionOptions): Promise<ProtocolSession> {
     const raw = await this.spawnAndInit(options);
@@ -511,7 +511,7 @@ export class CodexAppServerProtocol implements AgentProtocol {
       model: options.model ?? null,
       sandbox,
       cwd: options.workspacePath,
-      approvalPolicy: 'never', // Nimbalyst routes approvals via host bindings; we never want codex to block waiting on stdin
+      approvalPolicy: 'never', // Auracle routes approvals via host bindings; we never want codex to block waiting on stdin
       ephemeral: false,
       developerInstructions: systemPrompt,
       config,
@@ -536,7 +536,7 @@ export class CodexAppServerProtocol implements AgentProtocol {
 
   /**
    * Register handlers for codex's server-to-client requests. Each handler
-   * delegates to the host bindings (Nimbalyst's permission system, dialog
+   * delegates to the host bindings (Auracle's permission system, dialog
    * surface, etc.). Defaults are intentionally permissive to mirror today's
    * `approvalPolicy: 'never'` behavior in the SDK transport.
    */

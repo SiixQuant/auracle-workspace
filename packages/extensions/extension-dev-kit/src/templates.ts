@@ -18,7 +18,7 @@ const SDK_VERSION = '^0.1.0';
  * Generate CLAUDE.md content for a new extension project.
  *
  * This gives AI agents (Claude Code, etc.) the context they need to
- * understand, build, and iterate on a Nimbalyst extension.
+ * understand, build, and iterate on an Auracle extension.
  */
 function generateClaudeMd(options: TemplateOptions & { template: string }): string {
   const { name, extensionId, filePatterns, template } = options;
@@ -35,9 +35,9 @@ function generateClaudeMd(options: TemplateOptions & { template: string }): stri
   const sections: string[] = [];
 
   // Header
-  sections.push(`# ${name} -- Nimbalyst Extension
+  sections.push(`# ${name} -- Auracle Extension
 
-This is a **Nimbalyst extension** project. Nimbalyst is an extensible, AI-native workspace and code editor. Extensions add custom editors, AI tools, panels, themes, and more.
+This is a **Auracle extension** project. Auracle is an extensible, AI-native workspace and code editor. Extensions add custom editors, AI tools, panels, themes, and more.
 
 - **Extension ID**: \`${extensionId}\`
 - **Template**: \`${template}\`
@@ -47,11 +47,11 @@ This is a **Nimbalyst extension** project. Nimbalyst is an extensible, AI-native
 
 Use these docs in this order:
 
-1. **Bundled SDK docs in packaged Nimbalyst**
+1. **Bundled SDK docs in packaged Auracle**
    - Cross-platform runtime path: \`path.join(process.resourcesPath, 'extension-sdk-docs')\`
-   - macOS example: \`/Applications/Nimbalyst.app/Contents/Resources/extension-sdk-docs\`
-   - Windows example: \`<Nimbalyst install dir>\\\\resources\\\\extension-sdk-docs\`
-2. **Monorepo source docs** (when developing inside the Nimbalyst repo)
+   - macOS example: \`/Applications/Auracle.app/Contents/Resources/extension-sdk-docs\`
+   - Windows example: \`<Auracle install dir>\\\\resources\\\\extension-sdk-docs\`
+2. **Monorepo source docs** (when developing inside the Auracle repo)
    - \`packages/extension-sdk-docs/README.md\`
    - \`packages/extension-sdk-docs/getting-started.md\`
    - \`packages/extension-sdk-docs/custom-editors.md\`
@@ -67,7 +67,7 @@ When examples are more helpful than prose, prefer the example projects in \`pack
   // Build workflow
   sections.push(`## Build and Development Workflow
 
-Extensions are built with Vite and installed into the running Nimbalyst app using MCP tools. **Do not run \`npm run build\` manually** -- always use the MCP tools so the extension is installed in one step.
+Extensions are built with Vite and installed into the running Auracle app using MCP tools. **Do not run \`npm run build\` manually** -- always use the MCP tools so the extension is installed in one step.
 
 | Action | MCP Tool |
 | --- | --- |
@@ -80,7 +80,7 @@ Extensions are built with Vite and installed into the running Nimbalyst app usin
 **Typical iteration loop:**
 1. Edit source files
 2. Run \`extension_reload\` with \`extensionId: "${extensionId}"\` and \`path\` set to this project root
-3. Test in Nimbalyst immediately
+3. Test in Auracle immediately
 
 **First-time setup:**
 1. \`npm install\` in this directory
@@ -89,8 +89,8 @@ Extensions are built with Vite and installed into the running Nimbalyst app usin
 
 ### After Installation
 
-- Tell the user the extension is now installed in Nimbalyst
-- Explain that installed extensions are available across all of their Nimbalyst projects, not just this workspace
+- Tell the user the extension is now installed in Auracle
+- Explain that installed extensions are available across all of their Auracle projects, not just this workspace
 - When possible, create a representative sample file for the extension and present it to the user for testing immediately after install or reload
 
 ### Debugging
@@ -102,7 +102,7 @@ Extensions are built with Vite and installed into the running Nimbalyst app usin
 
 ### Testing with Playwright
 
-Run Playwright tests against the live running Nimbalyst instance using the \`extension_test_run\` MCP tool. Tests connect via CDP -- no separate Electron launch needed.
+Run Playwright tests against the live running Auracle instance using the \`extension_test_run\` MCP tool. Tests connect via CDP -- no separate Electron launch needed.
 
 **Inline script (quick check):**
 \`\`\`
@@ -141,7 +141,7 @@ dist/              # Build output (do not edit)
   // Manifest
   sections.push(`## Manifest (\`manifest.json\`)
 
-The manifest declares what the extension contributes to Nimbalyst. Key fields:
+The manifest declares what the extension contributes to Auracle. Key fields:
 
 - **\`contributions.customEditors\`** -- Register editors for file patterns
 - **\`contributions.aiTools\`** -- List AI tool names (must match the \`name\` field in your tool definitions)
@@ -232,7 +232,7 @@ export const aiTools: ExtensionAITool[] = [
   // Claude Plugin (agent skills)
   sections.push(`## Claude Agent Skills (\`claudePlugin\`)
 
-Extensions can bundle **Claude Code skills** -- slash commands and agent context that enhance the AI agent's capabilities within Nimbalyst.
+Extensions can bundle **Claude Code skills** -- slash commands and agent context that enhance the AI agent's capabilities within Auracle.
 
 ### Directory structure
 
@@ -309,7 +309,7 @@ Instructions for the agent, including which MCP tools to use and in what order.
   if (hasEditor) {
     sections.push(`## CSS Theming
 
-Use Nimbalyst's CSS custom properties for theme-consistent styling:
+Use Auracle's CSS custom properties for theme-consistent styling:
 
 | Variable | Usage |
 | --- | --- |
@@ -363,7 +363,7 @@ function generateAgentsMd(options: TemplateOptions & { template: string }): stri
 
   return `# AGENTS.md
 
-This is a Nimbalyst extension project. Read [CLAUDE.md](./CLAUDE.md) before making changes.
+This is an Auracle extension project. Read [CLAUDE.md](./CLAUDE.md) before making changes.
 
 ## What This Project Is
 
@@ -377,10 +377,10 @@ This is a Nimbalyst extension project. Read [CLAUDE.md](./CLAUDE.md) before maki
 
 Use these docs in this order:
 
-1. Bundled SDK docs in packaged Nimbalyst:
+1. Bundled SDK docs in packaged Auracle:
    - Runtime path: \`path.join(process.resourcesPath, 'extension-sdk-docs')\`
-   - macOS example: \`/Applications/Nimbalyst.app/Contents/Resources/extension-sdk-docs\`
-   - Windows example: \`<Nimbalyst install dir>\\\\resources\\\\extension-sdk-docs\`
+   - macOS example: \`/Applications/Auracle.app/Contents/Resources/extension-sdk-docs\`
+   - Windows example: \`<Auracle install dir>\\\\resources\\\\extension-sdk-docs\`
 2. Monorepo source docs when available:
    - \`packages/extension-sdk-docs/README.md\`
    - \`packages/extension-sdk-docs/getting-started.md\`
@@ -400,9 +400,9 @@ Use these docs in this order:
 - Iterate with \`mcp__nimbalyst-extension-dev__extension_reload\`
 - Check status with \`mcp__nimbalyst-extension-dev__extension_get_status\`
 - Use main and renderer log MCP tools for debugging
-- Do not restart Nimbalyst unless the user explicitly asks
+- Do not restart Auracle unless the user explicitly asks
 - When possible, create a representative sample file and use it to verify the extension after install or reload
-- After a successful install, tell the user the extension is installed and available across all of their Nimbalyst projects
+- After a successful install, tell the user the extension is installed and available across all of their Auracle projects
 
 ## Validation Checklist
 
@@ -410,7 +410,7 @@ Use these docs in this order:
 - Every \`customEditors[].component\` entry matches a key in the exported \`components\` object
 - Every tool name listed in \`contributions.aiTools\` has a matching exported handler
 - Custom editors use \`host.loadContent()\`, \`host.onSaveRequested()\`, \`host.onFileChanged()\`, and \`host.setDirty()\`
-- Styling uses Nimbalyst CSS variables such as \`--nim-bg\`, \`--nim-text\`, and \`--nim-border\`
+- Styling uses Auracle CSS variables such as \`--nim-bg\`, \`--nim-text\`, and \`--nim-border\`
 
 ## When Unsure
 
@@ -429,8 +429,8 @@ function generateTestFile(options: TemplateOptions & { hasEditor: boolean }): st
     return `/**
  * Extension tests -- run via the extension_test_run MCP tool.
  *
- * These tests connect to the running Nimbalyst instance via CDP.
- * Make sure Nimbalyst is running in dev mode (npm run dev).
+ * These tests connect to the running Auracle instance via CDP.
+ * Make sure Auracle is running in dev mode (npm run dev).
  *
  * Usage:
  *   extension_test_run({ testFile: "<absolute-path>/tests/basics.spec.ts" })
@@ -451,8 +451,8 @@ test.describe('${options.name}', () => {
   return `/**
  * Extension tests -- run via the extension_test_run MCP tool.
  *
- * These tests connect to the running Nimbalyst instance via CDP.
- * Make sure Nimbalyst is running in dev mode (npm run dev).
+ * These tests connect to the running Auracle instance via CDP.
+ * Make sure Auracle is running in dev mode (npm run dev).
  *
  * Usage:
  *   extension_test_run({ testFile: "<absolute-path>/tests/basics.spec.ts" })
@@ -1184,14 +1184,14 @@ export function starterTemplate(options: TemplateOptions): TemplateFiles {
 
     'README.md': `# ${name}
 
-This is a neutral Nimbalyst extension starter scaffold.
+This is a neutral Auracle extension starter scaffold.
 
 ## What To Do Next
 
 1. Describe the extension you want to Claude in plain language.
 2. Ask Claude to update \`manifest.json\`, add the right contributions and permissions, and create any editor, panel, or AI tool code you need.
 3. Run \`npm install\` once dependencies are finalized.
-4. Ask Claude to build and install the extension in Nimbalyst.
+4. Ask Claude to build and install the extension in Auracle.
 
 ## Current Defaults
 

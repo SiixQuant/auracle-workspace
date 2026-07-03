@@ -1,7 +1,7 @@
 {
   "name": "@nimbalyst/extension-sdk",
   "version": "0.2.0",
-  "description": "SDK for building Nimbalyst extensions",
+  "description": "SDK for building Auracle extensions",
   "repository": {
     "type": "git",
     "url": "https://github.com/nimbalyst/nimbalyst.git",

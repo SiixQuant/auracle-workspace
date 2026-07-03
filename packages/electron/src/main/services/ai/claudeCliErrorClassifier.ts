@@ -3,7 +3,7 @@
  * failure the rich transcript can surface (NIM-808, Phase 4 — failed-turn state).
  *
  * The `claude-code-cli` (B3) path drives the genuine CLI through a loopback
- * proxy. When a turn fails, the CLI prints to its own TUI but the rich Nimbalyst
+ * proxy. When a turn fails, the CLI prints to its own TUI but the rich Auracle
  * transcript shows nothing. The proxy already intercepts the upstream status
  * code; this module turns `{statusCode, body}` into a typed `ClaudeCliFailure`
  * so `claudeCliErrorLog` can persist a synthetic row the existing widgets render

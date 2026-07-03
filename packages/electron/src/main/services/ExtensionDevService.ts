@@ -12,7 +12,7 @@ import { isExtensionDevToolsEnabled } from '../utils/store';
  *
  * This runs in the electron main process and provides tools for:
  * - Building extensions (npm run build)
- * - Installing extensions into the running Nimbalyst
+ * - Installing extensions into the running Auracle
  * - Hot-reloading extensions during development
  * - Uninstalling extensions
  */

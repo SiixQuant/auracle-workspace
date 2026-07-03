@@ -1,5 +1,5 @@
 /**
- * Popup UI script for Nimbalyst Web Clipper
+ * Popup UI script for Auracle Web Clipper
  */
 
 // DOM elements
@@ -78,7 +78,7 @@ async function clipPage() {
     });
 
     if (response.success) {
-      showStatus('success', 'Page clipped to Nimbalyst!');
+      showStatus('success', 'Page clipped to Auracle!');
       setTimeout(() => window.close(), 1500);
     } else {
       showStatus('error', response.error || 'Failed to clip page');
@@ -112,7 +112,7 @@ async function clipSelection() {
     });
 
     if (response.success) {
-      showStatus('success', 'Selection clipped to Nimbalyst!');
+      showStatus('success', 'Selection clipped to Auracle!');
       setTimeout(() => window.close(), 1500);
     } else {
       showStatus('error', response.error || 'Failed to clip selection');

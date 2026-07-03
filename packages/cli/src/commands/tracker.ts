@@ -217,7 +217,7 @@ async function trackerLinkSession(args: ParsedArgs): Promise<number> {
   const gateway = makeGateway(args);
   if (gateway.mode !== 'live') {
     gateway.close();
-    throw writeNotPermittedError('link-session requires live mode (a running Nimbalyst). It links an in-app AI session.');
+    throw writeNotPermittedError('link-session requires live mode (a running Auracle). It links an in-app AI session.');
   }
   try {
     const workspace = await resolveWorkspace(gateway, flagStr(args, 'workspace'));

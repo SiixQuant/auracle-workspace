@@ -1,7 +1,7 @@
 /**
- * Nimbalyst Tailwind CSS Preset for Extensions
+ * Auracle Tailwind CSS Preset for Extensions
  *
- * This preset provides the Nimbalyst theme colors and utilities for use in extensions.
+ * This preset provides the Auracle theme colors and utilities for use in extensions.
  * Extensions that use Tailwind CSS should extend this preset to ensure consistent
  * theming with the host application.
  *
@@ -20,11 +20,11 @@
 import type { Config } from 'tailwindcss';
 
 /**
- * Nimbalyst theme color configuration for Tailwind CSS.
+ * Auracle theme color configuration for Tailwind CSS.
  * These map to the --nim-* CSS variables defined by the host application.
  */
 export const nimbalystColors = {
-  // Nimbalyst theme colors - conventional naming that matches CSS/Tailwind mental models
+  // Auracle theme colors - conventional naming that matches CSS/Tailwind mental models
   nim: {
     // Backgrounds (use: bg-nim, bg-nim-secondary, etc.)
     DEFAULT: 'var(--nim-bg)',
@@ -104,10 +104,10 @@ export const nimbalystBorderColors = {
 };
 
 /**
- * Nimbalyst Tailwind CSS preset.
+ * Auracle Tailwind CSS preset.
  *
  * Use this preset in your extension's tailwind.config.ts to get access
- * to the Nimbalyst theme colors and utilities.
+ * to the Auracle theme colors and utilities.
  *
  * @example
  * ```ts

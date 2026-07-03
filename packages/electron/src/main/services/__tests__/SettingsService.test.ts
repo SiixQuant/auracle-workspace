@@ -47,7 +47,7 @@ vi.mock('../../utils/logger', () => ({
 // `env-paths` (the same library electron-store uses) so it is correct on every
 // platform -- a hardcoded macOS path made existsSync false on Linux CI and let
 // state leak across tests there. We clean it between tests so state never leaks
-// across runs (and the user's real Nimbalyst config is never touched).
+// across runs (and the user's real Auracle config is never touched).
 const STORE_FALLBACK = path.join(
   envPaths('electron-store', { suffix: 'nodejs' }).config,
   'ai-settings.json',

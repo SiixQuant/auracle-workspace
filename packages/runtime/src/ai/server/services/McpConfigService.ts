@@ -4,7 +4,7 @@
  * This service handles:
  * - Loading MCP servers from user config (~/.config/claude/mcp.json)
  * - Loading workspace-specific MCP servers (.mcp.json)
- * - Merging built-in Nimbalyst MCP servers with user configs
+ * - Merging built-in Auracle MCP servers with user configs
  * - Expanding environment variables in server configurations
  * - Processing server configs for different transport types (stdio, sse)
  *
@@ -22,7 +22,7 @@ import {
 } from './mcpTopology';
 
 export interface McpConfigServiceDeps {
-  /** Port for the unified internal Nimbalyst MCP HTTP server (all endpoints). */
+  /** Port for the unified internal Auracle MCP HTTP server (all endpoints). */
   mcpServerPort: number | null;
 
   /** Port for the extension development MCP server (profile-gated, separate server). */
@@ -56,7 +56,7 @@ export interface McpConfigServiceDeps {
   extensionMcpServerNamesLoader?: ((workspacePath?: string) => string[]) | null;
 
   /**
-   * Per-launch bearer token for the internal Nimbalyst MCP HTTP servers.
+   * Per-launch bearer token for the internal Auracle MCP HTTP servers.
    * When set, the service emits an `Authorization: Bearer <token>` header on
    * each `nimbalyst-*` server config. When null, no auth header is sent
    * (test/legacy compatibility).
@@ -85,7 +85,7 @@ export class McpConfigService {
 
   /**
    * Get merged MCP server configuration from all sources:
-   * 1. Built-in Nimbalyst MCP servers (nimbalyst core/host/trackers/situational, per-extension, extension-dev)
+   * 1. Built-in Auracle MCP servers (nimbalyst core/host/trackers/situational, per-extension, extension-dev)
    * 2. User-level MCP servers (~/.config/claude/mcp.json)
    * 3. Workspace-level MCP servers (.mcp.json)
    *
@@ -102,7 +102,7 @@ export class McpConfigService {
     const config: any = {};
     const isMetaAgent = profile === 'meta-agent';
 
-    // Authorization header for the internal Nimbalyst MCP HTTP servers.
+    // Authorization header for the internal Auracle MCP HTTP servers.
     // Issue #146: localhost MCP servers require a per-launch bearer token.
     // Both the Claude Agent SDK and Codex SDK accept `headers` on remote MCP
     // server configs and forward them on every request.
@@ -110,7 +110,7 @@ export class McpConfigService {
       ? { Authorization: `Bearer ${this.deps.mcpAuthToken}` }
       : undefined;
 
-    // The internal Nimbalyst MCP surface is served by the unified HTTP server on
+    // The internal Auracle MCP surface is served by the unified HTTP server on
     // `this.deps.mcpServerPort`, split across endpoint paths (one `config[name]`
     // per server below). The legacy monolithic `nimbalyst-mcp` (`/mcp`) is fully
     // retired — every tool now lives on a split server (core / host / trackers /
@@ -125,7 +125,7 @@ export class McpConfigService {
         `http://127.0.0.1:${port}${endpointPath}${query}`;
 
       // nimbalyst (eager core) — alwaysLoad. Universal agent↔host glue and the
-      // ONLY Nimbalyst surface that stays eager. Carries the long tool timeout
+      // ONLY Auracle surface that stays eager. Carries the long tool timeout
       // because developer_git_commit_proposal / AskUserQuestion / PromptForUserInput
       // block indefinitely on user input.
       config[MCP_CORE] = {

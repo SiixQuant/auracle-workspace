@@ -148,7 +148,7 @@ export class PermissionEvaluator {
   }
 
   /**
-   * Check if a tool is an internal Nimbalyst MCP tool that should always be allowed
+   * Check if a tool is an internal Auracle MCP tool that should always be allowed
    *
    * These tools are either:
    * - Read-only (e.g., screenshot capture)

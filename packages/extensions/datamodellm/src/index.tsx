@@ -1,7 +1,7 @@
 /**
  * DatamodelLM Extension
  *
- * A Nimbalyst extension for AI-assisted data modeling with visual
+ * An Auracle extension for AI-assisted data modeling with visual
  * entity-relationship diagrams.
  *
  * This extension provides:

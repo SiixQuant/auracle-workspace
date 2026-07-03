@@ -8,7 +8,7 @@
  *     `pr:list`, `pr:get`, `pr:files`, `pr:file-contents`,
  *     `pr:commits`, `pr:checks`, `pr:conversation`, `pr:refresh`
  *
- * All GitHub authentication is delegated to the `gh` CLI; Nimbalyst never
+ * All GitHub authentication is delegated to the `gh` CLI; Auracle never
  * holds a GitHub token.
  */
 
@@ -133,7 +133,7 @@ function getService(): GhApiService {
   if (cachedService) return cachedService;
   // The resolver maps a workspace to its effective gh account (per-project
   // override ?? global default). GhApiService turns that login into a token
-  // from gh's keyring per request; Nimbalyst stores only the login.
+  // from gh's keyring per request; Auracle stores only the login.
   cachedService = new GhApiService(getStore(), (workspaceId) =>
     getEffectiveGhAccount(workspaceId),
   );

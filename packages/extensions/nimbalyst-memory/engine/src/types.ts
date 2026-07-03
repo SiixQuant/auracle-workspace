@@ -1,5 +1,5 @@
 /**
- * Core engine types. Host-agnostic — no Nimbalyst, voice, or tracker concepts
+ * Core engine types. Host-agnostic — no Auracle, voice, or tracker concepts
  * leak in here. A "source class" is just a free-form string tag the caller
  * attaches to a set of globs (e.g. "design", "docs", "facts"); the engine never
  * interprets it.

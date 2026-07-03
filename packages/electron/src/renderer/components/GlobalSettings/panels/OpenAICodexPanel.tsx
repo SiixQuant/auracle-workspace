@@ -269,7 +269,7 @@ export function OpenAICodexPanel({
                     </button>
                   </div>
                   <p className="text-[11px] leading-relaxed text-[var(--nim-text-faint)] mt-2">
-                    Opens your default browser. Complete the OpenAI sign-in flow; Nimbalyst updates automatically when you return.
+                    Opens your default browser. Complete the OpenAI sign-in flow; Auracle updates automatically when you return.
                   </p>
                 </div>
               )}
@@ -299,7 +299,7 @@ export function OpenAICodexPanel({
                     </button>
                   </div>
                   <p className="text-[11px] leading-relaxed text-[var(--nim-text-faint)] mt-2">
-                    Stored by Codex in <code>~/.codex/auth.json</code>, not in Nimbalyst settings.
+                    Stored by Codex in <code>~/.codex/auth.json</code>, not in Auracle settings.
                   </p>
                 </div>
               )}

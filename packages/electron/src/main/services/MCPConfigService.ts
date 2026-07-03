@@ -177,7 +177,7 @@ export class MCPConfigService {
    * Migrate MCP servers from legacy ~/.config/claude/mcp.json to ~/.claude.json
    * Returns the migrated config if successful, null if no legacy config exists.
    *
-   * NOTE: The legacy location was Nimbalyst-only (never used by Claude Code CLI).
+   * NOTE: The legacy location was Auracle-only (never used by Claude Code CLI).
    * After successful migration, we delete the legacy file to prevent it from
    * interfering with future reads (e.g., when user deletes all servers).
    */
@@ -762,7 +762,7 @@ export class MCPConfigService {
    *
    * Claude Code 2.1.x requires `type` as an explicit discriminator and rejects
    * entries that omit it (e.g. `{ "url": "..." }` without `"type": "http"`).
-   * Older Nimbalyst versions and manually-authored configs may be missing it.
+   * Older Auracle versions and manually-authored configs may be missing it.
    *
    * Inference rules (only applied when `type` is missing):
    * - Entry has `url` -> `http` (the modern remote transport)

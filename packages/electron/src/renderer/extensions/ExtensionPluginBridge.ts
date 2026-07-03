@@ -1,6 +1,6 @@
 /**
  * Bridges the ExtensionLoader output into the runtime extension stores
- * so on-disk Nimbalyst extensions can contribute Lexical extensions,
+ * so on-disk Auracle extensions can contribute Lexical extensions,
  * markdown transformers, nodes, and slash commands without depending on
  * a private runtime API.
  */

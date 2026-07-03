@@ -17,7 +17,7 @@
  * later 2.1.142 line in the changelog is the separate `claude agents` subcommand
  * flag batch, NOT the top-level flag — don't be misled by it.) Confirmed present
  * as a top-level option on 2.1.177; 1.0.72 has no plugin system at all.
- * Nimbalyst runs the user's OWN `claude` (see `claudeExecutableResolver.ts`) and
+ * Auracle runs the user's OWN `claude` (see `claudeExecutableResolver.ts`) and
  * does not pin a version, so an older install may be resolved. On such a CLI
  * commander rejects `--plugin-dir` as an unknown option and the launch FAILS —
  * so we must detect support before passing the flags by parsing `claude

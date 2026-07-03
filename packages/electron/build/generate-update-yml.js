@@ -67,7 +67,7 @@ function generateMacYml() {
   // electron-updater requires these suffixes to correctly route updates.
   //
   // Note: afterAllArtifactBuild.js also creates copies without the arch suffix
-  // (e.g., Nimbalyst-macOS.dmg) for backwards-compatible download links,
+  // (e.g., Auracle-macOS.dmg) for backwards-compatible download links,
   // but those are NOT referenced in the yml - only the arch-suffixed files are.
 
   const files = [];
@@ -176,9 +176,9 @@ function generateMacYml() {
 // Function to generate latest.yml (for Windows)
 function generateWindowsYml() {
   // artifactName in package.json is "${productName}-Windows-${arch}.${ext}",
-  // so builds produce Nimbalyst-Windows-x64.exe and Nimbalyst-Windows-arm64.exe.
+  // so builds produce Auracle-Windows-x64.exe and Auracle-Windows-arm64.exe.
   //
-  // CI also copies the signed x64 exe to Nimbalyst-Windows.exe for backwards-
+  // CI also copies the signed x64 exe to Auracle-Windows.exe for backwards-
   // compatible download links, but latest.yml only references the arch-suffixed
   // files so electron-updater can route each machine to the correct binary.
 
@@ -213,7 +213,7 @@ function generateWindowsYml() {
   }
 
   // x64 is the primary file -- it's the most common architecture and matches
-  // the backwards-compatible Nimbalyst-Windows.exe download. If only arm64 is
+  // the backwards-compatible Auracle-Windows.exe download. If only arm64 is
   // present (per-job generation before the release merge), fall back to it.
   const primaryFile = files.find((f) => f.arch === 'x64') || files[0];
 

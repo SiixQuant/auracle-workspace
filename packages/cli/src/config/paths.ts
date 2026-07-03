@@ -1,5 +1,5 @@
 /**
- * Platform-aware resolution of Nimbalyst's on-disk locations, mirroring how the
+ * Platform-aware resolution of Auracle's on-disk locations, mirroring how the
  * Electron app derives `app.getPath('userData')` so the CLI reads the same files
  * the app writes.
  *
@@ -12,7 +12,7 @@ import * as path from 'path';
 const APP_NAME = '@nimbalyst/electron';
 
 /**
- * The Nimbalyst userData directory.
+ * The Auracle userData directory.
  *
  * Honors `NIMBALYST_USER_DATA_DIR` (the same override the app's bootstrap.ts
  * respects for dev:user2 / worktrees), then falls back to the platform default.

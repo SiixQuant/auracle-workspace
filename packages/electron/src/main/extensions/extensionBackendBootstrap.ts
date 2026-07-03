@@ -152,7 +152,7 @@ export interface BackendServices {
   ): Promise<BrokerResults['logRaw']>;
 
   /**
-   * Read a provider API key from the EXPLICIT Nimbalyst settings store ONLY.
+   * Read a provider API key from the EXPLICIT Auracle settings store ONLY.
    * Never reads from process.env (per CLAUDE.md no-env-key rule). Returns
    * `{ key: null }` if the user hasn't configured one.
    * Requires: `secrets-read`.

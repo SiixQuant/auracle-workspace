@@ -179,7 +179,7 @@ export function generateToolPattern(toolName: string, input: any): string {
  * - `mcp__server` covers every tool under that MCP server
  * - `mcp__server__tool` covers only that specific MCP tool
  *
- * Nimbalyst's runtime patterns are always the most specific form, e.g.
+ * Auracle's runtime patterns are always the most specific form, e.g.
  * `Bash(git status:*)` or `WebFetch(domain:example.com)`, so the old exact
  * `Array.prototype.includes` check missed the prefix-wildcard case and the
  * user kept seeing dialogs for tools they had already approved globally.
@@ -190,7 +190,7 @@ export function generateToolPattern(toolName: string, input: any): string {
  * either equal the candidate command exactly OR be followed by a space in
  * the candidate.
  *
- * @param candidate - The runtime pattern Nimbalyst built for the current
+ * @param candidate - The runtime pattern Auracle built for the current
  *   tool call (e.g. `Bash(git status:*)`).
  * @param allowed - One entry from the user's `permissions.allow` array
  *   (e.g. `Bash(git:*)`, `WebFetch`, `mcp__github`).

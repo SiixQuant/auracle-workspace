@@ -3,7 +3,7 @@
   "name": "iOS Development Tools",
   "version": "0.1.0",
   "description": "Tools for iOS development including XcodeGen, simulator management, and deployment",
-  "author": "Nimbalyst",
+  "author": "Auracle",
   "main": "dist/index.mjs",
   "apiVersion": "1.0.0",
   "requiredReleaseChannel": "alpha",

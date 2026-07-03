@@ -304,7 +304,7 @@ export const CLAUDE_CODE_PINNED_SDK_MODELS: Partial<Record<ClaudeCodeVariant, st
  * suffix for Fable too (verified against CLI 2.1.175 — plain `fable` sessions
  * auto-compact at ~177k/200k, and the binary carries a distinct `fable[1m]`
  * model value that a live probe accepted). Without this row there was no way
- * to run a 1M Fable session from Nimbalyst at all.
+ * to run a 1M Fable session from Auracle at all.
  */
 export const CLAUDE_CODE_VARIANTS_WITH_1M: readonly ClaudeCodeVariant[] = [
   'fable',
@@ -348,7 +348,7 @@ export const DEFAULT_MODELS = {
  * Curated preset list of models for the OpenCode agent.
  *
  * OpenCode itself uses `<providerID>/<modelID>` (e.g. `anthropic/claude-sonnet-4-5`).
- * In Nimbalyst's model registry we wrap that with the `opencode:` prefix so the
+ * In Auracle's model registry we wrap that with the `opencode:` prefix so the
  * provider-router knows which agent to dispatch to. The OpenCode protocol layer
  * strips the prefix before forwarding to the SDK.
  *

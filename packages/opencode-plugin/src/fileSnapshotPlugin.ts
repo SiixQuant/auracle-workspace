@@ -3,7 +3,7 @@
  *
  * Hooks into OpenCode's tool execution lifecycle to capture
  * before/after file content snapshots. This data flows through
- * SSE events to the OpenCodeSDKProtocol, enabling Nimbalyst's
+ * SSE events to the OpenCodeSDKProtocol, enabling Auracle's
  * red/green diff and local history system.
  *
  * Note: The exact OpenCode plugin API is not yet finalized.

@@ -67,7 +67,7 @@ export function registerClaudeCodeHandlers() {
           isLoggedIn: false,
           hasOAuthToken: false,
           isExpired: false,
-          error: "Nimbalyst's bundled Claude runtime is missing or could not be found. A failed update can leave it in a broken state -- reinstall or repair Nimbalyst.",
+          error: "Auracle's bundled Claude runtime is missing or could not be found. A failed update can leave it in a broken state -- reinstall or repair Auracle.",
         };
       }
 

@@ -13,9 +13,9 @@
  *   - If it throws ESRCH -> no such process; the lock is stale, the prior
  *     instance crashed without releasing. Decision: 'stale'.
  *   - If it throws EPERM -> ambiguous on Windows. Either a sibling
- *     Nimbalyst we cannot signal (e.g. different user, different
+ *     Auracle we cannot signal (e.g. different user, different
  *     privilege level) OR a system / service process that happened to
- *     reuse the PID after the original Nimbalyst process died (the
+ *     reuse the PID after the original Auracle process died (the
  *     #272 case). Disambiguate by lock age:
  *       * Lock timestamp older than `staleGraceMs` (default 60s):
  *         decision: 'stale'. The original lock holder is long dead;
@@ -93,7 +93,7 @@ function decideLockIsRunning({ lockPid, lockTimestamp, killFn, now = Date.now(),
           decision: 'stale',
           isRunning: false,
           reason:
-            `kill(0) succeeded but PID ${lockPid} is "${identity}", not a Nimbalyst ` +
+            `kill(0) succeeded but PID ${lockPid} is "${identity}", not an Auracle ` +
             `process; the PID was reused after the original holder died`,
           lockPid,
           lockAgeMs,

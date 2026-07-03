@@ -1,13 +1,13 @@
 /**
  * Extension Test Fixture
  *
- * Connects Playwright to the running Nimbalyst instance via CDP (Chrome DevTools Protocol).
+ * Connects Playwright to the running Auracle instance via CDP (Chrome DevTools Protocol).
  * Used by the extension_test_run MCP tool and by extension test files.
  *
  * Unlike the standard E2E helpers that launch a fresh Electron instance, this fixture
  * connects to the already-running dev instance -- same app the user sees.
  *
- * Requires: Nimbalyst running in dev mode (which enables --remote-debugging-port=9222).
+ * Requires: Auracle running in dev mode (which enables --remote-debugging-port=9222).
  */
 
 import { test as base, expect } from '@playwright/test';
@@ -23,15 +23,15 @@ export const test = base.extend<{ page: import('playwright').Page }>({
       browser = await chromium.connectOverCDP(CDP_ENDPOINT);
     } catch (error) {
       throw new Error(
-        `Could not connect to Nimbalyst via CDP at ${CDP_ENDPOINT}.\n` +
-        `Make sure Nimbalyst is running in dev mode (npm run dev).\n` +
+        `Could not connect to Auracle via CDP at ${CDP_ENDPOINT}.\n` +
+        `Make sure Auracle is running in dev mode (npm run dev).\n` +
         `Original error: ${error instanceof Error ? error.message : String(error)}`
       );
     }
 
     const contexts = browser.contexts();
     if (contexts.length === 0) {
-      throw new Error('No browser contexts found. Is a Nimbalyst window open?');
+      throw new Error('No browser contexts found. Is an Auracle window open?');
     }
 
     // Find the main editor page (skip offscreen capture windows and DevTools)
@@ -47,7 +47,7 @@ export const test = base.extend<{ page: import('playwright').Page }>({
       if (mainPage) break;
     }
     if (!mainPage) {
-      throw new Error('No Nimbalyst editor window found via CDP.');
+      throw new Error('No Auracle editor window found via CDP.');
     }
 
     await use(mainPage);

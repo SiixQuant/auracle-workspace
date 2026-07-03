@@ -1,5 +1,5 @@
 /**
- * Transformer-only extension that publishes the Nimbalyst markdown table
+ * Transformer-only extension that publishes the Auracle markdown table
  * transformer. Upstream `@lexical/table` owns the actual `TableNode` and
  * the React `TablePlugin` runtime; we only need a place to surface our
  * import/export transformer through the contributions store.

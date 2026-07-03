@@ -165,7 +165,7 @@ class NotificationService {
 
     const notification = new Notification({
       title: 'Notifications Enabled',
-      body: 'Nimbalyst will notify you when AI responses are ready.',
+      body: 'Auracle will notify you when AI responses are ready.',
       icon: this.getAppIcon(),
       silent: true,
       urgency: 'normal',

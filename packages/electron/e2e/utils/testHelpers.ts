@@ -1,7 +1,7 @@
 /**
  * AI Test Helpers
  *
- * Shared utilities for testing AI features in the Nimbalyst editor.
+ * Shared utilities for testing AI features in the Auracle editor.
  * These helpers encapsulate common patterns for interacting with the AI chat,
  * agent mode, and document editing.
  */

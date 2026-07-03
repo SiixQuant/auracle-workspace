@@ -212,7 +212,7 @@ export function setIdleThresholdMs(ms: number): void {
 /**
  * Whether the user has truly left their computer (screen locked or idle past threshold).
  * This is stricter than deriveDeviceStatus() === 'away', which also triggers when the
- * Nimbalyst window simply loses focus (user switched to another app on the same Mac).
+ * Auracle window simply loses focus (user switched to another app on the same Mac).
  * Use this to gate mobile push notifications so they don't duplicate Electron notifications.
  */
 export function isDesktopTrulyAway(): boolean {

@@ -145,7 +145,7 @@ export interface NormalizedSelectionRange {
 }
 
 /**
- * Props for custom editor components (from Nimbalyst extension system)
+ * Props for custom editor components (from Auracle extension system)
  * Re-exported from runtime for convenience
  */
 export type { EditorHost, EditorHostProps } from '@nimbalyst/extension-sdk';

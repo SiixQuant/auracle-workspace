@@ -87,7 +87,7 @@ interface QuickOpenFileNameSearchOptions {
 }
 
 // Binary file extensions to exclude from QuickOpen results
-// Note: Images are NOT excluded - Nimbalyst can display them
+// Note: Images are NOT excluded - Auracle can display them
 // Note: PDFs are NOT excluded - extensions may add support
 const BINARY_EXTENSIONS = new Set([
     // Audio/Video

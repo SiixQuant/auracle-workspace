@@ -1,7 +1,7 @@
 /**
  * Excalidraw Extension
  *
- * A Nimbalyst extension for AI-assisted diagram editing with Excalidraw.
+ * An Auracle extension for AI-assisted diagram editing with Excalidraw.
  *
  * This extension provides:
  * - A custom editor for .excalidraw files

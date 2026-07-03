@@ -65,7 +65,7 @@ export class SessionFileWatcher {
   private onFileChanged: ((event: SessionFileWatcherEditEvent) => Promise<void> | void) | null = null;
 
   /**
-   * File paths recently saved by the Nimbalyst editor (user saves).
+   * File paths recently saved by the Auracle editor (user saves).
    * These are excluded from AI tool call matching so human edits
    * don't get attributed to AI tool calls.
    */

@@ -1,7 +1,7 @@
 {
   "name": "@nimbalyst/excalidraw-extension",
   "version": "1.0.0",
-  "description": "Excalidraw diagram editor extension for Nimbalyst",
+  "description": "Excalidraw diagram editor extension for Auracle",
   "main": "dist/index.js",
   "types": "src/index.tsx",
   "exports": {

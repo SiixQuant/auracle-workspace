@@ -80,7 +80,7 @@ const TRACKER_STRATEGY_PROBLEM_EXCERPT = `| Enterprise team on Jira | Native + J
 | Startup using Linear | Native + Linear | Linear as primary work tracker, native for design docs and decisions |
 | Team running multiple repos | Native + GitHub Issues x N | Per-repo binding; provider can be configured for multiple repos |
 | Team on self-hosted Gitea | Native + Gitea (marketplace) | Same provider contract as GitHub; just a different extension |
-| Nimbalyst itself | Native + GitHub Issues + Linear | Our specific configuration - see "Nimbalyst's configuration" below |
+| Auracle itself | Native + GitHub Issues + Linear | Our specific configuration - see "Auracle's configuration" below |
 
 **What's**** ****per-workspace**** ****configurable:**
 
@@ -97,7 +97,7 @@ From \`packages/extension-sdk/src/types/extension.ts\`:
 | Choice | Decision |
 | --- | --- |
 | **Provider mechanism** | **All foreign trackers are \\****\`TrackerProvider\`**\\*\\** extensions.** Native is the only built-in. Distribution channels can pre-install some providers, but architecturally there is no "bundled" tier with privileged capability - the contract is the same for everyone. |
-| **Session linking** | **URN-based, switched in Phase 1.** Native links migrate to \`nimbalyst://NIM-xxx\` in the same change as the contract; foreign providers slot in cleanly afterward. |
+| **Session linking** | **URN-based, switched in Phase 1.** Native links migrate to \`auracle://NIM-xxx\` in the same change as the contract; foreign providers slot in cleanly afterward. |
 
 ### Agent commit-message instructions
 
@@ -106,7 +106,7 @@ From \`packages/extension-sdk/src/types/extension.ts\`:
 > ### Tracker-aware commit messages
 >
 > When the session has linked tracker items and tracker automation is enabled, append closing-keyword lines to commit messages so each item closes automatically. Use the syntax matching the item's source:
-> - **Native (****\`nimbalyst://\`****)** or **Linear (****\`linear://\`****)**: \`Fixes NIM-123\`
+> - **Native (****\`auracle://\`****)** or **Linear (****\`linear://\`****)**: \`Fixes NIM-123\`
 > - **GitHub same-repo**: \`Fixes #42\`
 > - **GitHub cross-repo**: \`Fixes owner/repo#42\`
 >
@@ -115,7 +115,7 @@ From \`packages/extension-sdk/src/types/extension.ts\`:
 
 describe('Markdown round-trip corpus', () => {
   it('keeps isolated bold text containing inline code stable across double round-trip', () => {
-    const markdown = '**Native (`nimbalyst://`)**';
+    const markdown = '**Native (`auracle://`)**';
     const {firstExport, secondExport} = doubleRoundTrip(markdown);
 
     expect(firstExport).toBe(markdown);
@@ -137,12 +137,12 @@ describe('Markdown round-trip corpus', () => {
 
     // Round-trip is now stable: re-importing the first export and re-exporting
     // produces identical bytes. CommonMark's emphasis rules still pair the
-    // 4-star runs flanking ``nimbalyst://`` / ``linear://`` as bold + italic,
+    // 4-star runs flanking ``auracle://`` / ``linear://`` as bold + italic,
     // so the result includes a single `*` italic marker rather than the
-    // pristine ``**Native (`nimbalyst://`)**`` form a human would type, but the
+    // pristine ``**Native (`auracle://`)**`` form a human would type, but the
     // shape is now a fixed point under the importer.
     expect(secondExport).toBe(firstExport);
-    expect(firstExport).not.toContain('****`nimbalyst://`****');
+    expect(firstExport).not.toContain('****`auracle://`****');
     expect(firstExport).not.toContain('****`linear://`****');
   });
 

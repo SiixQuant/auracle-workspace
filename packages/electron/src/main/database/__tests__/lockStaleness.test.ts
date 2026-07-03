@@ -4,12 +4,12 @@ import { decideLockIsRunning, DEFAULT_STALE_LOCK_GRACE_MS } from '../lockStalene
 
 // Regression coverage for nimbalyst#272. AnisminC reported the PGLite
 // lock file was NOT self-healing after a main-process crash on Windows:
-// the original Nimbalyst process crashed at 21:09Z, the user relaunched
+// the original Auracle process crashed at 21:09Z, the user relaunched
 // at 00:56Z (3h47m later, no reboot), and Windows had recycled PID 6732
 // onto a system / service process. process.kill(6732, 0) then threw
 // EPERM, the prior code interpreted EPERM as "still running", and the
 // launch was blocked with DATABASE_LOCKED until the user manually
-// deleted the lock file. The original Nimbalyst process had been dead
+// deleted the lock file. The original Auracle process had been dead
 // for almost four hours.
 //
 // The fix gates the "EPERM means running" interpretation on lock age.
@@ -125,10 +125,10 @@ describe('decideLockIsRunning (issue #272)', () => {
 
   describe('EPERM + fresh timestamp (ambiguous - ask the user)', () => {
     it('returns decision=ambiguous when lock is younger than the grace window (Greg #316 review)', () => {
-      // A sibling Nimbalyst running under another user/profile that
+      // A sibling Auracle running under another user/profile that
       // happens to share this PGLite path. Lock was acquired 10s ago,
       // within the 60s grace. Could also be a fast PID reuse if the
-      // original Nimbalyst wrote the lock <60s before crash. Cannot
+      // original Auracle wrote the lock <60s before crash. Cannot
       // tell from kill(0) alone - ask the user via dialog.
       const killFn = vi.fn(() => {
         throw makeKillError('EPERM');
@@ -190,7 +190,7 @@ describe('decideLockIsRunning (issue #272)', () => {
       killFn: () => undefined, // kill(0) succeeds (no throw)
     };
 
-    it("returns 'stale' when the live PID is a non-Nimbalyst process (reused PID)", () => {
+    it("returns 'stale' when the live PID is a non-Auracle process (reused PID)", () => {
       const result = decideLockIsRunning({ ...base, processIdentityFn: () => 'node.exe' });
       expect(result.decision).toBe('stale');
       expect(result.isRunning).toBe(false);
@@ -202,8 +202,8 @@ describe('decideLockIsRunning (issue #272)', () => {
       expect(result.decision).toBe('running');
     });
 
-    it("returns 'running' when the live PID is the packaged app (Nimbalyst.exe)", () => {
-      const result = decideLockIsRunning({ ...base, processIdentityFn: () => 'Nimbalyst.exe' });
+    it("returns 'running' when the live PID is the packaged app (Auracle.exe)", () => {
+      const result = decideLockIsRunning({ ...base, processIdentityFn: () => 'Auracle.exe' });
       expect(result.decision).toBe('running');
     });
 

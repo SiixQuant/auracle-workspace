@@ -230,4 +230,4 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-console.log('Nimbalyst Web Clipper content script loaded');
+console.log('Auracle Web Clipper content script loaded');

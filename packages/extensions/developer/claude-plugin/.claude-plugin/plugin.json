@@ -1,9 +1,9 @@
 {
   "name": "developer",
   "version": "1.0.0",
-  "description": "Developer tools integration for Nimbalyst, including git commit workflows",
+  "description": "Developer tools integration for Auracle, including git commit workflows",
   "author": {
-    "name": "Nimbalyst",
+    "name": "Auracle",
     "url": "https://nimbalyst.com"
   },
   "keywords": ["git", "commit", "developer", "workflow"]

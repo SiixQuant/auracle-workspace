@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Nimbalyst Web Clipper",
+  "name": "Auracle Web Clipper",
   "version": "0.1.0",
-  "description": "Clip web pages to your Nimbalyst workspace as markdown",
+  "description": "Clip web pages to your Auracle workspace as markdown",
   "permissions": [
     "activeTab",
     "contextMenus"

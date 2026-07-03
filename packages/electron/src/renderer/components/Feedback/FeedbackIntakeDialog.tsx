@@ -21,9 +21,9 @@ export interface FeedbackIntakeDialogProps {
   onLaunch: (options: FeedbackIntakeLaunchOptions) => void;
 }
 
-const ISSUES_URL = 'https://github.com/nimbalyst/nimbalyst/issues';
-const DISCUSSIONS_URL = 'https://github.com/nimbalyst/nimbalyst/discussions';
-const SUPPORT_EMAIL_URL = 'mailto:support@nimbalyst.com';
+const ISSUES_URL = 'https://github.com/SiixQuant/auracle-workspace/issues';
+const DISCUSSIONS_URL = 'https://github.com/SiixQuant/auracle-workspace/discussions';
+const SUPPORT_EMAIL_URL = 'mailto:support@aurapointcapital.com';
 
 export const FeedbackIntakeDialog: React.FC<FeedbackIntakeDialogProps> = ({
   isOpen,
@@ -287,7 +287,7 @@ export const FeedbackIntakeDialog: React.FC<FeedbackIntakeDialogProps> = ({
                   size={16}
                   className="text-[var(--nim-text-faint)] group-hover:text-[var(--nim-primary)]"
                 />
-                Email private feedback to support@nimbalyst.com
+                Email private feedback to support@aurapointcapital.com
               </button>
             </li>
           </ul>

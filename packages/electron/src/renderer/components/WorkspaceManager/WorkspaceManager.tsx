@@ -544,8 +544,8 @@ export const WorkspaceManager: React.FC = () => {
       <div className="sidebar w-[380px] bg-[var(--nim-bg-secondary)] border-r border-[var(--nim-border)] flex flex-col shrink-0">
         <div className="sidebar-header p-3 bg-[var(--nim-bg)] border-b border-[var(--nim-border)] [-webkit-app-region:no-drag]">
           <div className="app-branding flex items-center gap-2.5 mb-4">
-            <img src="./icon.png" alt="Nimbalyst" className="app-logo w-8 h-8 shrink-0 object-contain" />
-            <h2 className="m-0 text-lg font-bold text-[var(--nim-text)] tracking-tight">Nimbalyst</h2>
+            <img src="./icon.png" alt="Auracle" className="app-logo w-8 h-8 shrink-0 object-contain" />
+            <h2 className="m-0 text-lg font-bold text-[var(--nim-text)] tracking-tight">Auracle</h2>
           </div>
           <div className="action-buttons flex gap-2">
             <button className="btn nim-btn-primary" onClick={handleBrowse}>
@@ -703,9 +703,9 @@ export const WorkspaceManager: React.FC = () => {
           <div className="welcome-container flex items-center justify-center h-full p-10 bg-gradient-to-br from-[#667eea] to-[#764ba2] relative overflow-hidden before:content-[''] before:absolute before:top-[-50%] before:right-[-50%] before:w-[200%] before:h-[200%] before:bg-[radial-gradient(circle,rgba(255,255,255,0.1)_0%,transparent_70%)] before:animate-[float_20s_ease-in-out_infinite]">
             <div className="welcome-content bg-white/[0.98] dark:bg-[var(--nim-bg)] rounded-2xl p-8 max-w-[500px] w-full shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] backdrop-blur-[10px] relative z-[1]">
               <div className="welcome-header flex items-center justify-center gap-5 mb-6">
-                <img src="./icon.png" alt="Nimbalyst" className="welcome-logo w-16 h-16 object-contain" />
+                <img src="./icon.png" alt="Auracle" className="welcome-logo w-16 h-16 object-contain" />
                 <div className="welcome-text text-left">
-                  <h1 className="welcome-title text-[28px] font-extrabold text-[var(--nim-text)] m-0 mb-1 tracking-tight">Nimbalyst</h1>
+                  <h1 className="welcome-title text-[28px] font-extrabold text-[var(--nim-text)] m-0 mb-1 tracking-tight">Auracle</h1>
                   <p className="welcome-subtitle text-sm text-[var(--nim-text-muted)] m-0 font-normal">AI-native, interactive work platform</p>
                 </div>
               </div>

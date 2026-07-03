@@ -1,7 +1,7 @@
 /**
  * Extension Developer Kit
  *
- * Provides slash commands for creating and developing Nimbalyst extensions.
+ * Provides slash commands for creating and developing Auracle extensions.
  */
 
 import { templates } from './templates';
@@ -54,7 +54,7 @@ This creates a neutral starter scaffold. After that, describe the extension you 
 \`\`\`
 
 **After creating the project:**
-1. Open the project folder in Nimbalyst
+1. Open the project folder in Auracle
 2. Describe the extension you want Claude to build
 3. Ask Claude to implement it, then build and install it
 4. Claude will use the \`extension_build\` and \`extension_install\` tools
@@ -102,7 +102,7 @@ ${content}
 **After creating these files:**
 1. Run \`npm install\` in the project directory
 2. Use the \`extension_build\` tool to build the extension
-3. Use the \`extension_install\` tool to install it into Nimbalyst
+3. Use the \`extension_install\` tool to install it into Auracle
 
 The extension will handle files matching: ${filePatterns || '*.example'}`;
 }

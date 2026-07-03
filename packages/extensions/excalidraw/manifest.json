@@ -3,7 +3,7 @@
   "name": "Excalidraw",
   "version": "1.0.0",
   "description": "Excalidraw diagram editor with AI-assisted editing",
-  "author": "Nimbalyst",
+  "author": "Auracle",
   "main": "dist/index.js",
   "styles": "dist/index.css",
   "apiVersion": "1.0.0",

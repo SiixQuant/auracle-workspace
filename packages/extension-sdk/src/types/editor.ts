@@ -8,7 +8,7 @@
  * import type { EditorHost, EditorHostProps } from '@nimbalyst/extension-sdk';
  * ```
  *
- * At runtime, Nimbalyst provides the implementation via the externals system.
+ * At runtime, Auracle provides the implementation via the externals system.
  * Your extension code imports from @nimbalyst/runtime, which is externalized
  * and provided by the host.
  */

@@ -125,7 +125,7 @@ import { applyTaskListMutation, sortTaskList, type TaskListItem } from './claude
 
 
 /**
- * SDK-native tools that are executed by the Claude Code SDK itself (not by Nimbalyst).
+ * SDK-native tools that are executed by the Claude Code SDK itself (not by Auracle).
  * AskUserQuestion is included because we handle it in canUseTool (user input, not local execution).
  * This list is the single source of truth — used for tool_use logging and tool_result logging.
  */
@@ -155,7 +155,7 @@ const SDK_NATIVE_TOOLS: readonly string[] = [
 ];
 
 /**
- * Tools the CLI emits as tool_use but Nimbalyst services handle as a side effect
+ * Tools the CLI emits as tool_use but Auracle services handle as a side effect
  * inside this provider (see the `tool_use` switch). Their tool_result from the CLI
  * is informational only -- routing them through `this.toolHandler` would throw
  * "Unknown tool", so we treat them like SDK_NATIVE_TOOLS for the warn/route check.
@@ -506,7 +506,7 @@ export class ClaudeCodeProvider extends BaseAgentProvider {
 
     // Trust-level upgrade: when workspace permission is "Allow All" (internal
     // mode 'bypass-all') and session mode is 'agent', the session is upgraded
-    // to 'auto' so the SDK classifier handles permissions instead of Nimbalyst
+    // to 'auto' so the SDK classifier handles permissions instead of Auracle
     // bypassing everything. This is now OPT-IN per workspace (issue #628): by
     // default "Allow All" means literal allow-all and no upgrade happens. Plan
     // mode is never upgraded — it always uses the SDK's native read-only
@@ -1094,7 +1094,7 @@ export class ClaudeCodeProvider extends BaseAgentProvider {
                 }
 
                 // The CLI emits ScheduleWakeup tool calls but its tool_result is informational only --
-                // nothing in the SDK actually fires the wakeup. Route through Nimbalyst's
+                // nothing in the SDK actually fires the wakeup. Route through Auracle's
                 // SessionWakeupScheduler so the prompt is re-queued at fire time.
                 if (toolName === 'ScheduleWakeup' && sessionId && workspacePath) {
                   this.handleScheduleWakeupTool(sessionId, workspacePath, args || {}).catch(err => {
@@ -1105,7 +1105,7 @@ export class ClaudeCodeProvider extends BaseAgentProvider {
                 const isSdkNativeTool = SDK_NATIVE_TOOLS.includes(toolName);
                 const isNimbalystHandled = NIMBALYST_HANDLED_TOOLS.includes(toolName);
                 if (!toolName || isMcp || isSdkNativeTool || isNimbalystHandled || isSubagent) {
-                  // Handled by SDK, a subagent spawn, or a Nimbalyst side-effect handler above
+                  // Handled by SDK, a subagent spawn, or an Auracle side-effect handler above
                 } else if (this.toolHandler) {
                   // Unknown, non-MCP, non-whitelisted tool. Almost always means Anthropic
                   // added a new CLI-native tool we haven't added to SDK_NATIVE_TOOLS yet.
@@ -2380,7 +2380,7 @@ export class ClaudeCodeProvider extends BaseAgentProvider {
     // CLI queues its own task-notification continuation turn, which would run
     // against the torn-down control channel (every canUseTool/hook request
     // fails with "Stream closed") and the process leaks. The continuation is
-    // delivered by Nimbalyst below instead. NIM-1470.
+    // delivered by Auracle below instead. NIM-1470.
     if (query && typeof query.close === 'function') {
       try {
         query.close();

@@ -51,7 +51,7 @@ export async function resolveImmediateToolDecision(
   // canUseTool rather than approving silently, it means it wanted user
   // confirmation. But MCP servers are user-configured (trusted by definition)
   // and skills are SDK-native; the CLI auto mode approves these without
-  // prompting. Surfacing a Nimbalyst permission widget for `mcp__*` or `Skill`
+  // prompting. Surfacing an Auracle permission widget for `mcp__*` or `Skill`
   // calls would break the contract and frustrate users who chose auto mode.
   if (deps.getCurrentMode?.() === 'auto' && (toolName.startsWith('mcp__') || toolName === 'Skill')) {
     deps.logSecurity('[canUseTool] Auto mode: auto-approving MCP/skill tool:', { toolName });

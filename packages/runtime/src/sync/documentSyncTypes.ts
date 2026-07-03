@@ -237,7 +237,7 @@ export type SerializedRelativePosition = string; // base64 encoded
  *   editor-specific keys (e.g. `selectedElementIds`, `tool`, `editingNodeId`).
  *
  * Server-side validation: none. The DocumentRoom relays the encrypted blob
- * verbatim. This is a private protocol consumed only by Nimbalyst clients,
+ * verbatim. This is a private protocol consumed only by Auracle clients,
  * so widening the type here is safe.
  */
 export type AwarenessState = Record<string, unknown> & {

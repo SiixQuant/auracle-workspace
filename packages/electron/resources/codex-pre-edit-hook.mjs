@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Codex PreToolUse hook for Nimbalyst.
+ * Codex PreToolUse hook for Auracle.
  *
  * Invoked by the Codex CLI synchronously BEFORE every apply_patch tool call.
  * Reads the patch body from stdin, extracts the affected file paths, and
@@ -16,7 +16,7 @@
  * back to disk-read if no sidecar entry exists.
  *
  * Env vars expected from the parent Codex process (inherited from the
- * Nimbalyst main process via CodexOptions.env):
+ * Auracle main process via CodexOptions.env):
  *   NIMBALYST_PRE_EDIT_DIR  Absolute path to the per-session sidecar dir.
  *                           When unset, the hook is a no-op (still allows).
  */

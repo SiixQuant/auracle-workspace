@@ -1,5 +1,5 @@
 /**
- * Nimbalyst Editor Theme
+ * Auracle Editor Theme
  *
  * Lexical editor theme configuration with unified `nim-` class prefixes.
  * The theme object maps Lexical node types to CSS class names that are

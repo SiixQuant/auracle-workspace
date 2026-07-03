@@ -484,7 +484,7 @@ export const GitOperationsPanel: React.FC<GitOperationsPanelProps> = React.memo(
         // claude-code-cli (subscription, NIM-806): the genuine `claude` CLI is
         // driven by its PTY, not the Agent SDK loop. ai:sendMessage has no
         // in-process provider for it and throws ("Unknown provider"). Route the
-        // smart-commit prompt through the Nimbalyst queue instead; the
+        // smart-commit prompt through the Auracle queue instead; the
         // main-process PID-idle flusher drains it to the terminal once the CLI is
         // idle, whether or not a turn is currently in flight.
         let provider: string | null = null;

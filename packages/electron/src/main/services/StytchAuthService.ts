@@ -10,12 +10,12 @@
  * Security architecture:
  * - All authentication flows go through the collabv3 Cloudflare Worker
  * - The desktop app NEVER has access to the Stytch secret key
- * - OAuth flow: opens browser -> collabv3/auth/login/google -> Stytch -> collabv3/auth/callback -> nimbalyst:// deep link
+ * - OAuth flow: opens browser -> collabv3/auth/login/google -> Stytch -> collabv3/auth/callback -> auracle:// deep link
  * - Magic links: collabv3 sends email (has secret key), callback to collabv3, then deep link to app
  * - Session tokens received via deep link are stored securely using Electron's safeStorage
  * - JWT is used for sync server authentication, includes org context for B2B
  *
- * Deep link format: nimbalyst://auth/callback?session_token=...&session_jwt=...&user_id=...&email=...&org_id=...
+ * Deep link format: auracle://auth/callback?session_token=...&session_jwt=...&user_id=...&email=...&org_id=...
  */
 
 import { safeStorage, shell, net } from 'electron';
@@ -483,7 +483,7 @@ export function initializeStytchAuth(config: StytchConfig): void {
 }
 
 /**
- * Handle auth callback from deep link (nimbalyst://auth/callback?...)
+ * Handle auth callback from deep link (auracle://auth/callback?...)
  * Called when user completes auth flow and is redirected back to the app.
  */
 export async function handleAuthCallback(params: {
@@ -1020,7 +1020,7 @@ export function updateSessionToken(newSessionToken: string): void {
 /**
  * Start Google OAuth sign-in flow.
  * Opens the collabv3 server's Google OAuth URL in the browser.
- * The server handles the callback and redirects to nimbalyst://auth/callback
+ * The server handles the callback and redirects to auracle://auth/callback
  */
 export async function signInWithGoogle(serverUrl?: string): Promise<{ success: boolean; error?: string }> {
   if (!stytchConfig) {
@@ -1042,7 +1042,7 @@ export async function signInWithGoogle(serverUrl?: string): Promise<{ success: b
     // 2. Server redirects to Stytch OAuth
     // 3. User authenticates with Google
     // 4. Stytch redirects to collabv3/auth/callback
-    // 5. Server validates token and redirects to nimbalyst://auth/callback?session_token=...
+    // 5. Server validates token and redirects to auracle://auth/callback?session_token=...
     // 6. App receives deep link and calls handleAuthCallback()
     return { success: true };
   } catch (error) {
@@ -1054,7 +1054,7 @@ export async function signInWithGoogle(serverUrl?: string): Promise<{ success: b
 /**
  * Send a magic link to the user's email for passwordless authentication.
  * This calls our collabv3 server which has the secret key to send emails.
- * The magic link redirects to collabv3/auth/callback which then redirects to nimbalyst://auth/callback
+ * The magic link redirects to collabv3/auth/callback which then redirects to auracle://auth/callback
  */
 export async function sendMagicLink(
   email: string,

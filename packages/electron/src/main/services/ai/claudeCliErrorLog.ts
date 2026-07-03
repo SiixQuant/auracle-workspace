@@ -4,7 +4,7 @@
  *
  * The B3 CLI path drives the genuine `claude` through a loopback API proxy. When
  * an upstream request fails (rate limit, overload, auth, context limit, 5xx), the
- * CLI prints to its own TUI but the rich Nimbalyst transcript previously showed
+ * CLI prints to its own TUI but the rich Auracle transcript previously showed
  * NOTHING — a rate-limited or failed turn looked identical to a live hang. This
  * writer persists a synthetic `{type:'error', error}` row (the same shape the SDK
  * error path uses, parsed at `ClaudeCodeRawParser` ~L302) so the existing error

@@ -1411,7 +1411,7 @@ describe('TranscriptTransformer', () => {
             },
           }),
         }),
-        // Nimbalyst also logs the same tool as nimbalyst_tool_use
+        // Auracle also logs the same tool as nimbalyst_tool_use
         makeRawMessage({
           id: 2,
           sessionId: SESSION_ID,

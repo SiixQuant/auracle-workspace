@@ -2,7 +2,7 @@
   "id": "light",
   "name": "Light",
   "version": "1.0.0",
-  "author": "Nimbalyst",
+  "author": "Auracle",
   "description": "Default light theme",
   "isDark": false,
   "colors": {

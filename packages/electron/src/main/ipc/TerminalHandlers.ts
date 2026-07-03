@@ -273,7 +273,7 @@ export function registerTerminalHandlers(): void {
   /**
    * Ensure the genuine `claude` CLI is running for a `claude-code-cli` session
    * (NIM-806, Phase 1). Idempotent: the renderer calls this when the session
-   * view mounts; the terminalId IS the Nimbalyst session id, so the same
+   * view mounts; the terminalId IS the Auracle session id, so the same
    * sessionId-bearing MCP config reaches the CLI. Returns the same
    * `{ success, alreadyActive? }` shape as `terminal:initialize` so TerminalPanel
    * can branch on it identically.

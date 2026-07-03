@@ -104,7 +104,7 @@ export function initDeepLinkListeners(): () => void {
       if (data?.reason === 'not-authenticated') {
         errorNotificationService.showWarning(
           'Sign in required',
-          'Sign in to your Nimbalyst team account to open this shared document.',
+          'Sign in to your Auracle team account to open this shared document.',
           { duration: 6000 }
         );
       } else {
@@ -127,7 +127,7 @@ export function initDeepLinkListeners(): () => void {
       if (data?.reason === 'not-authenticated') {
         errorNotificationService.showWarning(
           'Sign in required',
-          'Sign in to your Nimbalyst team account to open this tracker.',
+          'Sign in to your Auracle team account to open this tracker.',
           { duration: 6000 }
         );
       } else {

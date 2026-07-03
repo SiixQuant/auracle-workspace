@@ -2,7 +2,7 @@
  * DatamodelLM Extension Types
  *
  * Core type definitions for data modeling.
- * Adapted from the standalone DatamodelLM project for use as a Nimbalyst extension.
+ * Adapted from the standalone DatamodelLM project for use as an Auracle extension.
  */
 
 // Database types supported

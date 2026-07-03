@@ -600,7 +600,7 @@ export interface CreateSessionResponse {
 
 /**
  * Generic voice-tool RPC: a mobile voice agent asks the desktop to run a
- * voice-enabled tool (e.g. the Nimbalyst Memory extension's
+ * voice-enabled tool (e.g. the Auracle Memory extension's
  * search_project_knowledge / recall / remember) and return the result.
  * Sent via index WebSocket, processed by desktop. The desktop gates execution
  * to tools flagged voiceAgent:true. toolName/args/result are E2E-encrypted on

@@ -26,7 +26,7 @@ function ghCommand(): string {
 /**
  * Service to detect the GitHub CLI (`gh`) installation and authentication state.
  *
- * Used by the PR review panel. Nimbalyst never holds a GitHub token; this
+ * Used by the PR review panel. Auracle never holds a GitHub token; this
  * detector only inspects `gh --version` and `gh auth status` and lets the
  * GitHub CLI own all credentials.
  */

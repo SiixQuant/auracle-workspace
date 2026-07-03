@@ -1,8 +1,8 @@
 /**
- * Nimbalyst markdown transformers.
+ * Auracle markdown transformers.
  *
  * Transformer interface types come from upstream `@lexical/markdown`. The
- * remaining definitions in this file are either Nimbalyst-specific tweaks
+ * remaining definitions in this file are either Auracle-specific tweaks
  * (HEADING/QUOTE/CODE/LINK with our regexes and CodeNode "plain"-language
  * marker) or thin re-exports of upstream text-format constants kept here for
  * backwards compatibility with existing transformer arrays.

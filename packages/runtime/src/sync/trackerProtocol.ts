@@ -181,7 +181,7 @@ export interface TrackerPayloadSystem {
   /** Body document ID, if the body is hosted in a DocumentRoom. */
   documentId?: string;
   /**
-   * Structured origin (how the item entered Nimbalyst; for imports, a pointer
+   * Structured origin (how the item entered Auracle; for imports, a pointer
    * back to the upstream source). LWW per `syncId`. Optional — older clients
    * omit it and newer clients tolerate its absence. Imported items sync like
    * any other item; only the importer owner can re-snapshot (auth is local).

@@ -1,7 +1,7 @@
 /**
  * Excalidraw Editor
  *
- * Custom editor for .excalidraw files that integrates with Nimbalyst's EditorHost API.
+ * Custom editor for .excalidraw files that integrates with Auracle's EditorHost API.
  * Uses useEditorLifecycle for load/save/echo detection lifecycle.
  * Excalidraw library owns all drawing state -- the hook never stores content in React state.
  */

@@ -1347,7 +1347,7 @@ export class PrivilegedExtensionHost extends EventEmitter {
       case 'getApiKey': {
         const payload = rawPayload as BrokerPayloads['getApiKey'];
         // Per CLAUDE.md "Never Use Environment Variables as Implicit API Key
-        // Sources": read ONLY from the explicit Nimbalyst settings — the
+        // Sources": read ONLY from the explicit Auracle settings — the
         // `ai-settings` store's `apiKeys` (where provider keys actually live,
         // NOT `app-settings`) plus per-workspace overrides. Never process.env.
         const key = getProviderApiKeyFromSettings(payload.providerId, ctx.workspacePath);

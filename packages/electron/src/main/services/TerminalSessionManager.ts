@@ -952,7 +952,7 @@ export class TerminalSessionManager {
    * (which already strips ANTHROPIC_API_KEY and wires the observation `extraEnv`);
    * this method only spawns and wires.
    *
-   * @param terminalId Nimbalyst session id (allocated BEFORE launch so the
+   * @param terminalId Auracle session id (allocated BEFORE launch so the
    *   sessionId-bearing MCP config reaches the CLI — see ClaudeCliSessionLauncher).
    */
   async createClaudeCliTerminal(

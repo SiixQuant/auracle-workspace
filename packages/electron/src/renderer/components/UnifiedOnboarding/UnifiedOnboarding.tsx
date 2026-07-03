@@ -216,10 +216,10 @@ export const UnifiedOnboarding: React.FC<UnifiedOnboardingProps> = ({
     <div className="unified-onboarding-overlay">
       <div className="unified-onboarding-dialog unified-onboarding-single-screen">
         <div className="unified-onboarding-logo">
-          <img src="./icon.png" alt="Nimbalyst" className="unified-onboarding-logo-image" />
+          <img src="./icon.png" alt="Auracle" className="unified-onboarding-logo-image" />
         </div>
         <div className="unified-onboarding-header">
-          <h2>Welcome to Nimbalyst</h2>
+          <h2>Welcome to Auracle</h2>
         </div>
 
         <div className="unified-onboarding-content">
@@ -321,7 +321,7 @@ export const UnifiedOnboarding: React.FC<UnifiedOnboardingProps> = ({
               {/* Referral Source */}
               <div className="unified-onboarding-section">
                 <label className="unified-onboarding-label" htmlFor="referral-select">
-                  How did you hear about Nimbalyst?
+                  How did you hear about Auracle?
                 </label>
                 <select
                   id="referral-select"
@@ -424,7 +424,7 @@ export const UnifiedOnboarding: React.FC<UnifiedOnboardingProps> = ({
 
               <div className="unified-onboarding-disclaimer">
                 <p className="disclaimer-text">
-                  We collect usage data to improve Nimbalyst. No prompts or content is ever collected. You can opt out of analytics any time in Settings.
+                  We collect usage data to improve Auracle. No prompts or content is ever collected. You can opt out of analytics any time in Settings.
                 </p>
               </div>
             </div>
@@ -442,7 +442,7 @@ export const UnifiedOnboarding: React.FC<UnifiedOnboardingProps> = ({
           <p className="unified-onboarding-legal-links">
             By continuing, you agree to our{' '}
             <a
-              href="https://nimbalyst.com/terms-of-service"
+              href="https://aurapointcapital.com/terms"
               target="_blank"
               rel="noopener noreferrer"
               className="unified-onboarding-link"
@@ -451,7 +451,7 @@ export const UnifiedOnboarding: React.FC<UnifiedOnboardingProps> = ({
             </a>{' '}
             and{' '}
             <a
-              href="https://nimbalyst.com/privacy-policy"
+              href="https://aurapointcapital.com/privacy"
               target="_blank"
               rel="noopener noreferrer"
               className="unified-onboarding-link"

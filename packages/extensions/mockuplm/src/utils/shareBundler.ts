@@ -4,7 +4,7 @@
  * Bundles a .mockupproject file and all its referenced mockup files
  * into a self-contained HTML page that can be shared via a public URL.
  * The bundle includes the component library, theme engine, and
- * component library and theme engine so mockups render without Nimbalyst.
+ * component library and theme engine so mockups render without Auracle.
  */
 
 import type { MockupProjectFile } from '../types/project';

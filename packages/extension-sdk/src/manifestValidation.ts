@@ -345,7 +345,7 @@ export function extractBackendModuleIds(backendModules: unknown): Set<string> {
 /**
  * Validate the `contributions.aiAgentProviders` array on a manifest.
  *
- * AI agent providers are surfaced in Nimbalyst's chat / agent UI as selectable
+ * AI agent providers are surfaced in Auracle's chat / agent UI as selectable
  * providers (alongside built-in Claude Code, Claude, OpenAI, etc.). Each
  * provider is implemented by a backend module that runs outside the renderer
  * (so it can drive a CLI, hold long-lived processes, or speak a custom

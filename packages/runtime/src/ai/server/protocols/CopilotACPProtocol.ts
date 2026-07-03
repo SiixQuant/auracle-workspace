@@ -54,7 +54,7 @@ interface PendingRequest {
  * GitHub Copilot ACP Protocol Adapter
  *
  * Spawns `copilot --acp --stdio` and communicates via JSON-RPC over stdin/stdout.
- * Normalizes ACP events into Nimbalyst ProtocolEvent objects.
+ * Normalizes ACP events into Auracle ProtocolEvent objects.
  */
 export class CopilotACPProtocol implements AgentProtocol {
   readonly platform = 'copilot-acp';

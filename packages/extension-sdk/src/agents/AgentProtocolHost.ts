@@ -2,7 +2,7 @@
  * AgentProtocolHost
  * -----------------
  *
- * Surface that the host (Nimbalyst) provides to an extension-owned
+ * Surface that the host (Auracle) provides to an extension-owned
  * `AgentProtocol` implementation at runtime. The protocol implementation
  * lives in an extension's backend module and is brokered to the host by
  * the privileged-host backend-module runtime; it must never reach for

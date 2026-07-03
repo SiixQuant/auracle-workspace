@@ -370,7 +370,7 @@ export function getLiveSqliteDatabaseProxy(): SQLiteDatabaseProxy | null {
 
 /**
  * Run a backup if the last successful one is older than BACKUP_INTERVAL_MS.
- * Used at startup (to catch up after Nimbalyst was closed during a backup
+ * Used at startup (to catch up after Auracle was closed during a backup
  * window) and on system resume (to catch up after macOS pauses setInterval
  * during sleep). The interval itself runs unchanged; this is purely an
  * "is the latest backup stale?" gate.

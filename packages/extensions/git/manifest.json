@@ -3,7 +3,7 @@
   "name": "Git",
   "version": "1.0.0",
   "description": "Git log viewer with push, pull, and rebase support",
-  "author": "Nimbalyst",
+  "author": "Auracle",
   "main": "dist/index.js",
   "styles": "dist/index.css",
   "apiVersion": "1.0.0",

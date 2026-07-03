@@ -12,7 +12,7 @@ const externalRef: ExternalSourceRef = {
   providerId: 'github-issues',
   externalId: '42',
   urn: 'github://nimbalyst/nimbalyst#42',
-  url: 'https://github.com/nimbalyst/nimbalyst/issues/42',
+  url: 'https://github.com/SiixQuant/auracle-workspace/issues/42',
   titleSnapshot: 'Something is broken',
   stateSnapshot: 'open',
   importedAt: '2026-06-07T00:00:00.000Z',

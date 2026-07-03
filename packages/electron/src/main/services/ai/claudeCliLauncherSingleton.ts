@@ -138,7 +138,7 @@ function buildLauncher(): ClaudeCliSessionLauncher {
     // renders above the terminal. Best-effort — the launcher tolerates failure.
     startObservation: startClaudeCliProxyObservation,
     // Phase 4 (Direction A): register the PreToolUse permission hook so built-in
-    // tool prompts route to a Nimbalyst widget. undefined → keep the native gate.
+    // tool prompts route to an Auracle widget. undefined → keep the native gate.
     permissionHookScriptPath: resolveClaudePermissionHookScriptPath(),
     // Phase 4: a workspace the user trusted "allow-all"/"bypass-all" skips the gate
     // via `--dangerously-skip-permissions` (and drops the hook). Same trust signal

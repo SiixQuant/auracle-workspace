@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import {ClaudeForWindowsInstallation} from "../main/services/CLIManager.ts";
 import type { GhCliStatus } from '../main/services/GhCliDetector.ts';
 
-// Nimbalyst is an IDE-like application with many concurrent IPC listeners:
+// Auracle is an IDE-like application with many concurrent IPC listeners:
 // - File watching, git status, AI sessions, terminals, extensions, etc.
 // The default limit of 10 is far too low. Setting to 100 is reasonable for
 // our use case and prevents spurious "memory leak" warnings.
@@ -1352,7 +1352,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Environment utilities
   environment: {
-    /** Get the enhanced PATH that Nimbalyst uses for spawning processes (includes custom paths, detected paths, system paths) */
+    /** Get the enhanced PATH that Auracle uses for spawning processes (includes custom paths, detected paths, system paths) */
     getEnhancedPath: () => ipcRenderer.invoke('environment:get-enhanced-path') as Promise<string>,
   },
 
@@ -1652,7 +1652,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.on('git:status-changed', handler);
       return () => ipcRenderer.removeListener('git:status-changed', handler);
     },
-    // Listen for new commits detected (from any source: Nimbalyst, CLI, VS Code, etc.)
+    // Listen for new commits detected (from any source: Auracle, CLI, VS Code, etc.)
     onCommitDetected: (callback: (data: {
       workspacePath: string;
       commitHash: string;
@@ -1704,7 +1704,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     initialize: (terminalId: string, options: { workspacePath: string; cwd?: string; cols?: number; rows?: number }) =>
       ipcRenderer.invoke('terminal:initialize', terminalId, options),
     // Launch the genuine `claude` CLI for a claude-code-cli session (NIM-806).
-    // terminalId IS the Nimbalyst session id; idempotent.
+    // terminalId IS the Auracle session id; idempotent.
     ensureClaudeCliSession: (payload: {
       sessionId: string;
       workspacePath: string;

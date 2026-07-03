@@ -1,7 +1,7 @@
 /**
  * Theme Loader
  *
- * Platform-agnostic theme loading system for Nimbalyst.
+ * Platform-agnostic theme loading system for Auracle.
  * Handles discovery, validation, and lifecycle management of themes.
  *
  * Unlike extensions, themes are data-only and cannot contain executable code.

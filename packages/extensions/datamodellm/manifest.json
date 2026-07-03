@@ -3,7 +3,7 @@
   "name": "DatamodelLM",
   "version": "1.0.0",
   "description": "AI-assisted data modeling with visual entity-relationship diagrams",
-  "author": "Nimbalyst",
+  "author": "Auracle",
   "main": "dist/index.js",
   "styles": "dist/index.css",
   "apiVersion": "1.0.0",

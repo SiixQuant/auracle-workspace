@@ -262,9 +262,9 @@ export class OnboardingService {
           // File exists, append to it
           const content = result.content;
 
-          // Check if Nimbalyst section already exists
-          if (content.includes('## Nimbalyst Planning System')) {
-            console.log('CLAUDE.md already has Nimbalyst section, skipping');
+          // Check if Auracle section already exists
+          if (content.includes('## Auracle Planning System')) {
+            console.log('CLAUDE.md already has Auracle section, skipping');
             return;
           }
 
@@ -346,7 +346,7 @@ ${preditorSection}`;
     const directory = plansDirectory || config.plansLocation.split('/')[0];
 
     const gitignorePath = `${workspacePath}/.gitignore`;
-    const ignoreEntry = `\n# Nimbalyst local plans (not checked into version control)\n${directory}/\n`;
+    const ignoreEntry = `\n# Auracle local plans (not checked into version control)\n${directory}/\n`;
 
     try {
       // Try to read existing .gitignore
@@ -518,7 +518,7 @@ Where \`[type]\` is one of: \`bug\`, \`task\`, \`idea\`, or \`decision\`
   private getTrackBugCommandTemplate(): string {
     return `# /track-bug Command
 
-Track a bug using Nimbalyst's inline tracker syntax.
+Track a bug using Auracle's inline tracker syntax.
 
 ## Overview
 
@@ -674,7 +674,7 @@ to-do → in-progress → done
   private getTrackIdeaCommandTemplate(): string {
     return `# /track-idea Command
 
-Track a feature idea using Nimbalyst's inline tracker syntax.
+Track a feature idea using Auracle's inline tracker syntax.
 
 ## Overview
 
@@ -833,9 +833,9 @@ rejected (if decided not to implement)
     const plansLocation = config?.plansLocation || 'plans';
     const commandsLocation = config?.commandsLocation === 'global' ? '~/.claude' : '.claude';
 
-    return `## Nimbalyst Planning System
+    return `## Auracle Planning System
 
-This project uses Nimbalyst for structured planning and task tracking.
+This project uses Auracle for structured planning and task tracking.
 
 ### Custom Commands
 - \`/track [type] [description]\` - Track bugs, tasks, ideas, and decisions (see ${commandsLocation}/commands/track.md for details)
@@ -877,7 +877,7 @@ planStatus:
 
 ## Goals
 
-This is an example plan document to help you get started with Nimbalyst's planning system.
+This is an example plan document to help you get started with Auracle's planning system.
 
 Key objectives:
 1. Demonstrate the plan document structure
@@ -886,7 +886,7 @@ Key objectives:
 
 ## Overview
 
-Plans in Nimbalyst are markdown documents with YAML frontmatter that track features, bugs, and other development work. The frontmatter includes metadata like status, priority, and progress that powers the plan view interface.
+Plans in Auracle are markdown documents with YAML frontmatter that track features, bugs, and other development work. The frontmatter includes metadata like status, priority, and progress that powers the plan view interface.
 
 ## Implementation Details
 

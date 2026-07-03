@@ -2,7 +2,7 @@
  * Mid-session model switching for `claude-code-cli` sessions (NIM-806).
  *
  * The genuine CLI's `/model <value>` slash command is a direct setter, so the
- * Nimbalyst model picker can retune a RUNNING CLI session by typing the
+ * Auracle model picker can retune a RUNNING CLI session by typing the
  * command into the PTY — no respawn needed. Values reuse
  * `resolveClaudeCliModelArg` so picker ids map to the CLI's own aliases
  * (`claude-code-cli:fable` → `fable`, `claude-code-cli:opus-1m` → `opus[1m]`,

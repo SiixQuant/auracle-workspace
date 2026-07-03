@@ -1,0 +1,90 @@
+name: Auracle IDE release (macOS)
+
+# Builds the mac arm64 dmg and publishes it — with the bare-hex .sha256
+# sidecar the desktop launcher requires (a missing sidecar makes every
+# installed launcher refuse the update) — to the chosen releases repo.
+#
+# Always rehearse on the staging repo first: production publishing is a
+# promotion of an artifact that already passed the staged install check,
+# never a first test. Publishing needs the RELEASES_TOKEN secret (a PAT
+# with repo scope on the target repo).
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (auracle-v<semver>, e.g. auracle-v1.0.0)'
+        required: true
+      target:
+        description: 'Where to publish'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
+
+concurrency:
+  group: auracle-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    runs-on: macos-14
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build dmg (unsigned unless signing secrets are configured)
+        working-directory: packages/electron
+        env:
+          # Signing/notarization activate automatically once these repo
+          # secrets exist; until then the build ships unsigned like the
+          # previous IDE releases.
+          CSC_LINK: ${{ secrets.MACOS_CERTIFICATE }}
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          CSC_NAME: ${{ secrets.CSC_NAME }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          SKIP_NOTARIZE: ${{ secrets.APPLE_ID == '' && 'true' || 'false' }}
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.MACOS_CERTIFICATE != '' }}
+        run: |
+          npm run build
+          npm run build:extensions
+          node -r dotenv/config build/configure-build.js || true
+          npx electron-builder --mac --arm64
+        continue-on-error: false
+
+      - name: Collect artifact + generate checksum sidecar
+        id: artifact
+        run: |
+          DMG=$(ls packages/electron/dist/*.dmg | head -1)
+          test -n "$DMG"
+          NAME=$(basename "$DMG")
+          HEX=$(shasum -a 256 "$DMG" | awk '{print $1}')
+          printf '%s\n' "$HEX" > "packages/electron/dist/${NAME}.sha256"
+          echo "dmg=$DMG" >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          ls -la packages/electron/dist/*.dmg* && wc -c "packages/electron/dist/${NAME}.sha256"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          TAG: ${{ inputs.tag }}
+          TARGET: ${{ inputs.target }}
+        run: |
+          if [ "$TARGET" = "production" ]; then REPO="SiixQuant/auracle-ide"; else REPO="SiixQuant/auracle-ide-staging"; fi
+          gh release create "$TAG" \
+            --repo "$REPO" \
+            --title "$TAG" \
+            --notes "Auracle IDE ${TAG#auracle-v}" \
+            "${{ steps.artifact.outputs.dmg }}" \
+            "packages/electron/dist/${{ steps.artifact.outputs.name }}.sha256"

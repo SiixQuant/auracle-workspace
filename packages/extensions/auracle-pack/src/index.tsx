@@ -8,6 +8,8 @@ import {
   SchedulesPanel,
   ValidationPanel,
 } from './components/MonitorPanels';
+import { AuracleFlowEditor } from './components/FlowEditor';
+import { QcImportPanel } from './components/QcImportPanel';
 
 export async function activate() {}
 
@@ -40,4 +42,11 @@ export const panels = {
   runway: {
     component: RunwayPanel,
   },
+  'qc-import': {
+    component: QcImportPanel,
+  },
+};
+
+export const components = {
+  AuracleFlowEditor,
 };

@@ -12,6 +12,23 @@
   },
   "contributions": {
     "hostComponents": ["AuracleStatusChip"],
+    "customEditors": [
+      {
+        "filePatterns": ["*.flow.json"],
+        "displayName": "Strategy Flow Canvas",
+        "component": "AuracleFlowEditor",
+        "supportsSourceMode": true,
+        "supportsDiffMode": false
+      }
+    ],
+    "newFileMenu": [
+      {
+        "extension": ".flow.json",
+        "displayName": "Strategy Flow",
+        "icon": "account_tree",
+        "defaultContent": ""
+      }
+    ],
     "claudePlugin": {
       "path": "claude-plugin",
       "displayName": "Auracle Quant Commands",
@@ -85,6 +102,14 @@
         "placement": "bottom",
         "order": 75,
         "tooltip": "The research-to-live spine with engine evidence per stage."
+      },
+      {
+        "id": "qc-import",
+        "title": "QC Import",
+        "icon": "cloud_download",
+        "placement": "fullscreen",
+        "order": 76,
+        "tooltip": "Translate a QuantConnect project into an Auracle strategy scaffold."
       }
     ]
   }

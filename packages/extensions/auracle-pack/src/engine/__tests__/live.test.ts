@@ -1,0 +1,130 @@
+import { describe, expect, it } from 'vitest';
+import {
+  DeployWizard,
+  DeploymentOrders,
+  activeCount,
+  availableActions,
+  canDeploy,
+  formatReturn,
+  isDestructive,
+  newWizard,
+  selectedDeployment,
+  setRows,
+  stateLabel,
+  toRequest,
+  validateWizard,
+  verbEndpoint,
+} from '../live';
+
+function readyLive(): DeployWizard {
+  return {
+    ...newWizard(),
+    name: 'Momentum',
+    strategy_path: 'strategies.momentum',
+    strategy_cls: 'Momentum',
+    mode: 'live',
+    broker: 'clearstreet',
+    aum: 100_000,
+  };
+}
+
+describe('deploy wizard reducer (ported native tests)', () => {
+  it('live requires positive aum', () => {
+    const wizard = readyLive();
+    expect(canDeploy(wizard)).toBe(true);
+
+    expect(canDeploy({ ...wizard, aum: null })).toBe(false);
+    expect(
+      validateWizard({ ...wizard, aum: null }).some((e) => e.includes('Starting capital'))
+    ).toBe(true);
+
+    expect(canDeploy({ ...wizard, aum: 0 })).toBe(false);
+  });
+
+  it('paper does not require aum', () => {
+    const wizard = { ...readyLive(), mode: 'paper' as const, aum: null };
+    expect(canDeploy(wizard)).toBe(true);
+  });
+
+  it('missing strategy or broker blocks deploy', () => {
+    expect(
+      validateWizard({ ...readyLive(), broker: null }).some((e) => e.includes('brokerage'))
+    ).toBe(true);
+    expect(
+      validateWizard({ ...readyLive(), strategy_cls: '' }).some((e) => e.includes('strategy'))
+    ).toBe(true);
+  });
+
+  it('cloud requires a data source', () => {
+    const wizard = { ...readyLive(), compute: 'oci' as const };
+    expect(validateWizard(wizard).some((e) => e.includes('data source'))).toBe(true);
+    expect(canDeploy({ ...wizard, data_providers: ['alpaca'] })).toBe(true);
+  });
+
+  it('to_request carries the keystone fields', () => {
+    const body = toRequest(readyLive());
+    expect(body.mode).toBe('live');
+    expect(body.broker).toBe('clearstreet');
+    expect(body.aum).toBe(100_000);
+    expect(body.compute_kind).toBe('local');
+    expect((body.resilience as { auto_restart: boolean }).auto_restart).toBe(true);
+  });
+});
+
+describe('live algorithms lifecycle (ported native tests)', () => {
+  it('actions follow lifecycle', () => {
+    expect(availableActions('running')).toEqual(['stop', 'liquidate']);
+    expect(availableActions('stopped')).toEqual(['restart', 'liquidate']);
+    expect(availableActions('errored')).toEqual(['restart', 'liquidate']);
+    expect(availableActions('archived')).toEqual([]);
+    expect(availableActions('preflight')).toEqual([]);
+  });
+
+  it('verb endpoint targets the root-mounted router and liquidate confirms', () => {
+    // Deviation from the native source, which pointed at /ui/api/… — the
+    // engine serves the live router at root (verified: /ui/api 404s).
+    expect(verbEndpoint(7, 'liquidate')).toBe('/deployments/7/liquidate');
+    expect(isDestructive('liquidate')).toBe(true);
+    expect(isDestructive('stop')).toBe(false);
+  });
+
+  it('selection drops when row disappears', () => {
+    let model = setRows({ rows: [], selected: null }, [
+      { id: 1, state: 'running', name: '', strategy_path: '', broker: '', mode: '', positions: [] },
+    ]);
+    model = { ...model, selected: 1 };
+    expect(selectedDeployment(model)).toBeDefined();
+    expect(activeCount(model)).toBe(1);
+
+    model = setRows(model, [
+      { id: 2, state: 'stopped', name: '', strategy_path: '', broker: '', mode: '', positions: [] },
+    ]);
+    expect(selectedDeployment(model)).toBeUndefined();
+    expect(activeCount(model)).toBe(0);
+  });
+
+  it('parses the engine ledger payload', () => {
+    const parsed = JSON.parse(`{
+      "deployment_id": 3,
+      "orders": [
+        {"id": 10, "symbol": "SPY", "action": "BUY", "quantity": 10.0,
+         "filled_quantity": 10.0, "avg_fill_price": 100.5, "status": "filled",
+         "broker": "clearstreet", "created_at": "2026-06-30T12:00:00+00:00"}
+      ],
+      "positions": [{"symbol": "SPY", "quantity": 10.0, "avg_cost": 100.5}]
+    }`) as DeploymentOrders;
+    expect(parsed.deployment_id).toBe(3);
+    expect(parsed.orders).toHaveLength(1);
+    expect(parsed.orders[0].symbol).toBe('SPY');
+    expect(parsed.positions[0].quantity).toBe(10);
+  });
+
+  it('formats returns and labels states', () => {
+    expect(formatReturn(12.345)).toBe('+12.35%');
+    expect(formatReturn(-3.1)).toBe('-3.10%');
+    expect(formatReturn(null)).toBe('—');
+    expect(stateLabel('running')).toBe('Live');
+    expect(stateLabel('provisioning')).toBe('Preparing');
+    expect(stateLabel('nonsense')).toBe('Unknown');
+  });
+});

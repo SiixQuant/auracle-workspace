@@ -36,6 +36,16 @@
       "component": "AuracleConnections",
       "title": "Auracle",
       "icon": "cable"
-    }
+    },
+    "panels": [
+      {
+        "id": "live-algorithms",
+        "title": "Live Algorithms",
+        "icon": "monitoring",
+        "placement": "fullscreen",
+        "order": 70,
+        "tooltip": "Deploy strategies and monitor live/paper algorithms with their order ledgers."
+      }
+    ]
   }
 }

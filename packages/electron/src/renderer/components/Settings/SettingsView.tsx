@@ -23,8 +23,10 @@ import { NotificationsPanel } from '../GlobalSettings/panels/NotificationsPanel'
 import { VoiceModePanel } from './VoiceModePanel';
 import { MCPServersPanel } from '../GlobalSettings/panels/MCPServersPanel';
 import { ClaudeCodePluginsPanel } from '../GlobalSettings/panels/ClaudeCodePluginsPanel';
-import { SyncPanel } from '../GlobalSettings/panels/SyncPanel';
-import { SharedLinksPanel } from '../GlobalSettings/panels/SharedLinksPanel';
+import {
+  AuracleAccountPanel,
+  AuracleSharedLinksPanel,
+} from '../GlobalSettings/panels/AuracleAccountPanel';
 import { ProjectPermissionsPanel } from './panels/ProjectPermissionsPanel';
 import { ProviderOverrideWrapper } from './panels/ProviderOverrideWrapper';
 import { InstalledExtensionsPanel } from './panels/InstalledExtensionsPanel';
@@ -895,9 +897,12 @@ export function SettingsView({
           />
         );
       case 'sync':
-        return <SyncPanel />;
+        // Auracle identity replaces the vendor sign-in; the upstream SyncPanel
+        // (kept intact for upstream merges) rode a hosted sync service this
+        // distribution does not use.
+        return <AuracleAccountPanel />;
       case 'shared-links':
-        return <SharedLinksPanel />;
+        return <AuracleSharedLinksPanel />;
       case 'themes':
         return (
           <ThemesPanel

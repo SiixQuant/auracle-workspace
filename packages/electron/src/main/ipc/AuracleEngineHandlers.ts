@@ -1,6 +1,7 @@
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
+import { app, safeStorage } from 'electron';
 import { safeHandle } from '../utils/ipcRegistry';
 import { logger } from '../utils/logger';
 
@@ -160,7 +161,110 @@ async function authPost(base: string, path: string, body: unknown): Promise<Engi
   return toEngineResponse(response);
 }
 
+/**
+ * Auracle session store — the ONE home for the signed-in identity, shared by
+ * every surface (native Account panel, pack Account section, future gates).
+ * Tokens are encrypted at rest with the OS keychain-backed safeStorage; the
+ * decrypted values never cross the IPC boundary — renderers only ever see
+ * `{signedIn, email, tier, offline}`.
+ */
+interface StoredSession {
+  base: string;
+  signed_jwt: string;
+  refresh_token: string;
+  email: string;
+  tier: string;
+}
+
+function sessionPath(): string {
+  return path.join(app.getPath('userData'), 'auracle-session.enc');
+}
+
+async function readSession(): Promise<StoredSession | null> {
+  try {
+    const raw = await fs.readFile(sessionPath());
+    const text = safeStorage.isEncryptionAvailable()
+      ? safeStorage.decryptString(raw)
+      : raw.toString('utf-8');
+    const parsed = JSON.parse(text) as StoredSession;
+    return parsed && parsed.refresh_token ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeSession(session: StoredSession): Promise<void> {
+  const text = JSON.stringify(session);
+  const payload = safeStorage.isEncryptionAvailable()
+    ? safeStorage.encryptString(text)
+    : Buffer.from(text, 'utf-8');
+  await fs.writeFile(sessionPath(), payload, { mode: 0o600 });
+}
+
+async function clearSession(): Promise<void> {
+  await fs.rm(sessionPath(), { force: true });
+}
+
 export function registerAuracleEngineHandlers(): void {
+  safeHandle('auracle:auth-state', async () => {
+    const session = await readSession();
+    if (!session) return { signedIn: false };
+    try {
+      const response = await authPost(session.base, '/auth/refresh', {
+        refresh_token: session.refresh_token,
+      });
+      if (response.ok) {
+        const body = (response.body ?? {}) as Partial<StoredSession> & {
+          signed_jwt?: string;
+          refresh_token?: string;
+        };
+        const updated: StoredSession = {
+          ...session,
+          signed_jwt: body.signed_jwt ?? session.signed_jwt,
+          refresh_token: body.refresh_token ?? session.refresh_token,
+          email: body.email ?? session.email,
+          tier: body.tier ?? session.tier,
+        };
+        await writeSession(updated);
+        return { signedIn: true, email: updated.email, tier: updated.tier, offline: false };
+      }
+      if (response.status === 401) {
+        await clearSession();
+        return { signedIn: false, expired: true };
+      }
+    } catch {
+      // fall through to the offline-cached answer
+    }
+    // Identity host unreachable: keep the cached identity — local work never
+    // breaks; live entitlement is re-verified engine-side anyway.
+    return { signedIn: true, email: session.email, tier: session.tier, offline: true };
+  });
+
+  safeHandle(
+    'auracle:auth-persist',
+    async (
+      _event,
+      payload: { base: string; signed_jwt?: string; refresh_token?: string; email?: string; tier?: string }
+    ) => {
+      if (!payload || typeof payload.base !== 'string' || !payload.refresh_token) {
+        return { ok: false };
+      }
+      await writeSession({
+        base: payload.base,
+        signed_jwt: payload.signed_jwt ?? '',
+        refresh_token: payload.refresh_token,
+        email: payload.email ?? '',
+        tier: payload.tier ?? '',
+      });
+      return { ok: true };
+    }
+  );
+
+  safeHandle('auracle:auth-signout', async () => {
+    await clearSession();
+    return { ok: true };
+  });
+
   safeHandle('auracle:auth-bases', async () => {
     const config = await readConfig();
     return { hq: hqBase(), engine: config.engineUrl };

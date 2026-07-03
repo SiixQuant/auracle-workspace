@@ -227,6 +227,43 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
   if (!isOpen) return null;
 
   const contentLabel = contentType === 'session' ? 'session' : 'file';
+
+  // Auracle: encrypted share links rode the previous vendor's hosted sync
+  // service, which this distribution does not use. Until Auracle's own sync
+  // service ships, say so honestly instead of walking the user into a
+  // sign-in that talks to third-party infrastructure.
+  const SHARE_UNAVAILABLE = true;
+  if (SHARE_UNAVAILABLE) {
+    return (
+      <div
+        className="fixed inset-0 flex items-center justify-center z-[10000] bg-black/60 animate-[nim-fade-in_0.2s_ease-out]"
+        onClick={onClose}
+      >
+        <div
+          className="relative p-0 w-[420px] max-w-[90vw] rounded-2xl overflow-hidden border border-[var(--nim-border)] bg-[var(--nim-bg)] shadow-[0_8px_32px_rgba(0,0,0,0.4)] animate-[nim-slide-up_0.3s_ease-out]"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-8 pt-8 pb-8">
+            <h2 className="m-0 mb-3 text-lg font-semibold text-[var(--nim-text)]">
+              Share {contentLabel}
+            </h2>
+            <p className="m-0 mb-6 text-[13px] text-[var(--nim-text-muted)]">
+              Encrypted share links need a hosted sync service, and Auracle's isn't live yet.
+              Nothing is sent anywhere — your {contentLabel} stays on this machine. Sharing will
+              light up when the Auracle sync service ships.
+            </p>
+            <button
+              className="px-4 py-2 text-[13px] rounded-md border border-[var(--nim-border)] bg-transparent text-[var(--nim-text)] cursor-pointer hover:bg-[var(--nim-bg-hover)]"
+              onClick={onClose}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const isAlreadyShared = !!existingShare;
   const isStytchAvailable = !!window.electronAPI?.stytch;
   const needsAuth = isAuthenticated === false;

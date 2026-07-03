@@ -1,25 +1,16 @@
 /**
- * Auracle account section: keyless sign-in via the email device flow
- * (magic link + 6-digit code), mirroring the launcher's HQ-first topology.
- * Sign-in is optional — everything local works signed out. Tokens live only
- * in the OS keychain (extension secret storage); identity display data
- * (email/tier) is not secret and lives in plain extension storage.
+ * Auracle account section (pack settings page): keyless email device flow,
+ * hosted-identity-first with local-engine fallback. Reads and writes the ONE
+ * shared session store in the main process — the same identity the native
+ * Settings → Account page shows. Sign-in is optional; everything local works
+ * signed out. Tokens live only in the OS-encrypted store, never in the
+ * renderer.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ExtensionStorage } from '@nimbalyst/extension-sdk';
-import { authRequest, authStart } from '../engine/client';
+import { authPersist, authRequest, authSignout, authStart, authState } from '../engine/client';
 
-const JWT_KEY = 'auracle_signed_jwt';
-const REFRESH_KEY = 'auracle_refresh_token';
-const IDENTITY_KEY = 'auracle_identity';
 const POLL_INTERVAL_MS = 3_000;
 const POLL_LIMIT = 100;
-
-interface Identity {
-  email: string;
-  tier: string;
-  base: string;
-}
 
 interface ReadyPayload {
   status?: string;
@@ -33,7 +24,7 @@ type AccountState =
   | { kind: 'loading' }
   | { kind: 'signed-out'; error?: string }
   | { kind: 'pending'; email: string; base: string; deviceCode: string; error?: string }
-  | { kind: 'signed-in'; identity: Identity };
+  | { kind: 'signed-in'; email: string; tier: string; offline: boolean };
 
 const styles = {
   note: { fontSize: 12, color: 'var(--text-tertiary, #8a8f98)' },
@@ -65,71 +56,52 @@ const styles = {
   },
 };
 
-async function persistReady(
-  storage: ExtensionStorage,
-  base: string,
-  payload: ReadyPayload
-): Promise<Identity> {
-  if (payload.signed_jwt) await storage.setSecret(JWT_KEY, payload.signed_jwt);
-  if (payload.refresh_token) await storage.setSecret(REFRESH_KEY, payload.refresh_token);
-  const identity: Identity = {
-    email: payload.email ?? '',
-    tier: payload.tier ?? '',
-    base,
-  };
-  await storage.setGlobal(IDENTITY_KEY, identity);
-  return identity;
-}
-
-async function clearSession(storage: ExtensionStorage): Promise<void> {
-  await storage.deleteSecret(JWT_KEY);
-  await storage.deleteSecret(REFRESH_KEY);
-  await storage.setGlobal(IDENTITY_KEY, null);
-}
-
-export function AccountSection({ storage }: { storage: ExtensionStorage }): JSX.Element {
+export function AccountSection(): JSX.Element {
   const [state, setState] = useState<AccountState>({ kind: 'loading' });
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const pollCount = useRef(0);
 
-  // On mount: restore identity; silently refresh the entitlement when a
-  // refresh token exists; degrade honestly to signed-out when it is rejected.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const identity = (await storage.getGlobal(IDENTITY_KEY)) as Identity | null;
-      const refreshToken = await storage.getSecret(REFRESH_KEY);
-      if (!identity || !refreshToken) {
-        if (!cancelled) setState({ kind: 'signed-out' });
-        return;
-      }
-      const response = await authRequest(identity.base, '/auth/refresh', {
-        refresh_token: refreshToken,
-      });
+      const auth = await authState();
       if (cancelled) return;
-      if (response.ok) {
-        const payload = (response.body ?? {}) as ReadyPayload;
-        const updated = await persistReady(storage, identity.base, {
-          ...payload,
-          email: payload.email ?? identity.email,
-          tier: payload.tier ?? identity.tier,
+      if (auth.signedIn) {
+        setState({
+          kind: 'signed-in',
+          email: auth.email ?? '',
+          tier: auth.tier ?? '',
+          offline: auth.offline ?? false,
         });
-        setState({ kind: 'signed-in', identity: updated });
-      } else if (response.status === 401) {
-        await clearSession(storage);
-        setState({ kind: 'signed-out', error: 'Your session expired. Sign in again.' });
       } else {
-        // Offline or identity host unreachable: keep the cached identity —
-        // local work never breaks; live entitlement is re-verified engine-side.
-        setState({ kind: 'signed-in', identity });
+        setState({
+          kind: 'signed-out',
+          error: auth.expired ? 'Your session expired. Sign in again.' : undefined,
+        });
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [storage]);
+  }, []);
+
+  const finish = useCallback(async (base: string, payload: ReadyPayload) => {
+    await authPersist({
+      base,
+      signed_jwt: payload.signed_jwt,
+      refresh_token: payload.refresh_token,
+      email: payload.email,
+      tier: payload.tier,
+    });
+    setState({
+      kind: 'signed-in',
+      email: payload.email ?? '',
+      tier: payload.tier ?? '',
+      offline: false,
+    });
+  }, []);
 
   const start = useCallback(async () => {
     setBusy(true);
@@ -153,7 +125,6 @@ export function AccountSection({ storage }: { storage: ExtensionStorage }): JSX.
     }
   }, [email]);
 
-  // Poll for magic-link completion while pending.
   useEffect(() => {
     if (state.kind !== 'pending' || !state.deviceCode) return;
     const timer = setInterval(() => {
@@ -169,13 +140,12 @@ export function AccountSection({ storage }: { storage: ExtensionStorage }): JSX.
         const body = (response.body ?? {}) as ReadyPayload;
         if (response.ok && body.status === 'ready') {
           clearInterval(timer);
-          const identity = await persistReady(storage, state.base, body);
-          setState({ kind: 'signed-in', identity });
+          await finish(state.base, body);
         }
       })();
     }, POLL_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [state, storage]);
+  }, [state, finish]);
 
   const verify = useCallback(async () => {
     if (state.kind !== 'pending') return;
@@ -187,19 +157,18 @@ export function AccountSection({ storage }: { storage: ExtensionStorage }): JSX.
     setBusy(false);
     const body = (response.body ?? {}) as ReadyPayload;
     if (response.ok && body.status === 'ready') {
-      const identity = await persistReady(storage, state.base, body);
-      setState({ kind: 'signed-in', identity });
+      await finish(state.base, body);
     } else {
       setState({ ...state, error: 'That code was not accepted. Check it and try again.' });
     }
-  }, [state, code, storage]);
+  }, [state, code, finish]);
 
   const signOut = useCallback(async () => {
-    await clearSession(storage);
+    await authSignout();
     setEmail('');
     setCode('');
     setState({ kind: 'signed-out' });
-  }, [storage]);
+  }, []);
 
   if (state.kind === 'loading') {
     return <div style={styles.note}>Loading account…</div>;
@@ -208,8 +177,9 @@ export function AccountSection({ storage }: { storage: ExtensionStorage }): JSX.
   if (state.kind === 'signed-in') {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <span style={{ fontWeight: 500 }}>{state.identity.email || 'Signed in'}</span>
-        {state.identity.tier ? <span style={styles.chip}>{state.identity.tier}</span> : null}
+        <span style={{ fontWeight: 500 }}>{state.email || 'Signed in'}</span>
+        {state.tier ? <span style={styles.chip}>{state.tier}</span> : null}
+        {state.offline ? <span style={styles.note}>identity service unreachable — cached</span> : null}
         <button type="button" style={styles.button()} onClick={() => void signOut()}>
           Sign out
         </button>

@@ -66,16 +66,14 @@ function DiscordInvitationWrapper({
   onClose: () => void;
   data: DiscordInvitationData;
 }) {
-  return (
-    <DiscordInvitation
-      isOpen={isOpen}
-      onClose={onClose}
-      onDismiss={() => {
-        data.onDismiss();
-        onClose();
-      }}
-    />
-  );
+  // Auracle: the community-invite nudge pointed at the upstream vendor's
+  // Discord. Permanently dismissed rather than rendered.
+  void DiscordInvitation;
+  if (isOpen) {
+    data.onDismiss();
+    onClose();
+  }
+  return null;
 }
 
 function FeedbackIntakeWrapper({

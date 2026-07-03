@@ -8,9 +8,12 @@
  */
 
 export const STYTCH_CONFIG = {
+  // Auracle: the upstream vendor's live tenant tokens are removed — identity
+  // is handled by the Auracle device flow, not Stytch. The env override below
+  // remains for anyone standing up their own tenant.
   live: {
-    projectId: 'project-live-70b810e0-b201-4cf4-b8e8-2b694fd4515f',
-    publicToken: 'public-token-live-db5dfb0e-6423-4166-8366-164f4138e0ff',
+    projectId: '',
+    publicToken: '',
     apiBase: 'https://api.stytch.com/v1/b2b',
   },
 };

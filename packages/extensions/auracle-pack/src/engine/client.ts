@@ -108,6 +108,55 @@ export async function authRequest(
 }
 
 /**
+ * Shared session store (main-process, OS-encrypted). One identity for every
+ * surface: the native Account panel and this pack read and write the same
+ * state; tokens never reach the renderer.
+ */
+export interface AuthState {
+  signedIn: boolean;
+  email?: string;
+  tier?: string;
+  offline?: boolean;
+  expired?: boolean;
+}
+
+export async function authState(): Promise<AuthState> {
+  const invoke = bridge();
+  if (!invoke) return { signedIn: false };
+  try {
+    return (await invoke('auracle:auth-state')) as AuthState;
+  } catch {
+    return { signedIn: false };
+  }
+}
+
+export async function authPersist(payload: {
+  base: string;
+  signed_jwt?: string;
+  refresh_token?: string;
+  email?: string;
+  tier?: string;
+}): Promise<void> {
+  const invoke = bridge();
+  if (!invoke) return;
+  try {
+    await invoke('auracle:auth-persist', payload);
+  } catch {
+    // surfaced by the next authState() read
+  }
+}
+
+export async function authSignout(): Promise<void> {
+  const invoke = bridge();
+  if (!invoke) return;
+  try {
+    await invoke('auracle:auth-signout');
+  } catch {
+    // surfaced by the next authState() read
+  }
+}
+
+/**
  * Connect generation: bumped after every saved/disconnected connection so all
  * pack surfaces re-poll immediately instead of waiting out their intervals.
  * In-process because the whole pack is one extension.

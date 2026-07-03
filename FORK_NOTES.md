@@ -20,6 +20,9 @@ change stays independently revertable.
 
 | 7 | Engine bridge | `packages/electron/src/main/ipc/AuracleEngineHandlers.ts` (+ two registration lines in `src/main/index.ts`) | Main-process loopback bridge for the pack: engine requests with the cookie + double-submit CSRF contract, and the keyless sign-in device flow with hosted-identity-first / local-engine-fallback base pinning. | The renderer cannot set Cookie headers; built-in extensions using private host IPC is the established pattern (see the git extension). |
 
+| 8 | Identity cutover | `packages/electron/src/renderer/components/GlobalSettings/panels/AuracleAccountPanel.tsx` (new), `Settings/SettingsView.tsx` (two case swaps), `packages/electron/src/main/ipc/AuracleEngineHandlers.ts` (session store) | The native Account & Sync and Shared Links pages render Auracle panels; the signed-in session lives in ONE main-process store (safeStorage-encrypted), shared with the pack's settings section. Upstream `SyncPanel.tsx`/`SharedLinksPanel.tsx` kept intact for merges. | Sign-in must be an Auracle account — the upstream panel routed through the vendor's Stytch tenant (Google consent literally said the vendor's name) and existed to power their hosted sync. |
+| 9 | Vendor-infra severance | `ShareDialog.tsx` (honest early return), `dialogs/simpleDialogs.tsx` (Discord nudge dismissed), `packages/runtime/src/config/stytch.ts` (live tenant tokens blanked; env override kept) | Every user-reachable path into the vendor's hosted account/sync/share/community infrastructure now says exactly why it's unavailable instead of contacting third-party servers. | No user action should carry identity to infrastructure this product does not operate. |
+
 ## Known cosmetic TODOs
 
 - `packages/electron/icon.ico` (Windows) and `resources/trayTemplate*.png` (menu-bar glyph)

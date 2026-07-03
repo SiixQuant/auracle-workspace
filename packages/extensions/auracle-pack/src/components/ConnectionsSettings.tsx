@@ -348,7 +348,7 @@ function Section({
   );
 }
 
-export function AuracleConnections(props: SettingsPanelProps): JSX.Element {
+export function AuracleConnections(_props: SettingsPanelProps): JSX.Element {
   const [state, setState] = useState<LoadState>({ phase: 'loading' });
   const [selected, setSelected] = useState<Connector | null>(null);
 
@@ -400,7 +400,7 @@ export function AuracleConnections(props: SettingsPanelProps): JSX.Element {
     <div style={styles.page}>
       <div>
         <div style={{ ...styles.sectionTitle, marginBottom: 8 }}>Account</div>
-        <AccountSection storage={props.storage} />
+        <AccountSection />
       </div>
       {SECTIONS.map((section) => (
         <Section

@@ -64,6 +64,50 @@ export async function connectCheck(): Promise<ConnectCheck | null> {
 }
 
 /**
+ * Keyless sign-in transport. `/auth/*` is unauthenticated JSON served by both
+ * the hosted identity deployment (HQ) and the local engine; the bridge tries
+ * HQ first and reports which base opened the session, and every later call is
+ * pinned to that base.
+ */
+export async function authBases(): Promise<{ hq: string; engine: string }> {
+  const invoke = bridge();
+  if (!invoke) return { hq: '', engine: '' };
+  try {
+    return (await invoke('auracle:auth-bases')) as { hq: string; engine: string };
+  } catch {
+    return { hq: '', engine: '' };
+  }
+}
+
+export async function authStart(
+  email: string
+): Promise<BridgeResponse & { base: string | null }> {
+  const invoke = bridge();
+  if (!invoke) return { ok: false, status: 0, body: null, base: null };
+  try {
+    return (await invoke('auracle:auth-start', email)) as BridgeResponse & {
+      base: string | null;
+    };
+  } catch {
+    return { ok: false, status: 0, body: null, base: null };
+  }
+}
+
+export async function authRequest(
+  base: string,
+  path: string,
+  body?: unknown
+): Promise<BridgeResponse> {
+  const invoke = bridge();
+  if (!invoke) return { ok: false, status: 0, body: null };
+  try {
+    return (await invoke('auracle:auth-request', base, path, body)) as BridgeResponse;
+  } catch {
+    return { ok: false, status: 0, body: null };
+  }
+}
+
+/**
  * Connect generation: bumped after every saved/disconnected connection so all
  * pack surfaces re-poll immediately instead of waiting out their intervals.
  * In-process because the whole pack is one extension.

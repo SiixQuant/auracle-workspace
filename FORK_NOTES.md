@@ -18,6 +18,8 @@ change stays independently revertable.
 | 5 | Brand assets | `packages/electron/icon.icns`, `icon.png`, `nimbalyst-logo.png` (content replaced, filename kept) | Auracle mark (generated from the existing product icon at 1024px). | App/dock/about identity. |
 | 6 | Outbound links | onboarding ToS/Privacy, help menu docs, feedback email/issues, exporter footers | Point at aurapointcapital.com / SiixQuant repos / support@aurapointcapital.com. Collab/sync/marketplace hosts intentionally untouched (see below). | Links a user can click should not land on the upstream vendor's site. |
 
+| 7 | Engine bridge | `packages/electron/src/main/ipc/AuracleEngineHandlers.ts` (+ two registration lines in `src/main/index.ts`) | Main-process loopback bridge for the pack: engine requests with the cookie + double-submit CSRF contract, and the keyless sign-in device flow with hosted-identity-first / local-engine-fallback base pinning. | The renderer cannot set Cookie headers; built-in extensions using private host IPC is the established pattern (see the git extension). |
+
 ## Known cosmetic TODOs
 
 - `packages/electron/icon.ico` (Windows) and `resources/trayTemplate*.png` (menu-bar glyph)

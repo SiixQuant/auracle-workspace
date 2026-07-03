@@ -11,6 +11,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { SettingsPanelProps } from '@nimbalyst/extension-sdk';
+import { AccountSection } from './AccountSection';
 import {
   bumpConnectGeneration,
   getJson,
@@ -347,7 +348,7 @@ function Section({
   );
 }
 
-export function AuracleConnections(_props: SettingsPanelProps): JSX.Element {
+export function AuracleConnections(props: SettingsPanelProps): JSX.Element {
   const [state, setState] = useState<LoadState>({ phase: 'loading' });
   const [selected, setSelected] = useState<Connector | null>(null);
 
@@ -397,6 +398,10 @@ export function AuracleConnections(_props: SettingsPanelProps): JSX.Element {
 
   return (
     <div style={styles.page}>
+      <div>
+        <div style={{ ...styles.sectionTitle, marginBottom: 8 }}>Account</div>
+        <AccountSection storage={props.storage} />
+      </div>
       {SECTIONS.map((section) => (
         <Section
           key={section.kind}

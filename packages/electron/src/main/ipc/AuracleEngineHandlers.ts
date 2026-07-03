@@ -136,7 +136,71 @@ async function engineRequest(
   return toEngineResponse(response);
 }
 
+/**
+ * Keyless sign-in transport. The device flow (`/auth/device/*`, `/auth/refresh`)
+ * is unauthenticated and CSRF-exempt JSON served by both the hosted identity
+ * deployment ("HQ") and the local engine. Start prefers HQ and falls back to
+ * the local engine; every later call must be pinned to whichever base opened
+ * the session, so callers pass the base back and we validate it against the
+ * two known origins (never arbitrary URLs).
+ */
+const HQ_CANONICAL = 'https://amused-commitment-production-fb48.up.railway.app';
+
+function hqBase(): string {
+  const override = process.env.AURACLE_HQ_URL?.trim();
+  return (override && override.length > 0 ? override : HQ_CANONICAL).replace(/\/+$/, '');
+}
+
+async function authPost(base: string, path: string, body: unknown): Promise<EngineResponse> {
+  const response = await fetch(`${base}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body ?? {}),
+  });
+  return toEngineResponse(response);
+}
+
 export function registerAuracleEngineHandlers(): void {
+  safeHandle('auracle:auth-bases', async () => {
+    const config = await readConfig();
+    return { hq: hqBase(), engine: config.engineUrl };
+  });
+
+  safeHandle('auracle:auth-start', async (_event, email: string) => {
+    if (typeof email !== 'string' || !email.includes('@')) {
+      return { ok: false, status: 0, body: 'invalid email', base: null };
+    }
+    const config = await readConfig();
+    const bases = [hqBase(), config.engineUrl];
+    for (const base of bases) {
+      try {
+        const response = await authPost(base, '/auth/device/start', { email });
+        if (response.ok) {
+          return { ...response, base };
+        }
+      } catch {
+        // fall through to the next base
+      }
+    }
+    return { ok: false, status: 0, body: null, base: null };
+  });
+
+  safeHandle(
+    'auracle:auth-request',
+    async (_event, base: string, path: string, body: unknown) => {
+      const config = await readConfig();
+      const allowed = new Set([hqBase(), config.engineUrl]);
+      if (!allowed.has(base) || typeof path !== 'string' || !path.startsWith('/auth/')) {
+        return { ok: false, status: 0, body: 'invalid auth request' };
+      }
+      try {
+        return await authPost(base, path, body);
+      } catch {
+        return { ok: false, status: 0, body: null };
+      }
+    }
+  );
+
   safeHandle('auracle:engine-config', async () => {
     const config = await readConfig();
     return { engineUrl: config.engineUrl, hasKey: config.apiKey.length > 0 };

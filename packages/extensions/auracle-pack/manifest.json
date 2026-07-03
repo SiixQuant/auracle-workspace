@@ -14,7 +14,7 @@
     "hostComponents": ["AuracleStatusChip"],
     "settingsPanel": {
       "component": "AuracleConnections",
-      "title": "Auracle Connections",
+      "title": "Auracle",
       "icon": "cable"
     }
   }

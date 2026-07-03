@@ -37,6 +37,7 @@ import { registerNotificationHandlers } from './ipc/NotificationHandlers';
 import { registerPermissionHandlers } from './ipc/PermissionHandlers';
 import { registerGitStatusHandlers } from './ipc/GitStatusHandlers';
 import { registerGitHandlers } from './ipc/GitHandlers';
+import { registerAuracleEngineHandlers } from './ipc/AuracleEngineHandlers';
 import { registerProjectSelectionHandlers } from './ipc/ProjectSelectionHandlers';
 import { registerMultiProjectRailHandlers } from './ipc/MultiProjectRailHandlers';
 import { registerUsageAnalyticsHandlers } from './ipc/UsageAnalyticsHandlers';
@@ -1500,6 +1501,7 @@ app.whenReady().then(async () => {
     registerPermissionHandlers();
     registerGitStatusHandlers();
     registerGitHandlers();
+    registerAuracleEngineHandlers();
     registerWorktreeHandlers();
     registerPullRequestHandlers();
     registerWakeupHandlers();

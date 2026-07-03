@@ -1,0 +1,16 @@
+{
+  "id": "com.auracle.pack",
+  "name": "Auracle",
+  "version": "0.1.0",
+  "description": "Auracle trading platform integration: engine status, connections, backtests, and live deployments",
+  "author": "Auracle",
+  "main": "dist/index.js",
+  "apiVersion": "1.0.0",
+  "permissions": {
+    "filesystem": true,
+    "network": true
+  },
+  "contributions": {
+    "hostComponents": ["AuracleStatusChip"]
+  }
+}

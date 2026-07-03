@@ -41,7 +41,6 @@ import { getFolderContents } from '../utils/FileTree';
 import { logger } from '../utils/logger';
 import { getFocusedWindow } from '../utils/windowFocus';
 import { showSplashScreen } from '../window/SplashScreen';
-import { autoUpdaterService } from '../services/autoUpdater';
 import { KeyboardShortcuts } from './KeyboardShortcuts';
 import { AnalyticsService } from '../services/analytics/AnalyticsService';
 import { FeatureTrackingService } from '../services/analytics/FeatureTrackingService';
@@ -1499,12 +1498,6 @@ export async function createApplicationMenu() {
                         createAboutWindow();
                     }
                 },
-                {
-                    label: 'Check for Updates...',
-                    click: async () => {
-                        autoUpdaterService.checkForUpdatesWithUI();
-                    }
-                },
                 { type: 'separator' },
                 {
                     label: 'Settings...',
@@ -1872,12 +1865,6 @@ export async function createApplicationMenu() {
                     label: 'About Nimbalyst',
                     click: async () => {
                         createAboutWindow();
-                    }
-                },
-                {
-                    label: 'Check for Updates...',
-                    click: async () => {
-                        autoUpdaterService.checkForUpdatesWithUI();
                     }
                 }
             ]

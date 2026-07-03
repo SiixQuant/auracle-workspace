@@ -33,6 +33,12 @@ const GITHUB_UPDATE_PROVIDER = {
   repo: 'nimbalyst'
 };
 
+// Updates for this distribution are delivered by the Auracle launcher, which
+// verifies a checksum sidecar before swapping the installed bundle. In-app
+// electron-updater checks are disabled so the two update paths can never race
+// (and so a fork never self-replaces from the upstream feed).
+const UPDATES_MANAGED_EXTERNALLY = true;
+
 // classifyUpdateError, categorizeDownloadDuration, isWindowsRenameLockError
 // moved to ./autoUpdaterUtils so unit tests can import them without pulling
 // in this module's Electron-app-global load chain (see #245). Alias keeps
@@ -75,6 +81,10 @@ export class AutoUpdaterService {
   }
 
   private configureFeedURL() {
+    if (UPDATES_MANAGED_EXTERNALLY) {
+      log.info('In-app updates disabled; the launcher manages installs.');
+      return;
+    }
     const channel = getReleaseChannel();
 
     if (channel === 'alpha') {
@@ -555,6 +565,10 @@ export class AutoUpdaterService {
   }
 
   public startAutoUpdateCheck(intervalMinutes = 60) {
+    if (UPDATES_MANAGED_EXTERNALLY) {
+      log.info('Skipping periodic update checks; the launcher manages installs.');
+      return;
+    }
     // Initial check after 30 seconds
     setTimeout(() => {
       this.checkForUpdates();
@@ -578,6 +592,9 @@ export class AutoUpdaterService {
   }
 
   public async checkForUpdates() {
+    if (UPDATES_MANAGED_EXTERNALLY) {
+      return;
+    }
     if (this.isCheckingForUpdate) {
       log.info('Already checking for updates, skipping...');
       return;
@@ -592,6 +609,9 @@ export class AutoUpdaterService {
   }
 
   public async checkForUpdatesWithUI() {
+    if (UPDATES_MANAGED_EXTERNALLY) {
+      return;
+    }
     if (this.isCheckingForUpdate) {
       // Already checking, don't show anything - the checking toast is already visible
       return;

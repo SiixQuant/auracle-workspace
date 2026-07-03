@@ -199,8 +199,11 @@ if (isDevMode && !(window as any).PLAYWRIGHT) {
   document.body.style.setProperty('--dev-mode-label', `'${devLabel}'`);
 }
 
+// Telemetry is disabled in this distribution: the client is kept so the
+// provider tree and session plumbing behave exactly as upstream, but no
+// event ever leaves the machine and remote config/surveys are never fetched.
 const posthogClient = posthog.init(
-  'phc_s3lQIILexwlGHvxrMBqti355xUgkRocjMXW4LjV0ATw',
+  'phc_disabled',
   {
     bootstrap: {
       distinctID: analyticsId,
@@ -209,19 +212,15 @@ const posthogClient = posthog.init(
     capture_heatmaps: false,
     disable_session_recording: true,
     capture_exceptions: false,
+    advanced_disable_decide: true,
+    disable_surveys: true,
+    disable_external_dependency_loading: true,
+    capture_pageview: false,
     session_idle_timeout_seconds: 30 * 60, // 30 minutes
     loaded: (posthog) => {
-      console.log(`[RENDERER] PostHog loaded (analytics ID: ${posthog.get_distinct_id()}, session: ${posthog.get_session_id()}, official build: ${isOfficialBuild})`);
-
       posthog.register({ nimbalyst_version: nimbalystVersion });
-
-      // Mark users as dev users if they've ever used a non-official build
-      // This property persists across all future events for this user
-      if (!isOfficialBuild) {
-        posthog.people.set_once({ is_dev_user: true });
-      }
     },
-    before_send: (event) => process.env.PLAYWRIGHT_TEST ? null : event,
+    before_send: () => null,
     debug: isDevInstallation
   }
 )

@@ -6,7 +6,8 @@ import {app} from "electron";
 import {isAnalyticsEnabled, setAnalyticsEnabled} from "../../utils/store";
 import {isGitAvailable} from "../../utils/gitUtils";
 
-const POSTHOG_PROJECT_PUBLIC_ID = 'phc_s3lQIILexwlGHvxrMBqti355xUgkRocjMXW4LjV0ATw';
+// Telemetry is disabled in this distribution: no project key, no client, no egress.
+const POSTHOG_PROJECT_PUBLIC_ID = '';
 
 type AnalyticsSettings = {
   analyticsEnabled: boolean;
@@ -49,6 +50,10 @@ export class AnalyticsService {
   private isOfficialBuild: boolean = process.env.OFFICIAL_BUILD === 'true';
 
   public init(): void {
+    if (!POSTHOG_PROJECT_PUBLIC_ID) {
+      this.log.info('Analytics disabled in this distribution (no project key); nothing will be sent.');
+      return;
+    }
     this.postHogClient ??= this.initPostHogClient();
     this.sessionTracker ??= this.initPostHogClient();
     this.healthCheck();
@@ -56,6 +61,11 @@ export class AnalyticsService {
   }
 
   public sendEvent(eventName: string, properties?: Record<string | number, any>): void {
+    // Telemetry disabled: drop quietly so callers behave exactly as upstream.
+    if (!POSTHOG_PROJECT_PUBLIC_ID) {
+      return;
+    }
+
     // Validate event name
     if (!eventName) {
       this.log.warn('[Analytics] Skipping event: empty eventName');
@@ -104,7 +114,9 @@ export class AnalyticsService {
   public async optIn(): Promise<void> {
     this.log.info('Processing analytics opt-in');
 
-    this.postHogClient ??= this.initPostHogClient();
+    if (POSTHOG_PROJECT_PUBLIC_ID) {
+      this.postHogClient ??= this.initPostHogClient();
+    }
     await this.postHogClient?.optIn()
 
     setAnalyticsEnabled(true);

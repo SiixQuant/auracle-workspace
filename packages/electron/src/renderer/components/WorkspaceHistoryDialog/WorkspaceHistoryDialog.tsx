@@ -530,6 +530,10 @@ export function WorkspaceHistoryDialog({
                             onNavigateNext={() => {}}
                           />
                         )
+                      ) : fileType === 'pdf' || fileType === 'binary' ? (
+                        <div className="flex items-center justify-center h-full text-[var(--nim-text-muted)] text-[13px] p-6 text-center">
+                          This is a binary file, so there's no text diff to show between versions.
+                        </div>
                       ) : (
                         <MonacoDiffViewer
                           key={`${versionAMeta?.timestamp}-${versionBMeta?.timestamp}`}
@@ -541,7 +545,13 @@ export function WorkspaceHistoryDialog({
                       )}
                     </div>
                   ) : selectedSnapshotTimestamp ? (
-                    <pre className="workspace-history-preview-text m-0 p-4 font-mono text-[13px] leading-relaxed text-[var(--nim-text)] whitespace-pre-wrap break-words">{previewContent}</pre>
+                    fileType === 'pdf' || fileType === 'binary' ? (
+                      <div className="flex items-center justify-center flex-1 text-[var(--nim-text-muted)] text-[13px] p-6 text-center">
+                        This is a binary file, so there's no text preview for this snapshot.
+                      </div>
+                    ) : (
+                      <pre className="workspace-history-preview-text m-0 p-4 font-mono text-[13px] leading-relaxed text-[var(--nim-text)] whitespace-pre-wrap break-words">{previewContent}</pre>
+                    )
                   ) : (
                     <div className="workspace-history-preview-empty flex items-center justify-center flex-1 text-[var(--nim-text-muted)] text-[13px]">
                       Select a snapshot to preview

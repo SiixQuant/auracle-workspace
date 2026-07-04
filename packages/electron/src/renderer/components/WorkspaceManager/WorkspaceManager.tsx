@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ShaderBackground from './ShaderBackground';
 
 // Apply the active theme as a base dark/light class on the WorkspaceManager
 // (project picker) window. The picker does not load the extension theme
@@ -700,8 +701,9 @@ export const WorkspaceManager: React.FC = () => {
             </div>
           </>
         ) : (
-          <div className="welcome-container flex items-center justify-center h-full p-10 bg-gradient-to-br from-[#667eea] to-[#764ba2] relative overflow-hidden before:content-[''] before:absolute before:top-[-50%] before:right-[-50%] before:w-[200%] before:h-[200%] before:bg-[radial-gradient(circle,rgba(255,255,255,0.1)_0%,transparent_70%)] before:animate-[float_20s_ease-in-out_infinite]">
-            <div className="welcome-content bg-white/[0.98] dark:bg-[var(--nim-bg)] rounded-2xl p-8 max-w-[500px] w-full shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] backdrop-blur-[10px] relative z-[1]">
+          <div className="welcome-container flex items-center justify-center h-full p-10 bg-black relative overflow-hidden">
+            <ShaderBackground />
+            <div className="welcome-content bg-[var(--nim-bg)] rounded-2xl p-8 max-w-[500px] w-full shadow-[0_25px_50px_-12px_rgba(0,0,0,0.55)] border border-white/10 relative z-[1]">
               <div className="welcome-header flex items-center justify-center gap-5 mb-6">
                 <img src="./icon.png" alt="Auracle" className="welcome-logo w-16 h-16 object-contain" />
                 <div className="welcome-text text-left">

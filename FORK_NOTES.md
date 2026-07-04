@@ -15,7 +15,7 @@ change stays independently revertable.
 
 | 3 | Brand | word-level sweep across shipped packages (374+10 files) | Standalone display word "Nimbalyst" → "Auracle" in strings/JSX/comments (with a/an article fixes). Compound identifiers (`NimbalystEditor`, …), lowercase functional ids (`@nimbalyst/*`, `.nimext`, `NIMBALYST_*` env, `.nimbalyst/` dotfolder) untouched. | User-visible rebrand with the smallest possible upstream-merge cost. |
 | 4 | Identity | `packages/electron/package.json`, `packages/electron/bin/auracle` | `productName` "Auracle IDE", appId `com.aurapointcapital.auracle`, deep-link scheme `nimbalyst://` → `auracle://` (also in `src/main/index.ts` protocol registration and all URL builders), publish coordinates repointed, bin renamed. | The desktop launcher installs this app as "Auracle IDE.app" and the deep-link scheme is the product's own. |
-| 5 | Brand assets | `packages/electron/icon.icns`, `icon.png`, `nimbalyst-logo.png` (content replaced, filename kept) | Auracle mark (generated from the existing product icon at 1024px). | App/dock/about identity. |
+| 5 | Brand assets | `packages/electron/{icon.icns,icon.ico,icon.png,nimbalyst-logo.png}`, `resources/{icon.icns,icon.ico,icon.png,trayTemplate.png,trayTemplate@2x.png}`, `src/renderer/public/{icon.png,nimbalyst-logo.png}` (content replaced, filenames kept) | The Auracle **launcher's** own app icon (the retro terminal with the green "A"), so the IDE and the desktop launcher are dock siblings — icns/ico copied verbatim from `auracle-desktop/src-tauri/icons/`, PNGs downscaled from its 1024px master. The upstream Nimbalyst artwork was a stylized "Z" monogram that read as Zed. The menu-bar tray glyph is a monochrome flame-"A" silhouette (the "A" from the launcher mark, drawn as a template image). Every in-app logo (`<img src="./icon.png">` in Workspace Manager / Unified Onboarding / Workspace Welcome) resolves to `src/renderer/public/icon.png`, so all in-app logos update from this one swap. | App/dock/about + in-app identity, unified with the launcher. |
 | 6 | Outbound links | onboarding ToS/Privacy, help menu docs, feedback email/issues, exporter footers | Point at aurapointcapital.com / SiixQuant repos / support@aurapointcapital.com. Collab/sync/marketplace hosts intentionally untouched (see below). | Links a user can click should not land on the upstream vendor's site. |
 
 | 7 | Engine bridge | `packages/electron/src/main/ipc/AuracleEngineHandlers.ts` (+ two registration lines in `src/main/index.ts`) | Main-process loopback bridge for the pack: engine requests with the cookie + double-submit CSRF contract, and the keyless sign-in device flow with hosted-identity-first / local-engine-fallback base pinning. | The renderer cannot set Cookie headers; built-in extensions using private host IPC is the established pattern (see the git extension). |
@@ -27,9 +27,8 @@ change stays independently revertable.
 
 ## Known cosmetic TODOs
 
-- `packages/electron/icon.ico` (Windows) and `resources/trayTemplate*.png` (menu-bar glyph)
-  still carry the upstream artwork — Windows builds are not shipped, and the tray glyph is
-  an abstract mark; replace when a proper asset pass happens.
+- (none outstanding — the icon/logo asset pass in divergence #5 replaced the Windows
+  `.ico` and the menu-bar tray glyph along with the mac icon and every in-app logo.)
 
 ## Deliberately unchanged (for now)
 

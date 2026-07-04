@@ -1,6 +1,6 @@
 {
   "name": "@nimbalyst/electron",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "license": "MIT",
   "author": "Auracle Team",
@@ -374,7 +374,7 @@
     "mac": {
       "category": "public.app-category.productivity",
       "icon": "icon.icns",
-      "hardenedRuntime": false,
+      "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "artifactName": "${productName}-macOS-${arch}.${ext}",
       "extraResources": [
@@ -421,7 +421,9 @@
         "NSLocalNetworkUsageDescription": "Auracle needs access to local network devices for features like MCP servers and local AI model connections.",
         "NSMicrophoneUsageDescription": "Auracle uses the microphone for Voice Mode, allowing you to interact with the AI assistant using your voice.",
         "NSAppleEventsUsageDescription": "Auracle opens Terminal.app to run the Claude Code login and logout flows."
-      }
+      },
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
     },
     "dmg": {
       "format": "UDZO",

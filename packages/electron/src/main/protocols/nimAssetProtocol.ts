@@ -28,6 +28,9 @@ import { pathToFileURL } from "url";
 export const NIM_ASSET_SCHEME = "nim-asset";
 export const NIM_ASSET_HOST = "local";
 
+// Extensions this protocol may serve to the renderer for inline viewing.
+// Images plus PDF: the PDF is rendered by Chromium's sandboxed built-in
+// viewer inside an <iframe>, so serving it same-origin is safe.
 const IMAGE_EXTENSIONS = new Set<string>([
   ".png",
   ".jpg",
@@ -37,6 +40,7 @@ const IMAGE_EXTENSIONS = new Set<string>([
   ".svg",
   ".bmp",
   ".ico",
+  ".pdf",
 ]);
 
 const allowedRoots = new Set<string>();

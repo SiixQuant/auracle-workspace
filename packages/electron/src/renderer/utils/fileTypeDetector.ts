@@ -5,7 +5,7 @@
  * code (Monaco), image viewer, or a custom editor.
  */
 
-export type EditorType = 'markdown' | 'code' | 'image' | 'custom';
+export type EditorType = 'markdown' | 'code' | 'image' | 'custom' | 'pdf' | 'binary';
 
 /**
  * Browser-compatible path utilities
@@ -34,6 +34,13 @@ export function isImageFile(filePath: string): boolean {
 }
 
 /**
+ * Check if a file is a PDF (gets a real inline viewer, not the text editor).
+ */
+export function isPdfFile(filePath: string): boolean {
+  return getExtname(filePath).toLowerCase() === '.pdf';
+}
+
+/**
  * Determine which editor should be used for a given file
  *
  * Note: This function can optionally check for custom editors if a registry
@@ -58,6 +65,18 @@ export function getFileType(
 
   if (isImageFile(filePath)) {
     return 'image';
+  }
+
+  // PDFs get a real inline viewer.
+  if (isPdfFile(filePath)) {
+    return 'pdf';
+  }
+
+  // Any other binary file (archives, executables, databases, office docs, …)
+  // must NOT be handed to the text editor — that would paint its raw bytes as
+  // mojibake. Route it to the binary panel instead.
+  if (isBinaryFile(filePath)) {
+    return 'binary';
   }
 
   return 'code';

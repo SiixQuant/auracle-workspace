@@ -6,6 +6,7 @@ import { DiffPreviewEditor, type DiffNavigationState } from './DiffPreviewEditor
 import { TextDiffViewer, type TextDiffNavigationState } from './TextDiffViewer';
 import { MonacoDiffViewer } from './MonacoDiffViewer';
 import { ImageDiffViewer } from './ImageDiffViewer';
+import { BinaryFileView } from '../TabEditor/BinaryFileView';
 import { createReadOnlyEditorHost } from './createReadOnlyEditorHost';
 import { getFileType, type EditorType } from '../../utils/fileTypeDetector';
 import { getFileName } from '../../utils/pathUtils';
@@ -724,6 +725,11 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
                     newImagePath={filePath || ''}
                     filePath={filePath || ''}
                   />
+                ) : fileType === 'pdf' || fileType === 'binary' ? (
+                  // Binary/PDF files have no meaningful text diff.
+                  <div className="flex items-center justify-center h-full text-nim-muted text-[13px] p-6 text-center">
+                    This is a binary file, so there's no text diff to show between versions.
+                  </div>
                 ) : (
                   // Code files: use Monaco diff viewer
                   <MonacoDiffViewer
@@ -756,6 +762,13 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
                       }}
                     />
                   </div>
+                ) : fileType === 'pdf' || fileType === 'binary' ? (
+                  <BinaryFileView
+                    key={selectedVersions[0]?.timestamp}
+                    filePath={filePath || ''}
+                    fileName={getFileName(filePath || '')}
+                    kind={fileType === 'pdf' ? 'pdf' : 'binary'}
+                  />
                 ) : (
                   <MonacoEditor
                     key={selectedVersions[0]?.timestamp}

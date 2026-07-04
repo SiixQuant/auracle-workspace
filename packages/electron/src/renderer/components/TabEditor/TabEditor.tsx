@@ -38,6 +38,7 @@ import { setTextSelection, clearTextSelection } from '../UnifiedAI/TextSelection
 import { FixedTabHeaderContainer, FixedTabHeaderRegistry } from '@nimbalyst/runtime/plugins/shared/fixedTabHeader';
 import { UnifiedDiffHeader, LexicalDiffHeaderAdapter } from '../UnifiedDiffHeader';
 import { ImageViewer } from '../ImageViewer';
+import { BinaryFileView } from './BinaryFileView';
 import { getFileType } from '../../utils/fileTypeDetector';
 import { customEditorRegistry, CustomEditorWrapper } from '../CustomEditors';
 import { logger } from '../../utils/logger';
@@ -177,6 +178,8 @@ export const TabEditor: React.FC<TabEditorProps> = ({
   const isMarkdown = fileType === 'markdown';
   const isImage = fileType === 'image';
   const isCustom = fileType === 'custom';
+  const isPdf = fileType === 'pdf';
+  const isBinary = fileType === 'binary';
 
   // Get the custom editor registration for this file (used for source mode and storage)
   const customEditorRegistration = useMemo(() => {
@@ -270,6 +273,10 @@ export const TabEditor: React.FC<TabEditorProps> = ({
         }
       } else if (resolvedType === 'image') {
         editorCategory = 'image';
+      } else if (resolvedType === 'pdf') {
+        editorCategory = 'pdf';
+      } else if (resolvedType === 'binary') {
+        editorCategory = 'binary';
       } else {
         editorCategory = 'monaco';
       }
@@ -2693,6 +2700,10 @@ export const TabEditor: React.FC<TabEditorProps> = ({
               filePath={filePath}
               fileName={fileName}
             />
+          ) : isPdf ? (
+            <BinaryFileView key={filePath} filePath={filePath} fileName={fileName} kind="pdf" />
+          ) : isBinary ? (
+            <BinaryFileView key={filePath} filePath={filePath} fileName={fileName} kind="binary" />
           ) : isMarkdown && !sourceMode ? (
               <>
               <LexicalDiffHeaderAdapter

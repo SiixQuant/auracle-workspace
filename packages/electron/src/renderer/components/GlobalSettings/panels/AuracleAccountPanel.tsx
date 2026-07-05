@@ -21,6 +21,30 @@ const invoke = (channel: string, ...args: unknown[]): Promise<unknown> => {
   return api.invoke(channel, ...args);
 };
 
+interface EngineSession {
+  signed_in?: boolean;
+  email?: string;
+  tier?: string;
+  plan?: string;
+  offline?: boolean;
+}
+
+// The engine holds the one hosted-sign-in session that BOTH the IDE and the
+// launcher read. Reading it here is what makes a launcher sign-in show up in
+// the IDE (and vice-versa).
+async function readEngineSession(): Promise<EngineSession | null> {
+  try {
+    const r = (await invoke('auracle:engine-request', 'GET', '/auth/session')) as {
+      ok: boolean;
+      body: unknown;
+    };
+    if (!r.ok) return null;
+    return (r.body ?? {}) as EngineSession;
+  } catch {
+    return null;
+  }
+}
+
 interface AuthState {
   signedIn: boolean;
   email?: string;
@@ -51,9 +75,21 @@ export function AuracleAccountPanel() {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
+  const [clerkPolling, setClerkPolling] = useState(false);
   const pollCount = useRef(0);
 
   const loadState = useCallback(async () => {
+    // Prefer the engine-held session (the hosted sign-in shared by both apps).
+    const engine = await readEngineSession();
+    if (engine?.signed_in) {
+      setState({
+        kind: 'signed-in',
+        email: engine.email ?? '',
+        tier: engine.tier ?? engine.plan ?? '',
+        offline: !!engine.offline,
+      });
+      return;
+    }
     try {
       const auth = (await invoke('auracle:auth-state')) as AuthState;
       if (auth.signedIn) {
@@ -126,6 +162,50 @@ export function AuracleAccountPanel() {
     }
   };
 
+  // Continue with Google: the engine opens its hosted sign-in in the browser,
+  // runs the OAuth+PKCE dance, and persists the shared session. We poll it.
+  const clerkSignIn = async () => {
+    setBusy(true);
+    try {
+      await invoke('auracle:auth-clerk-start');
+      pollCount.current = 0;
+      setClerkPolling(true);
+    } catch {
+      setState({
+        kind: 'signed-out',
+        error: 'Could not open the sign-in page. Is the Auracle engine running?',
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!clerkPolling) return;
+    const timer = setInterval(() => {
+      void (async () => {
+        pollCount.current += 1;
+        if (pollCount.current > POLL_LIMIT) {
+          clearInterval(timer);
+          setClerkPolling(false);
+          return;
+        }
+        const engine = await readEngineSession();
+        if (engine?.signed_in) {
+          clearInterval(timer);
+          setClerkPolling(false);
+          setState({
+            kind: 'signed-in',
+            email: engine.email ?? '',
+            tier: engine.tier ?? engine.plan ?? '',
+            offline: !!engine.offline,
+          });
+        }
+      })();
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [clerkPolling]);
+
   // Poll for the magic-link completion while pending.
   useEffect(() => {
     if (state.kind !== 'pending' || !state.deviceCode) return;
@@ -173,8 +253,14 @@ export function AuracleAccountPanel() {
 
   const signOut = async () => {
     await invoke('auracle:auth-signout');
+    try {
+      await invoke('auracle:engine-request', 'POST', '/auth/session/signout');
+    } catch {
+      // Engine may be down; the local session is cleared regardless.
+    }
     setEmail('');
     setCode('');
+    setClerkPolling(false);
     setState({ kind: 'signed-out' });
   };
 
@@ -215,33 +301,54 @@ export function AuracleAccountPanel() {
         ) : null}
 
         {state.kind === 'signed-out' ? (
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              void start();
-            }}
-          >
+          <div>
             <div className="text-[13px] text-nim mb-3">
-              Sign in with your email — we send a magic link and a 6-digit code.
+              Sign in to link this install to your plan and live-trading entitlement.
             </div>
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="you@example.com"
-              className="w-full px-3 py-2 mb-3 bg-nim-primary-bg border border-nim rounded text-nim text-[13px]"
-            />
             <button
-              type="submit"
-              disabled={busy || !email.includes('@')}
+              type="button"
+              disabled={busy || clerkPolling}
+              onClick={() => void clerkSignIn()}
               className="w-full px-3 py-2 bg-nim-primary text-nim-on-primary rounded text-[13px] font-medium cursor-pointer disabled:opacity-50"
             >
-              {busy ? 'Sending…' : 'Send Sign-In Link'}
+              {clerkPolling ? 'Waiting for browser sign-in…' : 'Continue with Google'}
             </button>
+            {clerkPolling ? (
+              <div className="text-[12px] text-nim-faint mt-2">
+                Finish signing in in your browser, then return here — this page updates
+                automatically.
+              </div>
+            ) : null}
+            <div className="flex items-center gap-3 my-4">
+              <div className="h-px flex-1 bg-nim" />
+              <span className="text-[11px] text-nim-faint">or with email</span>
+              <div className="h-px flex-1 bg-nim" />
+            </div>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void start();
+              }}
+            >
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="you@example.com"
+                className="w-full px-3 py-2 mb-3 bg-nim-primary-bg border border-nim rounded text-nim text-[13px]"
+              />
+              <button
+                type="submit"
+                disabled={busy || clerkPolling || !email.includes('@')}
+                className="w-full px-3 py-2 bg-transparent border border-nim text-nim rounded text-[13px] font-medium cursor-pointer disabled:opacity-50 hover:bg-nim-hover"
+              >
+                {busy ? 'Sending…' : 'Email me a sign-in link'}
+              </button>
+            </form>
             {state.error ? (
               <div className="text-[12px] text-nim-danger mt-2">{state.error}</div>
             ) : null}
-          </form>
+          </div>
         ) : null}
 
         {state.kind === 'pending' ? (

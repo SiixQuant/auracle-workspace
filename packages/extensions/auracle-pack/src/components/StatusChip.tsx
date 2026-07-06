@@ -92,9 +92,13 @@ export function AuracleStatusChip(): JSX.Element {
       }}
       title={chipTitle(state)}
       style={{
+        // Anchored bottom-left, clear of the ~48px activity bar. The bottom-right
+        // corner is taken by the update toast (bottom-5 right-5) and the agent
+        // composer's send control, so a chip there overlaps live UI; the bottom of
+        // the left rail is the one persistently empty gutter in this shell.
         position: 'fixed',
-        right: 12,
-        bottom: 12,
+        left: 56,
+        bottom: 10,
         zIndex: 40,
         display: 'flex',
         alignItems: 'center',
@@ -103,6 +107,7 @@ export function AuracleStatusChip(): JSX.Element {
         borderRadius: 999,
         border: '1px solid var(--border-primary, rgba(127,127,127,0.35))',
         background: 'var(--bg-secondary, rgba(20,20,22,0.85))',
+        backdropFilter: 'blur(6px)',
         color: 'var(--text-secondary, #b9bec7)',
         font: '11px/1.4 var(--font-family-ui, system-ui, sans-serif)',
         cursor: 'pointer',

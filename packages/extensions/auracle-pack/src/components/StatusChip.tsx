@@ -93,7 +93,7 @@ export function AuracleStatusChip(): JSX.Element {
       title={chipTitle(state)}
       style={{
         position: 'fixed',
-        right: 12,
+        left: 12,
         bottom: 12,
         zIndex: 40,
         display: 'flex',

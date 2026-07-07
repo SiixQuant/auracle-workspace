@@ -51,7 +51,7 @@ function identityMatchesApp(identity, signatures) {
   return signatures.some((sig) => lower.includes(String(sig).toLowerCase()));
 }
 
-function decideLockIsRunning({ lockPid, lockTimestamp, killFn, now = Date.now(), staleGraceMs = DEFAULT_STALE_LOCK_GRACE_MS, processIdentityFn, appProcessSignatures = ['electron', 'nimbalyst'], selfPid = (typeof process !== 'undefined' && process && Number.isInteger(process.pid) ? process.pid : undefined) }) {
+function decideLockIsRunning({ lockPid, lockTimestamp, killFn, now = Date.now(), staleGraceMs = DEFAULT_STALE_LOCK_GRACE_MS, processIdentityFn, appProcessSignatures = ['electron', 'auracle'], selfPid = (typeof process !== 'undefined' && process && Number.isInteger(process.pid) ? process.pid : undefined) }) {
   const parsedLockTime =
     lockTimestamp && lockTimestamp !== 'unknown'
       ? new Date(lockTimestamp).getTime()

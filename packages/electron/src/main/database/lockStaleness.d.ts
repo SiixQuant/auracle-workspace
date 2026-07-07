@@ -46,7 +46,7 @@ export interface DecideLockIsRunningArgs {
   processIdentityFn?: (pid: number) => string | null;
   /**
    * Lowercased substrings that mark a probed identity as belonging to this
-   * app. Default `['electron', 'nimbalyst']`. A matching identity is a live
+   * app. Default `['electron', 'auracle']`. A matching identity is a live
    * sibling; a non-matching one is stale PID reuse.
    */
   appProcessSignatures?: string[];

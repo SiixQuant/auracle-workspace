@@ -34,6 +34,11 @@ const SECTIONS: Array<{ kind: string; title: string }> = [
   { kind: 'integration', title: 'Integrations' },
 ];
 
+const ACCENT = 'var(--accent-primary, #0053fd)';
+const OK = '#2ea043';
+const DANGER = '#c4554d';
+const CAUTION = '#d4a017';
+
 type LoadState =
   | { phase: 'loading' }
   | { phase: 'unreachable' }
@@ -53,26 +58,47 @@ const styles = {
     color: 'var(--text-primary, #d7dae0)',
     font: '13px/1.5 var(--font-family-ui, system-ui, sans-serif)',
   },
+  header: { display: 'flex', flexDirection: 'column' as const, gap: 2 },
+  title: { fontSize: 17, fontWeight: 600 as const, letterSpacing: -0.2 },
+  subtitle: { fontSize: 12.5, color: 'var(--text-tertiary, #8a8f98)' },
+  sectionHead: {
+    fontSize: 11,
+    fontWeight: 600 as const,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.7,
+    color: 'var(--text-tertiary, #8a8f98)',
+    display: 'flex',
+    alignItems: 'center' as const,
+    gap: 6,
+  },
   sectionHeader: {
     display: 'flex',
     alignItems: 'baseline' as const,
     justifyContent: 'space-between' as const,
     cursor: 'pointer',
     userSelect: 'none' as const,
+    padding: '2px 0',
   },
-  sectionTitle: { fontSize: 13, fontWeight: 600 },
   summary: { fontSize: 12, color: 'var(--text-tertiary, #8a8f98)' },
+  rows: { display: 'flex', flexDirection: 'column' as const, gap: 6, marginTop: 8 },
   row: {
     display: 'flex',
     alignItems: 'center' as const,
     gap: 10,
-    padding: '8px 10px',
-    borderRadius: 6,
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.25))',
-    background: 'var(--bg-secondary, rgba(127,127,127,0.06))',
+    padding: '9px 12px',
+    borderRadius: 8,
+    border: '1px solid var(--border-primary, rgba(127,127,127,0.22))',
+    background: 'var(--bg-secondary, rgba(255,255,255,0.018))',
     cursor: 'pointer',
   },
-  rowLabel: { fontWeight: 500 },
+  dot: (color: string) => ({
+    width: 8,
+    height: 8,
+    borderRadius: '50%',
+    flexShrink: 0,
+    background: color,
+  }),
+  rowLabel: { fontWeight: 500 as const },
   rowBlurb: {
     fontSize: 12,
     color: 'var(--text-tertiary, #8a8f98)',
@@ -84,37 +110,114 @@ const styles = {
   },
   statusText: (connected: boolean) => ({
     fontSize: 12,
-    color: connected ? '#2ea043' : 'var(--text-tertiary, #8a8f98)',
+    color: connected ? OK : 'var(--text-tertiary, #8a8f98)',
     whiteSpace: 'nowrap' as const,
   }),
   chip: {
-    fontSize: 11,
-    padding: '1px 8px',
+    fontSize: 10.5,
+    fontWeight: 600 as const,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase' as const,
+    padding: '2px 8px',
     borderRadius: 999,
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.35))',
-    color: 'var(--text-tertiary, #8a8f98)',
+    color: CAUTION,
+    background: 'rgba(212,160,23,0.14)',
     whiteSpace: 'nowrap' as const,
   },
-  button: (primary?: boolean) => ({
-    padding: '5px 12px',
+  chev: { color: 'var(--text-tertiary, #8a8f98)', fontSize: 14 },
+  accountCard: {
+    padding: '12px 14px',
+    borderRadius: 10,
+    border: '1px solid var(--border-primary, rgba(127,127,127,0.22))',
+    background: 'var(--bg-secondary, rgba(255,255,255,0.018))',
+  },
+
+  // Detail view
+  backBtn: {
+    display: 'inline-flex',
+    alignItems: 'center' as const,
+    gap: 6,
+    padding: '4px 10px 4px 6px',
     borderRadius: 6,
     fontSize: 12,
     cursor: 'pointer',
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.35))',
-    background: primary ? 'var(--accent-primary, #0053fd)' : 'transparent',
-    color: primary ? '#fff' : 'var(--text-primary, #d7dae0)',
-  }),
+    border: '1px solid transparent',
+    background: 'transparent',
+    color: 'var(--text-secondary, #b9bec7)',
+  },
+  detailHead: { display: 'flex', alignItems: 'center' as const, gap: 10, flexWrap: 'wrap' as const },
+  detailTitle: { fontSize: 15, fontWeight: 600 as const },
+  card: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 14,
+    maxWidth: 560,
+    padding: 18,
+    borderRadius: 12,
+    border: '1px solid var(--border-primary, rgba(127,127,127,0.22))',
+    background: 'var(--bg-secondary, rgba(255,255,255,0.018))',
+  },
+  field: { display: 'flex', flexDirection: 'column' as const, gap: 6 },
+  fieldLabel: { fontSize: 12, color: 'var(--text-secondary, #b9bec7)' },
+  savedTag: { color: 'var(--text-tertiary, #8a8f98)', fontWeight: 400 as const },
   input: {
     width: '100%',
-    padding: '6px 8px',
+    padding: '7px 9px',
     borderRadius: 6,
     fontSize: 13,
     border: '1px solid var(--border-primary, rgba(127,127,127,0.35))',
     background: 'var(--bg-primary, rgba(0,0,0,0.2))',
     color: 'var(--text-primary, #d7dae0)',
+    outline: 'none',
   },
-  fieldLabel: { fontSize: 12, color: 'var(--text-secondary, #b9bec7)', marginBottom: 4 },
   note: { fontSize: 12, color: 'var(--text-tertiary, #8a8f98)' },
+  actions: { display: 'flex', gap: 8, marginTop: 2 },
+  primaryBtn: (disabled: boolean) => ({
+    padding: '7px 16px',
+    borderRadius: 8,
+    fontSize: 13,
+    fontWeight: 600 as const,
+    cursor: disabled ? 'default' : 'pointer',
+    border: '1px solid transparent',
+    background: ACCENT,
+    color: '#fff',
+    opacity: disabled ? 0.6 : 1,
+  }),
+  ghostBtn: (disabled: boolean) => ({
+    padding: '7px 14px',
+    borderRadius: 8,
+    fontSize: 13,
+    cursor: disabled ? 'default' : 'pointer',
+    border: '1px solid var(--border-primary, rgba(127,127,127,0.35))',
+    background: 'transparent',
+    color: 'var(--text-secondary, #b9bec7)',
+    opacity: disabled ? 0.6 : 1,
+  }),
+  result: (ok: boolean) => ({
+    fontSize: 12.5,
+    color: ok ? OK : DANGER,
+    display: 'flex',
+    alignItems: 'center' as const,
+    gap: 7,
+  }),
+  gatedBox: {
+    fontSize: 12.5,
+    color: 'var(--text-secondary, #b9bec7)',
+    padding: '11px 13px',
+    borderRadius: 8,
+    border: '1px solid rgba(212,160,23,0.35)',
+    background: 'rgba(212,160,23,0.08)',
+  },
+  retryBtn: {
+    padding: '7px 16px',
+    borderRadius: 8,
+    fontSize: 13,
+    fontWeight: 600 as const,
+    cursor: 'pointer',
+    border: '1px solid transparent',
+    background: ACCENT,
+    color: '#fff',
+  },
 };
 
 function statusText(connector: Connector): string {
@@ -123,6 +226,13 @@ function statusText(connector: Connector): string {
   const state = connector.status.state;
   if (!state || state === 'not_configured') return 'Not configured';
   return connector.status.detail ? `${state}: ${connector.status.detail}` : state;
+}
+
+/** Green when connected or keyless-ready, muted otherwise. Honest: only a live
+ *  connection or a genuinely-ready keyless source reads as good. */
+function dotColor(connector: Connector): string {
+  if (isConnected(connector.status) || KEYLESS_IDS.has(connector.id)) return OK;
+  return 'var(--text-tertiary, #8a8f98)';
 }
 
 function ConnectorDetail({
@@ -213,32 +323,38 @@ function ConnectorDetail({
     }
   };
 
+  const connected = isConnected(shown.status);
+  const disabled = busy !== null;
+
   return (
     <div style={styles.page}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <button type="button" style={styles.button()} onClick={onBack}>
-          ← Back
+      <div>
+        <button type="button" style={styles.backBtn} onClick={onBack}>
+          <span aria-hidden>‹</span> Connections
         </button>
-        <span style={{ fontSize: 14, fontWeight: 600 }}>
-          {shown.display_label || shown.id}
-        </span>
-        <span style={styles.statusText(isConnected(shown.status))}>{statusText(shown)}</span>
+        <div style={{ ...styles.detailHead, marginTop: 4 }}>
+          <span aria-hidden style={styles.dot(dotColor(shown))} />
+          <span style={styles.detailTitle}>{shown.display_label || shown.id}</span>
+          <span style={styles.statusText(connected)}>{statusText(shown)}</span>
+        </div>
+        {shown.blurb ? <div style={{ ...styles.note, marginTop: 6 }}>{shown.blurb}</div> : null}
+        {capability ? <div style={styles.note}>{capability}</div> : null}
       </div>
-      {shown.blurb ? <div style={styles.note}>{shown.blurb}</div> : null}
-      {capability ? <div style={styles.note}>{capability}</div> : null}
 
       {shown.gated ? (
-        <div style={styles.note}>
+        <div style={styles.gatedBox}>
           {shown.gated_reason || 'Your current plan does not include this connector.'}
         </div>
       ) : (
-        <>
+        <div style={styles.card}>
           {(detail?.fields ?? []).map((field: FieldMeta) => (
-            <div key={field.name}>
+            <div key={field.name} style={styles.field}>
               <div style={styles.fieldLabel}>
                 {field.label || field.name}
                 {field.required ? ' *' : ''}
-                {field.has_value && field.preview ? `  (saved: ${field.preview})` : ''}
+                {field.has_value && field.preview ? (
+                  <span style={styles.savedTag}>{`  (saved: ${field.preview})`}</span>
+                ) : null}
               </div>
               {field.options.length > 0 ? (
                 <select
@@ -276,20 +392,20 @@ function ConnectorDetail({
             </div>
           ) : null}
 
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={styles.actions}>
             {shown.test_supported ? (
-              <button type="button" style={styles.button()} disabled={busy !== null} onClick={() => void runTest()}>
+              <button type="button" style={styles.ghostBtn(disabled)} disabled={disabled} onClick={() => void runTest()}>
                 {busy === 'test' ? 'Testing…' : 'Test'}
               </button>
             ) : null}
-            <button type="button" style={styles.button(true)} disabled={busy !== null} onClick={() => void runSave()}>
+            <button type="button" style={styles.primaryBtn(disabled)} disabled={disabled} onClick={() => void runSave()}>
               {busy === 'save' ? 'Saving…' : 'Save'}
             </button>
-            {isConnected(shown.status) ? (
+            {connected ? (
               <button
                 type="button"
-                style={styles.button()}
-                disabled={busy !== null}
+                style={styles.ghostBtn(disabled)}
+                disabled={disabled}
                 onClick={() => void runDisconnect()}
               >
                 {busy === 'disconnect' ? 'Disconnecting…' : 'Disconnect'}
@@ -297,11 +413,12 @@ function ConnectorDetail({
             ) : null}
           </div>
           {testResult ? (
-            <div style={{ ...styles.note, color: testResult.ok ? '#2ea043' : '#c4554d' }}>
+            <div style={styles.result(testResult.ok)}>
+              <span aria-hidden style={styles.dot(testResult.ok ? OK : DANGER)} />
               {testResult.message}
             </div>
           ) : null}
-        </>
+        </div>
       )}
     </div>
   );
@@ -321,22 +438,23 @@ function Section({
   return (
     <div>
       <div style={styles.sectionHeader} onClick={() => setExpanded((value) => !value)}>
-        <span style={styles.sectionTitle}>
-          {expanded ? '▾' : '▸'} {title}
+        <span style={styles.sectionHead}>
+          <span aria-hidden>{expanded ? '▾' : '▸'}</span> {title}
         </span>
         <span style={styles.summary}>{sectionSummary(connectors)}</span>
       </div>
       {expanded ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+        <div style={styles.rows}>
           {connectors.map((connector) => (
             <div key={connector.id} style={styles.row} onClick={() => onSelect(connector)}>
+              <span aria-hidden style={styles.dot(dotColor(connector))} />
               <span style={styles.rowLabel}>{connector.display_label || connector.id}</span>
               <span style={styles.rowBlurb}>{connector.blurb}</span>
               {connector.gated ? <span style={styles.chip}>Upgrade required</span> : null}
               <span style={styles.statusText(isConnected(connector.status))}>
                 {statusText(connector)}
               </span>
-              <span aria-hidden style={{ color: 'var(--text-tertiary, #8a8f98)' }}>
+              <span aria-hidden style={styles.chev}>
                 ›
               </span>
             </div>
@@ -373,12 +491,17 @@ export function AuracleConnections(_props: SettingsPanelProps): JSX.Element {
   if (state.phase === 'unreachable') {
     return (
       <div style={styles.page}>
-        <div>The Auracle engine is not reachable, so connections cannot be listed.</div>
+        <div style={styles.header}>
+          <span style={styles.title}>Connections</span>
+          <span style={styles.subtitle}>
+            The Auracle engine is not reachable, so connections cannot be listed.
+          </span>
+        </div>
         <div style={styles.note}>
           Start the Auracle stack (or install through the launcher), then retry.
         </div>
         <div>
-          <button type="button" style={styles.button(true)} onClick={() => void load()}>
+          <button type="button" style={styles.retryBtn} onClick={() => void load()}>
             Retry
           </button>
         </div>
@@ -398,9 +521,15 @@ export function AuracleConnections(_props: SettingsPanelProps): JSX.Element {
 
   return (
     <div style={styles.page}>
+      <div style={styles.header}>
+        <span style={styles.title}>Connections</span>
+        <span style={styles.subtitle}>Brokers, data sources, and integrations the engine can use.</span>
+      </div>
       <div>
-        <div style={{ ...styles.sectionTitle, marginBottom: 8 }}>Account</div>
-        <AccountSection />
+        <div style={{ ...styles.sectionHead, marginBottom: 8 }}>Account</div>
+        <div style={styles.accountCard}>
+          <AccountSection />
+        </div>
       </div>
       {SECTIONS.map((section) => (
         <Section

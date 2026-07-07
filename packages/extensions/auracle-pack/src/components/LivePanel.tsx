@@ -34,6 +34,11 @@ import {
 
 const POLL_MS = 20_000;
 
+const ACCENT = 'var(--accent-primary, #0053fd)';
+const CAUTION = '#d4a017';
+const DANGER = '#c4554d';
+const OK = '#2ea043';
+
 const styles = {
   page: {
     display: 'flex',
@@ -52,9 +57,9 @@ const styles = {
     borderRadius: 6,
     fontSize: 12,
     cursor: 'pointer',
-    border: `1px solid ${danger ? '#c4554d' : 'var(--border-primary, rgba(127,127,127,0.35))'}`,
-    background: primary ? 'var(--accent-primary, #0053fd)' : 'transparent',
-    color: primary ? '#fff' : danger ? '#c4554d' : 'var(--text-primary, #d7dae0)',
+    border: `1px solid ${danger ? DANGER : 'var(--border-primary, rgba(127,127,127,0.35))'}`,
+    background: primary ? ACCENT : 'transparent',
+    color: primary ? '#fff' : danger ? DANGER : 'var(--text-primary, #d7dae0)',
   }),
   table: { width: '100%', borderCollapse: 'collapse' as const, fontSize: 13 },
   th: {
@@ -70,16 +75,206 @@ const styles = {
   note: { fontSize: 12, color: 'var(--text-tertiary, #8a8f98)' },
   input: {
     width: '100%',
-    maxWidth: 360,
-    padding: '6px 8px',
+    padding: '7px 9px',
     borderRadius: 6,
     fontSize: 13,
     border: '1px solid var(--border-primary, rgba(127,127,127,0.35))',
     background: 'var(--bg-primary, rgba(0,0,0,0.2))',
     color: 'var(--text-primary, #d7dae0)',
+    outline: 'none',
   },
   fieldLabel: { fontSize: 12, color: 'var(--text-secondary, #b9bec7)', marginBottom: 4 },
-  error: { fontSize: 12, color: '#c4554d' },
+  error: { fontSize: 12, color: DANGER },
+
+  // --- Deploy wizard chrome -------------------------------------------------
+  backBtn: {
+    display: 'inline-flex',
+    alignItems: 'center' as const,
+    gap: 6,
+    padding: '4px 10px 4px 6px',
+    borderRadius: 6,
+    fontSize: 12,
+    cursor: 'pointer',
+    border: '1px solid transparent',
+    background: 'transparent',
+    color: 'var(--text-secondary, #b9bec7)',
+  },
+  wizSubtitle: { fontSize: 12.5, color: 'var(--text-tertiary, #8a8f98)', marginTop: 2 },
+  card: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 20,
+    maxWidth: 640,
+    padding: 20,
+    borderRadius: 12,
+    border: '1px solid var(--border-primary, rgba(127,127,127,0.22))',
+    background: 'var(--bg-secondary, rgba(255,255,255,0.018))',
+  },
+  section: { display: 'flex', flexDirection: 'column' as const, gap: 12 },
+  sectionHead: {
+    fontSize: 11,
+    fontWeight: 600 as const,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.7,
+    color: 'var(--text-tertiary, #8a8f98)',
+  },
+  divider: { height: 1, border: 0, margin: 0, background: 'var(--border-primary, rgba(127,127,127,0.16))' },
+  grid2: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 12 },
+  field: { display: 'flex', flexDirection: 'column' as const, gap: 6 },
+  labelRow: { display: 'flex', alignItems: 'baseline' as const, justifyContent: 'space-between' as const, gap: 8 },
+
+  // Segmented control (Mode, Compute)
+  segWrap: {
+    display: 'inline-flex',
+    padding: 3,
+    gap: 3,
+    borderRadius: 8,
+    border: '1px solid var(--border-primary, rgba(127,127,127,0.3))',
+    background: 'var(--bg-primary, rgba(0,0,0,0.22))',
+  },
+  seg: (active: boolean, tone?: 'caution') => ({
+    padding: '5px 14px',
+    borderRadius: 6,
+    fontSize: 12.5,
+    fontWeight: active ? 600 : 500,
+    cursor: 'pointer',
+    border: '1px solid transparent',
+    whiteSpace: 'nowrap' as const,
+    background: active ? (tone === 'caution' ? 'rgba(212,160,23,0.16)' : ACCENT) : 'transparent',
+    color: active ? (tone === 'caution' ? CAUTION : '#fff') : 'var(--text-secondary, #b9bec7)',
+    boxShadow: active && tone === 'caution' ? `inset 0 0 0 1px ${CAUTION}` : 'none',
+  }),
+
+  // AUM hero field
+  aumBox: (warn: boolean) => ({
+    display: 'flex',
+    alignItems: 'center' as const,
+    gap: 4,
+    padding: '10px 12px',
+    borderRadius: 8,
+    border: `1px solid ${warn ? CAUTION : 'var(--border-primary, rgba(127,127,127,0.35))'}`,
+    background: 'var(--bg-primary, rgba(0,0,0,0.22))',
+  }),
+  aumPrefix: { fontSize: 20, color: 'var(--text-tertiary, #8a8f98)', fontWeight: 500 as const },
+  aumInput: {
+    flex: 1,
+    minWidth: 0,
+    border: 'none',
+    background: 'transparent',
+    outline: 'none',
+    color: 'var(--text-primary, #d7dae0)',
+    fontSize: 20,
+    fontWeight: 600 as const,
+    fontVariantNumeric: 'tabular-nums' as const,
+    letterSpacing: 0.2,
+  },
+  reqPill: (required: boolean) => ({
+    fontSize: 10.5,
+    fontWeight: 600 as const,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase' as const,
+    padding: '2px 7px',
+    borderRadius: 999,
+    color: required ? CAUTION : 'var(--text-tertiary, #8a8f98)',
+    background: required ? 'rgba(212,160,23,0.14)' : 'var(--bg-primary, rgba(0,0,0,0.2))',
+  }),
+
+  // Chips (data sources)
+  chip: (active: boolean) => ({
+    display: 'inline-flex',
+    alignItems: 'center' as const,
+    gap: 6,
+    padding: '5px 11px',
+    borderRadius: 999,
+    fontSize: 12,
+    cursor: 'pointer',
+    border: `1px solid ${active ? ACCENT : 'var(--border-primary, rgba(127,127,127,0.3))'}`,
+    background: active ? 'rgba(0,83,253,0.14)' : 'transparent',
+    color: active ? 'var(--text-primary, #d7dae0)' : 'var(--text-secondary, #b9bec7)',
+  }),
+
+  // Resilience switch row
+  switchRow: {
+    display: 'flex',
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    gap: 12,
+    padding: '10px 12px',
+    borderRadius: 8,
+    border: '1px solid var(--border-primary, rgba(127,127,127,0.22))',
+    background: 'var(--bg-primary, rgba(0,0,0,0.14))',
+  },
+  track: (on: boolean) => ({
+    position: 'relative' as const,
+    width: 34,
+    height: 20,
+    borderRadius: 999,
+    flexShrink: 0,
+    cursor: 'pointer',
+    transition: 'background 120ms ease',
+    background: on ? ACCENT : 'var(--border-primary, rgba(127,127,127,0.4))',
+  }),
+  knob: (on: boolean) => ({
+    position: 'absolute' as const,
+    top: 2,
+    left: on ? 16 : 2,
+    width: 16,
+    height: 16,
+    borderRadius: '50%',
+    background: '#fff',
+    transition: 'left 120ms ease',
+  }),
+
+  caution: { fontSize: 12, color: CAUTION, display: 'flex', alignItems: 'center' as const, gap: 6 },
+  help: { fontSize: 11.5, color: 'var(--text-tertiary, #8a8f98)' },
+
+  // Footer
+  footer: {
+    display: 'flex',
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    gap: 16,
+    flexWrap: 'wrap' as const,
+  },
+  checklist: { display: 'flex', flexDirection: 'column' as const, gap: 3 },
+  checkItem: { display: 'flex', alignItems: 'center' as const, gap: 7, fontSize: 12, color: 'var(--text-tertiary, #8a8f98)' },
+  dot: (color: string, filled: boolean) => ({
+    width: 7,
+    height: 7,
+    borderRadius: '50%',
+    flexShrink: 0,
+    background: filled ? color : 'transparent',
+    boxShadow: filled ? 'none' : `inset 0 0 0 1.5px ${color}`,
+  }),
+  ready: { display: 'flex', alignItems: 'center' as const, gap: 7, fontSize: 12.5, color: OK, fontWeight: 500 as const },
+  deployBtn: (enabled: boolean) => ({
+    padding: '8px 20px',
+    borderRadius: 8,
+    fontSize: 13,
+    fontWeight: 600 as const,
+    cursor: enabled ? 'pointer' : 'not-allowed',
+    border: '1px solid transparent',
+    background: enabled ? ACCENT : 'var(--bg-primary, rgba(127,127,127,0.15))',
+    color: enabled ? '#fff' : 'var(--text-tertiary, #8a8f98)',
+    opacity: enabled ? 1 : 0.85,
+  }),
+  ghostBtn: {
+    padding: '8px 16px',
+    borderRadius: 8,
+    fontSize: 13,
+    cursor: 'pointer',
+    border: '1px solid var(--border-primary, rgba(127,127,127,0.35))',
+    background: 'transparent',
+    color: 'var(--text-secondary, #b9bec7)',
+  },
+  serverError: {
+    fontSize: 12.5,
+    color: DANGER,
+    padding: '9px 12px',
+    borderRadius: 8,
+    border: `1px solid rgba(196,85,77,0.4)`,
+    background: 'rgba(196,85,77,0.1)',
+  },
 };
 
 interface StrategyOption {
@@ -140,147 +335,216 @@ function DeployWizardView({ onDone, onCancel }: { onDone: () => void; onCancel: 
 
   const set = (patch: Partial<DeployWizard>) => setWizard((prev) => ({ ...prev, ...patch }));
 
+  const live = wizard.mode === 'live';
+  const ready = canDeploy(wizard);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 560 }}>
-      <div>
-        <div style={styles.fieldLabel}>Name</div>
-        <input style={styles.input} value={wizard.name} onChange={(e) => set({ name: e.target.value })} />
-      </div>
-      <div>
-        <div style={styles.fieldLabel}>Mode</div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {(['paper', 'live'] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              style={styles.button(wizard.mode === mode)}
-              onClick={() => set({ mode })}
-            >
-              {mode === 'paper' ? 'Paper' : 'Live'}
-            </button>
-          ))}
+    <div style={styles.card}>
+      {/* --- What to run ---------------------------------------------------- */}
+      <div style={styles.section}>
+        <div style={styles.sectionHead}>What to run</div>
+        <div style={styles.field}>
+          <div style={styles.fieldLabel}>Name</div>
+          <input
+            style={styles.input}
+            placeholder="e.g. Momentum SPY — live"
+            value={wizard.name}
+            onChange={(e) => set({ name: e.target.value })}
+          />
         </div>
-      </div>
-      <div>
-        <div style={styles.fieldLabel}>Strategy</div>
-        <select
-          style={styles.input}
-          value={wizard.strategy_path && wizard.strategy_cls ? `${wizard.strategy_path}::${wizard.strategy_cls}` : ''}
-          onChange={(e) => {
-            const [path, cls] = e.target.value.split('::');
-            set({ strategy_path: path ?? '', strategy_cls: cls ?? '' });
-          }}
-        >
-          <option value="">Select a strategy…</option>
-          {strategies.map((option) => (
-            <option key={`${option.path}::${option.cls}`} value={`${option.path}::${option.cls}`}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <div style={styles.fieldLabel}>Brokerage</div>
-        <select
-          style={styles.input}
-          value={wizard.broker ?? ''}
-          onChange={(e) => set({ broker: e.target.value || null })}
-        >
-          <option value="">Select a brokerage…</option>
-          {brokers.map((broker) => (
-            <option key={broker.id} value={broker.id}>
-              {(broker.display_label || broker.id) +
-                (isConnected(broker.status) ? '' : ' (not connected)')}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <div style={styles.fieldLabel}>Starting capital / AUM {wizard.mode === 'live' ? '(required)' : '(optional for paper)'}</div>
-        <input
-          style={styles.input}
-          inputMode="decimal"
-          placeholder="100000"
-          value={wizard.aum ?? ''}
-          onChange={(e) => {
-            const cleaned = e.target.value.replace(/[$,\s]/g, '');
-            const parsed = cleaned.length > 0 ? Number(cleaned) : null;
-            set({ aum: parsed !== null && Number.isFinite(parsed) ? parsed : null });
-          }}
-        />
-      </div>
-      <div>
-        <div style={styles.fieldLabel}>Compute</div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {(Object.keys(COMPUTE_LABELS) as Compute[]).map((compute) => (
-            <button
-              key={compute}
-              type="button"
-              style={styles.button(wizard.compute === compute)}
-              onClick={() => set({ compute })}
-            >
-              {COMPUTE_LABELS[compute]}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div>
-        <div style={styles.fieldLabel}>Data sources</div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {dataProviders.map((provider) => {
-            const checked = wizard.data_providers.includes(provider.id);
-            return (
+        <div style={styles.field}>
+          <div style={styles.fieldLabel}>Mode</div>
+          <div style={styles.segWrap}>
+            {(['paper', 'live'] as const).map((mode) => (
               <button
-                key={provider.id}
+                key={mode}
                 type="button"
-                style={styles.button(checked)}
-                onClick={() =>
-                  set({
-                    data_providers: checked
-                      ? wizard.data_providers.filter((id) => id !== provider.id)
-                      : [...wizard.data_providers, provider.id],
-                  })
-                }
+                style={styles.seg(wizard.mode === mode, mode === 'live' ? 'caution' : undefined)}
+                onClick={() => set({ mode })}
               >
-                {provider.display_label || provider.id}
+                {mode === 'paper' ? 'Paper' : 'Live'}
               </button>
-            );
-          })}
-          {dataProviders.length === 0 ? <span style={styles.note}>None reported by the engine.</span> : null}
+            ))}
+          </div>
+          {live ? (
+            <div style={styles.caution}>
+              <span aria-hidden>▲</span> Live places real orders through your broker.
+            </div>
+          ) : (
+            <div style={styles.help}>Paper trades against the simulator. No credentials needed.</div>
+          )}
+        </div>
+        <div style={styles.grid2}>
+          <div style={styles.field}>
+            <div style={styles.fieldLabel}>Strategy</div>
+            <select
+              style={styles.input}
+              value={wizard.strategy_path && wizard.strategy_cls ? `${wizard.strategy_path}::${wizard.strategy_cls}` : ''}
+              onChange={(e) => {
+                const [path, cls] = e.target.value.split('::');
+                set({ strategy_path: path ?? '', strategy_cls: cls ?? '' });
+              }}
+            >
+              <option value="">Select a strategy…</option>
+              {strategies.map((option) => (
+                <option key={`${option.path}::${option.cls}`} value={`${option.path}::${option.cls}`}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div style={styles.field}>
+            <div style={styles.fieldLabel}>Brokerage</div>
+            <select
+              style={styles.input}
+              value={wizard.broker ?? ''}
+              onChange={(e) => set({ broker: e.target.value || null })}
+            >
+              <option value="">Select a brokerage…</option>
+              {brokers.map((broker) => (
+                <option key={broker.id} value={broker.id}>
+                  {(broker.display_label || broker.id) +
+                    (isConnected(broker.status) ? '' : ' (not connected)')}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-        <input
-          type="checkbox"
-          checked={wizard.auto_restart}
-          onChange={(e) => set({ auto_restart: e.target.checked })}
-        />
-        Automatically restart the algorithm after interruptions
-      </label>
 
-      {errors.length > 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {errors.map((error) => (
-            <div key={error} style={styles.error}>
-              {error}
-            </div>
-          ))}
+      <hr style={styles.divider} />
+
+      {/* --- Capital (the field that matters most) ------------------------- */}
+      <div style={styles.section}>
+        <div style={styles.labelRow}>
+          <div style={styles.sectionHead}>Starting capital / AUM</div>
+          <span style={styles.reqPill(live)}>{live ? 'Required' : 'Optional for paper'}</span>
         </div>
-      ) : null}
-      {serverError ? <div style={styles.error}>{serverError}</div> : null}
+        <div style={styles.aumBox(live && !(typeof wizard.aum === 'number' && wizard.aum > 0))}>
+          <span style={styles.aumPrefix}>$</span>
+          <input
+            style={styles.aumInput}
+            inputMode="decimal"
+            placeholder="100,000"
+            value={wizard.aum ?? ''}
+            onChange={(e) => {
+              const cleaned = e.target.value.replace(/[$,\s]/g, '');
+              const parsed = cleaned.length > 0 ? Number(cleaned) : null;
+              set({ aum: parsed !== null && Number.isFinite(parsed) ? parsed : null });
+            }}
+          />
+        </div>
+        <div style={styles.help}>The capital the strategy sizes against. Live orders are capped by your broker buying power.</div>
+      </div>
 
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button
-          type="button"
-          style={styles.button(true)}
-          disabled={!canDeploy(wizard) || submitting}
-          onClick={() => void submit()}
+      <hr style={styles.divider} />
+
+      {/* --- Where it runs -------------------------------------------------- */}
+      <div style={styles.section}>
+        <div style={styles.sectionHead}>Where it runs</div>
+        <div style={styles.field}>
+          <div style={styles.fieldLabel}>Compute</div>
+          <div style={styles.segWrap}>
+            {(Object.keys(COMPUTE_LABELS) as Compute[]).map((compute) => (
+              <button
+                key={compute}
+                type="button"
+                style={styles.seg(wizard.compute === compute)}
+                onClick={() => set({ compute })}
+              >
+                {COMPUTE_LABELS[compute]}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={styles.field}>
+          <div style={styles.fieldLabel}>
+            Data sources{wizard.compute !== 'local' ? ' (at least one for cloud)' : ''}
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {dataProviders.map((provider) => {
+              const checked = wizard.data_providers.includes(provider.id);
+              return (
+                <button
+                  key={provider.id}
+                  type="button"
+                  style={styles.chip(checked)}
+                  onClick={() =>
+                    set({
+                      data_providers: checked
+                        ? wizard.data_providers.filter((id) => id !== provider.id)
+                        : [...wizard.data_providers, provider.id],
+                    })
+                  }
+                >
+                  {checked ? <span aria-hidden>✓</span> : null}
+                  {provider.display_label || provider.id}
+                </button>
+              );
+            })}
+            {dataProviders.length === 0 ? <span style={styles.note}>None reported by the engine.</span> : null}
+          </div>
+        </div>
+      </div>
+
+      <hr style={styles.divider} />
+
+      {/* --- Resilience ----------------------------------------------------- */}
+      <div style={styles.switchRow}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span style={{ fontSize: 13 }}>Auto-restart after interruptions</span>
+          <span style={styles.help}>Best-effort restart once the algorithm has run for 5+ minutes.</span>
+        </div>
+        <div
+          role="switch"
+          aria-checked={wizard.auto_restart}
+          tabIndex={0}
+          style={styles.track(wizard.auto_restart)}
+          onClick={() => set({ auto_restart: !wizard.auto_restart })}
+          onKeyDown={(e) => {
+            if (e.key === ' ' || e.key === 'Enter') {
+              e.preventDefault();
+              set({ auto_restart: !wizard.auto_restart });
+            }
+          }}
         >
-          {submitting ? 'Deploying…' : 'Deploy'}
-        </button>
-        <button type="button" style={styles.button()} onClick={onCancel}>
-          Cancel
-        </button>
+          <span aria-hidden style={styles.knob(wizard.auto_restart)} />
+        </div>
+      </div>
+
+      {serverError ? <div style={styles.serverError}>{serverError}</div> : null}
+
+      <hr style={styles.divider} />
+
+      {/* --- Footer: what's left + actions --------------------------------- */}
+      <div style={styles.footer}>
+        {ready ? (
+          <span style={styles.ready}>
+            <span aria-hidden style={styles.dot(OK, true)} /> Ready to deploy
+          </span>
+        ) : (
+          <div style={styles.checklist}>
+            {errors.map((error) => (
+              <span key={error} style={styles.checkItem}>
+                <span aria-hidden style={styles.dot('var(--text-tertiary, #8a8f98)', false)} />
+                {error}
+              </span>
+            ))}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button type="button" style={styles.ghostBtn} onClick={onCancel}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            style={styles.deployBtn(ready && !submitting)}
+            disabled={!ready || submitting}
+            onClick={() => void submit()}
+          >
+            {submitting ? 'Deploying…' : live ? 'Deploy live' : 'Deploy'}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -385,8 +649,14 @@ export function LiveAlgorithmsPanel(_props: PanelHostProps): JSX.Element {
   if (view === 'wizard') {
     return (
       <div style={styles.page}>
-        <div style={styles.headerRow}>
-          <span style={styles.title}>Deploy</span>
+        <div>
+          <button type="button" style={styles.backBtn} onClick={() => setView('table')}>
+            <span aria-hidden>‹</span> Live Algorithms
+          </button>
+          <div style={{ ...styles.title, fontSize: 17, marginTop: 4 }}>Deploy a strategy</div>
+          <div style={styles.wizSubtitle}>
+            Launch to paper or live. You can stop or liquidate it any time from the dashboard.
+          </div>
         </div>
         <DeployWizardView
           onDone={() => {

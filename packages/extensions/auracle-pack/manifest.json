@@ -117,7 +117,7 @@
         "icon": "science",
         "placement": "fullscreen",
         "order": 69,
-        "tooltip": "Ranked findings from the research scan — fresh quant papers scored for tradability."
+        "tooltip": "Fresh quant papers, ranked for tradability by the engine's scan."
       }
     ]
   }

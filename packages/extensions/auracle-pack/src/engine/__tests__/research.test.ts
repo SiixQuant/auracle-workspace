@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  DEEP_RANK_PROMPT,
   DRAFT_SIGNED_OUT_REASON,
   draftAction,
   draftPrompt,
@@ -183,5 +184,30 @@ describe('normalizeFinding strategy_path', () => {
     expect(normalizeFinding({ strategy_path: 'a.py' }).strategy_path).toBe('a.py');
     expect(normalizeFinding({}).strategy_path).toBeNull();
     expect(normalizeFinding({ strategy_path: '' }).strategy_path).toBeNull();
+  });
+});
+
+
+describe('deep-rank origin labeling and feed order', () => {
+  it('labels agent-origin models as agent, everything else honestly', () => {
+    expect(scoreOrigin('heuristic')).toBe('heuristic');
+    expect(scoreOrigin('agent')).toBe('agent');
+    expect(scoreOrigin('agent-refined')).toBe('agent');
+    expect(scoreOrigin('gpt-4o')).toBe('llm');
+  });
+
+  it('pins the deep-rank hand-off command', () => {
+    expect(DEEP_RANK_PROMPT).toBe('/auracle:deep-rank');
+  });
+
+  it('renders the feed in server order — no client re-scoring', () => {
+    const rows = [
+      { id: 2, composite: 90, model: 'agent' },
+      { id: 1, composite: 55, model: 'heuristic' },
+    ];
+    const normalized = rows.map(normalizeFinding);
+    expect(normalized.map((f) => f.id)).toEqual([2, 1]);
+    expect(normalized[0].composite).toBe(90);
+    expect(normalized[0].model).toBe('agent');
   });
 });

@@ -385,7 +385,7 @@ export function ResearchPanel(): JSX.Element {
       return;
     }
     if (response.status === 409) {
-      setScanNote({ kind: 'ok', text: 'A scan is already running — watching it.' });
+      setScanNote({ kind: 'ok', text: 'A scan is already running; watching it.' });
       startPolling();
       return;
     }
@@ -407,7 +407,7 @@ export function ResearchPanel(): JSX.Element {
     if (response.ok) {
       setCatText((body.categories ?? []).join(', '));
       setKwText((body.keywords ?? []).join(', '));
-      setInterestsNote('Saved — the next scan uses these.');
+      setInterestsNote('Saved. The next scan uses these.');
     } else {
       setInterestsNote(
         body.detail ?? `Save failed (${response.status || 'engine unreachable'}).`
@@ -495,7 +495,7 @@ export function ResearchPanel(): JSX.Element {
               />
               <span style={styles.fieldHint}>
                 arXiv category terms the scan fetches from. Semantic Scholar has no
-                categories — it follows your keywords.
+                categories; it follows your keywords.
               </span>
             </div>
             <div style={styles.field}>
@@ -536,10 +536,15 @@ export function ResearchPanel(): JSX.Element {
           </div>
         ) : load.feed.findings.length === 0 ? (
           <div style={styles.centerBox}>
-            <span>
-              No findings yet — run a scan now, or let tonight's scheduled scan fill
-              the feed.
-            </span>
+            <span>No findings yet. Scan now, or let tonight's scheduled scan fill the feed.</span>
+            <button
+              type="button"
+              style={styles.retryBtn}
+              disabled={scanning}
+              onClick={() => void kickScan()}
+            >
+              {scanning ? 'Scanning…' : 'Scan now'}
+            </button>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

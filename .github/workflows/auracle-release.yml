@@ -55,6 +55,9 @@ jobs:
       - name: Build runtime library (ships as extraResources)
         run: npm run build
 
+      - name: Build extension SDK (the electron main build resolves its dist)
+        run: npm run build -w @nimbalyst/extension-sdk
+
       - name: Build dmg (unsigned unless signing secrets are configured)
         working-directory: packages/electron
         env:

@@ -277,6 +277,20 @@ export interface PanelHost {
    */
   close(): void;
 
+  /**
+   * Hand a prompt to a new agent session (spawned as a sibling of the
+   * workspace's most recent session). The prompt is prefilled, never
+   * auto-submitted — the user reviews it and presses Send. Optional:
+   * older hosts may not provide it, so callers must feature-detect.
+   *
+   * @returns ok:false with an honest reason when the hand-off cannot
+   * happen (no session yet, main-process failure).
+   */
+  launchAgentSession?(
+    prompt: string,
+    opts?: { title?: string }
+  ): Promise<{ ok: boolean; sessionId?: string; error?: string }>;
+
   // ============ SETTINGS TOGGLE ============
 
   /**

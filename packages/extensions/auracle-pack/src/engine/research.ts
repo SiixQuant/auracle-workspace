@@ -31,6 +31,7 @@ export interface ResearchFinding {
   doi: string | null;
   pdf_url: string | null;
   citation_count: number | null;
+  strategy_path: string | null;
 }
 
 export interface ResearchFeed {
@@ -90,6 +91,7 @@ export function normalizeFinding(raw: Record<string, unknown>): ResearchFinding 
     pdf_url: str(raw.pdf_url),
     citation_count:
       typeof raw.citation_count === 'number' ? raw.citation_count : null,
+    strategy_path: str(raw.strategy_path),
   };
 }
 
@@ -151,4 +153,46 @@ export function splitTerms(raw: string): string[] {
     if (t && !out.includes(t)) out.push(t);
   }
   return out.slice(0, 40);
+}
+
+
+/**
+ * The card's draft affordance, derived honestly from the finding's state
+ * and the agent sign-in. Discriminated so the render can't show a control
+ * whose action doesn't exist:
+ *  - drafted/backtested with a recorded link -> open the file
+ *  - drafted without a link (legacy rows)    -> nothing to open, no lie
+ *  - surfaced/watchlist                      -> draft (disabled + reason
+ *    while signed out — the hand-off runs on the user's account)
+ */
+export type DraftAction =
+  | { kind: 'draft'; disabled: false; reason: null }
+  | { kind: 'draft'; disabled: true; reason: string }
+  | { kind: 'open'; path: string }
+  | { kind: 'none' };
+
+export const DRAFT_SIGNED_OUT_REASON =
+  'Sign in to draft — the agent works on your account.';
+
+export function draftAction(
+  finding: Pick<ResearchFinding, 'status' | 'strategy_path'>,
+  signedIn: boolean
+): DraftAction {
+  if (finding.status === 'drafted' || finding.status === 'backtested') {
+    return finding.strategy_path
+      ? { kind: 'open', path: `strategies/${finding.strategy_path}` }
+      : { kind: 'none' };
+  }
+  if (finding.status !== 'surfaced' && finding.status !== 'watchlist') {
+    return { kind: 'none' };
+  }
+  if (!signedIn) {
+    return { kind: 'draft', disabled: true, reason: DRAFT_SIGNED_OUT_REASON };
+  }
+  return { kind: 'draft', disabled: false, reason: null };
+}
+
+/** The exact plugin command the hand-off prefills — id only, no prose. */
+export function draftPrompt(findingId: number): string {
+  return `/auracle:draft-strategy ${findingId}`;
 }

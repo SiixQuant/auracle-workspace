@@ -3,20 +3,26 @@
  * conveyor (fullscreen pack panel, gutter icon).
  *
  * Renders the ranked findings feed the scheduled scan maintains, with
- * interests steering and per-finding watch/dismiss. Honesty rules:
- * every number on a card is engine-computed and arrives pre-ranked
- * (no client re-scoring), the score's origin is labeled, scan outcomes
- * distinguish "found nothing" from "broke", and there is no draft
- * control yet — its backing route ships in the next slice, and
- * controls only render when their route exists.
+ * interests steering, per-finding watch/dismiss, and the draft leg:
+ * "Draft strategy" hands the finding to the /auracle:draft-strategy
+ * agent command (prefilled, review-first — nothing auto-runs), then the
+ * card flips to Drafted with an open-the-file affordance once the
+ * engine records the finding→strategy link. Honesty rules: every number
+ * on a card is engine-computed and arrives pre-ranked (no client
+ * re-scoring), the score's origin is labeled, scan outcomes distinguish
+ * "found nothing" from "broke", and the draft control is disabled with
+ * the reason while the agent is signed out.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getJson, postJson } from '../engine/client';
+import { authState, getJson, postJson } from '../engine/client';
 import {
+  DraftAction,
   ResearchFeed,
   ResearchFinding,
   ResearchInterests,
   ScanStatus,
+  draftAction,
+  draftPrompt,
   fmtDate,
   fmtWhen,
   normalizeFinding,
@@ -25,6 +31,19 @@ import {
   sourceLabel,
   splitTerms,
 } from '../engine/research';
+
+/**
+ * Structural slice of the PanelHost this panel uses — feature-detected so
+ * the panel renders (with the hand-off disabled) on hosts that predate
+ * launchAgentSession.
+ */
+interface PanelHostLike {
+  openFile?: (path: string) => void;
+  launchAgentSession?: (
+    prompt: string,
+    opts?: { title?: string }
+  ) => Promise<{ ok: boolean; sessionId?: string; error?: string }>;
+}
 
 const ACCENT = 'var(--accent-primary, #0053fd)';
 const OK = '#2ea043';
@@ -227,13 +246,19 @@ function statusBadge(finding: ResearchFinding): { text: string; style: object } 
 function FindingCard({
   finding,
   busy,
+  action,
   onWatch,
   onDismiss,
+  onDraft,
+  onOpen,
 }: {
   finding: ResearchFinding;
   busy: boolean;
+  action: DraftAction;
   onWatch: () => void;
   onDismiss: () => void;
+  onDraft: () => void;
+  onOpen: () => void;
 }) {
   const badge = statusBadge(finding);
   const meta: JSX.Element[] = [];
@@ -288,6 +313,29 @@ function FindingCard({
       </div>
       <div style={styles.actionsCol}>
         {badge ? <span style={badge.style}>{badge.text}</span> : null}
+        {action.kind === 'open' ? (
+          <button type="button" style={styles.tinyBtn(false)} onClick={onOpen}>
+            Open file
+          </button>
+        ) : null}
+        {action.kind === 'draft' ? (
+          <button
+            type="button"
+            style={styles.tinyBtn(busy || action.disabled)}
+            disabled={busy || action.disabled}
+            title={
+              action.disabled
+                ? action.reason
+                : 'Hand this finding to the agent to draft a strategy'
+            }
+            onClick={onDraft}
+          >
+            ✎ Draft strategy
+          </button>
+        ) : null}
+        {action.kind === 'draft' && action.disabled ? (
+          <span style={styles.statusBadge}>{action.reason}</span>
+        ) : null}
         {finding.status === 'surfaced' ? (
           <button type="button" style={styles.tinyBtn(busy)} disabled={busy} onClick={onWatch}>
             ☆ Watch
@@ -301,7 +349,7 @@ function FindingCard({
   );
 }
 
-export function ResearchPanel(): JSX.Element {
+export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Element {
   const [load, setLoad] = useState<LoadState>({ phase: 'loading' });
   const [scan, setScan] = useState<ScanStatus | null>(null);
   const [scanNote, setScanNote] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
@@ -311,7 +359,9 @@ export function ResearchPanel(): JSX.Element {
   const [kwText, setKwText] = useState('');
   const [interestsBusy, setInterestsBusy] = useState(false);
   const [interestsNote, setInterestsNote] = useState<string | null>(null);
+  const [signedIn, setSignedIn] = useState(false);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const draftPollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refresh = useCallback(async () => {
     const body = await getJson<Record<string, unknown>>('/ui/api/research/feed?limit=60');
@@ -340,8 +390,10 @@ export function ResearchPanel(): JSX.Element {
   useEffect(() => {
     void refresh();
     void loadInterests();
+    void authState().then((auth) => setSignedIn(auth.signedIn));
     return () => {
       if (pollTimer.current) clearInterval(pollTimer.current);
+      if (draftPollTimer.current) clearInterval(draftPollTimer.current);
     };
   }, [refresh, loadInterests]);
 
@@ -436,6 +488,66 @@ export function ResearchPanel(): JSX.Element {
             );
       return { phase: 'ready', feed: { ...prev.feed, findings } };
     });
+  };
+
+  /**
+   * After a hand-off, watch the finding's link until the agent records
+   * the drafted state, then refresh the feed and open the new file for
+   * review. Bounded (10 min) and single-flight — a second Draft click
+   * repoints the watcher.
+   */
+  const watchDraftLink = useCallback(
+    (findingId: number) => {
+      if (draftPollTimer.current) clearInterval(draftPollTimer.current);
+      let ticks = 0;
+      draftPollTimer.current = setInterval(() => {
+        void (async () => {
+          ticks += 1;
+          if (ticks > 120) {
+            if (draftPollTimer.current) clearInterval(draftPollTimer.current);
+            draftPollTimer.current = null;
+            return;
+          }
+          const link = await getJson<{ status: string; strategy_path: string | null }>(
+            `/ui/api/research/findings/${findingId}/link`
+          );
+          if (!link || link.status !== 'drafted' || !link.strategy_path) return;
+          if (draftPollTimer.current) clearInterval(draftPollTimer.current);
+          draftPollTimer.current = null;
+          void refresh();
+          setScanNote({ kind: 'ok', text: 'Draft landed — opening the file for review.' });
+          host?.openFile?.(`strategies/${link.strategy_path}`);
+        })();
+      }, 5000);
+    },
+    [host, refresh]
+  );
+
+  const startDraft = async (finding: ResearchFinding) => {
+    if (!host?.launchAgentSession) {
+      setScanNote({
+        kind: 'err',
+        text: 'This build cannot hand off to the agent — update the IDE.',
+      });
+      return;
+    }
+    setBusyId(finding.id);
+    const result = await host.launchAgentSession(draftPrompt(finding.id), {
+      title: `Draft: ${finding.title}`.slice(0, 60),
+    });
+    setBusyId(null);
+    if (!result.ok) {
+      setScanNote({
+        kind: 'err',
+        text: result.error ?? 'The agent hand-off failed.',
+      });
+      return;
+    }
+    setScanNote({
+      kind: 'ok',
+      text: 'Handed to the agent — review the prefilled command and send it.',
+    });
+    watchDraftLink(finding.id);
   };
 
   const scanning = scan?.running === true;
@@ -553,8 +665,15 @@ export function ResearchPanel(): JSX.Element {
                 key={finding.id}
                 finding={finding}
                 busy={busyId === finding.id}
+                action={draftAction(finding, signedIn)}
                 onWatch={() => void act(finding, 'watch')}
                 onDismiss={() => void act(finding, 'dismiss')}
+                onDraft={() => void startDraft(finding)}
+                onOpen={() => {
+                  if (finding.strategy_path) {
+                    host?.openFile?.(`strategies/${finding.strategy_path}`);
+                  }
+                }}
               />
             ))}
           </div>

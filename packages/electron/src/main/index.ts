@@ -141,6 +141,7 @@ import { registerGeminiUsageHandlers } from './ipc/GeminiUsageHandlers';
 import { geminiUsageService } from './services/GeminiUsageService';
 import { codexAuthService } from './services/CodexAuthService';
 import { registerExtensionHandlers, getClaudePluginPaths, initializeExtensionFileTypes } from './ipc/ExtensionHandlers';
+import { registerAuraclePanelAgentHandlers } from './ipc/AuraclePanelAgentHandlers';
 import { registerExtensionPermissionHandlers } from './ipc/ExtensionPermissionHandlers';
 import { registerTrackerImporterHandlers } from './ipc/TrackerImporterHandlers';
 import { installExtensionAgentBridge } from './extensions/extensionAgentBridge';
@@ -2026,6 +2027,7 @@ app.whenReady().then(async () => {
     registerMockupHandlers();
     registerDataModelHandlers();
     registerExtensionHandlers();
+    registerAuraclePanelAgentHandlers();
     registerExtensionPermissionHandlers();
     registerTrackerImporterHandlers();
     registerExtensionMarketplaceHandlers();

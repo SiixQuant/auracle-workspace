@@ -72,6 +72,13 @@ jobs:
           SKIP_NOTARIZE: ${{ secrets.APPLE_ID == '' && 'true' || 'false' }}
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.MACOS_CERTIFICATE != '' }}
         run: |
+          # Workflow env exports absent secrets as empty-but-SET variables,
+          # and electron-builder treats an empty CSC_LINK as a certificate
+          # path (resolving to the cwd -> "not a file"). Unset the empties
+          # so it takes the unsigned path instead.
+          for v in CSC_LINK CSC_KEY_PASSWORD CSC_NAME APPLE_ID APPLE_APP_SPECIFIC_PASSWORD; do
+            if [ -z "${!v:-}" ]; then unset "$v"; fi
+          done
           npm run build
           npm run build:extensions
           node -r dotenv/config build/configure-build.js || true
@@ -90,12 +97,29 @@ jobs:
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
           ls -la packages/electron/dist/*.dmg* && wc -c "packages/electron/dist/${NAME}.sha256"
 
+      - name: Export dmg + sidecar as workflow artifact
+        # Keeps the build retrievable even when publishing can't run (no
+        # RELEASES_TOKEN) or fails — download it and publish by hand
+        # instead of paying for another 35-minute build.
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.tag }}-${{ inputs.target }}
+          path: |
+            packages/electron/dist/*.dmg
+            packages/electron/dist/*.dmg.sha256
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Publish release
         env:
           GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
           TAG: ${{ inputs.tag }}
           TARGET: ${{ inputs.target }}
         run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning::RELEASES_TOKEN is not configured — skipping publish. The dmg + sidecar are attached to this run as a workflow artifact; download and 'gh release create' them manually."
+            exit 0
+          fi
           if [ "$TARGET" = "production" ]; then REPO="SiixQuant/auracle-ide"; else REPO="SiixQuant/auracle-ide-staging"; fi
           gh release create "$TAG" \
             --repo "$REPO" \

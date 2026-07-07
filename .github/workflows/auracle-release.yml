@@ -32,6 +32,10 @@ jobs:
   build-and-publish:
     runs-on: macos-14
     timeout-minutes: 90
+    env:
+      # The runtime-library and dmg builds hit node's default heap ceiling
+      # on the hosted arm64 runners; give every node step more headroom.
+      NODE_OPTIONS: --max-old-space-size=6144
     steps:
       - uses: actions/checkout@v4
 

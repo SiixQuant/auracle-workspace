@@ -19,6 +19,13 @@ import {
   TRACKER_REFERENCE_URN_SCHEME,
 } from './TrackerReferenceNode';
 
+// Built from TRACKER_REFERENCE_URN_SCHEME so the matchers can never drift
+// from the scheme the export side emits.
+const SCHEME_PATTERN = TRACKER_REFERENCE_URN_SCHEME.replace(
+  /[.*+?^${}()|[\]\\]/g,
+  '\\$&',
+);
+
 export const TrackerReferenceTransformer: TextMatchTransformer = {
   dependencies: [TrackerReferenceNode],
   export: (node) => {
@@ -28,10 +35,10 @@ export const TrackerReferenceTransformer: TextMatchTransformer = {
     const key = node.getReferenceKey();
     return `[${key}](${TRACKER_REFERENCE_URN_SCHEME}${key})`;
   },
-  // Match markdown links whose href uses the auracle:// scheme. The label
+  // Match markdown links whose href uses the tracker URN scheme. The label
   // (group 1) is display-only; the reference key (group 2) is the URN path.
-  importRegExp: /(?<!!)\[([^\]]+)\]\(nimbalyst:\/\/([^)\s]+)\)/,
-  regExp: /(?<!!)\[([^\]]+)\]\(nimbalyst:\/\/([^)\s]+)\)$/,
+  importRegExp: new RegExp(`(?<!!)\\[([^\\]]+)\\]\\(${SCHEME_PATTERN}([^)\\s]+)\\)`),
+  regExp: new RegExp(`(?<!!)\\[([^\\]]+)\\]\\(${SCHEME_PATTERN}([^)\\s]+)\\)$`),
   replace: (textNode, match) => {
     const [, , referenceKey] = match;
     textNode.replace($createTrackerReferenceNode(referenceKey));

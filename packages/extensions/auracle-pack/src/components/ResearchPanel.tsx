@@ -16,6 +16,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { authState, getJson, postJson } from '../engine/client';
 import {
+  DEEP_RANK_PROMPT,
+  DEEP_RANK_SIGNED_OUT_REASON,
   DraftAction,
   ResearchFeed,
   ResearchFinding,
@@ -523,6 +525,45 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
     [host, refresh]
   );
 
+  /** Bounded feed re-poll after a deep-rank hand-off: the agent writes
+   * refined rows back over minutes, so pick up re-sorts without asking
+   * the user to mash refresh. */
+  const watchFeedForRefinement = useCallback(() => {
+    if (draftPollTimer.current) clearInterval(draftPollTimer.current);
+    let ticks = 0;
+    draftPollTimer.current = setInterval(() => {
+      ticks += 1;
+      if (ticks > 30) {
+        if (draftPollTimer.current) clearInterval(draftPollTimer.current);
+        draftPollTimer.current = null;
+        return;
+      }
+      void refresh();
+    }, 10000);
+  }, [refresh]);
+
+  const startDeepRank = async () => {
+    if (!host?.launchAgentSession) {
+      setScanNote({
+        kind: 'err',
+        text: 'This build cannot hand off to the agent — update the IDE.',
+      });
+      return;
+    }
+    const result = await host.launchAgentSession(DEEP_RANK_PROMPT, {
+      title: 'Deep-rank findings',
+    });
+    if (!result.ok) {
+      setScanNote({ kind: 'err', text: result.error ?? 'The agent hand-off failed.' });
+      return;
+    }
+    setScanNote({
+      kind: 'ok',
+      text: 'Handed to the agent — review the prefilled command and send it.',
+    });
+    watchFeedForRefinement();
+  };
+
   const startDraft = async (finding: ResearchFinding) => {
     if (!host?.launchAgentSession) {
       setScanNote({
@@ -580,6 +621,19 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
             onClick={() => setEditorOpen((open) => !open)}
           >
             Interests
+          </button>
+          <button
+            type="button"
+            style={styles.ghostBtn(!signedIn)}
+            disabled={!signedIn}
+            title={
+              signedIn
+                ? 'Re-rank the top findings with the agent (review-first)'
+                : DEEP_RANK_SIGNED_OUT_REASON
+            }
+            onClick={() => void startDeepRank()}
+          >
+            ▲ Deep-rank
           </button>
           {scanNote ? (
             <span style={styles.note(scanNote.kind)}>

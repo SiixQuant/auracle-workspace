@@ -196,3 +196,9 @@ export function draftAction(
 export function draftPrompt(findingId: number): string {
   return `/auracle:draft-strategy ${findingId}`;
 }
+
+/** The deep-rank hand-off command (whole-feed action, no arguments). */
+export const DEEP_RANK_PROMPT = '/auracle:deep-rank';
+
+export const DEEP_RANK_SIGNED_OUT_REASON =
+  'Sign in to deep-rank — the agent works on your account.';

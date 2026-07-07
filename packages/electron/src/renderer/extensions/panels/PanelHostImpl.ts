@@ -164,6 +164,25 @@ class PanelHostImpl implements PanelHost {
     this.onClosePanel();
   }
 
+  async launchAgentSession(
+    prompt: string,
+    opts?: { title?: string }
+  ): Promise<{ ok: boolean; sessionId?: string; error?: string }> {
+    try {
+      const result = await window.electronAPI.invoke('extensions:launch-agent-session', {
+        workspacePath: this.workspacePath,
+        prompt,
+        title: opts?.title,
+      });
+      return result as { ok: boolean; sessionId?: string; error?: string };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
   openSettings(): void {
     this._isSettingsOpen = true;
   }

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  DRAFT_SIGNED_OUT_REASON,
+  draftAction,
+  draftPrompt,
   normalizeFinding,
   scanSummaryText,
   scoreOrigin,
@@ -117,5 +120,68 @@ describe('timestamps', () => {
     expect(fmtWhen('not-a-date')).toBe('');
     expect(fmtDate('2026-06-03T00:00:00+00:00')).toBe('Jun 3, 2026');
     expect(fmtDate(null)).toBe('');
+  });
+});
+
+
+describe('draftAction', () => {
+  const f = (status: string, strategy_path: string | null = null) => ({
+    status,
+    strategy_path,
+  });
+
+  it('drafted with a recorded link opens the strategies file', () => {
+    expect(draftAction(f('drafted', 'momentum_from_paper.py'), true)).toEqual({
+      kind: 'open',
+      path: 'strategies/momentum_from_paper.py',
+    });
+    expect(draftAction(f('backtested', 'x.py'), false)).toEqual({
+      kind: 'open',
+      path: 'strategies/x.py',
+    });
+  });
+
+  it('drafted without a link offers nothing rather than a dead control', () => {
+    expect(draftAction(f('drafted'), true)).toEqual({ kind: 'none' });
+  });
+
+  it('signed-out draft is disabled with the reason', () => {
+    const action = draftAction(f('surfaced'), false);
+    expect(action).toEqual({
+      kind: 'draft',
+      disabled: true,
+      reason: DRAFT_SIGNED_OUT_REASON,
+    });
+  });
+
+  it('signed-in surfaced and watchlist findings can draft', () => {
+    expect(draftAction(f('surfaced'), true)).toEqual({
+      kind: 'draft',
+      disabled: false,
+      reason: null,
+    });
+    expect(draftAction(f('watchlist'), true)).toEqual({
+      kind: 'draft',
+      disabled: false,
+      reason: null,
+    });
+  });
+
+  it('terminal states never draft', () => {
+    expect(draftAction(f('dismissed'), true)).toEqual({ kind: 'none' });
+  });
+});
+
+describe('draftPrompt', () => {
+  it('prefills the namespaced plugin command with the id only', () => {
+    expect(draftPrompt(42)).toBe('/auracle:draft-strategy 42');
+  });
+});
+
+describe('normalizeFinding strategy_path', () => {
+  it('passes a recorded path through and nulls everything else', () => {
+    expect(normalizeFinding({ strategy_path: 'a.py' }).strategy_path).toBe('a.py');
+    expect(normalizeFinding({}).strategy_path).toBeNull();
+    expect(normalizeFinding({ strategy_path: '' }).strategy_path).toBeNull();
   });
 });

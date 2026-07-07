@@ -36,6 +36,7 @@
       "enabledByDefault": true,
       "commands": [
         { "name": "research-ideas", "description": "Scan recent research and synthesize strategy ideas" },
+        { "name": "draft-strategy", "description": "Draft a provenance-linked strategy from a research finding" },
         { "name": "run-backtest", "description": "Run a vectorized backtest on a strategy" },
         { "name": "walk-forward", "description": "Rolling out-of-sample walk-forward with regime diagnosis" },
         { "name": "premarket-check", "description": "One-shot pre-market readiness check" },

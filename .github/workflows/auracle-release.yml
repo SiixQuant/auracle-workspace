@@ -82,20 +82,26 @@ jobs:
           npm run build
           npm run build:extensions
           node -r dotenv/config build/configure-build.js || true
-          npx electron-builder --mac --arm64
+          # --publish never: this workflow does its own publishing below;
+          # electron-builder's built-in GitHub publisher otherwise fires on
+          # CI and dies without a GH_TOKEN after the dmg is already built.
+          npx electron-builder --mac --arm64 --publish never
         continue-on-error: false
 
       - name: Collect artifact + generate checksum sidecar
         id: artifact
+        # electron-builder writes to release/ (not dist/), and alongside the
+        # arch-named dmg it leaves a backwards-compat "Auracle IDE-macOS.dmg"
+        # copy — releases ship only the arm64-named one, like v1.0.x did.
         run: |
-          DMG=$(ls packages/electron/dist/*.dmg | head -1)
+          DMG=$(ls packages/electron/release/*-arm64.dmg | head -1)
           test -n "$DMG"
           NAME=$(basename "$DMG")
           HEX=$(shasum -a 256 "$DMG" | awk '{print $1}')
-          printf '%s\n' "$HEX" > "packages/electron/dist/${NAME}.sha256"
+          printf '%s\n' "$HEX" > "packages/electron/release/${NAME}.sha256"
           echo "dmg=$DMG" >> "$GITHUB_OUTPUT"
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
-          ls -la packages/electron/dist/*.dmg* && wc -c "packages/electron/dist/${NAME}.sha256"
+          ls -la packages/electron/release/*.dmg* && wc -c "packages/electron/release/${NAME}.sha256"
 
       - name: Export dmg + sidecar as workflow artifact
         # Keeps the build retrievable even when publishing can't run (no
@@ -105,8 +111,8 @@ jobs:
         with:
           name: ${{ inputs.tag }}-${{ inputs.target }}
           path: |
-            packages/electron/dist/*.dmg
-            packages/electron/dist/*.dmg.sha256
+            packages/electron/release/*-arm64.dmg
+            packages/electron/release/*-arm64.dmg.sha256
           if-no-files-found: error
           retention-days: 7
 
@@ -126,4 +132,4 @@ jobs:
             --title "$TAG" \
             --notes "Auracle IDE ${TAG#auracle-v}" \
             "${{ steps.artifact.outputs.dmg }}" \
-            "packages/electron/dist/${{ steps.artifact.outputs.name }}.sha256"
+            "packages/electron/release/${{ steps.artifact.outputs.name }}.sha256"

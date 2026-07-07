@@ -41,6 +41,11 @@ jobs:
           cache: npm
 
       - name: Install dependencies
+        env:
+          # @vscode/ripgrep's postinstall downloads its binary from GitHub
+          # releases; unauthenticated requests from shared runner IPs get
+          # rate-limited 403s. The workflow token authenticates the fetch.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm ci --no-audit --no-fund
 
       - name: Build runtime library (ships as extraResources)

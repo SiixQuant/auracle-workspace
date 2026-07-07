@@ -10,6 +10,7 @@ import {
 } from './components/MonitorPanels';
 import { AuracleFlowEditor } from './components/FlowEditor';
 import { QcImportPanel } from './components/QcImportPanel';
+import { ResearchPanel } from './components/ResearchPanel';
 
 export async function activate() {}
 
@@ -44,6 +45,9 @@ export const panels = {
   },
   'qc-import': {
     component: QcImportPanel,
+  },
+  research: {
+    component: ResearchPanel,
   },
 };
 

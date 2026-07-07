@@ -110,6 +110,14 @@
         "placement": "fullscreen",
         "order": 76,
         "tooltip": "Translate a QuantConnect project into an Auracle strategy scaffold."
+      },
+      {
+        "id": "research",
+        "title": "Research",
+        "icon": "science",
+        "placement": "fullscreen",
+        "order": 69,
+        "tooltip": "Ranked findings from the research scan — fresh quant papers scored for tradability."
       }
     ]
   }

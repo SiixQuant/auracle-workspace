@@ -65,7 +65,7 @@ export const COMPUTE_LABELS: Record<Compute, string> = {
  * surfacing a 402/403 only after the user clicks Deploy.
  */
 export function isPaidTier(tier: string | null | undefined): boolean {
-  const t = (tier ?? '').toLowerCase();
+  const t = (tier ?? '').toLowerCase().trim();
   return t.length > 0 && t !== 'community' && t !== 'free' && t !== 'unknown';
 }
 

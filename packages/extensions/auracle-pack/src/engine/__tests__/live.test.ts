@@ -27,6 +27,8 @@ describe('isPaidTier', () => {
     expect(isPaidTier('free')).toBe(false);
     expect(isPaidTier('unknown')).toBe(false);
     expect(isPaidTier('')).toBe(false);
+    expect(isPaidTier('   ')).toBe(false); // whitespace must not unlock
+    expect(isPaidTier(' community ')).toBe(false);
     expect(isPaidTier(null)).toBe(false);
     expect(isPaidTier(undefined)).toBe(false);
   });

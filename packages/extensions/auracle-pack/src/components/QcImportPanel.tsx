@@ -325,6 +325,7 @@ export function QcImportPanel(): JSX.Element {
         return;
       }
     }
+    if (cancelled.current) return; // the compile loop can break on success; don't set state after unmount
 
     setBacktestState({ phase: 'running' });
     const bt = await postJson(`${base}/backtest`, { compile_id: compileId, name: `Auracle — ${project.name}` });

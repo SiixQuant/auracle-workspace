@@ -2,14 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
   DEEP_RANK_PROMPT,
-  DRAFT_SIGNED_OUT_REASON,
-  draftAction,
-  draftPrompt,
+  TRANSMOG_SIGNED_OUT_REASON,
+  transmogAction,
+  transmogPrompt,
   normalizeFinding,
   scanSummaryText,
   scoreOrigin,
   sourceLabel,
-  splitTerms,
   fmtWhen,
   fmtDate,
   type ScanStatus,
@@ -102,20 +101,6 @@ describe('scanSummaryText', () => {
   });
 });
 
-describe('splitTerms', () => {
-  it('parses comma/newline fields like the engine does', () => {
-    expect(splitTerms('q-fin.TR, q-fin.PM,q-fin.ST')).toEqual([
-      'q-fin.TR',
-      'q-fin.PM',
-      'q-fin.ST',
-    ]);
-    expect(splitTerms('momentum\nmean reversion')).toEqual(['momentum', 'mean reversion']);
-    expect(splitTerms(' a , a , b ')).toEqual(['a', 'b']);
-    expect(splitTerms('')).toEqual([]);
-    expect(splitTerms(Array.from({ length: 100 }, (_, i) => `k${i}`).join(','))).toHaveLength(40);
-  });
-});
-
 describe('timestamps', () => {
   it('formats UTC stamps like the engine label and stays empty on junk', () => {
     expect(fmtWhen('2026-06-07T14:30:00+00:00')).toBe('Jun 07, 14:30 UTC');
@@ -127,57 +112,57 @@ describe('timestamps', () => {
 });
 
 
-describe('draftAction', () => {
+describe('transmogAction', () => {
   const f = (status: string, strategy_path: string | null = null) => ({
     status,
     strategy_path,
   });
 
   it('drafted with a recorded link opens the strategies file', () => {
-    expect(draftAction(f('drafted', 'momentum_from_paper.py'), true)).toEqual({
+    expect(transmogAction(f('drafted', 'momentum_from_paper.py'), true)).toEqual({
       kind: 'open',
       path: 'strategies/momentum_from_paper.py',
     });
-    expect(draftAction(f('backtested', 'x.py'), false)).toEqual({
+    expect(transmogAction(f('backtested', 'x.py'), false)).toEqual({
       kind: 'open',
       path: 'strategies/x.py',
     });
   });
 
   it('drafted without a link offers nothing rather than a dead control', () => {
-    expect(draftAction(f('drafted'), true)).toEqual({ kind: 'none' });
+    expect(transmogAction(f('drafted'), true)).toEqual({ kind: 'none' });
   });
 
-  it('signed-out draft is disabled with the reason', () => {
-    const action = draftAction(f('surfaced'), false);
+  it('signed-out transmog is disabled with the reason', () => {
+    const action = transmogAction(f('surfaced'), false);
     expect(action).toEqual({
-      kind: 'draft',
+      kind: 'transmog',
       disabled: true,
-      reason: DRAFT_SIGNED_OUT_REASON,
+      reason: TRANSMOG_SIGNED_OUT_REASON,
     });
   });
 
-  it('signed-in surfaced and watchlist findings can draft', () => {
-    expect(draftAction(f('surfaced'), true)).toEqual({
-      kind: 'draft',
+  it('signed-in surfaced and watchlist findings can transmog', () => {
+    expect(transmogAction(f('surfaced'), true)).toEqual({
+      kind: 'transmog',
       disabled: false,
       reason: null,
     });
-    expect(draftAction(f('watchlist'), true)).toEqual({
-      kind: 'draft',
+    expect(transmogAction(f('watchlist'), true)).toEqual({
+      kind: 'transmog',
       disabled: false,
       reason: null,
     });
   });
 
-  it('terminal states never draft', () => {
-    expect(draftAction(f('dismissed'), true)).toEqual({ kind: 'none' });
+  it('terminal states never transmog', () => {
+    expect(transmogAction(f('dismissed'), true)).toEqual({ kind: 'none' });
   });
 });
 
-describe('draftPrompt', () => {
+describe('transmogPrompt', () => {
   it('prefills the namespaced plugin command with the id only', () => {
-    expect(draftPrompt(42)).toBe('/auracle:draft-strategy 42');
+    expect(transmogPrompt(42)).toBe('/auracle:transmog 42');
   });
 });
 

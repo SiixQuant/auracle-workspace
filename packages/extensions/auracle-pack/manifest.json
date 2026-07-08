@@ -37,6 +37,7 @@
       "commands": [
         { "name": "research-ideas", "description": "Scan recent research and synthesize strategy ideas" },
         { "name": "draft-strategy", "description": "Draft a provenance-linked strategy from a research finding" },
+        { "name": "transmog", "description": "Transmog a research finding into a validated trading strategy" },
         { "name": "deep-rank", "description": "Re-rank the top research findings with sharpened hypotheses" },
         { "name": "run-backtest", "description": "Run a vectorized backtest on a strategy" },
         { "name": "walk-forward", "description": "Rolling out-of-sample walk-forward with regime diagnosis" },
@@ -93,9 +94,9 @@
         "id": "validation",
         "title": "Validation",
         "icon": "fact_check",
-        "placement": "bottom",
+        "placement": "fullscreen",
         "order": 74,
-        "tooltip": "Overfitting checks for a strategy, with concrete fixes."
+        "tooltip": "Check a strategy for overfitting — the seven signals, with concrete fixes."
       },
       {
         "id": "runway",

@@ -6,11 +6,11 @@ import {
   IncidentsPanel,
   RunwayPanel,
   SchedulesPanel,
-  ValidationPanel,
 } from './components/MonitorPanels';
 import { AuracleFlowEditor } from './components/FlowEditor';
 import { QcImportPanel } from './components/QcImportPanel';
 import { ResearchPanel } from './components/ResearchPanel';
+import { ValidationPanel } from './components/ValidationPanel';
 
 export async function activate() {}
 

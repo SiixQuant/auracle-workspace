@@ -3,32 +3,34 @@
  * conveyor (fullscreen pack panel, gutter icon), and the reference
  * implementation of the panelkit surface language.
  *
- * Renders the ranked findings feed the scheduled scan maintains, with
- * interests steering, per-finding watch/dismiss, and the draft leg:
- * "Draft strategy" hands the finding to the /auracle:draft-strategy
- * agent command (prefilled, review-first — nothing auto-runs), then the
- * card flips to Drafted with an open-the-file affordance once the
- * engine records the finding→strategy link. Honesty rules: every number
- * on a card is engine-computed and arrives pre-ranked (no client
- * re-scoring), the score's origin is labeled, scan outcomes distinguish
- * "found nothing" from "broke", an engine that predates the research
- * surface is reported as outdated (not unreachable), and the draft
- * control is disabled with the reason while the agent is signed out.
+ * Renders the top ranked findings the scheduled scan maintains, with
+ * per-finding watch/dismiss and the Transmog hand-off: "Transmog" hands
+ * the finding to the /auracle:transmog agent command (prefilled,
+ * review-first — nothing auto-runs), which develops a full strategy from
+ * the research; the card then flips to Drafted with an open-the-file
+ * affordance once the engine records the finding→strategy link.
+ *
+ * The corpus and its filters are internal: this is a strategy-development
+ * engine, so the interests are fixed engine-side (finance + the sciences
+ * that get weaponised into trading) and the panel simply shows the top 20
+ * by tradability. Honesty rules: every number on a card is engine-computed
+ * and arrives pre-ranked (no client re-scoring), the score's origin is
+ * labeled, scan outcomes distinguish "found nothing" from "broke", an
+ * engine that predates the research surface is reported as outdated (not
+ * unreachable), and the Transmog control is disabled with the reason while
+ * the agent is signed out.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { authState, getJsonDetailed, postJson } from '../engine/client';
 import {
   DEEP_RANK_PROMPT,
   DEEP_RANK_SIGNED_OUT_REASON,
-  DraftAction,
   LoadFailure,
   ResearchFeed,
   ResearchFinding,
-  ResearchInterests,
   ScanStatus,
+  TransmogAction,
   classifyLoadFailure,
-  draftAction,
-  draftPrompt,
   fmtDate,
   fmtWhen,
   normalizeFinding,
@@ -36,19 +38,21 @@ import {
   scanSummaryText,
   scoreOrigin,
   sourceLabel,
-  splitTerms,
+  transmogAction,
+  transmogPrompt,
 } from '../engine/research';
 import {
   Button,
   CenterState,
-  Disclosure,
-  Field,
   InlineNote,
   PanelShell,
   SkeletonRows,
   ToolbarSpring,
   tone,
 } from './panelkit';
+
+/** The engine ranks and gates internally; the panel shows the best 20. */
+const FEED_LIMIT = 20;
 
 /**
  * Structural slice of the PanelHost this panel uses — feature-detected so
@@ -79,15 +83,15 @@ function FindingCard({
   action,
   onWatch,
   onDismiss,
-  onDraft,
+  onTransmog,
   onOpen,
 }: {
   finding: ResearchFinding;
   busy: boolean;
-  action: DraftAction;
+  action: TransmogAction;
   onWatch: () => void;
   onDismiss: () => void;
-  onDraft: () => void;
+  onTransmog: () => void;
   onOpen: () => void;
 }) {
   const meta: JSX.Element[] = [
@@ -221,22 +225,22 @@ function FindingCard({
         ) : null}
         {action.kind === 'open' ? (
           <Button variant="quiet" onClick={onOpen}>
-            Open file
+            Open strategy
           </Button>
         ) : null}
-        {action.kind === 'draft' ? (
+        {action.kind === 'transmog' ? (
           <Button
-            variant="quiet"
+            variant="primary"
             busy={busy}
             disabled={action.disabled}
             title={
               action.disabled
                 ? action.reason ?? undefined
-                : 'Hand this finding to the agent to draft a strategy'
+                : 'Hand this research to the agent to develop a full strategy'
             }
-            onClick={onDraft}
+            onClick={onTransmog}
           >
-            ✎ Draft strategy
+            ⚗ Transmog
           </Button>
         ) : null}
         {finding.status === 'surfaced' ? (
@@ -257,18 +261,13 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
   const [scan, setScan] = useState<ScanStatus | null>(null);
   const [scanNote, setScanNote] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [catText, setCatText] = useState('');
-  const [kwText, setKwText] = useState('');
-  const [interestsBusy, setInterestsBusy] = useState(false);
-  const [interestsNote, setInterestsNote] = useState<string | null>(null);
   const [signedIn, setSignedIn] = useState(false);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const draftPollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refresh = useCallback(async () => {
     const result = await getJsonDetailed<Record<string, unknown>>(
-      '/ui/api/research/feed?limit=60'
+      `/ui/api/research/feed?limit=${FEED_LIMIT}`
     );
     if (!result.ok) {
       setLoad({ phase: 'failed', why: classifyLoadFailure(result.status) });
@@ -287,23 +286,14 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
     setScanNote((note) => (note?.kind === 'err' ? null : note));
   }, []);
 
-  const loadInterests = useCallback(async () => {
-    const result = await getJsonDetailed<ResearchInterests>('/ui/api/research/interests');
-    if (result.ok) {
-      setCatText((result.body.categories ?? []).join(', '));
-      setKwText((result.body.keywords ?? []).join(', '));
-    }
-  }, []);
-
   useEffect(() => {
     void refresh();
-    void loadInterests();
     void authState().then((auth) => setSignedIn(auth.signedIn));
     return () => {
       if (pollTimer.current) clearInterval(pollTimer.current);
       if (draftPollTimer.current) clearInterval(draftPollTimer.current);
     };
-  }, [refresh, loadInterests]);
+  }, [refresh]);
 
   const stopPolling = () => {
     if (pollTimer.current) {
@@ -352,26 +342,6 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
     setScanNote({ kind: 'err', text: scanStartError(response.status) });
   };
 
-  const saveInterests = async () => {
-    setInterestsBusy(true);
-    setInterestsNote(null);
-    const response = await postJson('/ui/api/research/interests', {
-      categories: splitTerms(catText),
-      keywords: splitTerms(kwText),
-    });
-    setInterestsBusy(false);
-    const body = (response.body ?? {}) as Partial<ResearchInterests> & { detail?: string };
-    if (response.ok) {
-      setCatText((body.categories ?? []).join(', '));
-      setKwText((body.keywords ?? []).join(', '));
-      setInterestsNote('Saved. The next scan uses these.');
-    } else {
-      setInterestsNote(
-        body.detail ?? `Save failed (${response.status || 'engine unreachable'}).`
-      );
-    }
-  };
-
   const act = async (finding: ResearchFinding, verb: 'watch' | 'dismiss') => {
     setBusyId(finding.id);
     const response = await postJson(`/ui/api/research/findings/${finding.id}/${verb}`);
@@ -396,10 +366,10 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
   };
 
   /**
-   * After a hand-off, watch the finding's link until the agent records
-   * the drafted state, then refresh the feed and open the new file for
-   * review. Bounded (10 min) and single-flight — a second Draft click
-   * repoints the watcher.
+   * After a Transmog hand-off, watch the finding's link until the agent
+   * records the drafted state, then refresh the feed and open the new
+   * strategy for review. Bounded (10 min) and single-flight — a second
+   * Transmog click repoints the watcher.
    */
   const watchDraftLink = useCallback(
     (findingId: number) => {
@@ -420,7 +390,7 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
           if (draftPollTimer.current) clearInterval(draftPollTimer.current);
           draftPollTimer.current = null;
           void refresh();
-          setScanNote({ kind: 'ok', text: 'Draft landed — opening the file for review.' });
+          setScanNote({ kind: 'ok', text: 'Strategy built — opening it for review.' });
           host?.openFile?.(`strategies/${link.body.strategy_path}`);
         })();
       }, 5000);
@@ -467,7 +437,7 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
     watchFeedForRefinement();
   };
 
-  const startDraft = async (finding: ResearchFinding) => {
+  const startTransmog = async (finding: ResearchFinding) => {
     if (!host?.launchAgentSession) {
       setScanNote({
         kind: 'err',
@@ -476,8 +446,8 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
       return;
     }
     setBusyId(finding.id);
-    const result = await host.launchAgentSession(draftPrompt(finding.id), {
-      title: `Draft: ${finding.title}`.slice(0, 60),
+    const result = await host.launchAgentSession(transmogPrompt(finding.id), {
+      title: `Transmog: ${finding.title}`.slice(0, 60),
     });
     setBusyId(null);
     if (!result.ok) {
@@ -486,7 +456,7 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
     }
     setScanNote({
       kind: 'ok',
-      text: 'Handed to the agent — review the prefilled command and send it.',
+      text: 'Handed to the agent — review the prefilled command and send it to build the strategy.',
     });
     watchDraftLink(finding.id);
   };
@@ -498,15 +468,12 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
   return (
     <PanelShell
       title="Research"
-      description="Fresh quantitative research, ranked for tradability. The engine scans arXiv and Semantic Scholar daily; every score is engine-computed."
+      description="The top 20 quantitative findings, ranked for tradability. The engine scans finance and the adjacent sciences daily and filters internally; every score is engine-computed."
       meta={lastScan ? `Last scan ${fmtWhen(lastScan)}` : 'No scan recorded yet'}
       toolbar={
         <>
           <Button variant="primary" busy={scanning} onClick={() => void kickScan()}>
             {scanning ? 'Scanning…' : 'Scan now'}
-          </Button>
-          <Button variant="ghost" onClick={() => setEditorOpen((open) => !open)}>
-            {editorOpen ? 'Close interests' : 'Interests'}
           </Button>
           <Button
             variant="ghost"
@@ -530,38 +497,13 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
           ) : !signedIn && load.phase === 'ready' ? (
             // One quiet line instead of a caption on every card.
             <InlineNote kind="muted">
-              Sign in to draft or deep-rank — the agent works on your account.
+              Sign in to transmog or deep-rank — the agent works on your account.
             </InlineNote>
           ) : null}
           <ToolbarSpring />
         </>
       }
     >
-      {editorOpen ? (
-        <Disclosure>
-          <Field
-            label="Categories"
-            value={catText}
-            onChange={setCatText}
-            placeholder="q-fin.TR, q-fin.PM, q-fin.ST"
-            hint="arXiv category terms the scan fetches from. Semantic Scholar has no categories; it follows your keywords."
-          />
-          <Field
-            label="Keywords"
-            value={kwText}
-            onChange={setKwText}
-            placeholder="momentum, mean reversion, statistical arbitrage"
-            hint="Drive the tradability scoring and the Semantic Scholar search. Clearing both fields resets to the defaults."
-          />
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <Button variant="primary" busy={interestsBusy} onClick={() => void saveInterests()}>
-              Save interests
-            </Button>
-            {interestsNote ? <InlineNote kind="muted">{interestsNote}</InlineNote> : null}
-          </div>
-        </Disclosure>
-      ) : null}
-
       {load.phase === 'loading' ? (
         <SkeletonRows rows={4} />
       ) : load.phase === 'failed' && load.why === 'outdated' ? (
@@ -597,17 +539,17 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
       ) : (
         <div className="apk-enter" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ fontSize: 11.5, color: tone.text3 }}>
-            {load.feed.findings.length} findings · ranked by engine score
+            Top {load.feed.findings.length} · ranked by tradability
           </div>
           {load.feed.findings.map((finding) => (
             <FindingCard
               key={finding.id}
               finding={finding}
               busy={busyId === finding.id}
-              action={draftAction(finding, signedIn)}
+              action={transmogAction(finding, signedIn)}
               onWatch={() => void act(finding, 'watch')}
               onDismiss={() => void act(finding, 'dismiss')}
-              onDraft={() => void startDraft(finding)}
+              onTransmog={() => void startTransmog(finding)}
               onOpen={() => {
                 if (finding.strategy_path) {
                   host?.openFile?.(`strategies/${finding.strategy_path}`);

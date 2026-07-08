@@ -145,39 +145,29 @@ export function scanSummaryText(status: ScanStatus | null): string {
   return `Scan complete — ${r.fetched} papers fetched${deduped}, ${r.stored} findings stored.`;
 }
 
-/** Comma/newline field -> clean term list (mirrors the engine's parser). */
-export function splitTerms(raw: string): string[] {
-  const out: string[] = [];
-  for (const chunk of raw.replace(/\n/g, ',').split(',')) {
-    const t = chunk.trim();
-    if (t && !out.includes(t)) out.push(t);
-  }
-  return out.slice(0, 40);
-}
-
-
 /**
- * The card's draft affordance, derived honestly from the finding's state
- * and the agent sign-in. Discriminated so the render can't show a control
- * whose action doesn't exist:
- *  - drafted/backtested with a recorded link -> open the file
+ * The card's primary affordance — "Transmog": hand the finding to the
+ * agent with the full strategy-development harness. Derived honestly from
+ * the finding's state and the agent sign-in so the render can't show a
+ * control whose action doesn't exist:
+ *  - drafted/backtested with a recorded link -> open the built strategy
  *  - drafted without a link (legacy rows)    -> nothing to open, no lie
- *  - surfaced/watchlist                      -> draft (disabled + reason
+ *  - surfaced/watchlist                      -> transmog (disabled + reason
  *    while signed out — the hand-off runs on the user's account)
  */
-export type DraftAction =
-  | { kind: 'draft'; disabled: false; reason: null }
-  | { kind: 'draft'; disabled: true; reason: string }
+export type TransmogAction =
+  | { kind: 'transmog'; disabled: false; reason: null }
+  | { kind: 'transmog'; disabled: true; reason: string }
   | { kind: 'open'; path: string }
   | { kind: 'none' };
 
-export const DRAFT_SIGNED_OUT_REASON =
-  'Sign in to draft — the agent works on your account.';
+export const TRANSMOG_SIGNED_OUT_REASON =
+  'Sign in to transmog — the agent builds on your account.';
 
-export function draftAction(
+export function transmogAction(
   finding: Pick<ResearchFinding, 'status' | 'strategy_path'>,
   signedIn: boolean
-): DraftAction {
+): TransmogAction {
   if (finding.status === 'drafted' || finding.status === 'backtested') {
     return finding.strategy_path
       ? { kind: 'open', path: `strategies/${finding.strategy_path}` }
@@ -187,14 +177,18 @@ export function draftAction(
     return { kind: 'none' };
   }
   if (!signedIn) {
-    return { kind: 'draft', disabled: true, reason: DRAFT_SIGNED_OUT_REASON };
+    return { kind: 'transmog', disabled: true, reason: TRANSMOG_SIGNED_OUT_REASON };
   }
-  return { kind: 'draft', disabled: false, reason: null };
+  return { kind: 'transmog', disabled: false, reason: null };
 }
 
-/** The exact plugin command the hand-off prefills — id only, no prose. */
-export function draftPrompt(findingId: number): string {
-  return `/auracle:draft-strategy ${findingId}`;
+/**
+ * The exact plugin command the Transmog hand-off prefills — id only. The
+ * large strategy-development harness lives in the command's own .md
+ * (rides the plugin injection), not in this prompt string.
+ */
+export function transmogPrompt(findingId: number): string {
+  return `/auracle:transmog ${findingId}`;
 }
 
 /** The deep-rank hand-off command (whole-feed action, no arguments). */

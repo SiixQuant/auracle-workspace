@@ -1,0 +1,291 @@
+/**
+ * Validation panel — the seven overfit signals for a strategy, rendered on
+ * panelkit. Pick one of your own strategies and check it: the engine runs
+ * the compute-don't-trust machinery (real backtest + walk-forward) and
+ * returns a tri-state rail (green / red / unknown) with a plain-English
+ * reading and the fix each red signal usually needs.
+ *
+ * This is NOT the deploy preflight (that's broker + data readiness) — it's
+ * the overfit rail, the honest answer to "will this hold up out of sample?"
+ * Everything is engine-computed; the panel renders the verdict verbatim.
+ */
+import { useCallback, useEffect, useState } from 'react';
+import { getJson, getJsonDetailed } from '../engine/client';
+import { classifyLoadFailure, type LoadFailure } from '../engine/research';
+import { ValidationVerdict, normalizeVerdict, railHeadline } from '../engine/validation';
+import {
+  Button,
+  CenterState,
+  InlineNote,
+  PanelShell,
+  SkeletonRows,
+  ToolbarSpring,
+  tone,
+} from './panelkit';
+
+interface DeployableStrategy {
+  path: string;
+  label: string;
+}
+
+type ListState =
+  | { phase: 'loading' }
+  | { phase: 'failed'; why: LoadFailure }
+  | { phase: 'ready'; strategies: DeployableStrategy[] };
+
+type RunState =
+  | { phase: 'idle' }
+  | { phase: 'running' }
+  | { phase: 'failed'; why: LoadFailure }
+  | { phase: 'error'; detail: string }
+  | { phase: 'done'; verdict: ValidationVerdict };
+
+const TIER_COLOR: Record<string, string> = {
+  green: tone.ok,
+  red: tone.danger,
+  unknown: tone.text3,
+};
+
+const TIER_MARK: Record<string, string> = {
+  green: '●',
+  red: '●',
+  unknown: '○',
+};
+
+function SignalRow({
+  name,
+  tier,
+  plain,
+  fix,
+}: {
+  name: string;
+  tier: string;
+  plain: string;
+  fix: string;
+}) {
+  return (
+    <article
+      className="apk-card"
+      style={{
+        display: 'flex',
+        gap: 12,
+        padding: '11px 14px',
+        borderRadius: 9,
+        border: `1px solid ${tone.border}`,
+        background: tone.surface,
+      }}
+    >
+      <span
+        aria-hidden
+        style={{ color: TIER_COLOR[tier] ?? tone.text3, fontSize: 12, lineHeight: '20px' }}
+      >
+        {TIER_MARK[tier] ?? '○'}
+      </span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1, minWidth: 0 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: tone.text }}>{name}</span>
+        {plain ? (
+          <span style={{ fontSize: 12.5, color: tone.text2, maxWidth: '80ch' }}>{plain}</span>
+        ) : null}
+        {tier === 'red' && fix ? (
+          <span style={{ fontSize: 11.5, color: tone.text3 }}>Usually fixed by: {fix}</span>
+        ) : null}
+      </div>
+      <span
+        style={{
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: 0.5,
+          textTransform: 'uppercase',
+          color: TIER_COLOR[tier] ?? tone.text3,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {tier === 'unknown' ? 'not checked' : tier === 'red' ? 'attention' : 'healthy'}
+      </span>
+    </article>
+  );
+}
+
+export function ValidationPanel(): JSX.Element {
+  const [list, setList] = useState<ListState>({ phase: 'loading' });
+  const [selected, setSelected] = useState('');
+  const [run, setRun] = useState<RunState>({ phase: 'idle' });
+
+  const loadStrategies = useCallback(async () => {
+    const result = await getJsonDetailed<{ strategies?: Array<Record<string, unknown>> }>(
+      '/ui/api/backtest/strategies?deployable=1'
+    );
+    if (!result.ok) {
+      setList({ phase: 'failed', why: classifyLoadFailure(result.status) });
+      return;
+    }
+    const rows = Array.isArray(result.body.strategies) ? result.body.strategies : [];
+    const strategies: DeployableStrategy[] = rows
+      .map((s) => {
+        const path = typeof s.path === 'string' ? s.path : '';
+        const doc = typeof s.doc === 'string' ? s.doc : '';
+        // Show the class name + first docstring line, not the full dotted path.
+        const cls = path.split('.').pop() ?? path;
+        return { path, label: doc ? `${cls} — ${doc}` : cls };
+      })
+      .filter((s) => s.path.length > 0);
+    setList({ phase: 'ready', strategies });
+  }, []);
+
+  useEffect(() => {
+    void loadStrategies();
+  }, [loadStrategies]);
+
+  const check = async (path: string) => {
+    setRun({ phase: 'running' });
+    const result = await getJsonDetailed<Record<string, unknown>>(
+      `/ui/api/validation?strategy_path=${encodeURIComponent(path)}`
+    );
+    if (!result.ok) {
+      // 422 carries the engine's "could not measure" detail; other statuses
+      // are outdated/unreachable transport failures.
+      if (result.status === 422) {
+        const body = await getJson<{ detail?: string }>(
+          `/ui/api/validation?strategy_path=${encodeURIComponent(path)}`
+        );
+        setRun({
+          phase: 'error',
+          detail: body?.detail ?? 'The engine could not measure this strategy.',
+        });
+        return;
+      }
+      setRun({ phase: 'failed', why: classifyLoadFailure(result.status) });
+      return;
+    }
+    setRun({ phase: 'done', verdict: normalizeVerdict(result.body) });
+  };
+
+  const onPick = (path: string) => {
+    setSelected(path);
+    if (path) void check(path);
+    else setRun({ phase: 'idle' });
+  };
+
+  const picker =
+    list.phase === 'ready' && list.strategies.length > 0 ? (
+      <select
+        value={selected}
+        onChange={(e) => onPick(e.target.value)}
+        style={{
+          padding: '6px 10px',
+          borderRadius: 7,
+          fontSize: 13,
+          border: `1px solid ${tone.borderStrong}`,
+          background: tone.sunken,
+          color: tone.text,
+          minWidth: 300,
+          fontFamily: tone.font,
+        }}
+      >
+        <option value="">Pick a strategy to check…</option>
+        {list.strategies.map((s) => (
+          <option key={s.path} value={s.path}>
+            {s.label}
+          </option>
+        ))}
+      </select>
+    ) : null;
+
+  return (
+    <PanelShell
+      title="Validation"
+      description="Check a strategy for overfitting before you trust it. The engine runs a real backtest and walk-forward, then reports the seven signals — this is the out-of-sample honesty check, not the deploy preflight."
+      toolbar={
+        <>
+          {picker}
+          {selected && run.phase !== 'running' ? (
+            <Button variant="ghost" onClick={() => void check(selected)}>
+              Re-check
+            </Button>
+          ) : null}
+          <ToolbarSpring />
+        </>
+      }
+    >
+      {list.phase === 'loading' ? (
+        <SkeletonRows rows={3} />
+      ) : list.phase === 'failed' && list.why === 'outdated' ? (
+        <CenterState
+          title="Engine update required"
+          detail="This engine build predates the validation surface. Update the Auracle stack from the launcher, then re-check."
+          actions={
+            <Button variant="ghost" onClick={() => void loadStrategies()}>
+              Re-check
+            </Button>
+          }
+        />
+      ) : list.phase === 'failed' ? (
+        <CenterState
+          title="The engine didn't respond"
+          detail="Validation runs on your local Auracle engine. Make sure the stack is running, then retry."
+          actions={
+            <Button variant="primary" onClick={() => void loadStrategies()}>
+              Retry
+            </Button>
+          }
+        />
+      ) : list.strategies.length === 0 ? (
+        <CenterState
+          title="No strategies to validate"
+          detail="Create or import a strategy first — anything in your Auracle workspace shows up here to check for overfitting."
+        />
+      ) : run.phase === 'idle' ? (
+        <CenterState
+          title="Pick a strategy to check"
+          detail="Validation measures a strategy out of sample and returns the seven overfit signals. Choose one above to run the check."
+        />
+      ) : run.phase === 'running' ? (
+        <SkeletonRows rows={4} />
+      ) : run.phase === 'error' ? (
+        <CenterState
+          title="Couldn't measure this strategy"
+          detail={run.detail}
+          actions={
+            <Button variant="ghost" onClick={() => void check(selected)}>
+              Try again
+            </Button>
+          }
+        />
+      ) : run.phase === 'failed' ? (
+        <CenterState
+          title="The engine didn't respond"
+          detail="The validation run didn't complete. Make sure the stack is running, then re-check."
+          actions={
+            <Button variant="primary" onClick={() => void check(selected)}>
+              Retry
+            </Button>
+          }
+        />
+      ) : (
+        <div className="apk-enter" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12.5, color: tone.text2 }}>
+              {railHeadline(run.verdict.signals)}
+            </span>
+            {run.verdict.signals.some((s) => s.tier === 'red') ? (
+              <InlineNote kind="err">Overfit risk — see the flagged signals below.</InlineNote>
+            ) : run.verdict.signals.some((s) => s.tier === 'unknown') ? (
+              <InlineNote kind="muted">Some checks couldn't run on this history.</InlineNote>
+            ) : (
+              <InlineNote kind="ok">Passes the overfit checks.</InlineNote>
+            )}
+          </div>
+          {run.verdict.signals.map((signal) => (
+            <SignalRow
+              key={signal.signal}
+              name={signal.name}
+              tier={signal.tier}
+              plain={signal.plain}
+              fix={signal.what_usually_fixes_it}
+            />
+          ))}
+        </div>
+      )}
+    </PanelShell>
+  );
+}

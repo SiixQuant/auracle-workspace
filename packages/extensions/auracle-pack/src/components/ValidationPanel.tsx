@@ -12,7 +12,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getJson, getJsonDetailed } from '../engine/client';
 import { classifyLoadFailure, type LoadFailure } from '../engine/research';
-import { ValidationVerdict, normalizeVerdict, railHeadline } from '../engine/validation';
+import {
+  ValidationVerdict,
+  normalizeVerdict,
+  railHeadline,
+  validationContext,
+  validationPrompt,
+} from '../engine/validation';
 import {
   Button,
   CenterState,
@@ -22,6 +28,22 @@ import {
   ToolbarSpring,
   tone,
 } from './panelkit';
+
+/**
+ * Structural slice of the PanelHost this panel uses — feature-detected so it
+ * still renders (with the hand-off disabled) on hosts that predate
+ * launchAgentSession, and so `ai` is absent unless the panel is aiSupported.
+ */
+interface PanelHostLike {
+  ai?: {
+    setContext(context: Record<string, unknown>): void;
+    clearContext(): void;
+  };
+  launchAgentSession?: (
+    prompt: string,
+    opts?: { title?: string }
+  ) => Promise<{ ok: boolean; sessionId?: string; error?: string }>;
+}
 
 interface DeployableStrategy {
   path: string;
@@ -106,10 +128,35 @@ function SignalRow({
   );
 }
 
-export function ValidationPanel(): JSX.Element {
+export function ValidationPanel({ host }: { host?: PanelHostLike }): JSX.Element {
   const [list, setList] = useState<ListState>({ phase: 'loading' });
   const [selected, setSelected] = useState('');
   const [run, setRun] = useState<RunState>({ phase: 'idle' });
+  const [note, setNote] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+
+  // Publish the active verdict to the AI chat (ambient awareness) whenever a
+  // check completes; clear it otherwise so the agent never reads a stale rail.
+  useEffect(() => {
+    if (!host?.ai) return;
+    if (run.phase === 'done') host.ai.setContext(validationContext(run.verdict));
+    else host.ai.clearContext();
+  }, [host, run]);
+
+  const askAgent = async (verdict: ValidationVerdict) => {
+    if (!host?.launchAgentSession) {
+      setNote({ kind: 'err', text: 'This build cannot hand off to the agent — update the IDE.' });
+      return;
+    }
+    const cls = verdict.strategy_path.split('.').pop() ?? verdict.strategy_path;
+    const result = await host.launchAgentSession(validationPrompt(verdict), {
+      title: `Validate: ${cls}`.slice(0, 60),
+    });
+    if (!result.ok) {
+      setNote({ kind: 'err', text: result.error ?? 'The agent hand-off failed.' });
+      return;
+    }
+    setNote({ kind: 'ok', text: 'Handed to the agent — review the prefilled prompt and send it.' });
+  };
 
   const loadStrategies = useCallback(async () => {
     const result = await getJsonDetailed<{ strategies?: Array<Record<string, unknown>> }>(
@@ -274,7 +321,12 @@ export function ValidationPanel(): JSX.Element {
             ) : (
               <InlineNote kind="ok">Passes the overfit checks.</InlineNote>
             )}
+            <ToolbarSpring />
+            <Button variant="primary" onClick={() => void askAgent(run.verdict)}>
+              ⚡ Ask the agent
+            </Button>
           </div>
+          {note ? <InlineNote kind={note.kind}>{note.text}</InlineNote> : null}
           {run.verdict.signals.map((signal) => (
             <SignalRow
               key={signal.signal}

@@ -96,6 +96,7 @@
         "icon": "fact_check",
         "placement": "fullscreen",
         "order": 74,
+        "aiSupported": true,
         "tooltip": "Check a strategy for overfitting — the seven signals, with concrete fixes."
       },
       {

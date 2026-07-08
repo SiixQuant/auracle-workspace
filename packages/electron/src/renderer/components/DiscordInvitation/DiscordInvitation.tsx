@@ -79,7 +79,7 @@ export const DiscordInvitation: React.FC<DiscordInvitationProps> = ({
   onDismiss
 }) => {
   const posthog = usePostHog();
-  const logoSrc = new URL('/nimbalyst-logo.png', import.meta.url).href;
+  const logoSrc = new URL('/auracle-mark.png', import.meta.url).href;
 
   // Map social link names to their channel identifiers
   const channelMap = useMemo(() => ({

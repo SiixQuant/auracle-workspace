@@ -7,11 +7,12 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
-import { getJson, onConnectGeneration, postJson } from '../engine/client';
+import { authState, getJson, onConnectGeneration, postJson } from '../engine/client';
 import { Connector, isConnected, normalizeConnector } from '../engine/model';
 import {
   ACTION_LABELS,
   COMPUTE_LABELS,
+  COMPUTE_PAID_REASON,
   Compute,
   DeployWizard,
   Deployment,
@@ -20,12 +21,15 @@ import {
   LiveAlgorithms,
   availableActions,
   canDeploy,
+  computeLocked,
   formatReturn,
   isActive,
   isDestructive,
+  isPaidTier,
   newWizard,
   selectedDeployment,
   setRows,
+  splitStrategyPath,
   stateLabel,
   toRequest,
   validateWizard,
@@ -227,6 +231,18 @@ const styles = {
 
   caution: { fontSize: 12, color: CAUTION, display: 'flex', alignItems: 'center' as const, gap: 6 },
   help: { fontSize: 11.5, color: 'var(--text-tertiary, #8a8f98)' },
+  proTag: {
+    marginLeft: 6,
+    fontSize: 9,
+    fontWeight: 700,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase' as const,
+    padding: '1px 5px',
+    borderRadius: 999,
+    border: '1px solid var(--border-primary, rgba(127,127,127,0.35))',
+    color: 'var(--text-tertiary, #8a8f98)',
+    verticalAlign: 'middle',
+  },
 
   // Footer
   footer: {
@@ -288,6 +304,7 @@ function DeployWizardView({ onDone, onCancel }: { onDone: () => void; onCancel: 
   const [brokers, setBrokers] = useState<Connector[]>([]);
   const [dataProviders, setDataProviders] = useState<Connector[]>([]);
   const [strategies, setStrategies] = useState<StrategyOption[]>([]);
+  const [paid, setPaid] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -300,17 +317,25 @@ function DeployWizardView({ onDone, onCancel }: { onDone: () => void; onCancel: 
       setBrokers(all.filter((connector) => connector.kind === 'broker'));
       setDataProviders(all.filter((connector) => connector.kind === 'data_provider'));
 
+      // Only the user's own, deployable strategies (bundled/examples dropped,
+      // workspace bucket preferred). Discovery hands back the class combined
+      // into the path, so split it — the deploy loader needs module + class
+      // separately. Function-based backtests can't run live, so drop them.
       const strategiesBody = await getJson<{
-        strategies?: Array<{ path?: string; strategy_path?: string; cls?: string; strategy_cls?: string; name?: string; label?: string }>;
-      }>('/ui/api/backtest/strategies');
+        strategies?: Array<{ path?: string; kind?: string; doc?: string }>;
+      }>('/ui/api/backtest/strategies?deployable=1');
       const options = (strategiesBody?.strategies ?? [])
+        .filter((raw) => (raw.kind ?? 'class') === 'class' && typeof raw.path === 'string' && raw.path.length > 0)
         .map((raw) => {
-          const path = raw.strategy_path ?? raw.path ?? '';
-          const cls = raw.strategy_cls ?? raw.cls ?? '';
-          return { path, cls, label: raw.label ?? raw.name ?? (path && cls ? `${path} · ${cls}` : path || cls) };
+          const { path, cls } = splitStrategyPath(raw.path as string);
+          const doc = typeof raw.doc === 'string' ? raw.doc : '';
+          return { path, cls, label: doc ? `${cls} — ${doc}` : cls };
         })
-        .filter((option) => option.path.length > 0);
+        .filter((option) => option.path.length > 0 && option.cls.length > 0);
       setStrategies(options);
+
+      const auth = await authState();
+      setPaid(isPaidTier(auth.tier));
     })();
   }, []);
 
@@ -445,17 +470,33 @@ function DeployWizardView({ onDone, onCancel }: { onDone: () => void; onCancel: 
         <div style={styles.field}>
           <div style={styles.fieldLabel}>Compute</div>
           <div style={styles.segWrap}>
-            {(Object.keys(COMPUTE_LABELS) as Compute[]).map((compute) => (
-              <button
-                key={compute}
-                type="button"
-                style={styles.seg(wizard.compute === compute)}
-                onClick={() => set({ compute })}
-              >
-                {COMPUTE_LABELS[compute]}
-              </button>
-            ))}
+            {(Object.keys(COMPUTE_LABELS) as Compute[]).map((compute) => {
+              const locked = computeLocked(compute, paid);
+              return (
+                <button
+                  key={compute}
+                  type="button"
+                  disabled={locked}
+                  title={locked ? COMPUTE_PAID_REASON : undefined}
+                  style={{
+                    ...styles.seg(wizard.compute === compute),
+                    ...(locked ? { opacity: 0.5, cursor: 'not-allowed' } : {}),
+                  }}
+                  onClick={() => {
+                    if (!locked) set({ compute });
+                  }}
+                >
+                  {COMPUTE_LABELS[compute]}
+                  {locked ? <span style={styles.proTag}>Pro</span> : null}
+                </button>
+              );
+            })}
           </div>
+          {!paid ? (
+            <div style={styles.help}>
+              Cloud compute (Oracle Cloud, AWS) is a Pro feature — deployments run on this machine.
+            </div>
+          ) : null}
         </div>
         <div style={styles.field}>
           <div style={styles.fieldLabel}>

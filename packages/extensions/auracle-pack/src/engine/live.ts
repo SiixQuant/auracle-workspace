@@ -58,6 +58,37 @@ export const COMPUTE_LABELS: Record<Compute, string> = {
   aws: 'AWS',
 };
 
+/**
+ * Tiers that unlock cloud compute (and live trading). Mirrors the engine's
+ * `check_live_deploy_allowed` — community/unknown get local only. Kept here
+ * so the wizard gates the cloud selectors honestly BEFORE deploy instead of
+ * surfacing a 402/403 only after the user clicks Deploy.
+ */
+export function isPaidTier(tier: string | null | undefined): boolean {
+  const t = (tier ?? '').toLowerCase().trim();
+  return t.length > 0 && t !== 'community' && t !== 'free' && t !== 'unknown';
+}
+
+/** A cloud compute target the current tier cannot run. */
+export function computeLocked(compute: Compute, paid: boolean): boolean {
+  return compute !== 'local' && !paid;
+}
+
+export const COMPUTE_PAID_REASON =
+  'Cloud compute is a Pro feature. Run on this machine, or upgrade for Oracle Cloud or AWS.';
+
+/**
+ * Split a discovery dotted path "strategies.<module>.<Class>" into the
+ * module path + class name the deploy request needs separately — the
+ * discovery route hands them back combined, and the live loader does
+ * import_module(path) then getattr(module, cls), so they MUST be split.
+ */
+export function splitStrategyPath(dotted: string): { path: string; cls: string } {
+  const i = dotted.lastIndexOf('.');
+  if (i <= 0) return { path: dotted, cls: '' };
+  return { path: dotted.slice(0, i), cls: dotted.slice(i + 1) };
+}
+
 /** The mutable form behind the Deploy wizard. */
 export interface DeployWizard {
   name: string;

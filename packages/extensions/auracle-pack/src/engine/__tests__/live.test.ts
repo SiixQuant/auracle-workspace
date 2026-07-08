@@ -5,16 +5,59 @@ import {
   activeCount,
   availableActions,
   canDeploy,
+  computeLocked,
   formatReturn,
   isDestructive,
+  isPaidTier,
   newWizard,
   selectedDeployment,
   setRows,
+  splitStrategyPath,
   stateLabel,
   toRequest,
   validateWizard,
   verbEndpoint,
 } from '../live';
+
+describe('isPaidTier', () => {
+  it('unlocks cloud only for real paid tiers', () => {
+    expect(isPaidTier('pro')).toBe(true);
+    expect(isPaidTier('institutional')).toBe(true);
+    expect(isPaidTier('community')).toBe(false);
+    expect(isPaidTier('free')).toBe(false);
+    expect(isPaidTier('unknown')).toBe(false);
+    expect(isPaidTier('')).toBe(false);
+    expect(isPaidTier('   ')).toBe(false); // whitespace must not unlock
+    expect(isPaidTier(' community ')).toBe(false);
+    expect(isPaidTier(null)).toBe(false);
+    expect(isPaidTier(undefined)).toBe(false);
+  });
+});
+
+describe('computeLocked', () => {
+  it('locks cloud targets when not paid, never local', () => {
+    expect(computeLocked('local', false)).toBe(false);
+    expect(computeLocked('oci', false)).toBe(true);
+    expect(computeLocked('aws', false)).toBe(true);
+    expect(computeLocked('oci', true)).toBe(false);
+    expect(computeLocked('aws', true)).toBe(false);
+  });
+});
+
+describe('splitStrategyPath', () => {
+  it('splits the discovery dotted path into module + class', () => {
+    expect(splitStrategyPath('strategies.desk.vol.VolTarget')).toEqual({
+      path: 'strategies.desk.vol',
+      cls: 'VolTarget',
+    });
+    expect(splitStrategyPath('strategies.example_ma.MACrossover')).toEqual({
+      path: 'strategies.example_ma',
+      cls: 'MACrossover',
+    });
+    // Degenerate input never throws; empty class is caught by the caller's filter.
+    expect(splitStrategyPath('nodots')).toEqual({ path: 'nodots', cls: '' });
+  });
+});
 
 function readyLive(): DeployWizard {
   return {

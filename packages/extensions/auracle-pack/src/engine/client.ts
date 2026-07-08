@@ -49,6 +49,21 @@ export async function getJson<T>(path: string): Promise<T | null> {
   return response.ok && response.body !== null ? (response.body as T) : null;
 }
 
+/**
+ * GET that keeps the HTTP status on failure, so callers can distinguish
+ * "this engine build doesn't serve the route" (404 — engine outdated)
+ * from "nothing answered" (status 0 — unreachable). getJson erases that
+ * difference, which is how the Research panel once reported a stale
+ * engine as network trouble.
+ */
+export async function getJsonDetailed<T>(
+  path: string
+): Promise<{ ok: true; body: T } | { ok: false; status: number }> {
+  const response = await request('GET', path);
+  if (response.ok && response.body !== null) return { ok: true, body: response.body as T };
+  return { ok: false, status: response.status };
+}
+
 /** Mutation returning the full bridge response so callers can render errors honestly. */
 export async function postJson(path: string, body?: unknown): Promise<BridgeResponse> {
   return request('POST', path, body);

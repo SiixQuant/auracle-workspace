@@ -1,6 +1,7 @@
 /**
  * Research panel — the front door for the engine's paper-research
- * conveyor (fullscreen pack panel, gutter icon).
+ * conveyor (fullscreen pack panel, gutter icon), and the reference
+ * implementation of the panelkit surface language.
  *
  * Renders the ranked findings feed the scheduled scan maintains, with
  * interests steering, per-finding watch/dismiss, and the draft leg:
@@ -10,29 +11,44 @@
  * engine records the finding→strategy link. Honesty rules: every number
  * on a card is engine-computed and arrives pre-ranked (no client
  * re-scoring), the score's origin is labeled, scan outcomes distinguish
- * "found nothing" from "broke", and the draft control is disabled with
- * the reason while the agent is signed out.
+ * "found nothing" from "broke", an engine that predates the research
+ * surface is reported as outdated (not unreachable), and the draft
+ * control is disabled with the reason while the agent is signed out.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { authState, getJson, postJson } from '../engine/client';
+import { authState, getJsonDetailed, postJson } from '../engine/client';
 import {
   DEEP_RANK_PROMPT,
   DEEP_RANK_SIGNED_OUT_REASON,
   DraftAction,
+  LoadFailure,
   ResearchFeed,
   ResearchFinding,
   ResearchInterests,
   ScanStatus,
+  classifyLoadFailure,
   draftAction,
   draftPrompt,
   fmtDate,
   fmtWhen,
   normalizeFinding,
+  scanStartError,
   scanSummaryText,
   scoreOrigin,
   sourceLabel,
   splitTerms,
 } from '../engine/research';
+import {
+  Button,
+  CenterState,
+  Disclosure,
+  Field,
+  InlineNote,
+  PanelShell,
+  SkeletonRows,
+  ToolbarSpring,
+  tone,
+} from './panelkit';
 
 /**
  * Structural slice of the PanelHost this panel uses — feature-detected so
@@ -47,203 +63,15 @@ interface PanelHostLike {
   ) => Promise<{ ok: boolean; sessionId?: string; error?: string }>;
 }
 
-const ACCENT = 'var(--accent-primary, #0053fd)';
-const OK = '#2ea043';
-const DANGER = '#c4554d';
-const CAUTION = '#d4a017';
-const MUTED = 'var(--text-tertiary, #8a8f98)';
-
 type LoadState =
   | { phase: 'loading' }
-  | { phase: 'unreachable' }
+  | { phase: 'failed'; why: LoadFailure }
   | { phase: 'ready'; feed: ResearchFeed };
 
-const styles = {
-  scroll: {
-    height: '100%',
-    overflowY: 'auto' as const,
-    background: 'var(--bg-primary, transparent)',
-  },
-  page: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: 18,
-    maxWidth: 860,
-    margin: '0 auto',
-    padding: '20px 24px 40px',
-    color: 'var(--text-primary, #d7dae0)',
-    font: '13px/1.5 var(--font-family-ui, system-ui, sans-serif)',
-  },
-  header: { display: 'flex', flexDirection: 'column' as const, gap: 2 },
-  title: { fontSize: 17, fontWeight: 600 as const, letterSpacing: -0.2 },
-  subtitle: { fontSize: 12.5, color: MUTED },
-  toolbar: {
-    display: 'flex',
-    alignItems: 'center' as const,
-    gap: 10,
-    flexWrap: 'wrap' as const,
-  },
-  toolbarSpring: { flex: 1, minWidth: 12 },
-  lastScan: { fontSize: 12, color: MUTED, whiteSpace: 'nowrap' as const },
-  primaryBtn: (disabled: boolean) => ({
-    padding: '7px 16px',
-    borderRadius: 8,
-    fontSize: 13,
-    fontWeight: 600 as const,
-    cursor: disabled ? 'default' : 'pointer',
-    border: '1px solid transparent',
-    background: ACCENT,
-    color: '#fff',
-    opacity: disabled ? 0.6 : 1,
-  }),
-  ghostBtn: (disabled: boolean) => ({
-    padding: '7px 14px',
-    borderRadius: 8,
-    fontSize: 13,
-    cursor: disabled ? 'default' : 'pointer',
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.35))',
-    background: 'transparent',
-    color: 'var(--text-secondary, #b9bec7)',
-    opacity: disabled ? 0.6 : 1,
-  }),
-  note: (kind: 'ok' | 'err' | 'muted') => ({
-    fontSize: 12.5,
-    color: kind === 'ok' ? OK : kind === 'err' ? DANGER : MUTED,
-    display: 'flex',
-    alignItems: 'center' as const,
-    gap: 7,
-    minWidth: 0,
-  }),
-  card: {
-    display: 'flex',
-    gap: 14,
-    padding: '13px 15px',
-    borderRadius: 10,
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.22))',
-    background: 'var(--bg-secondary, rgba(255,255,255,0.018))',
-  },
-  scoreCol: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center' as const,
-    gap: 3,
-    minWidth: 44,
-  },
-  scoreNum: {
-    fontSize: 20,
-    fontWeight: 600 as const,
-    fontVariantNumeric: 'tabular-nums' as const,
-    lineHeight: 1.1,
-  },
-  bandTag: (band: string) => ({
-    fontSize: 10,
-    fontWeight: 600 as const,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase' as const,
-    color: band === 'candidate' ? OK : band === 'watchlist' ? CAUTION : MUTED,
-  }),
-  mainCol: { display: 'flex', flexDirection: 'column' as const, gap: 6, flex: 1, minWidth: 0 },
-  cardTitle: {
-    fontSize: 13.5,
-    fontWeight: 600 as const,
-    color: 'var(--text-primary, #d7dae0)',
-    textDecoration: 'none',
-  },
-  metaRow: {
-    display: 'flex',
-    alignItems: 'center' as const,
-    gap: 8,
-    flexWrap: 'wrap' as const,
-    fontSize: 11.5,
-    color: MUTED,
-  },
-  srcChip: {
-    fontSize: 10.5,
-    fontWeight: 600 as const,
-    letterSpacing: 0.3,
-    padding: '1px 7px',
-    borderRadius: 999,
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.3))',
-    color: 'var(--text-secondary, #b9bec7)',
-    whiteSpace: 'nowrap' as const,
-  },
-  hypothesis: { fontSize: 12.5, color: 'var(--text-secondary, #b9bec7)' },
-  originRow: { display: 'flex', alignItems: 'center' as const, gap: 10, fontSize: 11, color: MUTED },
-  linkBtn: {
-    fontSize: 11.5,
-    color: MUTED,
-    textDecoration: 'none',
-    whiteSpace: 'nowrap' as const,
-  },
-  actionsCol: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'flex-end' as const,
-    gap: 6,
-    whiteSpace: 'nowrap' as const,
-  },
-  tinyBtn: (disabled: boolean) => ({
-    padding: '4px 10px',
-    borderRadius: 6,
-    fontSize: 11.5,
-    cursor: disabled ? 'default' : 'pointer',
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.3))',
-    background: 'transparent',
-    color: 'var(--text-secondary, #b9bec7)',
-    opacity: disabled ? 0.6 : 1,
-  }),
-  watchBadge: { fontSize: 11.5, color: CAUTION, whiteSpace: 'nowrap' as const },
-  statusBadge: { fontSize: 11, color: MUTED, whiteSpace: 'nowrap' as const },
-  editor: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: 12,
-    padding: 16,
-    borderRadius: 10,
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.22))',
-    background: 'var(--bg-secondary, rgba(255,255,255,0.018))',
-  },
-  field: { display: 'flex', flexDirection: 'column' as const, gap: 5 },
-  fieldLabel: { fontSize: 12, color: 'var(--text-secondary, #b9bec7)' },
-  fieldHint: { fontSize: 11.5, color: MUTED },
-  input: {
-    width: '100%',
-    padding: '7px 9px',
-    borderRadius: 6,
-    fontSize: 13,
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.35))',
-    background: 'var(--bg-primary, rgba(0,0,0,0.2))',
-    color: 'var(--text-primary, #d7dae0)',
-    outline: 'none',
-    fontFamily: 'inherit',
-  },
-  centerBox: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center' as const,
-    gap: 12,
-    padding: '48px 0',
-    color: MUTED,
-    fontSize: 13,
-  },
-  retryBtn: {
-    padding: '7px 16px',
-    borderRadius: 8,
-    fontSize: 13,
-    fontWeight: 600 as const,
-    cursor: 'pointer',
-    border: '1px solid transparent',
-    background: ACCENT,
-    color: '#fff',
-  },
+const BAND_COLOR: Record<string, string> = {
+  candidate: tone.ok,
+  watchlist: tone.caution,
 };
-
-function statusBadge(finding: ResearchFinding): { text: string; style: object } | null {
-  if (finding.status === 'watchlist') return { text: '★ Watching', style: styles.watchBadge };
-  if (finding.status === 'drafted') return { text: 'Drafted', style: styles.statusBadge };
-  if (finding.status === 'backtested') return { text: 'Backtested', style: styles.statusBadge };
-  return null;
-}
 
 function FindingCard({
   finding,
@@ -262,13 +90,23 @@ function FindingCard({
   onDraft: () => void;
   onOpen: () => void;
 }) {
-  const badge = statusBadge(finding);
-  const meta: JSX.Element[] = [];
-  meta.push(
-    <span key="src" style={styles.srcChip}>
+  const meta: JSX.Element[] = [
+    <span
+      key="src"
+      style={{
+        fontSize: 10.5,
+        fontWeight: 600,
+        letterSpacing: 0.3,
+        padding: '1px 7px',
+        borderRadius: 999,
+        border: `1px solid ${tone.borderStrong}`,
+        color: tone.text2,
+        whiteSpace: 'nowrap',
+      }}
+    >
       {sourceLabel(finding.source)}
-    </span>
-  );
+    </span>,
+  ];
   const published = fmtDate(finding.published_at);
   if (published) meta.push(<span key="pub">{published}</span>);
   if (finding.citation_count !== null && finding.citation_count > 0) {
@@ -280,74 +118,137 @@ function FindingCard({
   }
 
   return (
-    <div style={styles.card}>
-      <div style={styles.scoreCol} title="Engine-computed six-factor composite (0–100)">
-        <span style={styles.scoreNum}>{finding.composite}</span>
-        <span style={styles.bandTag(finding.band)}>{finding.band}</span>
+    <article
+      className="apk-card"
+      style={{
+        display: 'flex',
+        gap: 14,
+        padding: '13px 15px',
+        borderRadius: 9,
+        border: `1px solid ${tone.border}`,
+        background: tone.surface,
+      }}
+    >
+      <div
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 46 }}
+        title="Engine-computed six-factor composite (0–100)"
+      >
+        <span
+          style={{
+            fontSize: 20,
+            fontWeight: 600,
+            fontVariantNumeric: 'tabular-nums',
+            lineHeight: 1.1,
+          }}
+        >
+          {finding.composite}
+        </span>
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: 0.5,
+            textTransform: 'uppercase',
+            color: BAND_COLOR[finding.band] ?? tone.text3,
+          }}
+        >
+          {finding.band}
+        </span>
       </div>
-      <div style={styles.mainCol}>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
         {finding.url ? (
-          <a href={finding.url} target="_blank" rel="noreferrer" style={styles.cardTitle}>
+          <a
+            href={finding.url}
+            target="_blank"
+            rel="noreferrer"
+            style={{ fontSize: 13.5, fontWeight: 600, color: tone.text, textDecoration: 'none' }}
+          >
             {finding.title}
           </a>
         ) : (
-          <span style={styles.cardTitle}>{finding.title}</span>
+          <span style={{ fontSize: 13.5, fontWeight: 600 }}>{finding.title}</span>
         )}
-        <div style={styles.metaRow}>{meta}</div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            flexWrap: 'wrap',
+            fontSize: 11.5,
+            color: tone.text3,
+          }}
+        >
+          {meta}
+        </div>
         {finding.hypothesis ? (
-          <div style={styles.hypothesis}>{finding.hypothesis}</div>
+          <p style={{ margin: 0, fontSize: 12.5, color: tone.text2, maxWidth: '75ch' }}>
+            {finding.hypothesis}
+          </p>
         ) : null}
-        <div style={styles.originRow}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, color: tone.text3 }}>
           <span>
             scored: {scoreOrigin(finding.model)} · confidence {finding.confidence}
           </span>
           {finding.url ? (
-            <a href={finding.url} target="_blank" rel="noreferrer" style={styles.linkBtn}>
+            <a href={finding.url} target="_blank" rel="noreferrer" style={{ color: tone.text3 }}>
               Paper ↗
             </a>
           ) : null}
           {finding.pdf_url ? (
-            <a href={finding.pdf_url} target="_blank" rel="noreferrer" style={styles.linkBtn}>
+            <a href={finding.pdf_url} target="_blank" rel="noreferrer" style={{ color: tone.text3 }}>
               PDF ↗
             </a>
           ) : null}
         </div>
       </div>
-      <div style={styles.actionsCol}>
-        {badge ? <span style={badge.style}>{badge.text}</span> : null}
+
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+          gap: 6,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {finding.status === 'watchlist' ? (
+          <span style={{ fontSize: 11.5, color: tone.caution }}>★ Watching</span>
+        ) : finding.status === 'drafted' ? (
+          <span style={{ fontSize: 11, color: tone.text3 }}>Drafted</span>
+        ) : finding.status === 'backtested' ? (
+          <span style={{ fontSize: 11, color: tone.text3 }}>Backtested</span>
+        ) : null}
         {action.kind === 'open' ? (
-          <button type="button" style={styles.tinyBtn(false)} onClick={onOpen}>
+          <Button variant="quiet" onClick={onOpen}>
             Open file
-          </button>
+          </Button>
         ) : null}
         {action.kind === 'draft' ? (
-          <button
-            type="button"
-            style={styles.tinyBtn(busy || action.disabled)}
-            disabled={busy || action.disabled}
+          <Button
+            variant="quiet"
+            busy={busy}
+            disabled={action.disabled}
             title={
               action.disabled
-                ? action.reason
+                ? action.reason ?? undefined
                 : 'Hand this finding to the agent to draft a strategy'
             }
             onClick={onDraft}
           >
             ✎ Draft strategy
-          </button>
-        ) : null}
-        {action.kind === 'draft' && action.disabled ? (
-          <span style={styles.statusBadge}>{action.reason}</span>
+          </Button>
         ) : null}
         {finding.status === 'surfaced' ? (
-          <button type="button" style={styles.tinyBtn(busy)} disabled={busy} onClick={onWatch}>
+          <Button variant="quiet" disabled={busy} onClick={onWatch}>
             ☆ Watch
-          </button>
+          </Button>
         ) : null}
-        <button type="button" style={styles.tinyBtn(busy)} disabled={busy} onClick={onDismiss}>
+        <Button variant="quiet" disabled={busy} onClick={onDismiss}>
           ✕ Dismiss
-        </button>
+        </Button>
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -366,11 +267,14 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
   const draftPollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refresh = useCallback(async () => {
-    const body = await getJson<Record<string, unknown>>('/ui/api/research/feed?limit=60');
-    if (!body) {
-      setLoad({ phase: 'unreachable' });
+    const result = await getJsonDetailed<Record<string, unknown>>(
+      '/ui/api/research/feed?limit=60'
+    );
+    if (!result.ok) {
+      setLoad({ phase: 'failed', why: classifyLoadFailure(result.status) });
       return;
     }
+    const body = result.body;
     const rows = Array.isArray(body.findings) ? (body.findings as Record<string, unknown>[]) : [];
     setLoad({
       phase: 'ready',
@@ -379,13 +283,15 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
         last_scan: typeof body.last_scan === 'string' ? body.last_scan : null,
       },
     });
+    // A working feed disproves any lingering load/scan transport error.
+    setScanNote((note) => (note?.kind === 'err' ? null : note));
   }, []);
 
   const loadInterests = useCallback(async () => {
-    const body = await getJson<ResearchInterests>('/ui/api/research/interests');
-    if (body) {
-      setCatText((body.categories ?? []).join(', '));
-      setKwText((body.keywords ?? []).join(', '));
+    const result = await getJsonDetailed<ResearchInterests>('/ui/api/research/interests');
+    if (result.ok) {
+      setCatText((result.body.categories ?? []).join(', '));
+      setKwText((result.body.keywords ?? []).join(', '));
     }
   }, []);
 
@@ -410,13 +316,13 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
     stopPolling();
     pollTimer.current = setInterval(() => {
       void (async () => {
-        const body = await getJson<ScanStatus>('/ui/api/research/scan/status');
-        if (!body) return; // transient; keep polling
-        setScan(body);
-        if (!body.running) {
+        const result = await getJsonDetailed<ScanStatus>('/ui/api/research/scan/status');
+        if (!result.ok) return; // transient; keep polling
+        setScan(result.body);
+        if (!result.body.running) {
           stopPolling();
-          const text = scanSummaryText(body);
-          if (text) setScanNote({ kind: body.error ? 'err' : 'ok', text });
+          const text = scanSummaryText(result.body);
+          if (text) setScanNote({ kind: result.body.error ? 'err' : 'ok', text });
           void refresh();
         }
       })();
@@ -443,10 +349,7 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
       startPolling();
       return;
     }
-    setScanNote({
-      kind: 'err',
-      text: `Could not start the scan (${response.status || 'engine unreachable'}).`,
-    });
+    setScanNote({ kind: 'err', text: scanStartError(response.status) });
   };
 
   const saveInterests = async () => {
@@ -510,15 +413,15 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
             draftPollTimer.current = null;
             return;
           }
-          const link = await getJson<{ status: string; strategy_path: string | null }>(
+          const link = await getJsonDetailed<{ status: string; strategy_path: string | null }>(
             `/ui/api/research/findings/${findingId}/link`
           );
-          if (!link || link.status !== 'drafted' || !link.strategy_path) return;
+          if (!link.ok || link.body.status !== 'drafted' || !link.body.strategy_path) return;
           if (draftPollTimer.current) clearInterval(draftPollTimer.current);
           draftPollTimer.current = null;
           void refresh();
           setScanNote({ kind: 'ok', text: 'Draft landed — opening the file for review.' });
-          host?.openFile?.(`strategies/${link.strategy_path}`);
+          host?.openFile?.(`strategies/${link.body.strategy_path}`);
         })();
       }, 5000);
     },
@@ -578,10 +481,7 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
     });
     setBusyId(null);
     if (!result.ok) {
-      setScanNote({
-        kind: 'err',
-        text: result.error ?? 'The agent hand-off failed.',
-      });
+      setScanNote({ kind: 'err', text: result.error ?? 'The agent hand-off failed.' });
       return;
     }
     setScanNote({
@@ -596,35 +496,20 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
     (load.phase === 'ready' ? load.feed.last_scan : null) ?? scan?.last_scan ?? null;
 
   return (
-    <div style={styles.scroll}>
-      <div style={styles.page}>
-        <div style={styles.header}>
-          <div style={styles.title}>Research</div>
-          <div style={styles.subtitle}>
-            Fresh quantitative research, ranked for tradability. The engine scans arXiv
-            and Semantic Scholar on a daily schedule; every score here is engine-computed.
-          </div>
-        </div>
-
-        <div style={styles.toolbar}>
-          <button
-            type="button"
-            style={styles.primaryBtn(scanning)}
-            disabled={scanning}
-            onClick={() => void kickScan()}
-          >
+    <PanelShell
+      title="Research"
+      description="Fresh quantitative research, ranked for tradability. The engine scans arXiv and Semantic Scholar daily; every score is engine-computed."
+      meta={lastScan ? `Last scan ${fmtWhen(lastScan)}` : 'No scan recorded yet'}
+      toolbar={
+        <>
+          <Button variant="primary" busy={scanning} onClick={() => void kickScan()}>
             {scanning ? 'Scanning…' : 'Scan now'}
-          </button>
-          <button
-            type="button"
-            style={styles.ghostBtn(false)}
-            onClick={() => setEditorOpen((open) => !open)}
-          >
-            Interests
-          </button>
-          <button
-            type="button"
-            style={styles.ghostBtn(!signedIn)}
+          </Button>
+          <Button variant="ghost" onClick={() => setEditorOpen((open) => !open)}>
+            {editorOpen ? 'Close interests' : 'Interests'}
+          </Button>
+          <Button
+            variant="ghost"
             disabled={!signedIn}
             title={
               signedIn
@@ -633,106 +518,105 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
             }
             onClick={() => void startDeepRank()}
           >
-            ▲ Deep-rank
-          </button>
+            Deep-rank
+          </Button>
           {scanNote ? (
-            <span style={styles.note(scanNote.kind)}>
-              <span aria-hidden>{scanNote.kind === 'ok' ? '●' : '●'}</span>
-              {scanNote.text}
-            </span>
-          ) : scanning ? (
-            <span style={styles.note('muted')}>Scanning…</span>
-          ) : null}
-          <span style={styles.toolbarSpring} />
-          <span style={styles.lastScan}>
-            {lastScan ? `Last scan: ${fmtWhen(lastScan)}` : 'No scan recorded yet'}
-          </span>
-        </div>
-
-        {editorOpen ? (
-          <div style={styles.editor}>
-            <div style={styles.field}>
-              <label style={styles.fieldLabel}>Categories</label>
-              <input
-                style={styles.input}
-                value={catText}
-                onChange={(e) => setCatText(e.target.value)}
-                placeholder="q-fin.TR, q-fin.PM, q-fin.ST"
-              />
-              <span style={styles.fieldHint}>
-                arXiv category terms the scan fetches from. Semantic Scholar has no
-                categories; it follows your keywords.
-              </span>
-            </div>
-            <div style={styles.field}>
-              <label style={styles.fieldLabel}>Keywords</label>
-              <input
-                style={styles.input}
-                value={kwText}
-                onChange={(e) => setKwText(e.target.value)}
-                placeholder="momentum, mean reversion, statistical arbitrage"
-              />
-              <span style={styles.fieldHint}>
-                Drive the tradability scoring and the Semantic Scholar search. Clearing
-                both fields resets to the defaults.
-              </span>
-            </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <button
-                type="button"
-                style={styles.primaryBtn(interestsBusy)}
-                disabled={interestsBusy}
-                onClick={() => void saveInterests()}
-              >
-                Save interests
-              </button>
-              {interestsNote ? <span style={styles.note('muted')}>{interestsNote}</span> : null}
-            </div>
-          </div>
-        ) : null}
-
-        {load.phase === 'loading' ? (
-          <div style={styles.centerBox}>Loading the research feed…</div>
-        ) : load.phase === 'unreachable' ? (
-          <div style={styles.centerBox}>
-            <span>The Auracle engine is unreachable, so the research feed can't load.</span>
-            <button type="button" style={styles.retryBtn} onClick={() => void refresh()}>
-              Retry
-            </button>
-          </div>
-        ) : load.feed.findings.length === 0 ? (
-          <div style={styles.centerBox}>
-            <span>No findings yet. Scan now, or let tonight's scheduled scan fill the feed.</span>
-            <button
-              type="button"
-              style={styles.retryBtn}
-              disabled={scanning}
-              onClick={() => void kickScan()}
+            <InlineNote
+              kind={scanNote.kind}
+              onDismiss={scanNote.kind === 'err' ? () => setScanNote(null) : undefined}
             >
+              {scanNote.text}
+            </InlineNote>
+          ) : !signedIn && load.phase === 'ready' ? (
+            // One quiet line instead of a caption on every card.
+            <InlineNote kind="muted">
+              Sign in to draft or deep-rank — the agent works on your account.
+            </InlineNote>
+          ) : null}
+          <ToolbarSpring />
+        </>
+      }
+    >
+      {editorOpen ? (
+        <Disclosure>
+          <Field
+            label="Categories"
+            value={catText}
+            onChange={setCatText}
+            placeholder="q-fin.TR, q-fin.PM, q-fin.ST"
+            hint="arXiv category terms the scan fetches from. Semantic Scholar has no categories; it follows your keywords."
+          />
+          <Field
+            label="Keywords"
+            value={kwText}
+            onChange={setKwText}
+            placeholder="momentum, mean reversion, statistical arbitrage"
+            hint="Drive the tradability scoring and the Semantic Scholar search. Clearing both fields resets to the defaults."
+          />
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <Button variant="primary" busy={interestsBusy} onClick={() => void saveInterests()}>
+              Save interests
+            </Button>
+            {interestsNote ? <InlineNote kind="muted">{interestsNote}</InlineNote> : null}
+          </div>
+        </Disclosure>
+      ) : null}
+
+      {load.phase === 'loading' ? (
+        <SkeletonRows rows={4} />
+      ) : load.phase === 'failed' && load.why === 'outdated' ? (
+        <CenterState
+          title="Engine update required"
+          detail="This engine build predates the research conveyor, so the feed and scans aren't available. Update the Auracle stack from the launcher, then re-check."
+          actions={
+            <Button variant="ghost" onClick={() => void refresh()}>
+              Re-check
+            </Button>
+          }
+        />
+      ) : load.phase === 'failed' ? (
+        <CenterState
+          title="The engine didn't respond"
+          detail="The research feed lives on your local Auracle engine. Make sure the stack is running, then retry."
+          actions={
+            <Button variant="primary" onClick={() => void refresh()}>
+              Retry
+            </Button>
+          }
+        />
+      ) : load.feed.findings.length === 0 ? (
+        <CenterState
+          title="No findings yet"
+          detail="Run a scan now, or let tonight's scheduled scan fill the feed — results are ranked for tradability as they land."
+          actions={
+            <Button variant="primary" busy={scanning} onClick={() => void kickScan()}>
               {scanning ? 'Scanning…' : 'Scan now'}
-            </button>
+            </Button>
+          }
+        />
+      ) : (
+        <div className="apk-enter" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ fontSize: 11.5, color: tone.text3 }}>
+            {load.feed.findings.length} findings · ranked by engine score
           </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {load.feed.findings.map((finding) => (
-              <FindingCard
-                key={finding.id}
-                finding={finding}
-                busy={busyId === finding.id}
-                action={draftAction(finding, signedIn)}
-                onWatch={() => void act(finding, 'watch')}
-                onDismiss={() => void act(finding, 'dismiss')}
-                onDraft={() => void startDraft(finding)}
-                onOpen={() => {
-                  if (finding.strategy_path) {
-                    host?.openFile?.(`strategies/${finding.strategy_path}`);
-                  }
-                }}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+          {load.feed.findings.map((finding) => (
+            <FindingCard
+              key={finding.id}
+              finding={finding}
+              busy={busyId === finding.id}
+              action={draftAction(finding, signedIn)}
+              onWatch={() => void act(finding, 'watch')}
+              onDismiss={() => void act(finding, 'dismiss')}
+              onDraft={() => void startDraft(finding)}
+              onOpen={() => {
+                if (finding.strategy_path) {
+                  host?.openFile?.(`strategies/${finding.strategy_path}`);
+                }
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </PanelShell>
   );
 }

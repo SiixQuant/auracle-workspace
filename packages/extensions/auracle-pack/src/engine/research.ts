@@ -202,3 +202,25 @@ export const DEEP_RANK_PROMPT = '/auracle:deep-rank';
 
 export const DEEP_RANK_SIGNED_OUT_REASON =
   'Sign in to deep-rank — the agent works on your account.';
+
+/**
+ * Why the feed failed to load, from the HTTP status the transport kept.
+ * 404/405 mean this engine build predates the research surface — a fix
+ * the user can actually apply (update the stack) — while a dead socket
+ * (status 0) means nothing answered at all. Conflating them sent users
+ * chasing network trouble when the engine was simply old.
+ */
+export type LoadFailure = 'outdated' | 'unreachable';
+
+export function classifyLoadFailure(status: number): LoadFailure {
+  return status === 404 || status === 405 ? 'outdated' : 'unreachable';
+}
+
+/** One honest line for a scan-start rejection, keyed off the status. */
+export function scanStartError(status: number): string {
+  if (status === 404 || status === 405) {
+    return 'This engine build has no research scanning — update the Auracle stack, then retry.';
+  }
+  if (status === 0) return 'The engine did not respond, so the scan never started.';
+  return `The engine refused the scan (HTTP ${status}).`;
+}

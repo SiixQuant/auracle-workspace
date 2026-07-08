@@ -4,7 +4,7 @@ import { MaterialSymbol } from '@nimbalyst/runtime';
 import type { SettingsCategory } from '../Settings/SettingsSidebar';
 import type { SettingsScope } from '../Settings/SettingsView';
 import { useFloatingMenu, FloatingPortal } from '../../hooks/useFloatingMenu';
-import { stytchAuthAtom } from '../../store/atoms/stytchAuth';
+import { auracleSessionAtom } from '../../store/atoms/auracleSession';
 
 interface UserMenuPopoverProps {
   onNavigateSettings: (scope: SettingsScope, category?: SettingsCategory) => void;
@@ -16,7 +16,10 @@ interface UserMenuPopoverProps {
 }
 
 export function UserMenuPopover({ onNavigateSettings, onClose, isProjectConnected = false, anchorEl }: UserMenuPopoverProps) {
-  const authState = useAtomValue(stytchAuthAtom);
+  // Read the ONE Auracle identity (engine session), not nimbalyst's dormant
+  // Stytch auth — otherwise this popover says "Not signed in" while the
+  // Account panel shows the signed-in user.
+  const auracleSession = useAtomValue(auracleSessionAtom);
 
   const menu = useFloatingMenu({
     placement: 'right-end',
@@ -31,8 +34,9 @@ export function UserMenuPopover({ onNavigateSettings, onClose, isProjectConnecte
     }
   }, [anchorEl, menu.refs]);
 
-  const email = authState?.user?.emails?.[0]?.email;
-  const isSignedIn = authState?.isAuthenticated ?? false;
+  const email = auracleSession.email;
+  const picture = auracleSession.picture;
+  const isSignedIn = auracleSession.signedIn === true;
 
   const menuItems = [
     {
@@ -105,10 +109,18 @@ export function UserMenuPopover({ onNavigateSettings, onClose, isProjectConnecte
           }}
           data-testid="user-menu-identity"
         >
-          <div className="w-7 h-7 rounded-full bg-nim-primary flex items-center justify-center shrink-0">
+          <div className="relative w-7 h-7 rounded-full bg-nim-primary flex items-center justify-center shrink-0 overflow-hidden">
             <span className="text-xs font-semibold text-white leading-none">
               {email ? email[0].toUpperCase() : '?'}
             </span>
+            {picture ? (
+              <img
+                src={picture}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : null}
           </div>
           <div className="flex flex-col min-w-0">
             <span className="text-sm text-nim truncate">

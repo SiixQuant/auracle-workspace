@@ -39,7 +39,7 @@ import { FixedTabHeaderContainer, FixedTabHeaderRegistry } from '@nimbalyst/runt
 import { UnifiedDiffHeader, LexicalDiffHeaderAdapter } from '../UnifiedDiffHeader';
 import { ImageViewer } from '../ImageViewer';
 import { BinaryFileView } from './BinaryFileView';
-import { getFileType } from '../../utils/fileTypeDetector';
+import { getFileType, textLooksBinary } from '../../utils/fileTypeDetector';
 import { customEditorRegistry, CustomEditorWrapper } from '../CustomEditors';
 import { logger } from '../../utils/logger';
 import { createEditorHost } from './createEditorHost';
@@ -175,11 +175,19 @@ export const TabEditor: React.FC<TabEditorProps> = ({
     return getFileType(filePath, checkCustomEditor);
   }, [filePath, registryVersion]);
 
-  const isMarkdown = fileType === 'markdown';
+  // Content-level net for binaries whose extension the detector doesn't know
+  // (e.g. engine-written __pycache__/*.pyc): a decoded string that still
+  // carries NUL characters came from a binary file, never from source code.
+  const contentLooksBinary = useMemo(
+    () => (fileType === 'code' || fileType === 'markdown') && textLooksBinary(initialContent),
+    [fileType, initialContent]
+  );
+
+  const isMarkdown = fileType === 'markdown' && !contentLooksBinary;
   const isImage = fileType === 'image';
   const isCustom = fileType === 'custom';
   const isPdf = fileType === 'pdf';
-  const isBinary = fileType === 'binary';
+  const isBinary = fileType === 'binary' || contentLooksBinary;
 
   // Get the custom editor registration for this file (used for source mode and storage)
   const customEditorRegistration = useMemo(() => {

@@ -13,6 +13,8 @@ import {
   fmtWhen,
   fmtDate,
   type ScanStatus,
+  classifyLoadFailure,
+  scanStartError,
 } from '../research';
 
 describe('normalizeFinding', () => {
@@ -209,5 +211,32 @@ describe('deep-rank origin labeling and feed order', () => {
     expect(normalized.map((f) => f.id)).toEqual([2, 1]);
     expect(normalized[0].composite).toBe(90);
     expect(normalized[0].model).toBe('agent');
+  });
+});
+
+describe('classifyLoadFailure separates an old engine from a dead one', () => {
+  it('routes missing-route statuses to the outdated state', () => {
+    expect(classifyLoadFailure(404)).toBe('outdated');
+    expect(classifyLoadFailure(405)).toBe('outdated');
+  });
+
+  it('routes everything else to unreachable', () => {
+    expect(classifyLoadFailure(0)).toBe('unreachable');
+    expect(classifyLoadFailure(500)).toBe('unreachable');
+    expect(classifyLoadFailure(502)).toBe('unreachable');
+  });
+});
+
+describe('scanStartError names the cause and the fix', () => {
+  it('tells an outdated engine to update, not to retry the network', () => {
+    expect(scanStartError(404)).toContain('update the Auracle stack');
+  });
+
+  it('reports a dead socket as no response', () => {
+    expect(scanStartError(0)).toContain('did not respond');
+  });
+
+  it('surfaces other refusals with their status', () => {
+    expect(scanStartError(403)).toContain('403');
   });
 });

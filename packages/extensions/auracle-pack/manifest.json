@@ -64,6 +64,7 @@
         "icon": "monitoring",
         "placement": "fullscreen",
         "order": 70,
+        "aiSupported": true,
         "tooltip": "Deploy strategies and monitor live/paper algorithms with their order ledgers."
       },
       {
@@ -72,6 +73,7 @@
         "icon": "receipt_long",
         "placement": "bottom",
         "order": 71,
+        "aiSupported": true,
         "tooltip": "Order feed from the engine, with cancel-all."
       },
       {
@@ -80,6 +82,7 @@
         "icon": "warning",
         "placement": "bottom",
         "order": 72,
+        "aiSupported": true,
         "tooltip": "Everything that needs your attention, dismissible."
       },
       {
@@ -105,6 +108,7 @@
         "icon": "flight_takeoff",
         "placement": "bottom",
         "order": 75,
+        "aiSupported": true,
         "tooltip": "The research-to-live spine with engine evidence per stage."
       },
       {
@@ -113,6 +117,7 @@
         "icon": "cloud_download",
         "placement": "fullscreen",
         "order": 76,
+        "aiSupported": true,
         "tooltip": "Translate a QuantConnect project into an Auracle strategy scaffold."
       },
       {
@@ -121,6 +126,7 @@
         "icon": "science",
         "placement": "fullscreen",
         "order": 69,
+        "aiSupported": true,
         "tooltip": "Fresh quant papers, ranked for tradability by the engine's scan."
       }
     ]

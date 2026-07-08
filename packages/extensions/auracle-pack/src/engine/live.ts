@@ -263,3 +263,45 @@ export function formatReturn(returnPct: number | null | undefined): string {
   const sign = returnPct >= 0 ? '+' : '-';
   return `${sign}${Math.abs(returnPct).toFixed(2)}%`;
 }
+
+/** The ambient context a selected deployment publishes to the AI chat. */
+export function deploymentContext(d: Deployment): Record<string, unknown> {
+  return {
+    panel: 'live-algorithms',
+    deployment: d.name || d.strategy_path,
+    strategy_path: d.strategy_path,
+    broker: d.broker,
+    mode: d.mode,
+    status: stateLabel(d.state),
+    aum: d.aum ?? null,
+    equity: d.equity ?? null,
+    return: formatReturn(d.return_pct),
+    positions: d.positions.map((p) => ({
+      symbol: p.symbol,
+      quantity: p.quantity,
+      avg_cost: p.avg_cost,
+    })),
+  };
+}
+
+/** The "Investigate this deployment" hand-off prompt. */
+export function deploymentPrompt(d: Deployment): string {
+  const lines: string[] = [
+    `I'm looking at a ${d.mode} deployment in Auracle: "${d.name || d.strategy_path}" ` +
+      `(strategy \`${d.strategy_path}\`, broker ${d.broker}).`,
+    `Status: ${stateLabel(d.state)}. AUM: ${d.aum ?? 'n/a'}. ` +
+      `Equity: ${d.equity ?? 'n/a'}. Return: ${formatReturn(d.return_pct)}.`,
+  ];
+  if (d.positions.length > 0) {
+    lines.push('', 'Open positions:');
+    for (const p of d.positions) lines.push(`- ${p.symbol}: ${p.quantity} @ ${p.avg_cost}`);
+  }
+  lines.push(
+    '',
+    'Investigate this deployment: explain its current state and return, flag anything ' +
+      'concerning (errors, drawdown, stuck orders), and if it is errored or underperforming ' +
+      'propose concrete next steps. You can read the strategy and its order ledger through the ' +
+      'Auracle engine.'
+  );
+  return lines.join('\n');
+}

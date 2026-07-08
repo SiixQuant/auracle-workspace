@@ -13,7 +13,9 @@ import {
   fmtDate,
   type ScanStatus,
   classifyLoadFailure,
+  researchContext,
   scanStartError,
+  type ResearchFeed,
 } from '../research';
 
 describe('normalizeFinding', () => {
@@ -223,5 +225,22 @@ describe('scanStartError names the cause and the fix', () => {
 
   it('surfaces other refusals with their status', () => {
     expect(scanStartError(403)).toContain('403');
+  });
+});
+
+describe('researchContext (ambient)', () => {
+  it('publishes a bounded, panel-tagged view of the feed', () => {
+    const feed: ResearchFeed = {
+      last_scan: '2026-07-08T00:00:00Z',
+      findings: Array.from({ length: 10 }, (_, i) =>
+        normalizeFinding({ id: i, title: `Paper ${i}`, composite: 90 - i, band: 'candidate' })
+      ),
+    };
+    const ctx = researchContext(feed);
+    expect(ctx.panel).toBe('research');
+    expect(ctx.count).toBe(10);
+    // top is capped at 8 so the ambient doc stays small
+    expect((ctx.top as unknown[]).length).toBe(8);
+    expect((ctx.top as Array<{ title: string }>)[0].title).toBe('Paper 0');
   });
 });

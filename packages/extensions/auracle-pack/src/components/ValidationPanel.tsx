@@ -28,22 +28,7 @@ import {
   ToolbarSpring,
   tone,
 } from './panelkit';
-
-/**
- * Structural slice of the PanelHost this panel uses — feature-detected so it
- * still renders (with the hand-off disabled) on hosts that predate
- * launchAgentSession, and so `ai` is absent unless the panel is aiSupported.
- */
-interface PanelHostLike {
-  ai?: {
-    setContext(context: Record<string, unknown>): void;
-    clearContext(): void;
-  };
-  launchAgentSession?: (
-    prompt: string,
-    opts?: { title?: string }
-  ) => Promise<{ ok: boolean; sessionId?: string; error?: string }>;
-}
+import { PanelHostLike, useAiPanelContext, handOffToAgent, type AgentNote } from './aiPanel';
 
 interface DeployableStrategy {
   path: string;
@@ -132,30 +117,14 @@ export function ValidationPanel({ host }: { host?: PanelHostLike }): JSX.Element
   const [list, setList] = useState<ListState>({ phase: 'loading' });
   const [selected, setSelected] = useState('');
   const [run, setRun] = useState<RunState>({ phase: 'idle' });
-  const [note, setNote] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  const [note, setNote] = useState<AgentNote>(null);
 
-  // Publish the active verdict to the AI chat (ambient awareness) whenever a
-  // check completes; clear it otherwise so the agent never reads a stale rail.
-  useEffect(() => {
-    if (!host?.ai) return;
-    if (run.phase === 'done') host.ai.setContext(validationContext(run.verdict));
-    else host.ai.clearContext();
-  }, [host, run]);
+  // Publish the active verdict to the AI chat (ambient) while a check is shown.
+  useAiPanelContext(host, run.phase === 'done' ? validationContext(run.verdict) : null);
 
   const askAgent = async (verdict: ValidationVerdict) => {
-    if (!host?.launchAgentSession) {
-      setNote({ kind: 'err', text: 'This build cannot hand off to the agent — update the IDE.' });
-      return;
-    }
     const cls = verdict.strategy_path.split('.').pop() ?? verdict.strategy_path;
-    const result = await host.launchAgentSession(validationPrompt(verdict), {
-      title: `Validate: ${cls}`.slice(0, 60),
-    });
-    if (!result.ok) {
-      setNote({ kind: 'err', text: result.error ?? 'The agent hand-off failed.' });
-      return;
-    }
-    setNote({ kind: 'ok', text: 'Handed to the agent — review the prefilled prompt and send it.' });
+    setNote(await handOffToAgent(host, validationPrompt(verdict), `Validate: ${cls}`));
   };
 
   const loadStrategies = useCallback(async () => {

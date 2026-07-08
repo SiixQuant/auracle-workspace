@@ -201,14 +201,33 @@ export function isBinaryFile(filePath: string): boolean {
     // Video/Audio
     '.mp4', '.avi', '.mov', '.wmv', '.mp3', '.wav', '.ogg', '.flac',
     // Archives
-    '.zip', '.tar', '.gz', '.bz2', '.7z', '.rar',
-    // Executables
+    '.zip', '.tar', '.gz', '.bz2', '.7z', '.rar', '.jar', '.war',
+    // Executables / compiled objects (a quant workspace grows __pycache__
+    // the moment the engine imports a strategy through the shared mount)
     '.exe', '.dll', '.so', '.dylib', '.app', '.dmg',
+    '.pyc', '.pyo', '.pyd', '.class', '.o', '.obj', '.a', '.lib', '.node',
+    // Data-science artifacts
+    '.pkl', '.pickle', '.parquet', '.feather', '.npy', '.npz', '.h5', '.hdf5',
+    // Fonts
+    '.woff', '.woff2', '.ttf', '.otf', '.eot',
     // Documents
     '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
-    // Other binary
-    '.bin', '.dat', '.db', '.sqlite', '.wasm',
+    // Other binary (.ds_store is how getExtname sees macOS .DS_Store files)
+    '.bin', '.dat', '.db', '.sqlite', '.sqlite3', '.wasm', '.ds_store',
   ];
 
   return binaryExtensions.includes(ext);
+}
+
+/**
+ * Content-level safety net for binaries the extension list doesn't know.
+ *
+ * Every text decode the read path can produce keeps a source file's NUL
+ * bytes: utf-8 and latin1 map 0x00 straight to U+0000, and a genuine UTF-16
+ * file consumes its NULs into code units during decode. So a decoded string
+ * that still contains U+0000 came from a binary file (git uses the same
+ * heuristic on raw bytes). Real source code never contains NUL.
+ */
+export function textLooksBinary(content: string): boolean {
+  return content.includes('\u0000');
 }

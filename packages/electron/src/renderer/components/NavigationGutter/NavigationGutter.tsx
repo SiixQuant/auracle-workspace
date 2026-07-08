@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { usePostHog } from 'posthog-js/react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { MaterialSymbol } from '@nimbalyst/runtime';
@@ -22,7 +22,7 @@ import {
   syncEnabledProjectsAtom,
 } from '../../store/atoms/appSettings';
 import { workspaceHasTeamAtom } from '../../store/atoms/collabDocuments';
-import { stytchIsSignedInAtom } from '../../store/atoms/stytchAuth';
+import { auracleSessionAtom } from '../../store/atoms/auracleSession';
 import { AlphaBadge } from '../common/AlphaBadge';
 import { UserMenuPopover } from './UserMenuPopover';
 import { GutterContextMenu } from './GutterContextMenu';
@@ -106,10 +106,45 @@ export const NavigationGutter: React.FC<NavigationGutterProps> = ({
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Stytch auth state comes from the central atom (see stytchAuthListeners).
-  // `null` means "still loading" -- treated as signed-in for icon purposes so
-  // we don't flash the logged-out look during startup.
-  const isSignedIn = useAtomValue(stytchIsSignedInAtom);
+  // Auracle identity = the engine-held hosted sign-in session (shared by the
+  // launcher, IDE, and web), NOT nimbalyst's dormant Stytch/sync auth. One
+  // poller here (the gutter is always mounted) keeps auracleSessionAtom fresh
+  // so the user button + popover never disagree with the Account panel.
+  // `null` = still loading -- treated as signed-in for icon purposes so we
+  // don't flash the logged-out look during startup.
+  const auracleSession = useAtomValue(auracleSessionAtom);
+  const setAuracleSession = useSetAtom(auracleSessionAtom);
+  const isSignedIn = auracleSession.signedIn;
+  useEffect(() => {
+    let cancelled = false;
+    const api = (window as unknown as {
+      electronAPI?: { invoke?: (c: string, ...a: unknown[]) => Promise<unknown> };
+    }).electronAPI;
+    if (!api?.invoke) return;
+    const poll = async () => {
+      try {
+        const r = (await api.invoke!('auracle:engine-request', 'GET', '/auth/session')) as {
+          ok?: boolean;
+          body?: { signed_in?: boolean; email?: string; tier?: string; plan?: string; picture?: string };
+        };
+        if (cancelled) return;
+        const b = r?.ok ? r.body : null;
+        setAuracleSession(
+          b?.signed_in
+            ? { signedIn: true, email: b.email, tier: b.tier ?? b.plan, picture: b.picture }
+            : { signedIn: false },
+        );
+      } catch {
+        /* engine unreachable -- keep the last-known state */
+      }
+    };
+    void poll();
+    const id = window.setInterval(() => void poll(), 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [setAuracleSession]);
 
   // Gutter button visibility
   const hiddenButtons = useAtomValue(hiddenGutterButtonsAtom);
@@ -698,10 +733,19 @@ export const NavigationGutter: React.FC<NavigationGutterProps> = ({
               data-needs-sign-in={needsSignIn || undefined}
               data-testid="gutter-user-button"
             >
-              <MaterialSymbol
-                icon={needsSignIn ? 'no_accounts' : 'person'}
-                size={20}
-              />
+              {auracleSession.picture && isSignedIn ? (
+                <img
+                  src={auracleSession.picture}
+                  alt=""
+                  className="h-5 w-5 rounded-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <MaterialSymbol
+                  icon={needsSignIn ? 'no_accounts' : 'person'}
+                  size={20}
+                />
+              )}
             </button>
           </HelpTooltip>
         </div>

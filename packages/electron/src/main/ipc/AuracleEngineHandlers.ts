@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
-import { app, safeStorage } from 'electron';
+import { app, safeStorage, shell } from 'electron';
 import { safeHandle } from '../utils/ipcRegistry';
 import { logger } from '../utils/logger';
 
@@ -262,6 +262,15 @@ export function registerAuracleEngineHandlers(): void {
 
   safeHandle('auracle:auth-signout', async () => {
     await clearSession();
+    return { ok: true };
+  });
+
+  // Open the engine's hosted sign-in in the system browser. The engine runs
+  // the whole OAuth+PKCE dance and persists the shared session; the renderer
+  // then polls GET /auth/session to reflect it.
+  safeHandle('auracle:auth-clerk-start', async () => {
+    const config = await readConfig();
+    await shell.openExternal(`${config.engineUrl}/auth/clerk/start`);
     return { ok: true };
   });
 

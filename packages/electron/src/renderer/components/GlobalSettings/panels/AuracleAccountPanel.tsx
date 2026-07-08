@@ -21,6 +21,31 @@ const invoke = (channel: string, ...args: unknown[]): Promise<unknown> => {
   return api.invoke(channel, ...args);
 };
 
+interface EngineSession {
+  signed_in?: boolean;
+  email?: string;
+  tier?: string;
+  plan?: string;
+  offline?: boolean;
+  picture?: string;
+}
+
+// The engine holds the one hosted-sign-in session that BOTH the IDE and the
+// launcher read. Reading it here is what makes a launcher sign-in show up in
+// the IDE (and vice-versa).
+async function readEngineSession(): Promise<EngineSession | null> {
+  try {
+    const r = (await invoke('auracle:engine-request', 'GET', '/auth/session')) as {
+      ok: boolean;
+      body: unknown;
+    };
+    if (!r.ok) return null;
+    return (r.body ?? {}) as EngineSession;
+  } catch {
+    return null;
+  }
+}
+
 interface AuthState {
   signedIn: boolean;
   email?: string;
@@ -41,7 +66,7 @@ type ViewState =
   | { kind: 'loading' }
   | { kind: 'signed-out'; error?: string }
   | { kind: 'pending'; email: string; base: string; deviceCode: string; error?: string }
-  | { kind: 'signed-in'; email: string; tier: string; offline: boolean };
+  | { kind: 'signed-in'; email: string; tier: string; offline: boolean; picture?: string };
 
 const POLL_INTERVAL_MS = 3_000;
 const POLL_LIMIT = 100;
@@ -51,9 +76,22 @@ export function AuracleAccountPanel() {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
+  const [clerkPolling, setClerkPolling] = useState(false);
   const pollCount = useRef(0);
 
   const loadState = useCallback(async () => {
+    // Prefer the engine-held session (the hosted sign-in shared by both apps).
+    const engine = await readEngineSession();
+    if (engine?.signed_in) {
+      setState({
+        kind: 'signed-in',
+        email: engine.email ?? '',
+        tier: engine.tier ?? engine.plan ?? '',
+        offline: !!engine.offline,
+        picture: engine.picture,
+      });
+      return;
+    }
     try {
       const auth = (await invoke('auracle:auth-state')) as AuthState;
       if (auth.signedIn) {
@@ -126,6 +164,50 @@ export function AuracleAccountPanel() {
     }
   };
 
+  // Continue with Google: the engine opens its hosted sign-in in the browser,
+  // runs the OAuth+PKCE dance, and persists the shared session. We poll it.
+  const clerkSignIn = async () => {
+    setBusy(true);
+    try {
+      await invoke('auracle:auth-clerk-start');
+      pollCount.current = 0;
+      setClerkPolling(true);
+    } catch {
+      setState({
+        kind: 'signed-out',
+        error: 'Could not open the sign-in page. Is the Auracle engine running?',
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!clerkPolling) return;
+    const timer = setInterval(() => {
+      void (async () => {
+        pollCount.current += 1;
+        if (pollCount.current > POLL_LIMIT) {
+          clearInterval(timer);
+          setClerkPolling(false);
+          return;
+        }
+        const engine = await readEngineSession();
+        if (engine?.signed_in) {
+          clearInterval(timer);
+          setClerkPolling(false);
+          setState({
+            kind: 'signed-in',
+            email: engine.email ?? '',
+            tier: engine.tier ?? engine.plan ?? '',
+            offline: !!engine.offline,
+          });
+        }
+      })();
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [clerkPolling]);
+
   // Poll for the magic-link completion while pending.
   useEffect(() => {
     if (state.kind !== 'pending' || !state.deviceCode) return;
@@ -173,8 +255,14 @@ export function AuracleAccountPanel() {
 
   const signOut = async () => {
     await invoke('auracle:auth-signout');
+    try {
+      await invoke('auracle:engine-request', 'POST', '/auth/session/signout');
+    } catch {
+      // Engine may be down; the local session is cleared regardless.
+    }
     setEmail('');
     setCode('');
+    setClerkPolling(false);
     setState({ kind: 'signed-out' });
   };
 
@@ -194,8 +282,19 @@ export function AuracleAccountPanel() {
 
         {state.kind === 'signed-in' ? (
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-nim-primary flex items-center justify-center text-nim-on-primary font-semibold text-sm">
+            <div className="relative w-9 h-9 shrink-0 rounded-full bg-nim-primary flex items-center justify-center text-nim-on-primary font-semibold text-sm overflow-hidden">
               {(state.email || 'A').charAt(0).toUpperCase()}
+              {state.picture ? (
+                <img
+                  src={state.picture}
+                  alt=""
+                  referrerPolicy="no-referrer"
+                  className="absolute inset-0 w-full h-full object-cover"
+                  onError={(event) => {
+                    (event.currentTarget as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              ) : null}
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-medium text-nim text-[13px] truncate">{state.email}</div>
@@ -215,33 +314,37 @@ export function AuracleAccountPanel() {
         ) : null}
 
         {state.kind === 'signed-out' ? (
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              void start();
-            }}
-          >
+          <div>
             <div className="text-[13px] text-nim mb-3">
-              Sign in with your email — we send a magic link and a 6-digit code.
+              Sign in to link this install to your plan and live-trading entitlement.
             </div>
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="you@example.com"
-              className="w-full px-3 py-2 mb-3 bg-nim-primary-bg border border-nim rounded text-nim text-[13px]"
-            />
             <button
-              type="submit"
-              disabled={busy || !email.includes('@')}
-              className="w-full px-3 py-2 bg-nim-primary text-nim-on-primary rounded text-[13px] font-medium cursor-pointer disabled:opacity-50"
+              type="button"
+              disabled={busy || clerkPolling}
+              onClick={() => void clerkSignIn()}
+              className="w-full px-4 py-2.5 flex items-center justify-center gap-2.5 bg-white border border-nim rounded-md text-[#333] font-medium text-[13px] cursor-pointer disabled:opacity-70 disabled:cursor-wait"
             >
-              {busy ? 'Sending…' : 'Send Sign-In Link'}
+              <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="4" r="2.1" fill="currentColor" />
+                <circle cx="12" cy="20" r="2.1" fill="currentColor" />
+                <circle cx="4" cy="12" r="2.1" fill="currentColor" />
+                <circle cx="20" cy="12" r="2.1" fill="currentColor" />
+              </svg>
+              {clerkPolling ? 'Waiting for browser sign-in…' : 'Continue with Auracle'}
             </button>
+            {clerkPolling ? (
+              <div className="text-[12px] text-nim-faint mt-2">
+                Finish signing in in your browser, then return here — this page updates
+                automatically.
+              </div>
+            ) : null}
+            <div className="text-[12px] text-nim-faint mt-3">
+              Opens a secure Auracle sign-in in your browser — continue with Google, GitHub, or X.
+            </div>
             {state.error ? (
               <div className="text-[12px] text-nim-danger mt-2">{state.error}</div>
             ) : null}
-          </form>
+          </div>
         ) : null}
 
         {state.kind === 'pending' ? (

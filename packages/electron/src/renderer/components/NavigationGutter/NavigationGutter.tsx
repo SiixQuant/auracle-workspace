@@ -10,9 +10,6 @@ import { ThemeToggleButton } from '../ThemeToggleButton/ThemeToggleButton';
 import { SyncStatusButton } from '../SyncStatusButton/SyncStatusButton';
 import { TrustIndicator } from '../TrustIndicator';
 import { ExtensionDevIndicator } from '../ExtensionDevIndicator';
-import { ClaudeUsageIndicator } from '../ClaudeUsageIndicator';
-import { CodexUsageIndicator } from '../CodexUsageIndicator';
-import { GeminiUsageIndicator } from '../GeminiUsageIndicator';
 import { BackgroundTaskIndicator } from '../BackgroundTaskIndicator';
 import { VoiceModeButton } from '../UnifiedAI/VoiceModeButton';
 import { useExtensionGutterButtons, useExtensionBottomPanelButtons } from '../../extensions/panels/usePanels';
@@ -613,26 +610,8 @@ export const NavigationGutter: React.FC<NavigationGutterProps> = ({
       {/* Settings (bottom) */}
       <div className="nav-section nav-settings flex flex-col items-center gap-1 w-full px-1.5 py-1 mt-auto pt-2 border-t border-nim">
 
-        {/* Claude Usage Indicator - Shows API usage limits */}
-        {!isHidden('claude-usage') && (
-          <div onContextMenu={(e) => openContextMenu(e, 'claude-usage')}>
-            <ClaudeUsageIndicator />
-          </div>
-        )}
-
-        {/* Codex Usage Indicator - Shows Codex subscription usage limits */}
-        {!isHidden('codex-usage') && (
-          <div onContextMenu={(e) => openContextMenu(e, 'codex-usage')}>
-            <CodexUsageIndicator />
-          </div>
-        )}
-
-        {/* Gemini Usage Indicator - Shows Gemini (Antigravity) usage limits */}
-        {!isHidden('gemini-usage') && (
-          <div onContextMenu={(e) => openContextMenu(e, 'gemini-usage')}>
-            <GeminiUsageIndicator />
-          </div>
-        )}
+        {/* AI provider usage rings (Claude/Codex/Gemini) removed for Auracle —
+            irrelevant to the trading product and rendered as empty placeholders. */}
 
         {/* Extension Dev Indicator - Shows when extension dev tools are enabled */}
         {!isHidden('extension-dev') && (

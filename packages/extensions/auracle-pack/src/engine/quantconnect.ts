@@ -61,3 +61,69 @@ export function headlineStats(statistics: Record<string, unknown> | null | undef
   }
   return out;
 }
+
+/** The import translation report as the panel reads it. */
+export interface QcTranslateReport {
+  style?: string;
+  coverage?: number;
+  unmapped?: string[];
+  notes?: string[];
+  scaffold?: string;
+}
+
+/** Ambient context for an active QC import (project + last translation). */
+export function qcContext(
+  project: QcProject,
+  report: QcTranslateReport | null,
+  savedPath: string | null
+): Record<string, unknown> {
+  return {
+    panel: 'qc-import',
+    project: project.name,
+    project_id: project.projectId,
+    language: project.language,
+    imported: report != null,
+    coverage: typeof report?.coverage === 'number' ? report.coverage : null,
+    unmapped: report?.unmapped ?? [],
+    saved_path: savedPath,
+  };
+}
+
+/** The "Adapt this translation" hand-off prompt. */
+export function qcPrompt(
+  project: QcProject,
+  report: QcTranslateReport,
+  savedPath: string | null
+): string {
+  const cov =
+    typeof report.coverage === 'number' ? `${Math.round(report.coverage * 100)}%` : 'unknown';
+  const lines: string[] = [
+    `I imported the QuantConnect project "${project.name}" (#${project.projectId}, ` +
+      `${project.language || 'unknown language'}) into an Auracle strategy.`,
+    `The automatic translation covered ${cov}` +
+      `${report.style ? ` (detected style: ${report.style})` : ''}.`,
+  ];
+  const unmapped = report.unmapped ?? [];
+  if (unmapped.length > 0) {
+    lines.push('', `These pieces did NOT translate and need hand-adapting: ${unmapped.join(', ')}.`);
+  }
+  if (savedPath) {
+    lines.push(
+      '',
+      `The scaffold is saved at \`${savedPath}\` in my workspace. Read it, then finish the port: ` +
+        'implement the unmapped pieces and make it a correct, runnable Auracle strategy (a subclass ' +
+        'of auracle.backtest.Strategy with universe / prices_to_signals).'
+    );
+  } else {
+    lines.push(
+      '',
+      'Here is the generated scaffold — finish the port (implement the unmapped pieces and make ' +
+        'it a correct, runnable Auracle strategy):',
+      '',
+      '```python',
+      report.scaffold ?? '',
+      '```'
+    );
+  }
+  return lines.join('\n');
+}

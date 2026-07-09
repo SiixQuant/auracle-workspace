@@ -9,6 +9,7 @@
  * Requires the QuantConnect integration to be connected in Settings.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import { bumpConnectGeneration, getJson, postJson } from '../engine/client';
 import {
   QcProject,
@@ -16,6 +17,8 @@ import {
   compilePhase,
   headlineStats,
   normalizeProject,
+  qcContext,
+  qcPrompt,
 } from '../engine/quantconnect';
 import {
   Button,
@@ -28,6 +31,7 @@ import {
   ToolbarSpring,
   tone,
 } from './panelkit';
+import { useAiPanelContext, handOffToAgent, type AgentNote } from './aiPanel';
 
 interface TranslateReport {
   style?: string;
@@ -66,6 +70,8 @@ function ProjectCard({
   onBacktest,
   onSave,
   onSavePathChange,
+  onAdapt,
+  adaptNote,
 }: {
   project: QcProject;
   active: boolean;
@@ -75,6 +81,8 @@ function ProjectCard({
   onBacktest: () => void;
   onSave: () => void;
   onSavePathChange: (v: string) => void;
+  onAdapt: () => void;
+  adaptNote: AgentNote;
 }) {
   const busy =
     importState?.phase === 'translating' ||
@@ -159,10 +167,12 @@ function ProjectCard({
                       <Field label="Save to" value={importState.savePath} onChange={onSavePathChange} />
                     </div>
                     <Button variant="primary" onClick={onSave}>Save as strategy</Button>
+                    <Button variant="quiet" onClick={onAdapt}>⚗ Ask the agent</Button>
                   </div>
                   {importState.saved ? (
                     <InlineNote kind="ok">Saved to {importState.saved}.</InlineNote>
                   ) : null}
+                  {adaptNote ? <InlineNote kind={adaptNote.kind}>{adaptNote.text}</InlineNote> : null}
                 </>
               ) : (
                 <InlineNote kind="muted">The translator returned no scaffold for this project.</InlineNote>
@@ -211,11 +221,12 @@ function ProjectCard({
   );
 }
 
-export function QcImportPanel(): JSX.Element {
+export function QcImportPanel({ host }: PanelHostProps): JSX.Element {
   const [list, setList] = useState<ListState>({ phase: 'loading' });
   const [activeId, setActiveId] = useState<number | null>(null);
   const [importState, setImportState] = useState<ImportState | null>(null);
   const [backtestState, setBacktestState] = useState<BacktestState | null>(null);
+  const [adaptNote, setAdaptNote] = useState<AgentNote>(null);
 
   const [exportOpen, setExportOpen] = useState(false);
   const [exportable, setExportable] = useState<Array<{ path: string; label: string }>>([]);
@@ -240,6 +251,26 @@ export function QcImportPanel(): JSX.Element {
   }, []);
 
   useEffect(() => { void loadProjects(); }, [loadProjects]);
+
+  // Ambient: publish the active project + its last translation to the AI chat.
+  const activeProject =
+    list.phase === 'ready' ? list.projects.find((p) => p.projectId === activeId) : undefined;
+  const activeReport = importState?.phase === 'report' ? importState.report : null;
+  const activeSaved = importState?.phase === 'report' ? importState.saved : null;
+  useAiPanelContext(
+    host,
+    activeProject && activeReport ? qcContext(activeProject, activeReport, activeSaved) : null
+  );
+  const adaptTranslation = async () => {
+    if (!activeProject || !activeReport) return;
+    setAdaptNote(
+      await handOffToAgent(
+        host,
+        qcPrompt(activeProject, activeReport, activeSaved),
+        `Adapt: ${activeProject.name}`
+      )
+    );
+  };
 
   const openExport = useCallback(async () => {
     setExportOpen((v) => !v);
@@ -470,6 +501,8 @@ export function QcImportPanel(): JSX.Element {
               onSavePathChange={(v) =>
                 setImportState((s) => (s?.phase === 'report' ? { ...s, savePath: v } : s))
               }
+              onAdapt={() => void adaptTranslation()}
+              adaptNote={activeId === project.projectId ? adaptNote : null}
             />
           ))}
         </div>

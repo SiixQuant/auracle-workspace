@@ -72,3 +72,53 @@ export function railHeadline(signals: ValidationSignal[]): string {
   if (unknowns) bits.push(`${unknowns} couldn't be checked`);
   return bits.join(' · ');
 }
+
+/**
+ * The ambient context a validation verdict publishes to the AI chat via
+ * `host.ai.setContext` (panel is `aiSupported`). Kept compact and stable so
+ * the agent can answer "what does this validation mean?" from any session
+ * without the panel having to hand anything off explicitly.
+ */
+export function validationContext(verdict: ValidationVerdict): Record<string, unknown> {
+  return {
+    panel: 'validation',
+    strategy_path: verdict.strategy_path,
+    as_of: verdict.as_of,
+    summary: verdict.plain || railHeadline(verdict.signals),
+    signals: verdict.signals.map((s) => ({
+      name: s.name,
+      tier: s.tier,
+      plain: s.plain,
+      fix: s.what_usually_fixes_it,
+    })),
+  };
+}
+
+/**
+ * The explicit hand-off prompt for the "Ask the agent" button. Embeds the
+ * flagged signals directly (so the agent has the verdict even in a fresh
+ * session) and points it at the strategy file + the engine to re-check.
+ */
+export function validationPrompt(verdict: ValidationVerdict): string {
+  const reds = verdict.signals.filter((s) => s.tier === 'red');
+  const unknowns = verdict.signals.filter((s) => s.tier === 'unknown');
+  const lines: string[] = [
+    `Auracle's overfit validation just ran on the strategy \`${verdict.strategy_path}\`.`,
+    `Verdict: ${verdict.plain || railHeadline(verdict.signals)}.`,
+  ];
+  if (reds.length > 0) {
+    lines.push('', 'Signals that need attention:');
+    for (const s of reds) {
+      const fix = s.what_usually_fixes_it ? ` (usually fixed by: ${s.what_usually_fixes_it})` : '';
+      lines.push(`- ${s.name}: ${s.plain}${fix}`);
+    }
+  }
+  if (unknowns.length > 0) {
+    lines.push('', `Couldn't be checked on this history: ${unknowns.map((s) => s.name).join(', ')}.`);
+  }
+  lines.push(
+    '',
+    'Read this strategy in my workspace, explain what each flagged signal means for THIS strategy specifically, and propose concrete, minimal changes to address the red signals without overfitting further. You can re-run validation through the Auracle engine to check your changes.'
+  );
+  return lines.join('\n');
+}

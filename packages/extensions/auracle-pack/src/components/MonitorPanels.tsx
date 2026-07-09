@@ -9,6 +9,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import { bumpConnectGeneration, getJson, onConnectGeneration, postJson } from '../engine/client';
+import {
+  BlotterOrder,
+  Incident,
+  StageTruth,
+  blotterContext,
+  incidentsContext,
+  runwayContext,
+} from '../engine/monitors';
+import { useAiPanelContext } from './aiPanel';
 
 const styles = {
   page: {
@@ -91,18 +100,10 @@ function Placeholder({ state, what }: { state: 'loading' | 'unreachable'; what: 
 
 // ── Blotter ─────────────────────────────────────────────────────────────
 
-interface BlotterOrder {
-  id?: number;
-  symbol?: string;
-  action?: string;
-  status?: string;
-  plain?: string;
-  broker_order_id?: string | null;
-}
-
-export function BlotterPanel(_props: PanelHostProps): JSX.Element {
+export function BlotterPanel({ host }: PanelHostProps): JSX.Element {
   const [data, reload] = usePolledFeed<{ orders?: BlotterOrder[] }>('/ui/api/orders', 30_000);
   const [confirming, setConfirming] = useState(false);
+  useAiPanelContext(host, data ? blotterContext(data.orders ?? []) : null);
   if (data === undefined) return <div style={styles.page}><Placeholder state="loading" what="orders" /></div>;
   if (data === null) return <div style={styles.page}><Placeholder state="unreachable" what="orders" /></div>;
   const orders = data.orders ?? [];
@@ -151,19 +152,12 @@ export function BlotterPanel(_props: PanelHostProps): JSX.Element {
 
 // ── Incidents ───────────────────────────────────────────────────────────
 
-interface Incident {
-  severity?: string;
-  cause?: string;
-  detail?: string;
-  dismiss_kind?: string;
-  dismiss_id?: number;
-}
-
-export function IncidentsPanel(_props: PanelHostProps): JSX.Element {
+export function IncidentsPanel({ host }: PanelHostProps): JSX.Element {
   const [data, reload] = usePolledFeed<{ incidents?: Incident[]; plain?: string }>(
     '/ui/api/incidents',
     30_000
   );
+  useAiPanelContext(host, data ? incidentsContext(data.incidents ?? []) : null);
   if (data === undefined) return <div style={styles.page}><Placeholder state="loading" what="incidents" /></div>;
   if (data === null) return <div style={styles.page}><Placeholder state="unreachable" what="incidents" /></div>;
   const incidents = data.incidents ?? [];
@@ -265,13 +259,9 @@ const RUNWAY_LABELS: Record<(typeof RUNWAY_STAGES)[number], string> = {
   monitor: 'Monitor',
 };
 
-interface StageTruth {
-  reached?: string;
-  evidence?: string;
-}
-
-export function RunwayPanel(_props: PanelHostProps): JSX.Element {
+export function RunwayPanel({ host }: PanelHostProps): JSX.Element {
   const [data] = usePolledFeed<{ stages?: Record<string, StageTruth> }>('/ui/api/runway', 60_000);
+  useAiPanelContext(host, data ? runwayContext(data.stages ?? {}) : null);
   if (data === undefined) return <div style={styles.page}><Placeholder state="loading" what="the runway" /></div>;
   if (data === null) return <div style={styles.page}><Placeholder state="unreachable" what="the runway" /></div>;
   return (

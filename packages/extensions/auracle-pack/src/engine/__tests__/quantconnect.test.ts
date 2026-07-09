@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { compilePhase, headlineStats, normalizeProject } from '../quantconnect';
+import {
+  QcProject,
+  compilePhase,
+  headlineStats,
+  normalizeProject,
+  qcContext,
+  qcPrompt,
+} from '../quantconnect';
 
 describe('normalizeProject', () => {
   it('coerces id shapes and defaults the name', () => {
@@ -48,5 +55,44 @@ describe('headlineStats', () => {
     expect(headlineStats(null)).toEqual([]);
     expect(headlineStats(undefined)).toEqual([]);
     expect(headlineStats({})).toEqual([]);
+  });
+});
+
+const project: QcProject = { projectId: 42, name: 'Alpha', language: 'Py' };
+
+describe('qcContext (ambient)', () => {
+  it('summarizes the active project + translation', () => {
+    const ctx = qcContext(project, { coverage: 0.8, unmapped: ['OnData'] }, 'strategies/alpha.py');
+    expect(ctx.panel).toBe('qc-import');
+    expect(ctx.project_id).toBe(42);
+    expect(ctx.imported).toBe(true);
+    expect(ctx.coverage).toBe(0.8);
+    expect(ctx.unmapped).toEqual(['OnData']);
+    expect(ctx.saved_path).toBe('strategies/alpha.py');
+  });
+
+  it('marks not-yet-imported when there is no report', () => {
+    expect(qcContext(project, null, null).imported).toBe(false);
+  });
+});
+
+describe('qcPrompt (hand-off)', () => {
+  it('references the saved file when saved, and lists the unmapped pieces', () => {
+    const prompt = qcPrompt(
+      project,
+      { coverage: 0.8, unmapped: ['OnData', 'Consolidators'] },
+      'strategies/alpha.py'
+    );
+    expect(prompt).toContain('"Alpha" (#42');
+    expect(prompt).toContain('covered 80%');
+    expect(prompt).toContain('OnData, Consolidators');
+    expect(prompt).toContain('`strategies/alpha.py`');
+    expect(prompt).not.toContain('```python');
+  });
+
+  it('inlines the scaffold when nothing is saved yet', () => {
+    const prompt = qcPrompt(project, { coverage: 0.5, scaffold: 'class Alpha: pass' }, null);
+    expect(prompt).toContain('```python');
+    expect(prompt).toContain('class Alpha: pass');
   });
 });

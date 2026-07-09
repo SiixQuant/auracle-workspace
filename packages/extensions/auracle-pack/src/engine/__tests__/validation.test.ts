@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { normalizeSignal, normalizeVerdict, railHeadline } from '../validation';
+import {
+  normalizeSignal,
+  normalizeVerdict,
+  railHeadline,
+  validationContext,
+  validationPrompt,
+} from '../validation';
 
 describe('normalizeSignal', () => {
   it('keeps green/red and defaults everything else to unknown', () => {
@@ -48,5 +54,63 @@ describe('railHeadline', () => {
     );
     expect(railHeadline([sig('green'), sig('green')])).toBe('2 of 2 checks look healthy');
     expect(railHeadline([])).toBe('No signals returned.');
+  });
+});
+
+const sampleVerdict = normalizeVerdict({
+  as_of: '2026-07-08T00:00:00Z',
+  strategy_path: 'strategies.desk.momo.Momo',
+  plain: 'Two signals need attention.',
+  signals: [
+    { signal: 'is_oos', tier: 'green', name: 'In-vs-out-of-sample', plain: 'Holds up.' },
+    {
+      signal: 'sharpe_decay',
+      tier: 'red',
+      name: 'Sharpe decay',
+      plain: 'Out-of-sample Sharpe collapses.',
+      what_usually_fixes_it: 'fewer parameters',
+    },
+    { signal: 'turnover', tier: 'unknown', name: 'Turnover', plain: '' },
+  ],
+});
+
+describe('validationContext (ambient bus payload)', () => {
+  it('is compact, panel-tagged, and preserves every signal + fix', () => {
+    const ctx = validationContext(sampleVerdict);
+    expect(ctx.panel).toBe('validation');
+    expect(ctx.strategy_path).toBe('strategies.desk.momo.Momo');
+    expect(ctx.summary).toBe('Two signals need attention.');
+    expect(ctx).toHaveProperty('signals');
+    const signals = ctx.signals as Array<{ name: string; tier: string; fix: string }>;
+    expect(signals).toHaveLength(3);
+    expect(signals[1]).toMatchObject({ name: 'Sharpe decay', tier: 'red', fix: 'fewer parameters' });
+  });
+
+  it('falls back to the rail headline when the engine gives no plain summary', () => {
+    const noPlain = normalizeVerdict({ strategy_path: 'x.Y', signals: [{ tier: 'green' }] });
+    expect(validationContext(noPlain).summary).toBe('1 of 1 checks look healthy');
+  });
+});
+
+describe('validationPrompt (agent hand-off)', () => {
+  it('names the strategy, lists only the red signals with their fixes, and points at the engine', () => {
+    const prompt = validationPrompt(sampleVerdict);
+    expect(prompt).toContain('strategies.desk.momo.Momo');
+    expect(prompt).toContain('Sharpe decay: Out-of-sample Sharpe collapses. (usually fixed by: fewer parameters)');
+    // Green signals are not dragged into the "needs attention" list.
+    expect(prompt).not.toContain('In-vs-out-of-sample:');
+    // Unchecked signals are surfaced, but separately.
+    expect(prompt).toContain("Couldn't be checked on this history: Turnover.");
+    expect(prompt).toContain('re-run validation through the Auracle engine');
+  });
+
+  it('omits the attention section entirely when nothing is red', () => {
+    const clean = normalizeVerdict({
+      strategy_path: 'x.Y',
+      plain: 'All clear.',
+      signals: [{ signal: 'a', tier: 'green', name: 'A' }],
+    });
+    const prompt = validationPrompt(clean);
+    expect(prompt).not.toContain('need attention');
   });
 });

@@ -22,6 +22,8 @@ import {
   availableActions,
   canDeploy,
   computeLocked,
+  deploymentContext,
+  deploymentPrompt,
   formatReturn,
   isActive,
   isDestructive,
@@ -35,6 +37,7 @@ import {
   validateWizard,
   verbEndpoint,
 } from '../engine/live';
+import { useAiPanelContext, handOffToAgent, type AgentNote } from './aiPanel';
 
 const POLL_MS = 20_000;
 
@@ -651,11 +654,25 @@ function LedgerView({ deployment }: { deployment: Deployment }) {
   );
 }
 
-export function LiveAlgorithmsPanel(_props: PanelHostProps): JSX.Element {
+export function LiveAlgorithmsPanel({ host }: PanelHostProps): JSX.Element {
   const [model, setModel] = useState<LiveAlgorithms>({ rows: [], selected: null });
   const [phase, setPhase] = useState<'loading' | 'ready' | 'unreachable'>('loading');
   const [view, setView] = useState<'table' | 'wizard'>('table');
   const [pendingConfirm, setPendingConfirm] = useState<{ id: number; action: LiveAction } | null>(null);
+  const [investigateNote, setInvestigateNote] = useState<AgentNote>(null);
+
+  // Publish the selected deployment to the AI chat (ambient), and offer a
+  // one-click investigate hand-off for it.
+  const selectedRow = selectedDeployment(model);
+  useAiPanelContext(
+    host,
+    phase === 'ready' && selectedRow ? deploymentContext(selectedRow) : null
+  );
+  const investigate = async (d: Deployment) => {
+    setInvestigateNote(
+      await handOffToAgent(host, deploymentPrompt(d), `Investigate: ${d.name || d.strategy_path}`)
+    );
+  };
 
   const load = useCallback(async () => {
     const rows = await getJson<Deployment[]>('/deployments');
@@ -767,8 +784,26 @@ export function LiveAlgorithmsPanel(_props: PanelHostProps): JSX.Element {
           </tbody>
         </table>
       ) : null}
-      {phase === 'ready' && selectedDeployment(model) ? (
-        <LedgerView deployment={selectedDeployment(model) as Deployment} />
+      {phase === 'ready' && selectedRow ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={styles.note}>{selectedRow.name || selectedRow.strategy_path}</span>
+            <span style={{ flex: 1 }} />
+            <button
+              type="button"
+              style={styles.button(true)}
+              onClick={() => void investigate(selectedRow)}
+            >
+              ⚡ Investigate this deployment
+            </button>
+          </div>
+          {investigateNote ? (
+            <div style={investigateNote.kind === 'err' ? styles.error : styles.note}>
+              {investigateNote.text}
+            </div>
+          ) : null}
+          <LedgerView deployment={selectedRow} />
+        </div>
       ) : null}
     </div>
   );

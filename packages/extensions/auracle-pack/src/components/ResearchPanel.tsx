@@ -34,6 +34,7 @@ import {
   fmtDate,
   fmtWhen,
   normalizeFinding,
+  researchContext,
   scanStartError,
   scanSummaryText,
   scoreOrigin,
@@ -50,22 +51,10 @@ import {
   ToolbarSpring,
   tone,
 } from './panelkit';
+import { PanelHostLike, useAiPanelContext } from './aiPanel';
 
 /** The engine ranks and gates internally; the panel shows the best 20. */
 const FEED_LIMIT = 20;
-
-/**
- * Structural slice of the PanelHost this panel uses — feature-detected so
- * the panel renders (with the hand-off disabled) on hosts that predate
- * launchAgentSession.
- */
-interface PanelHostLike {
-  openFile?: (path: string) => void;
-  launchAgentSession?: (
-    prompt: string,
-    opts?: { title?: string }
-  ) => Promise<{ ok: boolean; sessionId?: string; error?: string }>;
-}
 
 type LoadState =
   | { phase: 'loading' }
@@ -264,6 +253,10 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
   const [signedIn, setSignedIn] = useState(false);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const draftPollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Ambient: publish the current feed to the AI chat so the agent knows what
+  // research the user is looking at.
+  useAiPanelContext(host, load.phase === 'ready' ? researchContext(load.feed) : null);
 
   const refresh = useCallback(async () => {
     const result = await getJsonDetailed<Record<string, unknown>>(

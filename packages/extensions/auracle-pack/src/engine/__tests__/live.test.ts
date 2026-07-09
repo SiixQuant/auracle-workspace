@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   DeployWizard,
+  Deployment,
   DeploymentOrders,
   activeCount,
   availableActions,
   canDeploy,
   computeLocked,
+  deploymentContext,
+  deploymentPrompt,
   formatReturn,
   isDestructive,
   isPaidTier,
@@ -169,5 +172,43 @@ describe('live algorithms lifecycle (ported native tests)', () => {
     expect(stateLabel('running')).toBe('Live');
     expect(stateLabel('provisioning')).toBe('Preparing');
     expect(stateLabel('nonsense')).toBe('Unknown');
+  });
+});
+
+function deployment(overrides: Partial<Deployment> = {}): Deployment {
+  return {
+    id: 1,
+    name: 'Momentum SPY',
+    strategy_path: 'strategies.desk.momo.Momo',
+    broker: 'alpaca',
+    mode: 'paper',
+    state: 'running',
+    aum: 100000,
+    equity: 101250,
+    return_pct: 1.25,
+    positions: [{ symbol: 'SPY', quantity: 10, avg_cost: 500 }],
+    ...overrides,
+  };
+}
+
+describe('deploymentContext (ambient)', () => {
+  it('captures the live state and positions, panel-tagged', () => {
+    const ctx = deploymentContext(deployment());
+    expect(ctx.panel).toBe('live-algorithms');
+    expect(ctx.deployment).toBe('Momentum SPY');
+    expect(ctx.status).toBe('Live'); // stateLabel('running')
+    expect(ctx.return).toBe('+1.25%');
+    expect(ctx.positions).toEqual([{ symbol: 'SPY', quantity: 10, avg_cost: 500 }]);
+  });
+});
+
+describe('deploymentPrompt (hand-off)', () => {
+  it('names the strategy, its status, and asks to investigate', () => {
+    const prompt = deploymentPrompt(deployment({ state: 'errored', return_pct: -8 }));
+    expect(prompt).toContain('strategies.desk.momo.Momo');
+    expect(prompt).toContain('Status: Errored.');
+    expect(prompt).toContain('Return: -8.00%');
+    expect(prompt).toContain('- SPY: 10 @ 500');
+    expect(prompt).toContain('Investigate this deployment');
   });
 });

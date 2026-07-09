@@ -210,6 +210,24 @@ export function classifyLoadFailure(status: number): LoadFailure {
   return status === 404 || status === 405 ? 'outdated' : 'unreachable';
 }
 
+/** Ambient context: a compact view of the research feed the user is browsing. */
+export function researchContext(feed: ResearchFeed): Record<string, unknown> {
+  return {
+    panel: 'research',
+    last_scan: feed.last_scan,
+    count: feed.findings.length,
+    top: feed.findings.slice(0, 8).map((f) => ({
+      id: f.id,
+      title: f.title,
+      composite: f.composite,
+      band: f.band,
+      technique: f.technique,
+      asset_classes: f.asset_classes,
+      status: f.status,
+    })),
+  };
+}
+
 /** One honest line for a scan-start rejection, keyed off the status. */
 export function scanStartError(status: number): string {
   if (status === 404 || status === 405) {

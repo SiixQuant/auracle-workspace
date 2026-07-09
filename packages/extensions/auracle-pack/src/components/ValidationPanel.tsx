@@ -12,7 +12,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getJson, getJsonDetailed } from '../engine/client';
 import { classifyLoadFailure, type LoadFailure } from '../engine/research';
-import { ValidationVerdict, normalizeVerdict, railHeadline } from '../engine/validation';
+import {
+  ValidationVerdict,
+  normalizeVerdict,
+  railHeadline,
+  validationContext,
+  validationPrompt,
+} from '../engine/validation';
 import {
   Button,
   CenterState,
@@ -22,6 +28,7 @@ import {
   ToolbarSpring,
   tone,
 } from './panelkit';
+import { PanelHostLike, useAiPanelContext, handOffToAgent, type AgentNote } from './aiPanel';
 
 interface DeployableStrategy {
   path: string;
@@ -106,10 +113,19 @@ function SignalRow({
   );
 }
 
-export function ValidationPanel(): JSX.Element {
+export function ValidationPanel({ host }: { host?: PanelHostLike }): JSX.Element {
   const [list, setList] = useState<ListState>({ phase: 'loading' });
   const [selected, setSelected] = useState('');
   const [run, setRun] = useState<RunState>({ phase: 'idle' });
+  const [note, setNote] = useState<AgentNote>(null);
+
+  // Publish the active verdict to the AI chat (ambient) while a check is shown.
+  useAiPanelContext(host, run.phase === 'done' ? validationContext(run.verdict) : null);
+
+  const askAgent = async (verdict: ValidationVerdict) => {
+    const cls = verdict.strategy_path.split('.').pop() ?? verdict.strategy_path;
+    setNote(await handOffToAgent(host, validationPrompt(verdict), `Validate: ${cls}`));
+  };
 
   const loadStrategies = useCallback(async () => {
     const result = await getJsonDetailed<{ strategies?: Array<Record<string, unknown>> }>(
@@ -274,7 +290,12 @@ export function ValidationPanel(): JSX.Element {
             ) : (
               <InlineNote kind="ok">Passes the overfit checks.</InlineNote>
             )}
+            <ToolbarSpring />
+            <Button variant="primary" onClick={() => void askAgent(run.verdict)}>
+              ⚡ Ask the agent
+            </Button>
           </div>
+          {note ? <InlineNote kind={note.kind}>{note.text}</InlineNote> : null}
           {run.verdict.signals.map((signal) => (
             <SignalRow
               key={signal.signal}

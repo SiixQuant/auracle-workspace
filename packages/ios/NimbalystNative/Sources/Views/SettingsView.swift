@@ -243,7 +243,7 @@ public struct SettingsView: View {
                     }
                 }
 
-            Link(destination: URL(string: "https://nimbalyst.com/privacy-policy")!) {
+            Link(destination: URL(string: "https://auracle-engine.com/privacy")!) {
                 HStack {
                     Text("Privacy Policy")
                     Spacer()

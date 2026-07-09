@@ -36,8 +36,13 @@ export default defineConfig({
     },
   ],
   resolve: {
+    // Resolve workspace packages from source, not their built dist/. CI installs
+    // with `npm ci --ignore-scripts`, so no workspace dist is ever generated;
+    // the runtime pulls in @nimbalyst/extension-sdk transitively (editor +
+    // collab hooks), so it needs the same source alias the transcript config has.
     alias: {
       '@nimbalyst/runtime': fileURLToPath(new URL('../runtime/src', import.meta.url)),
+      '@nimbalyst/extension-sdk': fileURLToPath(new URL('../extension-sdk/src', import.meta.url)),
     },
   },
   base: './',

@@ -46,6 +46,7 @@ const CAUTION = '#d4a017';
 const DANGER = '#c4554d';
 const OK = '#2ea043';
 const NEUTRAL = 'var(--text-tertiary, #8a8f98)';
+const NUM_HEADERS = new Set(['AUM', 'Equity', 'Return', 'Qty', 'Filled', 'Avg price']);
 
 /** Status colour by lifecycle state — green live, red errored, amber preparing, grey idle. */
 function stateColor(state: string): string {
@@ -649,7 +650,7 @@ function LedgerView({ deployment }: { deployment: Deployment }) {
         <thead>
           <tr>
             {['Symbol', 'Action', 'Qty', 'Filled', 'Avg price', 'Status', 'Placed'].map((h) => (
-              <th key={h} style={styles.th}>
+              <th key={h} style={NUM_HEADERS.has(h) ? { ...styles.th, textAlign: 'right' as const } : styles.th}>
                 {h}
               </th>
             ))}
@@ -773,7 +774,7 @@ export function LiveAlgorithmsPanel({ host }: PanelHostProps): JSX.Element {
             <tr>
               {['', 'Strategy', 'Broker', 'Mode', 'AUM', 'Equity', 'Return', 'Status', 'Actions'].map(
                 (h) => (
-                  <th key={h} style={styles.th}>
+                  <th key={h} style={NUM_HEADERS.has(h) ? { ...styles.th, textAlign: 'right' as const } : styles.th}>
                     {h}
                   </th>
                 )

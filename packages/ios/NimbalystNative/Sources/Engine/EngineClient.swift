@@ -37,7 +37,7 @@ public struct MobileSession: Decodable, Sendable, Equatable {
     }
 }
 
-public struct MobileStrategy: Decodable, Sendable, Equatable, Identifiable {
+public struct MobileStrategy: Decodable, Sendable, Equatable, Hashable, Identifiable {
     public var id: String { code }
     public let code: String
     public let path: String

@@ -127,13 +127,11 @@
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					B3CF4230C889EC2EB2A2E42C = {
-						DevelopmentTeam = X8S24QHAT9;
 						ProvisioningStyle = Automatic;
 					};
 				};
 			};
 			buildConfigurationList = F3160EFC8557D8AC12B6D046 /* Build configuration list for PBXProject "NimbalystApp" */;
-			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -146,6 +144,7 @@
 				ABD8257BB05FBCA15B4E04B1 /* XCLocalSwiftPackageReference "../NimbalystNative" */,
 			);
 			preferredProjectObjectVersion = 77;
+			productRefGroup = 07C2624549541CD7021395F3 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -186,7 +185,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "cd \"${SRCROOT}/..\"\nif [ -f \"node_modules/.bin/vite\" ]; then\n  npx vite build --config vite.config.editor.ts 2>&1 || echo \"Warning: Vite build failed, using existing dist\"\nfi\n# Copy editor dist to Resources (clean first to remove stale hashed assets)\nrm -rf \"${SRCROOT}/Resources/editor-dist\"\nmkdir -p \"${SRCROOT}/Resources/editor-dist\"\nif [ -d \"dist-editor\" ]; then\n  cp dist-editor/editor.html \"${SRCROOT}/Resources/editor-dist/\"\n  cp -R dist-editor/assets \"${SRCROOT}/Resources/editor-dist/\"\nfi\n";
+			shellScript = "export PATH=\"/opt/homebrew/bin:/usr/local/bin:$HOME/.nvm/versions/node/$(cat $HOME/.nvm/alias/default 2>/dev/null)/bin:$PATH\"\ncd \"${SRCROOT}/..\"\nVITE_BIN=\"${SRCROOT}/../../../node_modules/.bin/vite\"\nif [ ! -x \"$VITE_BIN\" ]; then\n  echo \"error: $VITE_BIN missing; run 'npm install' at the monorepo root\" >&2\n  exit 1\nfi\n\"$VITE_BIN\" build --config vite.config.editor.ts\n# Copy editor dist to Resources (clean first to remove stale hashed assets)\nrm -rf \"${SRCROOT}/Resources/editor-dist\"\nmkdir -p \"${SRCROOT}/Resources/editor-dist\"\ncp dist-editor/editor.html \"${SRCROOT}/Resources/editor-dist/\"\ncp -R dist-editor/assets \"${SRCROOT}/Resources/editor-dist/\"\n";
 		};
 		A1281D1B3FB2BBEF46421DE4 /* Build Transcript Web Bundle */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -205,7 +204,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "cd \"${SRCROOT}/..\"\nif [ -f \"node_modules/.bin/vite\" ]; then\n  npx vite build --config vite.config.transcript.ts 2>&1 || echo \"Warning: Vite build failed, using existing dist\"\nfi\n# Copy transcript dist to Resources (clean first to remove stale hashed assets)\nrm -rf \"${SRCROOT}/Resources/transcript-dist\"\nmkdir -p \"${SRCROOT}/Resources/transcript-dist\"\nif [ -d \"dist-transcript\" ]; then\n  cp dist-transcript/transcript.html \"${SRCROOT}/Resources/transcript-dist/\"\n  cp -R dist-transcript/assets \"${SRCROOT}/Resources/transcript-dist/\"\nfi\n";
+			shellScript = "# Xcode build scripts run with a minimal PATH that excludes common\n# node install locations (Homebrew, nvm). Augment PATH so `node` and\n# the workspace-hoisted vite are resolvable.\nexport PATH=\"/opt/homebrew/bin:/usr/local/bin:$HOME/.nvm/versions/node/$(cat $HOME/.nvm/alias/default 2>/dev/null)/bin:$PATH\"\ncd \"${SRCROOT}/..\"\n# npm workspaces hoist vite to the monorepo root node_modules. The\n# previous package-local `node_modules/.bin/vite` check was always\n# false here and silently shipped a stale dist on every rebuild.\n# Invoke the hoisted binary directly and fail loudly if it's gone.\nVITE_BIN=\"${SRCROOT}/../../../node_modules/.bin/vite\"\nif [ ! -x \"$VITE_BIN\" ]; then\n  echo \"error: $VITE_BIN missing; run 'npm install' at the monorepo root\" >&2\n  exit 1\nfi\n\"$VITE_BIN\" build --config vite.config.transcript.ts\n# Copy transcript dist to Resources (clean first to remove stale hashed assets)\nrm -rf \"${SRCROOT}/Resources/transcript-dist\"\nmkdir -p \"${SRCROOT}/Resources/transcript-dist\"\ncp dist-transcript/transcript.html \"${SRCROOT}/Resources/transcript-dist/\"\ncp -R dist-transcript/assets \"${SRCROOT}/Resources/transcript-dist/\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -294,7 +293,6 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = X8S24QHAT9;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -358,7 +356,6 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = X8S24QHAT9;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;

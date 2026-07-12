@@ -20,10 +20,13 @@ enum KeychainManager {
         case analyticsId = "analytics_id"
         case pairingPersonalOrgId = "pairing_personal_org_id"
         case pairingPersonalUserId = "pairing_personal_user_id"
-        // Clerk (Auracle iOS spine, M6) — the engine-direct bearer + refresh.
+        // Clerk (Auracle iOS spine, M6) — the engine-direct bearer + refresh,
+        // plus the issuer/client-id the pairing claim hands over for sign-in.
         case clerkAccessToken = "clerk_access_token"
         case clerkRefreshToken = "clerk_refresh_token"
         case clerkEmail = "clerk_email"
+        case clerkIssuer = "clerk_issuer"
+        case clerkClientId = "clerk_client_id"
     }
 
     // MARK: - Encryption Key
@@ -191,6 +194,16 @@ enum KeychainManager {
         delete(key: .clerkEmail)
     }
 
+    /// The Clerk issuer + public client id the pairing claim handed over, so
+    /// sign-in targets the same Clerk instance the engine trusts.
+    static func storeClerkConfig(issuer: String?, clientId: String?) throws {
+        if let issuer { try store(key: .clerkIssuer, value: issuer) }
+        if let clientId { try store(key: .clerkClientId, value: clientId) }
+    }
+
+    static func getClerkIssuer() -> String? { retrieve(key: .clerkIssuer) }
+    static func getClerkClientId() -> String? { retrieve(key: .clerkClientId) }
+
     // MARK: - Cleanup
 
     static func deleteAll() {
@@ -199,6 +212,8 @@ enum KeychainManager {
         delete(key: .userId)
         deleteAuthSession()
         deleteClerkSession()
+        delete(key: .clerkIssuer)
+        delete(key: .clerkClientId)
         deleteOpenAIApiKey()
         deleteAnalyticsId()
         delete(key: .pairingPersonalOrgId)

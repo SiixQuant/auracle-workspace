@@ -38,6 +38,7 @@ import {
   verbEndpoint,
 } from '../engine/live';
 import { useAiPanelContext, handOffToAgent, type AgentNote } from './aiPanel';
+import { money, price, qty } from '../engine/format';
 
 const POLL_MS = 20_000;
 
@@ -79,6 +80,13 @@ const styles = {
     borderBottom: '1px solid var(--border-primary, rgba(127,127,127,0.25))',
   },
   td: { padding: '7px 8px', borderBottom: '1px solid var(--border-primary, rgba(127,127,127,0.15))' },
+  tdNum: {
+    padding: '7px 8px',
+    borderBottom: '1px solid var(--border-primary, rgba(127,127,127,0.15))',
+    textAlign: 'right' as const,
+    fontVariantNumeric: 'tabular-nums' as const,
+    whiteSpace: 'nowrap' as const,
+  },
   note: { fontSize: 12, color: 'var(--text-tertiary, #8a8f98)' },
   input: {
     width: '100%',
@@ -634,9 +642,9 @@ function LedgerView({ deployment }: { deployment: Deployment }) {
             <tr key={order.id}>
               <td style={styles.td}>{order.symbol}</td>
               <td style={styles.td}>{order.action}</td>
-              <td style={styles.td}>{order.quantity ?? '—'}</td>
-              <td style={styles.td}>{order.filled_quantity ?? '—'}</td>
-              <td style={styles.td}>{order.avg_fill_price ?? '—'}</td>
+              <td style={styles.tdNum}>{qty(order.quantity)}</td>
+              <td style={styles.tdNum}>{qty(order.filled_quantity)}</td>
+              <td style={styles.tdNum}>{price(order.avg_fill_price)}</td>
               <td style={styles.td}>{order.status}</td>
               <td style={styles.td}>{order.created_at ?? '—'}</td>
             </tr>
@@ -846,9 +854,9 @@ function FragmentRow({
       </td>
       <td style={styles.td}>{row.broker}</td>
       <td style={styles.td}>{row.mode}</td>
-      <td style={styles.td}>{row.aum ?? '—'}</td>
-      <td style={styles.td}>{row.equity ?? '—'}</td>
-      <td style={styles.td}>{formatReturn(row.return_pct)}</td>
+      <td style={styles.tdNum}>{money(row.aum)}</td>
+      <td style={styles.tdNum}>{money(row.equity)}</td>
+      <td style={styles.tdNum}>{formatReturn(row.return_pct)}</td>
       <td style={styles.td}>{stateLabel(row.state)}</td>
       <td style={styles.td} onClick={(e) => e.stopPropagation()}>
         {confirming ? (

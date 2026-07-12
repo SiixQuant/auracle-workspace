@@ -25,7 +25,6 @@ import {
   deploymentContext,
   deploymentPrompt,
   formatReturn,
-  isActive,
   isDestructive,
   isPaidTier,
   newWizard,
@@ -46,6 +45,25 @@ const ACCENT = 'var(--accent-primary, #0053fd)';
 const CAUTION = '#d4a017';
 const DANGER = '#c4554d';
 const OK = '#2ea043';
+const NEUTRAL = 'var(--text-tertiary, #8a8f98)';
+
+/** Status colour by lifecycle state — green live, red errored, amber preparing, grey idle. */
+function stateColor(state: string): string {
+  switch (state) {
+    case 'running':
+      return OK;
+    case 'errored':
+      return DANGER;
+    case 'starting':
+    case 'restarting':
+    case 'preflight':
+    case 'provisioning':
+    case 'liquidating':
+      return CAUTION;
+    default:
+      return NEUTRAL;
+  }
+}
 
 const styles = {
   page: {
@@ -844,7 +862,7 @@ function FragmentRow({
             height: 7,
             borderRadius: '50%',
             display: 'inline-block',
-            background: isActive(row.state) ? '#2ea043' : '#8a8f98',
+            background: stateColor(row.state),
           }}
         />
       </td>
@@ -856,8 +874,22 @@ function FragmentRow({
       <td style={styles.td}>{row.mode}</td>
       <td style={styles.tdNum}>{money(row.aum)}</td>
       <td style={styles.tdNum}>{money(row.equity)}</td>
-      <td style={styles.tdNum}>{formatReturn(row.return_pct)}</td>
-      <td style={styles.td}>{stateLabel(row.state)}</td>
+      <td
+        style={{
+          ...styles.tdNum,
+          color:
+            typeof row.return_pct === 'number'
+              ? row.return_pct >= 0
+                ? OK
+                : DANGER
+              : undefined,
+        }}
+      >
+        {formatReturn(row.return_pct)}
+      </td>
+      <td style={styles.td}>
+        <span style={{ color: stateColor(row.state), fontWeight: 600 }}>{stateLabel(row.state)}</span>
+      </td>
       <td style={styles.td} onClick={(e) => e.stopPropagation()}>
         {confirming ? (
           <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>

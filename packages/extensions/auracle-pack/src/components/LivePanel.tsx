@@ -659,8 +659,17 @@ function LedgerView({ deployment }: { deployment: Deployment }) {
         <tbody>
           {ledger.orders.map((order) => (
             <tr key={order.id}>
-              <td style={styles.td}>{order.symbol}</td>
-              <td style={styles.td}>{order.action}</td>
+              <td style={{ ...styles.td, fontWeight: 600 }}>{order.symbol}</td>
+              <td style={styles.td}>
+                <span
+                  style={{
+                    color: order.action === 'buy' ? OK : order.action === 'sell' ? DANGER : undefined,
+                    fontWeight: 600,
+                  }}
+                >
+                  {order.action.toUpperCase()}
+                </span>
+              </td>
               <td style={styles.tdNum}>{qty(order.quantity)}</td>
               <td style={styles.tdNum}>{qty(order.filled_quantity)}</td>
               <td style={styles.tdNum}>{price(order.avg_fill_price)}</td>

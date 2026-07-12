@@ -29,6 +29,7 @@ import {
   tone,
 } from './panelkit';
 import { PanelHostLike, useAiPanelContext, handOffToAgent, type AgentNote } from './aiPanel';
+import { qty } from '../engine/format';
 
 interface DeployableStrategy {
   path: string;
@@ -59,16 +60,76 @@ const TIER_MARK: Record<string, string> = {
   unknown: '○',
 };
 
+/** Compact numeric read for a signal: `1,204` for counts, `0.41` for ratios. */
+function fmtSig(v: number): string {
+  return Math.abs(v) >= 100 ? qty(v) : v.toFixed(2);
+}
+
+/**
+ * The signal's measured value against its threshold — a bullet gauge. The
+ * engine computes both numbers but the panel used to drop them; showing
+ * them turns "attention" into "0.41 vs a 0.20 line". Positions are by
+ * magnitude (overfit signals are non-negative); the exact figures below
+ * the bar are the truth, the bar is the glance.
+ */
+function SignalGauge({ tier, value, threshold }: { tier: string; value: number; threshold: number }) {
+  const scale = Math.max(Math.abs(value), Math.abs(threshold)) * 1.25 || 1;
+  const clamp = (x: number) => Math.min(0.97, Math.max(0.03, x));
+  const vpos = clamp(Math.abs(value) / scale);
+  const tpos = clamp(Math.abs(threshold) / scale);
+  const mark = TIER_COLOR[tier] ?? tone.text3;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 5, maxWidth: 280 }}>
+      <div
+        style={{
+          position: 'relative',
+          height: 6,
+          borderRadius: 4,
+          background: 'color-mix(in srgb, var(--text-primary, #d7dae0) 9%, transparent)',
+        }}
+      >
+        <span
+          aria-hidden
+          title="threshold"
+          style={{ position: 'absolute', top: -2, bottom: -2, left: `${tpos * 100}%`, width: 2, borderRadius: 2, background: tone.text3 }}
+        />
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: `${vpos * 100}%`,
+            width: 9,
+            height: 9,
+            borderRadius: '50%',
+            transform: 'translate(-50%,-50%)',
+            background: mark,
+            border: `2px solid ${tone.surface}`,
+          }}
+        />
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>
+        <span style={{ color: mark, fontWeight: 600 }}>{fmtSig(value)}</span>
+        <span style={{ color: tone.text3 }}>threshold {fmtSig(threshold)}</span>
+      </div>
+    </div>
+  );
+}
+
 function SignalRow({
   name,
   tier,
   plain,
   fix,
+  value,
+  threshold,
 }: {
   name: string;
   tier: string;
   plain: string;
   fix: string;
+  value: number | null;
+  threshold: number | null;
 }) {
   return (
     <article
@@ -95,6 +156,9 @@ function SignalRow({
         ) : null}
         {tier === 'red' && fix ? (
           <span style={{ fontSize: 11.5, color: tone.text3 }}>Usually fixed by: {fix}</span>
+        ) : null}
+        {typeof value === 'number' && typeof threshold === 'number' ? (
+          <SignalGauge tier={tier} value={value} threshold={threshold} />
         ) : null}
       </div>
       <span
@@ -303,6 +367,8 @@ export function ValidationPanel({ host }: { host?: PanelHostLike }): JSX.Element
               tier={signal.tier}
               plain={signal.plain}
               fix={signal.what_usually_fixes_it}
+              value={signal.value}
+              threshold={signal.threshold}
             />
           ))}
         </div>

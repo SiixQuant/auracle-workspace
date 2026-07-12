@@ -25,7 +25,6 @@ import {
   deploymentContext,
   deploymentPrompt,
   formatReturn,
-  isActive,
   isDestructive,
   isPaidTier,
   newWizard,
@@ -38,6 +37,7 @@ import {
   verbEndpoint,
 } from '../engine/live';
 import { useAiPanelContext, handOffToAgent, type AgentNote } from './aiPanel';
+import { money, price, qty } from '../engine/format';
 
 const POLL_MS = 20_000;
 
@@ -45,6 +45,26 @@ const ACCENT = 'var(--accent-primary, #0053fd)';
 const CAUTION = '#d4a017';
 const DANGER = '#c4554d';
 const OK = '#2ea043';
+const NEUTRAL = 'var(--text-tertiary, #8a8f98)';
+const NUM_HEADERS = new Set(['AUM', 'Equity', 'Return', 'Qty', 'Filled', 'Avg price']);
+
+/** Status colour by lifecycle state — green live, red errored, amber preparing, grey idle. */
+function stateColor(state: string): string {
+  switch (state) {
+    case 'running':
+      return OK;
+    case 'errored':
+      return DANGER;
+    case 'starting':
+    case 'restarting':
+    case 'preflight':
+    case 'provisioning':
+    case 'liquidating':
+      return CAUTION;
+    default:
+      return NEUTRAL;
+  }
+}
 
 const styles = {
   page: {
@@ -79,6 +99,13 @@ const styles = {
     borderBottom: '1px solid var(--border-primary, rgba(127,127,127,0.25))',
   },
   td: { padding: '7px 8px', borderBottom: '1px solid var(--border-primary, rgba(127,127,127,0.15))' },
+  tdNum: {
+    padding: '7px 8px',
+    borderBottom: '1px solid var(--border-primary, rgba(127,127,127,0.15))',
+    textAlign: 'right' as const,
+    fontVariantNumeric: 'tabular-nums' as const,
+    whiteSpace: 'nowrap' as const,
+  },
   note: { fontSize: 12, color: 'var(--text-tertiary, #8a8f98)' },
   input: {
     width: '100%',
@@ -623,7 +650,7 @@ function LedgerView({ deployment }: { deployment: Deployment }) {
         <thead>
           <tr>
             {['Symbol', 'Action', 'Qty', 'Filled', 'Avg price', 'Status', 'Placed'].map((h) => (
-              <th key={h} style={styles.th}>
+              <th key={h} style={NUM_HEADERS.has(h) ? { ...styles.th, textAlign: 'right' as const } : styles.th}>
                 {h}
               </th>
             ))}
@@ -632,11 +659,20 @@ function LedgerView({ deployment }: { deployment: Deployment }) {
         <tbody>
           {ledger.orders.map((order) => (
             <tr key={order.id}>
-              <td style={styles.td}>{order.symbol}</td>
-              <td style={styles.td}>{order.action}</td>
-              <td style={styles.td}>{order.quantity ?? '—'}</td>
-              <td style={styles.td}>{order.filled_quantity ?? '—'}</td>
-              <td style={styles.td}>{order.avg_fill_price ?? '—'}</td>
+              <td style={{ ...styles.td, fontWeight: 600 }}>{order.symbol}</td>
+              <td style={styles.td}>
+                <span
+                  style={{
+                    color: order.action === 'buy' ? OK : order.action === 'sell' ? DANGER : undefined,
+                    fontWeight: 600,
+                  }}
+                >
+                  {order.action.toUpperCase()}
+                </span>
+              </td>
+              <td style={styles.tdNum}>{qty(order.quantity)}</td>
+              <td style={styles.tdNum}>{qty(order.filled_quantity)}</td>
+              <td style={styles.tdNum}>{price(order.avg_fill_price)}</td>
               <td style={styles.td}>{order.status}</td>
               <td style={styles.td}>{order.created_at ?? '—'}</td>
             </tr>
@@ -747,7 +783,7 @@ export function LiveAlgorithmsPanel({ host }: PanelHostProps): JSX.Element {
             <tr>
               {['', 'Strategy', 'Broker', 'Mode', 'AUM', 'Equity', 'Return', 'Status', 'Actions'].map(
                 (h) => (
-                  <th key={h} style={styles.th}>
+                  <th key={h} style={NUM_HEADERS.has(h) ? { ...styles.th, textAlign: 'right' as const } : styles.th}>
                     {h}
                   </th>
                 )
@@ -836,7 +872,7 @@ function FragmentRow({
             height: 7,
             borderRadius: '50%',
             display: 'inline-block',
-            background: isActive(row.state) ? '#2ea043' : '#8a8f98',
+            background: stateColor(row.state),
           }}
         />
       </td>
@@ -846,10 +882,24 @@ function FragmentRow({
       </td>
       <td style={styles.td}>{row.broker}</td>
       <td style={styles.td}>{row.mode}</td>
-      <td style={styles.td}>{row.aum ?? '—'}</td>
-      <td style={styles.td}>{row.equity ?? '—'}</td>
-      <td style={styles.td}>{formatReturn(row.return_pct)}</td>
-      <td style={styles.td}>{stateLabel(row.state)}</td>
+      <td style={styles.tdNum}>{money(row.aum)}</td>
+      <td style={styles.tdNum}>{money(row.equity)}</td>
+      <td
+        style={{
+          ...styles.tdNum,
+          color:
+            typeof row.return_pct === 'number'
+              ? row.return_pct >= 0
+                ? OK
+                : DANGER
+              : undefined,
+        }}
+      >
+        {formatReturn(row.return_pct)}
+      </td>
+      <td style={styles.td}>
+        <span style={{ color: stateColor(row.state), fontWeight: 600 }}>{stateLabel(row.state)}</span>
+      </td>
       <td style={styles.td} onClick={(e) => e.stopPropagation()}>
         {confirming ? (
           <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>

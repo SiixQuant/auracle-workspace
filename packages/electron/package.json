@@ -1,10 +1,10 @@
 {
   "name": "@nimbalyst/electron",
-  "version": "1.1.7",
+  "version": "1.1.8",
   "private": true,
   "license": "MIT",
   "author": "Auracle Team",
-  "description": "Auracle IDE \u2014 the visual workspace for AI-led trading strategy development",
+  "description": "Auracle IDE — the visual workspace for AI-led trading strategy development",
   "main": "out/main/index.js",
   "bin": {
     "auracle": "./bin/auracle"

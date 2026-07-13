@@ -279,6 +279,9 @@ export function QcImportPanel({ host }: PanelHostProps): JSX.Element {
 
   const cancelled = useRef(false);
   useEffect(() => () => { cancelled.current = true; }, []);
+  // Per-operation epoch: starting an import/backtest bumps it, so a superseded
+  // in-flight run can never write its result into a different project's card.
+  const runToken = useRef(0);
 
   const loadProjects = useCallback(async () => {
     setList({ phase: 'loading' });
@@ -334,6 +337,8 @@ export function QcImportPanel({ host }: PanelHostProps): JSX.Element {
   }, [exportable.length]);
 
   const beginImport = async (project: QcProject) => {
+    const epoch = ++runToken.current;
+    const alive = () => !cancelled.current && runToken.current === epoch;
     setActiveId(project.projectId);
     setBacktestState(null);
     setImportState({ phase: 'translating' });
@@ -341,7 +346,7 @@ export function QcImportPanel({ host }: PanelHostProps): JSX.Element {
       project_id: project.projectId,
       name: project.name,
     });
-    if (cancelled.current) return;
+    if (!alive()) return;
     if (!response.ok || !response.body || typeof response.body !== 'object') {
       setImportState({ phase: 'error', message: `Translate failed (${response.status || 'engine unreachable'}).` });
       return;
@@ -371,12 +376,15 @@ export function QcImportPanel({ host }: PanelHostProps): JSX.Element {
   };
 
   const beginBacktest = async (project: QcProject) => {
+    const epoch = ++runToken.current;
+    const alive = () => !cancelled.current && runToken.current === epoch;
     setActiveId(project.projectId);
     setImportState(null);
     setBacktestState({ phase: 'compiling' });
     const base = `/ui/api/quantconnect/projects/${project.projectId}`;
 
     const compile = await postJson(`${base}/compile`);
+    if (!alive()) return;
     const compileId = (compile.body as { compile_id?: string } | null)?.compile_id;
     if (!compile.ok || !compileId) {
       const errs = (compile.body as { errors?: string[] } | null)?.errors;
@@ -386,8 +394,9 @@ export function QcImportPanel({ host }: PanelHostProps): JSX.Element {
     // Poll the compile (bounded ~2 min).
     for (let i = 0; i < 60; i += 1) {
       await sleep(2000);
-      if (cancelled.current) return;
+      if (!alive()) return;
       const status = await getJson<{ state?: string; logs?: string[] }>(`${base}/compile/${compileId}`);
+      if (!alive()) return;
       const phase = compilePhase(status?.state);
       if (phase === 'success') break;
       if (phase === 'error') {
@@ -399,10 +408,10 @@ export function QcImportPanel({ host }: PanelHostProps): JSX.Element {
         return;
       }
     }
-    if (cancelled.current) return; // the compile loop can break on success; don't set state after unmount
 
     setBacktestState({ phase: 'running' });
     const bt = await postJson(`${base}/backtest`, { compile_id: compileId, name: `Auracle — ${project.name}` });
+    if (!alive()) return;
     const backtestId = (bt.body as { backtest_id?: string } | null)?.backtest_id;
     if (!bt.ok || !backtestId) {
       const errs = (bt.body as { errors?: string[] } | null)?.errors;
@@ -412,10 +421,11 @@ export function QcImportPanel({ host }: PanelHostProps): JSX.Element {
     // Poll the backtest (bounded ~5 min).
     for (let i = 0; i < 100; i += 1) {
       await sleep(3000);
-      if (cancelled.current) return;
+      if (!alive()) return;
       const res = await getJson<{ completed?: boolean; statistics?: Record<string, unknown>; error?: string }>(
         `${base}/backtest/${backtestId}`
       );
+      if (!alive()) return;
       if (res?.error) {
         setBacktestState({ phase: 'error', message: res.error });
         return;
@@ -426,7 +436,7 @@ export function QcImportPanel({ host }: PanelHostProps): JSX.Element {
         // (404) just leaves equity empty — we show the stats without a chart
         // rather than invent one.
         const chart = await getJsonDetailed<QcChartBody>(`${base}/backtest/${backtestId}/chart`);
-        if (cancelled.current) return;
+        if (!alive()) return;
         const equity = chart.ok ? qcEquityPoints(chart.body) : [];
         setBacktestState({ phase: 'done', stats, empty: stats.length === 0, equity });
         return;

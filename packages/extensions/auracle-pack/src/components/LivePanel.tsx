@@ -686,6 +686,9 @@ function EquityView({ deployment }: { deployment: Deployment }) {
 
   useEffect(() => {
     let cancelled = false;
+    // Reset first, so switching deployments shows no chart until THIS one's
+    // curve loads — never the previously-selected deployment's series.
+    setPoints(null);
     void (async () => {
       const body = await getJson<DeploymentEquity>(`/deployments/${deployment.id}/equity`);
       if (!cancelled) setPoints(deploymentEquityPoints(body));

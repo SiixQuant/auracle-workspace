@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { connectCheck, engineConfig, onConnectGeneration } from '../engine/client';
 import type { ConnectCheck } from '../engine/model';
-import { tone } from './panelkit';
+import { ensurePanelKitStyles, tint, tone } from './panelkit';
 
 const POLL_MS = 30_000;
 
@@ -55,6 +55,7 @@ const DOT_COLOR: Record<ChipState['kind'], string> = {
 };
 
 export function AuracleStatusChip(): JSX.Element {
+  ensurePanelKitStyles();
   const [state, setState] = useState<ChipState>({ kind: 'checking' });
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -116,11 +117,13 @@ export function AuracleStatusChip(): JSX.Element {
     >
       <span
         aria-hidden
+        className={state.kind === 'checking' ? 'apk-pulse' : undefined}
         style={{
           width: 7,
           height: 7,
           borderRadius: '50%',
           background: DOT_COLOR[state.kind],
+          boxShadow: state.kind === 'connected' ? `0 0 0 3px ${tint(tone.ok, 22)}` : 'none',
           display: 'inline-block',
         }}
       />

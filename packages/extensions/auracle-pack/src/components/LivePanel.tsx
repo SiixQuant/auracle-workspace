@@ -16,15 +16,19 @@ import {
   Compute,
   DeployWizard,
   Deployment,
+  DeploymentEquity,
   DeploymentOrders,
   LiveAction,
   LiveAlgorithms,
+  activeCount,
   availableActions,
   canDeploy,
   computeLocked,
   deploymentContext,
+  deploymentEquityPoints,
   deploymentPrompt,
   formatReturn,
+  isActive,
   isDestructive,
   isPaidTier,
   newWizard,
@@ -37,16 +41,31 @@ import {
   verbEndpoint,
 } from '../engine/live';
 import { useAiPanelContext, handOffToAgent, type AgentNote } from './aiPanel';
-import { money, price, qty } from '../engine/format';
+import { money, price, qty, percent } from '../engine/format';
+import {
+  Button,
+  CenterState,
+  EquityChart,
+  InlineNote,
+  PanelShell,
+  Pill,
+  Select,
+  SkeletonRows,
+  StatBand,
+  ToolbarSpring,
+  numeric,
+  tint,
+  tone,
+  trendColor,
+} from './panelkit';
 
 const POLL_MS = 20_000;
 
-const ACCENT = 'var(--accent-primary, #0053fd)';
+const ACCENT = 'var(--accent-primary, #60a5fa)';
 const CAUTION = '#d4a017';
 const DANGER = '#c4554d';
 const OK = '#2ea043';
 const NEUTRAL = 'var(--text-tertiary, #8a8f98)';
-const NUM_HEADERS = new Set(['AUM', 'Equity', 'Return', 'Qty', 'Filled', 'Avg price']);
 
 /** Status colour by lifecycle state — green live, red errored, amber preparing, grey idle. */
 function stateColor(state: string): string {
@@ -223,7 +242,7 @@ const styles = {
     fontSize: 12,
     cursor: 'pointer',
     border: `1px solid ${active ? ACCENT : 'var(--border-primary, rgba(127,127,127,0.3))'}`,
-    background: active ? 'rgba(0,83,253,0.14)' : 'transparent',
+    background: active ? tint(ACCENT, 14) : 'transparent',
     color: active ? 'var(--text-primary, #d7dae0)' : 'var(--text-secondary, #b9bec7)',
   }),
 
@@ -322,6 +341,48 @@ const styles = {
     background: 'rgba(196,85,77,0.1)',
   },
 };
+
+/** Dashboard / ledger table language — panelkit-toned, right-aligned money. */
+const dash = {
+  table: { width: '100%', borderCollapse: 'separate' as const, borderSpacing: 0, fontSize: 13 },
+  th: {
+    textAlign: 'left' as const,
+    padding: '7px 10px',
+    fontSize: 10.5,
+    fontWeight: 600 as const,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+    color: tone.text3,
+    borderBottom: `1px solid ${tone.border}`,
+    whiteSpace: 'nowrap' as const,
+  },
+  thNum: {
+    textAlign: 'right' as const,
+    padding: '7px 10px',
+    fontSize: 10.5,
+    fontWeight: 600 as const,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+    color: tone.text3,
+    borderBottom: `1px solid ${tone.border}`,
+    whiteSpace: 'nowrap' as const,
+  },
+  td: { padding: '10px', borderBottom: `1px solid ${tone.border}`, verticalAlign: 'middle' as const },
+  tdNum: {
+    padding: '10px',
+    borderBottom: `1px solid ${tone.border}`,
+    textAlign: 'right' as const,
+    whiteSpace: 'nowrap' as const,
+    ...numeric,
+  },
+} as const;
+
+/** Status → semantic pill kind: green running, red errored, amber preparing, grey idle. */
+function statePill(state: string): 'ok' | 'danger' | 'caution' | 'muted' {
+  if (state === 'running') return 'ok';
+  if (state === 'errored') return 'danger';
+  return isActive(state) ? 'caution' : 'muted';
+}
 
 interface StrategyOption {
   path: string;
@@ -432,37 +493,36 @@ function DeployWizardView({ onDone, onCancel }: { onDone: () => void; onCancel: 
         <div style={styles.grid2}>
           <div style={styles.field}>
             <div style={styles.fieldLabel}>Strategy</div>
-            <select
-              style={styles.input}
+            <Select
+              fluid
+              ariaLabel="Strategy"
+              placeholder="Select a strategy…"
               value={wizard.strategy_path && wizard.strategy_cls ? `${wizard.strategy_path}::${wizard.strategy_cls}` : ''}
-              onChange={(e) => {
-                const [path, cls] = e.target.value.split('::');
+              onChange={(next) => {
+                const [path, cls] = next.split('::');
                 set({ strategy_path: path ?? '', strategy_cls: cls ?? '' });
               }}
-            >
-              <option value="">Select a strategy…</option>
-              {strategies.map((option) => (
-                <option key={`${option.path}::${option.cls}`} value={`${option.path}::${option.cls}`}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              options={strategies.map((option) => ({
+                value: `${option.path}::${option.cls}`,
+                label: option.label,
+              }))}
+            />
           </div>
           <div style={styles.field}>
             <div style={styles.fieldLabel}>Brokerage</div>
-            <select
-              style={styles.input}
+            <Select
+              fluid
+              ariaLabel="Brokerage"
+              placeholder="Select a brokerage…"
               value={wizard.broker ?? ''}
-              onChange={(e) => set({ broker: e.target.value || null })}
-            >
-              <option value="">Select a brokerage…</option>
-              {brokers.map((broker) => (
-                <option key={broker.id} value={broker.id}>
-                  {(broker.display_label || broker.id) +
-                    (isConnected(broker.status) ? '' : ' (not connected)')}
-                </option>
-              ))}
-            </select>
+              onChange={(next) => set({ broker: next || null })}
+              options={brokers.map((broker) => ({
+                value: broker.id,
+                label:
+                  (broker.display_label || broker.id) +
+                  (isConnected(broker.status) ? '' : ' (not connected)'),
+              }))}
+            />
           </div>
         </div>
       </div>
@@ -621,6 +681,40 @@ function DeployWizardView({ onDone, onCancel }: { onDone: () => void; onCancel: 
   );
 }
 
+function EquityView({ deployment }: { deployment: Deployment }) {
+  const [points, setPoints] = useState<number[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    // Reset first, so switching deployments shows no chart until THIS one's
+    // curve loads — never the previously-selected deployment's series.
+    setPoints(null);
+    void (async () => {
+      const body = await getJson<DeploymentEquity>(`/deployments/${deployment.id}/equity`);
+      if (!cancelled) setPoints(deploymentEquityPoints(body));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [deployment.id]);
+
+  // Honest: no chartable series yet (no fills) or an older engine without the
+  // route → no chart, rather than a flat or invented line.
+  if (!points || points.length < 2) return null;
+  return (
+    <div
+      style={{
+        padding: '12px 14px',
+        borderRadius: 9,
+        border: `1px solid ${tone.border}`,
+        background: tone.surface,
+      }}
+    >
+      <EquityChart points={points} height={132} label="Equity curve — marked to daily closes" />
+    </div>
+  );
+}
+
 function LedgerView({ deployment }: { deployment: Deployment }) {
   const [ledger, setLedger] = useState<DeploymentOrders | null | 'unavailable'>(null);
 
@@ -635,51 +729,58 @@ function LedgerView({ deployment }: { deployment: Deployment }) {
     };
   }, [deployment.id]);
 
-  if (ledger === null) return <div style={styles.note}>Loading ledger…</div>;
+  if (ledger === null) return <SkeletonRows rows={2} />;
   if (ledger === 'unavailable') {
     return (
-      <div style={styles.note}>
-        The engine did not serve a ledger for this deployment (older engine versions lack the
-        per-deployment orders feed).
-      </div>
+      <InlineNote kind="muted">
+        This engine build doesn&rsquo;t serve a per-deployment order ledger. Update the stack to see fills here.
+      </InlineNote>
     );
   }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '4px 8px 10px' }}>
-      <table style={styles.table}>
+    <div style={{ overflowX: 'auto' }}>
+      <table style={dash.table}>
         <thead>
           <tr>
-            {['Symbol', 'Action', 'Qty', 'Filled', 'Avg price', 'Status', 'Placed'].map((h) => (
-              <th key={h} style={NUM_HEADERS.has(h) ? { ...styles.th, textAlign: 'right' as const } : styles.th}>
-                {h}
-              </th>
-            ))}
+            <th style={dash.th}>Symbol</th>
+            <th style={dash.th}>Side</th>
+            <th style={dash.thNum}>Qty</th>
+            <th style={dash.thNum}>Filled</th>
+            <th style={dash.thNum}>Avg price</th>
+            <th style={dash.th}>Status</th>
+            <th style={dash.th}>Placed</th>
           </tr>
         </thead>
         <tbody>
           {ledger.orders.map((order) => (
-            <tr key={order.id}>
-              <td style={{ ...styles.td, fontWeight: 600 }}>{order.symbol}</td>
-              <td style={styles.td}>
+            <tr key={order.id} className="apk-row">
+              <td style={{ ...dash.td, fontWeight: 600 }}>{order.symbol}</td>
+              <td style={dash.td}>
                 <span
                   style={{
-                    color: order.action === 'buy' ? OK : order.action === 'sell' ? DANGER : undefined,
+                    color: order.action === 'buy' ? tone.ok : order.action === 'sell' ? tone.danger : tone.text2,
                     fontWeight: 600,
+                    fontSize: 12,
+                    letterSpacing: 0.3,
                   }}
                 >
                   {order.action.toUpperCase()}
                 </span>
               </td>
-              <td style={styles.tdNum}>{qty(order.quantity)}</td>
-              <td style={styles.tdNum}>{qty(order.filled_quantity)}</td>
-              <td style={styles.tdNum}>{price(order.avg_fill_price)}</td>
-              <td style={styles.td}>{order.status}</td>
-              <td style={styles.td}>{order.created_at ?? '—'}</td>
+              <td style={dash.tdNum}>{qty(order.quantity)}</td>
+              <td style={dash.tdNum}>{qty(order.filled_quantity)}</td>
+              <td style={dash.tdNum}>{price(order.avg_fill_price)}</td>
+              <td style={dash.td}>
+                <Pill kind={order.status === 'filled' ? 'ok' : 'muted'}>{order.status}</Pill>
+              </td>
+              <td style={{ ...dash.td, color: tone.text3, fontSize: 12, whiteSpace: 'nowrap', ...numeric }}>
+                {order.created_at ?? '—'}
+              </td>
             </tr>
           ))}
           {ledger.orders.length === 0 ? (
             <tr>
-              <td style={styles.td} colSpan={7}>
+              <td style={dash.td} colSpan={7}>
                 <span style={styles.note}>No orders yet.</span>
               </td>
             </tr>
@@ -763,85 +864,139 @@ export function LiveAlgorithmsPanel({ host }: PanelHostProps): JSX.Element {
     );
   }
 
+  const rows = model.rows;
+  const finite = (v: number | null | undefined): v is number => typeof v === 'number' && Number.isFinite(v);
+  const deployedAum = rows.reduce((a, r) => a + (finite(r.aum) ? r.aum : 0), 0);
+  const totalEquity = rows.reduce((a, r) => a + (finite(r.equity) ? r.equity : 0), 0);
+  const pnlRows = rows.filter((r) => finite(r.aum) && finite(r.equity));
+  const basis = pnlRows.reduce((a, r) => a + (r.aum as number), 0);
+  const netPnl = pnlRows.reduce((a, r) => a + (r.equity as number), 0) - basis;
+  const netPct = basis > 0 ? (netPnl / basis) * 100 : null;
+  const active = activeCount(model);
+  const populated = phase === 'ready' && rows.length > 0;
+
   return (
-    <div style={styles.page}>
-      <div style={styles.headerRow}>
-        <span style={styles.title}>Live Algorithms</span>
-        <button type="button" style={styles.button(true)} onClick={() => setView('wizard')}>
-          Deploy
-        </button>
-      </div>
-      {phase === 'loading' ? <div style={styles.note}>Loading deployments…</div> : null}
-      {phase === 'unreachable' ? (
-        <div style={styles.note}>
-          The Auracle engine is not reachable. Start the stack, then this table will populate.
-        </div>
-      ) : null}
-      {phase === 'ready' ? (
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              {['', 'Strategy', 'Broker', 'Mode', 'AUM', 'Equity', 'Return', 'Status', 'Actions'].map(
-                (h) => (
-                  <th key={h} style={NUM_HEADERS.has(h) ? { ...styles.th, textAlign: 'right' as const } : styles.th}>
-                    {h}
-                  </th>
-                )
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {model.rows.map((row) => {
-              const expanded = model.selected === row.id;
-              return (
-                <FragmentRow
-                  key={row.id}
-                  row={row}
-                  expanded={expanded}
-                  pendingConfirm={pendingConfirm}
-                  onToggle={() =>
-                    setModel((prev) => ({ ...prev, selected: expanded ? null : row.id }))
-                  }
-                  onAction={(action) => void dispatch(row.id, action)}
-                  onCancelConfirm={() => setPendingConfirm(null)}
-                />
-              );
-            })}
-            {model.rows.length === 0 ? (
-              <tr>
-                <td style={styles.td} colSpan={9}>
-                  <span style={styles.note}>
-                    No deployments yet. Click Deploy to launch a strategy (paper mode needs no
-                    credentials — the simulator broker is the default).
-                  </span>
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      ) : null}
-      {phase === 'ready' && selectedRow ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={styles.note}>{selectedRow.name || selectedRow.strategy_path}</span>
-            <span style={{ flex: 1 }} />
-            <button
-              type="button"
-              style={styles.button(true)}
-              onClick={() => void investigate(selectedRow)}
-            >
-              ⚡ Investigate this deployment
-            </button>
+    <PanelShell
+      title="Live Algorithms"
+      description="Every strategy you've deployed to paper or live — its capital, equity, and return — with stop, restart, and liquidate on each."
+      wide
+      meta={populated ? `${rows.length} deployed · ${active} active` : undefined}
+      toolbar={
+        <>
+          <ToolbarSpring />
+          <Button variant="primary" onClick={() => setView('wizard')}>
+            Deploy a strategy
+          </Button>
+        </>
+      }
+      hero={
+        populated ? (
+          <StatBand
+            items={[
+              { label: 'Deployments', value: rows.length, sub: `${active} active` },
+              { label: 'Deployed capital', value: money(deployedAum) },
+              { label: 'Total equity', value: money(totalEquity) },
+              {
+                label: 'Net P&L',
+                value: money(netPnl),
+                valueColor: trendColor(netPnl),
+                sub: netPct === null ? 'across funded rows' : percent(netPct),
+              },
+            ]}
+          />
+        ) : undefined
+      }
+    >
+      {phase === 'loading' ? (
+        <SkeletonRows rows={3} />
+      ) : phase === 'unreachable' ? (
+        <CenterState
+          icon="⚡"
+          tone="danger"
+          title="The engine isn't reachable"
+          detail="Live Algorithms reads from your local Auracle engine. Start the stack and this dashboard will populate."
+          actions={
+            <Button variant="primary" onClick={() => void load()}>
+              Retry
+            </Button>
+          }
+        />
+      ) : rows.length === 0 ? (
+        <CenterState
+          icon="◎"
+          title="Nothing deployed yet"
+          detail="Deploy a strategy to paper or live. Paper needs no credentials — the simulator broker is the default."
+          actions={
+            <Button variant="primary" onClick={() => setView('wizard')}>
+              Deploy a strategy
+            </Button>
+          }
+        />
+      ) : (
+        <div className="apk-enter" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={dash.table}>
+              <thead>
+                <tr>
+                  <th style={{ ...dash.th, width: 22 }} aria-hidden />
+                  <th style={dash.th}>Strategy</th>
+                  <th style={dash.thNum}>AUM</th>
+                  <th style={dash.thNum}>Equity</th>
+                  <th style={dash.thNum}>Return</th>
+                  <th style={dash.th}>Status</th>
+                  <th style={{ ...dash.th, textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <FragmentRow
+                    key={row.id}
+                    row={row}
+                    expanded={model.selected === row.id}
+                    pendingConfirm={pendingConfirm}
+                    onToggle={() =>
+                      setModel((prev) => ({ ...prev, selected: prev.selected === row.id ? null : row.id }))
+                    }
+                    onAction={(action) => void dispatch(row.id, action)}
+                    onCancelConfirm={() => setPendingConfirm(null)}
+                  />
+                ))}
+              </tbody>
+            </table>
           </div>
-          {investigateNote ? (
-            <div style={investigateNote.kind === 'err' ? styles.error : styles.note}>
-              {investigateNote.text}
-            </div>
+          {selectedRow ? (
+            <section
+              className="apk-enter"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+                padding: '14px 16px',
+                borderRadius: 10,
+                border: `1px solid ${tone.border}`,
+                background: tone.surface,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: tone.text }}>
+                  {selectedRow.name || selectedRow.strategy_path}
+                </span>
+                <span style={{ fontSize: 12, color: tone.text3 }}>Order ledger</span>
+                <ToolbarSpring />
+                <Button variant="ghost" onClick={() => void investigate(selectedRow)}>
+                  ⚡ Investigate
+                </Button>
+              </div>
+              {investigateNote ? (
+                <InlineNote kind={investigateNote.kind}>{investigateNote.text}</InlineNote>
+              ) : null}
+              <EquityView deployment={selectedRow} />
+              <LedgerView deployment={selectedRow} />
+            </section>
           ) : null}
-          <LedgerView deployment={selectedRow} />
         </div>
-      ) : null}
-    </div>
+      )}
+    </PanelShell>
   );
 }
 
@@ -863,65 +1018,64 @@ function FragmentRow({
   const actions = availableActions(row.state);
   const confirming = pendingConfirm?.id === row.id ? pendingConfirm.action : null;
   return (
-    <tr onClick={onToggle} style={{ cursor: 'pointer' }}>
-      <td style={styles.td}>
+    <tr className="apk-row" onClick={onToggle} style={{ cursor: 'pointer' }}>
+      <td style={{ ...dash.td, paddingRight: 0 }}>
         <span
           aria-hidden
+          className={isActive(row.state) && row.state !== 'running' ? 'apk-pulse' : undefined}
           style={{
-            width: 7,
-            height: 7,
+            width: 8,
+            height: 8,
             borderRadius: '50%',
             display: 'inline-block',
             background: stateColor(row.state),
           }}
         />
       </td>
-      <td style={styles.td}>
-        {row.name || row.strategy_path}
-        <span style={{ ...styles.note, marginLeft: 6 }}>{expanded ? '▾' : '▸'}</span>
+      <td style={dash.td}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, color: tone.text }}>
+            <span aria-hidden style={{ color: tone.text3, fontSize: 10 }}>
+              {expanded ? '▾' : '▸'}
+            </span>
+            {row.name || row.strategy_path}
+          </span>
+          <span style={{ fontSize: 11.5, color: tone.text3 }}>
+            {row.broker || '—'} · {row.mode}
+          </span>
+        </div>
       </td>
-      <td style={styles.td}>{row.broker}</td>
-      <td style={styles.td}>{row.mode}</td>
-      <td style={styles.tdNum}>{money(row.aum)}</td>
-      <td style={styles.tdNum}>{money(row.equity)}</td>
-      <td
-        style={{
-          ...styles.tdNum,
-          color:
-            typeof row.return_pct === 'number'
-              ? row.return_pct >= 0
-                ? OK
-                : DANGER
-              : undefined,
-        }}
-      >
+      <td style={dash.tdNum}>{money(row.aum)}</td>
+      <td style={dash.tdNum}>{money(row.equity)}</td>
+      <td style={{ ...dash.tdNum, color: trendColor(row.return_pct), fontWeight: 600 }}>
         {formatReturn(row.return_pct)}
       </td>
-      <td style={styles.td}>
-        <span style={{ color: stateColor(row.state), fontWeight: 600 }}>{stateLabel(row.state)}</span>
+      <td style={dash.td}>
+        <Pill kind={statePill(row.state)} dot solid={row.state === 'running'}>
+          {stateLabel(row.state)}
+        </Pill>
       </td>
-      <td style={styles.td} onClick={(e) => e.stopPropagation()}>
+      <td style={{ ...dash.td, textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
         {confirming ? (
-          <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-            <span style={styles.error}>Liquidate — flatten all positions?</span>
-            <button type="button" style={styles.button(false, true)} onClick={() => onAction(confirming)}>
+          <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end' }}>
+            <span style={{ fontSize: 12, color: tone.danger }}>Flatten all positions?</span>
+            <Button variant="danger" onClick={() => onAction(confirming)}>
               Confirm
-            </button>
-            <button type="button" style={styles.button()} onClick={onCancelConfirm}>
+            </Button>
+            <Button variant="quiet" onClick={onCancelConfirm}>
               Cancel
-            </button>
+            </Button>
           </span>
         ) : (
-          <span style={{ display: 'inline-flex', gap: 6 }}>
+          <span style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end' }}>
             {actions.map((action) => (
-              <button
+              <Button
                 key={action}
-                type="button"
-                style={styles.button(false, isDestructive(action))}
+                variant={isDestructive(action) ? 'danger' : 'quiet'}
                 onClick={() => onAction(action)}
               >
                 {ACTION_LABELS[action]}
-              </button>
+              </Button>
             ))}
           </span>
         )}

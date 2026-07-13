@@ -11,6 +11,7 @@
 import {
   runBacktest as engineRunBacktest,
   backtestJobStatus,
+  backtestJobResult,
   getJsonDetailed,
 } from './client';
 import { classifyLoadFailure } from './research';
@@ -34,6 +35,19 @@ export type BacktestPhase =
 
 export type ValidationPhase = 'idle' | 'running' | 'error' | 'failed' | 'done';
 
+/** The chartable result of a completed run — engine values only. */
+export interface BacktestResultData {
+  /** Cumulative-return curve (growth of $1). */
+  equity: number[];
+  /** Peak-to-trough drawdown %, aligned to `equity`. */
+  drawdown: number[];
+  /** Headline metrics (total_return, annualized_return, sharpe, max_drawdown, …). */
+  stats: Record<string, number | null>;
+  asOf: string;
+  nBars: number;
+  trades: number;
+}
+
 export interface BacktestSnapshot {
   /** Absolute path of the .py the run is for. */
   file: string | null;
@@ -48,6 +62,9 @@ export interface BacktestSnapshot {
   detail: string | null;
   /** engine-down was a 404/405 — the build predates the route, not unreachable. */
   outdated: boolean;
+  /** The equity curve + stats, once fetched after a succeeded run. Null when
+   *  the engine predates the result route or the payload isn't chartable. */
+  result: BacktestResultData | null;
   validation: { phase: ValidationPhase; detail?: string; verdict?: ValidationVerdict };
 }
 
@@ -60,6 +77,7 @@ const IDLE: BacktestSnapshot = {
   jobId: null,
   detail: null,
   outdated: false,
+  result: null,
   validation: { phase: 'idle' },
 };
 
@@ -101,6 +119,7 @@ function poll(jobId: number, gen: number): void {
     }
     if (result.status === 'succeeded') {
       set({ phase: 'succeeded' });
+      void fetchResult(jobId, gen);
       return;
     }
     if (result.status === 'failed') {
@@ -116,6 +135,28 @@ function poll(jobId: number, gen: number): void {
   }, 1500);
 }
 
+/**
+ * After a run succeeds, pull its equity curve + stats so the panel can chart
+ * it. Silent no-op on an older engine (404) or a non-chartable payload — the
+ * panel then shows the honest "recorded — validate / open full results" state
+ * rather than a fabricated curve.
+ */
+async function fetchResult(jobId: number, gen: number): Promise<void> {
+  const res = await backtestJobResult(jobId);
+  if (gen !== generation) return;
+  if (!res.ok || !res.body.chartable || !res.body.chart) return;
+  set({
+    result: {
+      equity: res.body.chart.points ?? [],
+      drawdown: res.body.drawdown?.points ?? [],
+      stats: res.body.stats ?? {},
+      asOf: res.body.as_of ?? '',
+      nBars: res.body.n_bars ?? 0,
+      trades: res.body.trades ?? 0,
+    },
+  });
+}
+
 async function startBacktest(option: StrategyOption, gen: number): Promise<void> {
   set({
     strategyPath: option.path,
@@ -123,6 +164,7 @@ async function startBacktest(option: StrategyOption, gen: number): Promise<void>
     phase: 'queued',
     jobId: null,
     detail: null,
+    result: null,
     validation: { phase: 'idle' },
   });
   const queued = await engineRunBacktest(option.path);

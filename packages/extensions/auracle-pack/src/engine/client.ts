@@ -111,6 +111,36 @@ export async function backtestJobStatus(
   return { ok: false, status: res.status };
 }
 
+/** A completed backtest's chartable result (equity curve + headline stats). */
+export interface BacktestResultBody {
+  status: string;
+  /** false when the payload has no plottable curve (function/signal strategies). */
+  chartable?: boolean;
+  strategy_path?: string;
+  as_of?: string;
+  n_bars?: number;
+  /** Headline metrics; NaN/Inf come through as null. */
+  stats?: Record<string, number | null>;
+  chart?: { labels: string[]; points: number[] };
+  drawdown?: { labels: string[]; points: number[] };
+  trades?: number;
+}
+
+/**
+ * Fetch a succeeded backtest's equity curve + stats. Returns `ok:false` on an
+ * older engine that predates the route (404) — the caller then simply omits
+ * the chart rather than inventing one.
+ */
+export async function backtestJobResult(
+  jobId: number
+): Promise<{ ok: true; body: BacktestResultBody } | { ok: false; status: number }> {
+  const res = await getJsonDetailed<BacktestResultBody>(
+    `/ui/api/backtest/job/${jobId}/result`
+  );
+  if (res.ok) return { ok: true, body: res.body };
+  return { ok: false, status: res.status };
+}
+
 /** Engine reachability + identity probe (`/ui/api/ide/connect-check`). */
 export async function connectCheck(): Promise<ConnectCheck | null> {
   return getJson<ConnectCheck>('/ui/api/ide/connect-check');

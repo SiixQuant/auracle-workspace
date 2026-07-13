@@ -10,7 +10,9 @@
  *
  * Design contract (PRODUCT.md): native-first, one primary action per
  * panel, states are the design (skeleton / empty / error / outdated are
- * first-class), engine-computed honesty, density with rhythm.
+ * first-class), engine-computed honesty, density with rhythm. The register
+ * is a precision instrument — layered surfaces, one reserved accent,
+ * semantic colour carrying meaning, tabular numerics — not a marketing page.
  */
 import type { CSSProperties, ReactNode } from 'react';
 
@@ -20,45 +22,69 @@ export const tone = {
   text: 'var(--text-primary, #d7dae0)',
   text2: 'var(--text-secondary, #b9bec7)',
   text3: 'var(--text-tertiary, #8a8f98)',
-  border: 'var(--border-primary, rgba(127,127,127,0.22))',
-  borderStrong: 'var(--border-primary, rgba(127,127,127,0.35))',
-  surface: 'var(--bg-secondary, rgba(255,255,255,0.018))',
-  sunken: 'var(--bg-primary, rgba(0,0,0,0.2))',
-  accent: 'var(--accent-primary, #0053fd)',
-  ok: '#2ea043',
-  danger: '#c4554d',
+  border: 'var(--border-primary, rgba(146,152,166,0.20))',
+  borderStrong: 'var(--border-primary, rgba(146,152,166,0.34))',
+  /** Card surface — a real, visible plane, not a 2%-alpha whisper. */
+  surface: 'var(--bg-secondary, #16191e)',
+  /** Deepest well — inputs, sunken tables. */
+  sunken: 'var(--bg-primary, #0e1013)',
+  accent: 'var(--accent-primary, #60a5fa)',
+  ok: '#3fb950',
+  danger: '#e5534b',
   caution: '#d4a017',
   font: 'var(--font-family-ui, system-ui, sans-serif)',
 } as const;
 
+/** Elevated surface for heroes — a touch lighter than a card, so summary
+ *  bands read as raised above the content they summarise. */
+export const RAISE = 'color-mix(in srgb, var(--bg-secondary, #16191e) 92%, var(--text-primary, #d7dae0) 8%)';
+
+/** Semantic tint of a colour at low alpha — for status backgrounds. */
+export const tint = (c: string, pct = 14): string => `color-mix(in srgb, ${c} ${pct}%, transparent)`;
+
+/** Tabular, feature-locked numerics — every figure in a data column. */
+export const numeric: CSSProperties = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: '"tnum" 1' };
+
+/** Green for a gain, red for a loss, quiet for flat/absent. */
+export const trendColor = (n: number | null | undefined): string =>
+  typeof n !== 'number' || n === 0 ? tone.text3 : n > 0 ? tone.ok : tone.danger;
+
 /* ── injected stylesheet (once) ─────────────────────────────────────── */
 
 const STYLE_ID = 'auracle-panelkit-styles';
+const ACCENT = 'var(--accent-primary, #60a5fa)';
 
 const SHEET = `
-.apk-btn { transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out, opacity 150ms ease-out, filter 150ms ease-out; }
-.apk-btn:focus-visible, .apk-input:focus-visible { outline: 2px solid ${'var(--accent-primary, #0053fd)'}; outline-offset: 1px; }
-.apk-btn-primary:hover:not(:disabled) { filter: brightness(1.1); }
-.apk-btn-primary:active:not(:disabled) { filter: brightness(0.94); }
-.apk-btn-ghost:hover:not(:disabled), .apk-btn-quiet:hover:not(:disabled) { background: color-mix(in srgb, var(--text-primary, #d7dae0) 7%, transparent); }
-.apk-btn-ghost:active:not(:disabled), .apk-btn-quiet:active:not(:disabled) { background: color-mix(in srgb, var(--text-primary, #d7dae0) 11%, transparent); }
-.apk-btn-danger:hover:not(:disabled) { background: color-mix(in srgb, #c4554d 12%, transparent); }
-.apk-btn-danger:active:not(:disabled) { background: color-mix(in srgb, #c4554d 18%, transparent); }
-.apk-card { transition: border-color 150ms ease-out, background-color 150ms ease-out; }
-.apk-card:hover { border-color: var(--border-primary, rgba(127,127,127,0.45)); }
-.apk-input { transition: border-color 150ms ease-out; }
-.apk-input:focus { border-color: var(--accent-primary, #0053fd); }
+.apk-btn { transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out, opacity 150ms ease-out, filter 150ms ease-out, box-shadow 150ms ease-out; }
+.apk-btn:focus-visible, .apk-input:focus-visible, .apk-selectwrap:focus-within, .apk-rowbtn:focus-visible { outline: 2px solid ${ACCENT}; outline-offset: 1px; }
+.apk-btn-primary:hover:not(:disabled) { filter: brightness(1.08); box-shadow: 0 2px 10px -4px color-mix(in srgb, ${ACCENT} 70%, transparent); }
+.apk-btn-primary:active:not(:disabled) { filter: brightness(0.95); box-shadow: none; }
+.apk-btn-ghost:hover:not(:disabled), .apk-btn-quiet:hover:not(:disabled) { background: color-mix(in srgb, var(--text-primary, #d7dae0) 8%, transparent); border-color: color-mix(in srgb, var(--text-primary, #d7dae0) 28%, transparent); }
+.apk-btn-ghost:active:not(:disabled), .apk-btn-quiet:active:not(:disabled) { background: color-mix(in srgb, var(--text-primary, #d7dae0) 12%, transparent); }
+.apk-btn-danger:hover:not(:disabled) { background: color-mix(in srgb, ${tone.danger} 14%, transparent); }
+.apk-btn-danger:active:not(:disabled) { background: color-mix(in srgb, ${tone.danger} 20%, transparent); }
+.apk-card { transition: border-color 150ms ease-out, background-color 150ms ease-out, box-shadow 150ms ease-out; }
+.apk-card:hover { border-color: color-mix(in srgb, var(--text-primary, #d7dae0) 22%, transparent); }
+.apk-input { transition: border-color 150ms ease-out, box-shadow 150ms ease-out; }
+.apk-input:focus { border-color: ${ACCENT}; box-shadow: 0 0 0 3px color-mix(in srgb, ${ACCENT} 22%, transparent); }
+.apk-selectwrap { transition: border-color 150ms ease-out; }
+.apk-selectwrap:hover { border-color: color-mix(in srgb, var(--text-primary, #d7dae0) 30%, transparent); }
+.apk-select { appearance: none; -webkit-appearance: none; -moz-appearance: none; }
+.apk-row { transition: background-color 120ms ease-out; }
+.apk-row:hover { background: color-mix(in srgb, var(--text-primary, #d7dae0) 4%, transparent); }
 .apk-enter { animation: apk-enter 180ms cubic-bezier(0.22, 1, 0.36, 1); }
 @keyframes apk-enter { from { opacity: 0; transform: translateY(2px); } }
-.apk-skeleton { background: linear-gradient(90deg, color-mix(in srgb, var(--text-primary, #d7dae0) 5%, transparent) 25%, color-mix(in srgb, var(--text-primary, #d7dae0) 10%, transparent) 50%, color-mix(in srgb, var(--text-primary, #d7dae0) 5%, transparent) 75%); background-size: 200% 100%; animation: apk-shimmer 1.6s ease-in-out infinite; border-radius: 4px; }
+.apk-skeleton { background: linear-gradient(90deg, color-mix(in srgb, var(--text-primary, #d7dae0) 5%, transparent) 25%, color-mix(in srgb, var(--text-primary, #d7dae0) 11%, transparent) 50%, color-mix(in srgb, var(--text-primary, #d7dae0) 5%, transparent) 75%); background-size: 200% 100%; animation: apk-shimmer 1.6s ease-in-out infinite; border-radius: 4px; }
 @keyframes apk-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .apk-spin { animation: apk-spin 800ms linear infinite; }
 @keyframes apk-spin { to { transform: rotate(360deg); } }
+.apk-pulse { animation: apk-pulse 2s ease-in-out infinite; }
+@keyframes apk-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 @media (prefers-reduced-motion: reduce) {
-  .apk-btn, .apk-card, .apk-input { transition: none; }
+  .apk-btn, .apk-card, .apk-input, .apk-row, .apk-selectwrap { transition: none; }
   .apk-enter { animation: none; }
-  .apk-skeleton { animation: none; background: color-mix(in srgb, var(--text-primary, #d7dae0) 7%, transparent); }
-  .apk-spin { animation: none; }
+  .apk-skeleton { animation: none; background: color-mix(in srgb, var(--text-primary, #d7dae0) 8%, transparent); }
+  .apk-spin, .apk-pulse { animation: none; }
 }
 `;
 
@@ -77,6 +103,8 @@ export function PanelShell({
   description,
   meta,
   toolbar,
+  hero,
+  wide = false,
   children,
 }: {
   title: string;
@@ -84,19 +112,23 @@ export function PanelShell({
   /** Right-aligned quiet fact, e.g. "Last scan: 2h ago". */
   meta?: ReactNode;
   toolbar?: ReactNode;
+  /** Full-width summary band between the toolbar and the content. */
+  hero?: ReactNode;
+  /** Data-dense panels (wide tables) opt out of the reading-width cap. */
+  wide?: boolean;
   children: ReactNode;
 }): JSX.Element {
   ensurePanelKitStyles();
   return (
-    <div style={{ height: '100%', overflowY: 'auto', background: 'var(--bg-primary, transparent)' }}>
+    <div className="auracle-panel" style={{ height: '100%', overflowY: 'auto', background: 'var(--bg-primary, transparent)' }}>
       <div
         style={{
           display: 'flex',
           flexDirection: 'column',
           gap: 16,
-          maxWidth: 860,
+          maxWidth: wide ? 1200 : 900,
           margin: '0 auto',
-          padding: '24px 28px 48px',
+          padding: '22px 28px 48px',
           color: tone.text,
           font: `13px/1.5 ${tone.font}`,
         }}
@@ -104,17 +136,17 @@ export function PanelShell({
         <header style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1, minWidth: 0 }}>
             {/* Explicit color: host stylesheets restyle bare headings. */}
-            <h1 style={{ margin: 0, fontSize: 16, fontWeight: 600, letterSpacing: -0.2, color: tone.text }}>
+            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 650, letterSpacing: -0.3, color: tone.text }}>
               {title}
             </h1>
             {description ? (
-              <p style={{ margin: 0, fontSize: 12.5, color: tone.text3, maxWidth: '68ch' }}>
+              <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: tone.text3, maxWidth: '70ch' }}>
                 {description}
               </p>
             ) : null}
           </div>
           {meta ? (
-            <div style={{ fontSize: 12, color: tone.text3, whiteSpace: 'nowrap' }}>{meta}</div>
+            <div style={{ fontSize: 12, color: tone.text3, whiteSpace: 'nowrap', ...numeric }}>{meta}</div>
           ) : null}
         </header>
         {toolbar ? (
@@ -122,6 +154,7 @@ export function PanelShell({
             {toolbar}
           </div>
         ) : null}
+        {hero}
         {children}
       </div>
     </div>
@@ -130,6 +163,20 @@ export function PanelShell({
 
 export function ToolbarSpring(): JSX.Element {
   return <span style={{ flex: 1, minWidth: 8 }} />;
+}
+
+/** A structural group divider — a real section rule, not a decorative
+ *  eyebrow. Medium-weight label, optional right-aligned count, hairline. */
+export function SectionLabel({ children, meta }: { children: ReactNode; meta?: ReactNode }): JSX.Element {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
+      <span style={{ fontSize: 12, fontWeight: 600, color: tone.text2, letterSpacing: 0.1, whiteSpace: 'nowrap' }}>
+        {children}
+      </span>
+      <span style={{ flex: 1, height: 1, background: tone.border }} />
+      {meta ? <span style={{ fontSize: 11.5, color: tone.text3, whiteSpace: 'nowrap', ...numeric }}>{meta}</span> : null}
+    </div>
+  );
 }
 
 /* ── buttons ────────────────────────────────────────────────────────── */
@@ -155,6 +202,7 @@ const BUTTON_VARIANTS: Record<ButtonVariant, CSSProperties> = {
     border: '1px solid transparent',
     background: tone.accent,
     color: '#fff',
+    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.16)`,
   },
   ghost: {
     padding: '6px 12px',
@@ -235,6 +283,82 @@ function Spinner({ light }: { light?: boolean }): JSX.Element {
   );
 }
 
+/* ── select (styled native — keeps keyboard + a11y) ─────────────────── */
+
+export function Select({
+  value,
+  onChange,
+  options,
+  placeholder,
+  ariaLabel,
+  minWidth = 220,
+  fluid = false,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  options: Array<{ value: string; label: string }>;
+  placeholder?: string;
+  ariaLabel?: string;
+  minWidth?: number;
+  /** Fill the parent's width (form fields) instead of sizing to content. */
+  fluid?: boolean;
+}): JSX.Element {
+  return (
+    <span
+      className="apk-selectwrap"
+      style={{
+        position: 'relative',
+        display: fluid ? 'flex' : 'inline-flex',
+        alignItems: 'center',
+        width: fluid ? '100%' : undefined,
+        minWidth: fluid ? undefined : minWidth,
+        borderRadius: 7,
+        border: `1px solid ${tone.borderStrong}`,
+        background: tone.sunken,
+      }}
+    >
+      <select
+        className="apk-select"
+        aria-label={ariaLabel}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          width: '100%',
+          padding: '7px 30px 7px 11px',
+          borderRadius: 7,
+          fontSize: 13,
+          border: 'none',
+          background: 'transparent',
+          color: value ? tone.text : tone.text3,
+          outline: 'none',
+          fontFamily: 'inherit',
+          cursor: 'pointer',
+        }}
+      >
+        {placeholder ? <option value="">{placeholder}</option> : null}
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <span
+        aria-hidden
+        style={{
+          position: 'absolute',
+          right: 11,
+          pointerEvents: 'none',
+          color: tone.text3,
+          fontSize: 10,
+          lineHeight: 1,
+        }}
+      >
+        ▾
+      </span>
+    </span>
+  );
+}
+
 /* ── inline status note ─────────────────────────────────────────────── */
 
 export function InlineNote({
@@ -301,27 +425,114 @@ const PILL_COLOR: Record<PillKind, string> = {
 
 /**
  * Compact status chip — a state word (running / paused / filled / critical)
- * in its semantic colour with a tinted border. One place for the pill shape
- * so panels stop re-declaring the four brand colour literals inline.
+ * in its semantic colour. `dot` prepends a state dot; `solid` fills the chip
+ * with a tint for stronger presence (use for the one status that matters most
+ * in a row, not every chip). One place for the pill shape so panels stop
+ * re-declaring the four brand colour literals inline.
  */
-export function Pill({ kind, children }: { kind: PillKind; children: ReactNode }): JSX.Element {
+export function Pill({
+  kind,
+  children,
+  dot = false,
+  solid = false,
+}: {
+  kind: PillKind;
+  children: ReactNode;
+  dot?: boolean;
+  solid?: boolean;
+}): JSX.Element {
   const c = PILL_COLOR[kind];
   return (
     <span
       style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 5,
         fontSize: 11,
-        fontWeight: 500,
-        padding: '1px 8px',
+        fontWeight: 600,
+        padding: dot ? '1px 8px 1px 7px' : '1px 8px',
         borderRadius: 999,
-        border: `1px solid color-mix(in srgb, ${c} 45%, transparent)`,
+        border: `1px solid color-mix(in srgb, ${c} ${solid ? 34 : 45}%, transparent)`,
+        background: solid ? tint(c, 16) : 'transparent',
         color: c,
         whiteSpace: 'nowrap',
         letterSpacing: 0.2,
         flex: 'none',
       }}
     >
+      {dot ? (
+        <span aria-hidden style={{ width: 6, height: 6, borderRadius: '50%', background: c, flex: 'none' }} />
+      ) : null}
       {children}
     </span>
+  );
+}
+
+/* ── metrics (summary heroes) ───────────────────────────────────────── */
+
+export interface MetricProps {
+  label: string;
+  value: ReactNode;
+  /** Secondary line under the value — a delta, a count, a qualifier. */
+  sub?: ReactNode;
+  /** Colour of the value (e.g. trendColor for a P&L figure). */
+  valueColor?: string;
+  emphasis?: boolean;
+}
+
+/** A single label / big-value stat. Values are tabular by default. */
+export function Metric({ label, value, sub, valueColor, emphasis }: MetricProps): JSX.Element {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+      <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: 0.3, textTransform: 'uppercase', color: tone.text3 }}>
+        {label}
+      </span>
+      <span
+        style={{
+          fontSize: emphasis ? 22 : 18,
+          fontWeight: 650,
+          lineHeight: 1.1,
+          letterSpacing: -0.3,
+          color: valueColor ?? tone.text,
+          ...numeric,
+        }}
+      >
+        {value}
+      </span>
+      {sub ? <span style={{ fontSize: 11.5, color: tone.text3, ...numeric }}>{sub}</span> : null}
+    </div>
+  );
+}
+
+/** A raised band of metrics divided by hairlines — the panel summary hero. */
+export function StatBand({ items }: { items: MetricProps[] }): JSX.Element {
+  return (
+    <div
+      className="apk-enter"
+      style={{
+        display: 'grid',
+        gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`,
+        gap: 20,
+        padding: '16px 20px',
+        borderRadius: 11,
+        border: `1px solid ${tone.border}`,
+        background: RAISE,
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
+      }}
+    >
+      {items.map((item, i) => (
+        <div
+          key={item.label}
+          style={{
+            display: 'flex',
+            paddingLeft: i === 0 ? 0 : 20,
+            borderLeft: i === 0 ? 'none' : `1px solid ${tone.border}`,
+          }}
+        >
+          <Metric {...item} />
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -401,6 +612,7 @@ export function SkeletonRows({ rows = 4 }: { rows?: number }): JSX.Element {
             padding: '13px 15px',
             borderRadius: 9,
             border: `1px solid ${tone.border}`,
+            background: tone.surface,
           }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center' }}>
@@ -419,17 +631,23 @@ export function SkeletonRows({ rows = 4 }: { rows?: number }): JSX.Element {
 
 /**
  * Centered non-content state. `title` states the situation in one line;
- * `detail` names the cause or the fix. Actions are optional and few.
+ * `detail` names the cause or the fix. `icon` is a small glyph set in a
+ * ringed medallion above the title — polish for empty / error rests.
  */
 export function CenterState({
   title,
   detail,
+  icon,
+  tone: kind = 'muted',
   actions,
 }: {
   title: string;
   detail?: string;
+  icon?: ReactNode;
+  tone?: 'muted' | 'danger' | 'ok';
   actions?: ReactNode;
 }): JSX.Element {
+  const ringColor = kind === 'danger' ? tone.danger : kind === 'ok' ? tone.ok : tone.text3;
   return (
     <div
       className="apk-enter"
@@ -438,15 +656,147 @@ export function CenterState({
         flexDirection: 'column',
         alignItems: 'center',
         textAlign: 'center',
-        gap: 6,
-        padding: '56px 24px',
+        gap: 7,
+        padding: '52px 24px',
       }}
     >
-      <div style={{ fontSize: 13, fontWeight: 500, color: tone.text2 }}>{title}</div>
+      {icon ? (
+        <span
+          aria-hidden
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 44,
+            height: 44,
+            marginBottom: 6,
+            borderRadius: 12,
+            border: `1px solid ${tint(ringColor, 40)}`,
+            background: tint(ringColor, 10),
+            color: ringColor,
+            fontSize: 19,
+          }}
+        >
+          {icon}
+        </span>
+      ) : null}
+      <div style={{ fontSize: 13.5, fontWeight: 600, color: tone.text2 }}>{title}</div>
       {detail ? (
-        <div style={{ fontSize: 12.5, color: tone.text3, maxWidth: '52ch' }}>{detail}</div>
+        <div style={{ fontSize: 12.5, lineHeight: 1.5, color: tone.text3, maxWidth: '52ch' }}>{detail}</div>
       ) : null}
       {actions ? <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>{actions}</div> : null}
+    </div>
+  );
+}
+
+/* ── equity / return curve ──────────────────────────────────────────── */
+
+/**
+ * A dependency-free SVG area+line over an engine-provided series (a backtest
+ * equity / cumulative-return curve). Honest: renders nothing when there are
+ * fewer than two real points — never a fabricated shape. Green when the run
+ * ends above where it started, red below; a dashed line marks the start (0%),
+ * and the end point is called out with its total return. `mode` picks the
+ * baseline: 'equity' anchors 0% at the first point (growth of $1); 'zero'
+ * anchors at y=0 (a drawdown curve that lives at/under the axis).
+ */
+export function EquityChart({
+  points,
+  height = 168,
+  label,
+  color,
+  mode = 'equity',
+}: {
+  points: number[];
+  height?: number;
+  label?: string;
+  color?: string;
+  mode?: 'equity' | 'zero';
+}): JSX.Element | null {
+  const clean = (points ?? []).filter((p): p is number => typeof p === 'number' && Number.isFinite(p));
+  if (clean.length < 2) return null;
+  const n = clean.length;
+  const lo = Math.min(...clean, mode === 'zero' ? 0 : clean[0]);
+  const hi = Math.max(...clean, mode === 'zero' ? 0 : clean[0]);
+  const span = hi - lo || 1;
+  const base = clean[0];
+  const last = clean[n - 1];
+  const up = last >= base;
+  const c = color ?? (mode === 'zero' ? tone.danger : up ? tone.ok : tone.danger);
+  const nx = (i: number) => (i / (n - 1)) * 100;
+  const ny = (v: number) => 100 - ((v - lo) / span) * 100;
+  const line = clean.map((v, i) => `${i === 0 ? 'M' : 'L'}${nx(i).toFixed(2)},${ny(v).toFixed(3)}`).join(' ');
+  const anchor = mode === 'zero' ? 0 : base;
+  const anchorY = ny(anchor);
+  const area = `${line} L100,${anchorY.toFixed(3)} L0,${anchorY.toFixed(3)} Z`;
+  const gid = `apk-eq-${mode}-${up ? 'up' : 'dn'}`;
+  const retPct = mode === 'zero' ? last : (last / base - 1) * 100;
+
+  return (
+    <div style={{ width: '100%' }}>
+      {label ? (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: 0.3, textTransform: 'uppercase', color: tone.text3 }}>
+            {label}
+          </span>
+          <span style={{ fontSize: 12.5, fontWeight: 650, color: c, ...numeric }}>
+            {(retPct >= 0 ? '+' : '') + retPct.toFixed(2)}%
+          </span>
+        </div>
+      ) : null}
+      <div style={{ position: 'relative', width: '100%', height }}>
+        <svg
+          width="100%"
+          height={height}
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          style={{ display: 'block', overflow: 'visible' }}
+        >
+          <defs>
+            <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={c} stopOpacity="0.24" />
+              <stop offset="100%" stopColor={c} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <line
+            x1="0"
+            y1={anchorY}
+            x2="100"
+            y2={anchorY}
+            stroke={tone.text3}
+            strokeOpacity="0.45"
+            strokeWidth="1"
+            strokeDasharray="2 2"
+            vectorEffect="non-scaling-stroke"
+          />
+          <path d={area} fill={`url(#${gid})`} />
+          <path
+            d={line}
+            fill="none"
+            stroke={c}
+            strokeWidth="1.75"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+        {/* End-point marker as an HTML overlay so it stays circular under
+            preserveAspectRatio="none" (which would squash an SVG <circle>). */}
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute',
+            left: '100%',
+            top: `${ny(last)}%`,
+            transform: 'translate(-50%, -50%)',
+            width: 7,
+            height: 7,
+            borderRadius: '50%',
+            background: c,
+            boxShadow: `0 0 0 3px ${tint(c, 22)}`,
+          }}
+        />
+      </div>
     </div>
   );
 }

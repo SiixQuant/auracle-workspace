@@ -49,6 +49,27 @@ export interface DeploymentOrders {
   positions: Position[];
 }
 
+/** `GET /deployments/{id}/equity` — the deployment's mark-to-market curve. */
+export interface DeploymentEquity {
+  deployment_id: number;
+  /** false when the deployment has no fills / no AUM to reconstruct from. */
+  chartable?: boolean;
+  points?: number[];
+  labels?: string[];
+  marks?: string;
+}
+
+/**
+ * The equity y-series to plot from a deployment-equity response, or [] when the
+ * engine returned no chartable curve (no fills, or an older build without the
+ * route). Every value is a real reconstructed equity — the panel draws this
+ * only when it's non-empty, never a fabricated line.
+ */
+export function deploymentEquityPoints(body: DeploymentEquity | null | undefined): number[] {
+  if (!body || body.chartable !== true || !Array.isArray(body.points)) return [];
+  return body.points.filter((p): p is number => typeof p === 'number' && Number.isFinite(p));
+}
+
 export type Mode = 'paper' | 'live';
 export type Compute = 'local' | 'oci' | 'aws';
 

@@ -10,23 +10,27 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
-import { bumpConnectGeneration, getJson, postJson } from '../engine/client';
+import { bumpConnectGeneration, getJson, getJsonDetailed, postJson } from '../engine/client';
 import {
+  QcChartBody,
   QcProject,
   StatLine,
   compilePhase,
   headlineStats,
   normalizeProject,
   qcContext,
+  qcEquityPoints,
   qcPrompt,
 } from '../engine/quantconnect';
 import {
   Button,
   CenterState,
   Disclosure,
+  EquityChart,
   Field,
   InlineNote,
   PanelShell,
+  Select,
   SkeletonRows,
   ToolbarSpring,
   tone,
@@ -56,10 +60,67 @@ type BacktestState =
   | { phase: 'compiling' }
   | { phase: 'running' }
   | { phase: 'error'; message: string }
-  | { phase: 'done'; stats: StatLine[]; empty: boolean };
+  | { phase: 'done'; stats: StatLine[]; empty: boolean; equity: number[] };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '_') || 'imported';
+
+/**
+ * A completed QC cloud backtest: its Strategy-Equity curve (when the engine
+ * returned one) above the headline statistics. Every figure is a real QC
+ * value — the curve renders only when there are points, never a placeholder.
+ */
+export function QcBacktestResult({
+  stats,
+  equity,
+  empty,
+}: {
+  stats: StatLine[];
+  equity: number[];
+  empty: boolean;
+}): JSX.Element {
+  return (
+    <>
+      {equity.length >= 2 ? (
+        <div
+          style={{
+            padding: '12px 14px',
+            borderRadius: 9,
+            border: `1px solid ${tone.border}`,
+            background: tone.surface,
+          }}
+        >
+          <EquityChart points={equity} height={140} label="Equity curve" />
+        </div>
+      ) : null}
+      {!empty ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {stats.map((s) => (
+            <div
+              key={s.label}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2,
+                padding: '7px 11px',
+                borderRadius: 8,
+                border: `1px solid ${tone.border}`,
+                minWidth: 120,
+              }}
+            >
+              <span style={{ fontSize: 10.5, color: tone.text3 }}>{s.label}</span>
+              <span style={{ fontSize: 14, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                {s.value}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : equity.length < 2 ? (
+        <InlineNote kind="muted">Backtest finished, but QuantConnect returned no statistics.</InlineNote>
+      ) : null}
+    </>
+  );
+}
 
 function ProjectCard({
   project,
@@ -190,30 +251,12 @@ function ProjectCard({
             <InlineNote kind="muted">Running the cloud backtest… this can take a minute.</InlineNote>
           ) : backtestState.phase === 'error' ? (
             <InlineNote kind="err">{backtestState.message}</InlineNote>
-          ) : backtestState.empty ? (
-            <InlineNote kind="muted">Backtest finished, but QuantConnect returned no statistics.</InlineNote>
           ) : (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {backtestState.stats.map((s) => (
-                <div
-                  key={s.label}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 2,
-                    padding: '7px 11px',
-                    borderRadius: 8,
-                    border: `1px solid ${tone.border}`,
-                    minWidth: 120,
-                  }}
-                >
-                  <span style={{ fontSize: 10.5, color: tone.text3 }}>{s.label}</span>
-                  <span style={{ fontSize: 14, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-                    {s.value}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <QcBacktestResult
+              stats={backtestState.stats}
+              equity={backtestState.equity}
+              empty={backtestState.empty}
+            />
           )}
         </div>
       ) : null}
@@ -236,6 +279,9 @@ export function QcImportPanel({ host }: PanelHostProps): JSX.Element {
 
   const cancelled = useRef(false);
   useEffect(() => () => { cancelled.current = true; }, []);
+  // Per-operation epoch: starting an import/backtest bumps it, so a superseded
+  // in-flight run can never write its result into a different project's card.
+  const runToken = useRef(0);
 
   const loadProjects = useCallback(async () => {
     setList({ phase: 'loading' });
@@ -291,6 +337,8 @@ export function QcImportPanel({ host }: PanelHostProps): JSX.Element {
   }, [exportable.length]);
 
   const beginImport = async (project: QcProject) => {
+    const epoch = ++runToken.current;
+    const alive = () => !cancelled.current && runToken.current === epoch;
     setActiveId(project.projectId);
     setBacktestState(null);
     setImportState({ phase: 'translating' });
@@ -298,7 +346,7 @@ export function QcImportPanel({ host }: PanelHostProps): JSX.Element {
       project_id: project.projectId,
       name: project.name,
     });
-    if (cancelled.current) return;
+    if (!alive()) return;
     if (!response.ok || !response.body || typeof response.body !== 'object') {
       setImportState({ phase: 'error', message: `Translate failed (${response.status || 'engine unreachable'}).` });
       return;
@@ -328,12 +376,15 @@ export function QcImportPanel({ host }: PanelHostProps): JSX.Element {
   };
 
   const beginBacktest = async (project: QcProject) => {
+    const epoch = ++runToken.current;
+    const alive = () => !cancelled.current && runToken.current === epoch;
     setActiveId(project.projectId);
     setImportState(null);
     setBacktestState({ phase: 'compiling' });
     const base = `/ui/api/quantconnect/projects/${project.projectId}`;
 
     const compile = await postJson(`${base}/compile`);
+    if (!alive()) return;
     const compileId = (compile.body as { compile_id?: string } | null)?.compile_id;
     if (!compile.ok || !compileId) {
       const errs = (compile.body as { errors?: string[] } | null)?.errors;
@@ -343,8 +394,9 @@ export function QcImportPanel({ host }: PanelHostProps): JSX.Element {
     // Poll the compile (bounded ~2 min).
     for (let i = 0; i < 60; i += 1) {
       await sleep(2000);
-      if (cancelled.current) return;
+      if (!alive()) return;
       const status = await getJson<{ state?: string; logs?: string[] }>(`${base}/compile/${compileId}`);
+      if (!alive()) return;
       const phase = compilePhase(status?.state);
       if (phase === 'success') break;
       if (phase === 'error') {
@@ -356,10 +408,10 @@ export function QcImportPanel({ host }: PanelHostProps): JSX.Element {
         return;
       }
     }
-    if (cancelled.current) return; // the compile loop can break on success; don't set state after unmount
 
     setBacktestState({ phase: 'running' });
     const bt = await postJson(`${base}/backtest`, { compile_id: compileId, name: `Auracle — ${project.name}` });
+    if (!alive()) return;
     const backtestId = (bt.body as { backtest_id?: string } | null)?.backtest_id;
     if (!bt.ok || !backtestId) {
       const errs = (bt.body as { errors?: string[] } | null)?.errors;
@@ -369,17 +421,24 @@ export function QcImportPanel({ host }: PanelHostProps): JSX.Element {
     // Poll the backtest (bounded ~5 min).
     for (let i = 0; i < 100; i += 1) {
       await sleep(3000);
-      if (cancelled.current) return;
+      if (!alive()) return;
       const res = await getJson<{ completed?: boolean; statistics?: Record<string, unknown>; error?: string }>(
         `${base}/backtest/${backtestId}`
       );
+      if (!alive()) return;
       if (res?.error) {
         setBacktestState({ phase: 'error', message: res.error });
         return;
       }
       if (res?.completed) {
         const stats = headlineStats(res.statistics);
-        setBacktestState({ phase: 'done', stats, empty: stats.length === 0 });
+        // Pull the Strategy-Equity curve. An older engine without this route
+        // (404) just leaves equity empty — we show the stats without a chart
+        // rather than invent one.
+        const chart = await getJsonDetailed<QcChartBody>(`${base}/backtest/${backtestId}/chart`);
+        if (!alive()) return;
+        const equity = chart.ok ? qcEquityPoints(chart.body) : [];
+        setBacktestState({ phase: 'done', stats, empty: stats.length === 0, equity });
         return;
       }
       if (i === 99) {
@@ -432,25 +491,14 @@ export function QcImportPanel({ host }: PanelHostProps): JSX.Element {
               <InlineNote kind="muted">No Auracle strategies to export yet — create or import one first.</InlineNote>
             ) : (
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <select
+                <Select
+                  ariaLabel="Strategy to export"
+                  placeholder="Pick a strategy to push…"
+                  minWidth={280}
                   value={exportPath}
-                  onChange={(e) => setExportPath(e.target.value)}
-                  style={{
-                    padding: '6px 10px',
-                    borderRadius: 7,
-                    fontSize: 13,
-                    border: `1px solid ${tone.borderStrong}`,
-                    background: tone.sunken,
-                    color: tone.text,
-                    minWidth: 280,
-                    fontFamily: tone.font,
-                  }}
-                >
-                  <option value="">Pick a strategy to push…</option>
-                  {exportable.map((s) => (
-                    <option key={s.path} value={s.path}>{s.label}</option>
-                  ))}
-                </select>
+                  onChange={setExportPath}
+                  options={exportable.map((s) => ({ value: s.path, label: s.label }))}
+                />
                 <Button variant="primary" busy={exportBusy} disabled={!exportPath} onClick={() => void runExport()}>
                   Push to QuantConnect
                 </Button>

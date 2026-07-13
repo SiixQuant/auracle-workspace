@@ -16,6 +16,10 @@ import {
 } from '../src/components/MonitorPanels';
 import { AuracleConnections } from '../src/components/ConnectionsSettings';
 import { AuracleStatusChip } from '../src/components/StatusChip';
+import { ResearchPanel } from '../src/components/ResearchPanel';
+import { QcImportPanel, QcBacktestResult } from '../src/components/QcImportPanel';
+import { BacktestPanel, BacktestResultView } from '../src/components/BacktestPanel';
+import type { BacktestResultData } from '../src/engine/backtestStore';
 
 /* ── mock data ─────────────────────────────────────────────── */
 
@@ -49,6 +53,16 @@ const MOCK_ORDERS = {
     { id: 2139, symbol: 'NVDA', action: 'sell', quantity: 40, filled_quantity: 40, avg_fill_price: 138.71, status: 'filled', created_at: '2026-07-11T14:33:00Z' },
   ],
   positions: [{ symbol: 'AAPL', quantity: 120, avg_cost: 228.44 }],
+};
+
+const _LIVE_EQ = [
+  250000, 251900, 249400, 254300, 258700, 256100, 261800, 267200,
+  264100, 271600, 277900, 275300, 279100, 280850,
+];
+const MOCK_LIVE_EQUITY = {
+  deployment_id: 1, chartable: true, marks: 'mtm', points: _LIVE_EQ,
+  labels: _LIVE_EQ.map((_, i) => `2026-06-${String(1 + i).padStart(2, '0')}`),
+  n_points: _LIVE_EQ.length,
 };
 
 const MOCK_STRATEGIES = {
@@ -94,6 +108,97 @@ const MOCK_RUNWAY = {
   },
 };
 
+// ── research feed + scan status ──
+const MOCK_RESEARCH_FEED = {
+  findings: [
+    { id: 1, paper_id: 'arXiv:2407.01234', source: 'arXiv', title: 'Cross-Sectional Momentum with Volatility Scaling', authors: 'A. Chen, R. Patel', abstract: 'We show that scaling a cross-sectional momentum signal by trailing realized volatility improves the risk-adjusted return of the long-short portfolio out of sample.', hypothesis: 'Vol-scaling a momentum signal lifts its Sharpe by reducing crash exposure.', technique: 'Cross-sectional ranking + vol targeting', asset_classes: ['equity'], score: 0.87, model: 'gpt', status: 'new', composite: 0.87, band: 'high', confidence: 'high', categories: ['q-fin.PM'], primary_category: 'q-fin.PM', published_at: '2026-07-02', url: 'https://arxiv.org/abs/2407.01234', doi: null, pdf_url: null, citation_count: 12, strategy_path: null },
+    { id: 2, paper_id: 'SSRN:4501992', source: 'SSRN', title: 'Overnight Reversal in Liquid Futures', authors: 'M. Okafor', abstract: 'A robust overnight-to-intraday reversal exists across liquid futures, strongest around macro releases.', hypothesis: 'Overnight moves in liquid futures partially reverse intraday.', technique: 'Time-series reversal', asset_classes: ['futures'], score: 0.64, model: 'gpt', status: 'new', composite: 0.64, band: 'medium', confidence: 'medium', categories: ['q-fin.TR'], primary_category: 'q-fin.TR', published_at: '2026-06-28', url: 'https://ssrn.com/abstract=4501992', doi: null, pdf_url: null, citation_count: 3, strategy_path: null },
+    { id: 3, paper_id: 'arXiv:2406.09981', source: 'arXiv', title: 'Attention-Weighted Factor Timing', authors: 'L. Vasquez, T. Ito', abstract: 'A transformer times classic factors; gains vanish after transaction costs.', hypothesis: 'Learned factor timing beats static weights net of costs.', technique: 'Transformer factor timing', asset_classes: ['equity'], score: 0.31, model: 'gpt', status: 'new', composite: 0.31, band: 'low', confidence: 'low', categories: ['q-fin.CP'], primary_category: 'q-fin.CP', published_at: '2026-06-19', url: 'https://arxiv.org/abs/2406.09981', doi: null, pdf_url: null, citation_count: 0, strategy_path: null },
+  ],
+  last_scan: '2026-07-12T08:00:00Z',
+};
+
+const MOCK_SCAN_STATUS = {
+  running: false,
+  started_at: null,
+  finished_at: '2026-07-12T08:00:00Z',
+  result: { fetched: 40, stored: 18, deduped: 6, llm_refined: 12 },
+  error: null,
+  last_scan: '2026-07-12T08:00:00Z',
+};
+
+// ── quantconnect projects ──
+const MOCK_QC_PROJECTS = {
+  connected: true,
+  projects: [
+    { projectId: 18234221, name: 'Momentum SPY', description: '12-1 momentum, monthly rebalance', modified: '2026-07-10T00:00:00Z', language: 'Py' },
+    { projectId: 18234250, name: 'Mean Reversion Pairs', description: 'Cointegrated ETF pairs', modified: '2026-07-08T00:00:00Z', language: 'Py' },
+  ],
+};
+
+// ── quantconnect cloud backtest (compile → run → stats → equity chart) ──
+const MOCK_QC_STATUS = {
+  connected: true, completed: true, progress: 1, error: null,
+  statistics: {
+    'Sharpe Ratio': '1.42', 'Total Return': '31.9%', 'Compounding Annual Return': '17.1%',
+    'Drawdown': '8.4%', 'Win Rate': '58%', 'Total Trades': '212',
+  },
+};
+const _QC_EQUITY = [
+  100000, 101200, 99800, 103400, 106900, 104100, 108800, 112300,
+  110500, 115900, 121200, 118400, 122700, 128100, 125300, 131900,
+];
+const MOCK_QC_CHART = {
+  connected: true, chartable: true, points: _QC_EQUITY,
+  labels: _QC_EQUITY.map((_, i) => `2024-${String(1 + (i % 12)).padStart(2, '0')}-01`),
+  n_points: _QC_EQUITY.length,
+};
+
+// ── backtest result (equity curve + stats + drawdown) ──
+const _EQ = [
+  1.0, 1.03, 1.06, 1.04, 1.09, 1.14, 1.11, 1.08, 1.13, 1.19, 1.22, 1.18,
+  1.15, 1.21, 1.26, 1.24, 1.29, 1.33, 1.3, 1.35, 1.31, 1.28, 1.34, 1.38,
+];
+function _dd(points: number[]): number[] {
+  let peak = -Infinity;
+  return points.map((v) => {
+    peak = Math.max(peak, v);
+    return Number((((v - peak) / peak) * 100).toFixed(2));
+  });
+}
+const MOCK_BACKTEST_RESULT: BacktestResultData = {
+  equity: _EQ,
+  drawdown: _dd(_EQ),
+  stats: {
+    total_return: 0.38, annualized_return: 0.171, sharpe: 1.42,
+    max_drawdown: Math.min(..._dd(_EQ)) / 100, sortino: 1.9, calmar: 1.98,
+  },
+  asOf: '2026-07-10',
+  nBars: _EQ.length,
+  trades: 34,
+};
+
+function QcResultHarness(): JSX.Element {
+  // The completed-QC-backtest render (equity curve + headline stats), the same
+  // component the QC panel shows after a cloud backtest finishes. The live poll
+  // can't be driven under StrictMode (the panel's cancel-ref trips on the
+  // double-mount), so this exercises the render path directly.
+  const stats = Object.entries(MOCK_QC_STATUS.statistics).map(([label, value]) => ({ label, value }));
+  return (
+    <div style={{ maxWidth: 760, margin: '0 auto', padding: '22px 28px 48px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <QcBacktestResult stats={stats} equity={MOCK_QC_CHART.points} empty={false} />
+    </div>
+  );
+}
+
+function BacktestResultHarness(): JSX.Element {
+  return (
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: '22px 28px 48px' }}>
+      <BacktestResultView result={MOCK_BACKTEST_RESULT} />
+    </div>
+  );
+}
+
 // ── connections registry (list + per-connector detail) ──
 const MOCK_CONNECTORS = [
   { id: 'ibkr', display_label: 'Interactive Brokers', blurb: 'Live + paper trading via IB Gateway', kind: 'broker', status: { state: 'connected', detail: 'paper' }, test_supported: true, asset_kinds: ['equity', 'option'] },
@@ -119,6 +224,7 @@ const notFound = { ok: false, status: 404, body: null };
 
 function engineRequest(method: string, path: string): { ok: boolean; status: number; body: unknown } {
   const p = String(path);
+  if (/^\/deployments\/\d+\/equity/.test(p)) return ok(MOCK_LIVE_EQUITY);
   if (/^\/deployments\/\d+\/orders/.test(p)) return ok(MOCK_ORDERS);
   if (p === '/deployments') return ok(MOCK_DEPLOYMENTS);
   if (p.startsWith('/ui/api/orders')) return ok(MOCK_BLOTTER);
@@ -127,6 +233,14 @@ function engineRequest(method: string, path: string): { ok: boolean; status: num
   if (p.startsWith('/ui/api/runway')) return ok(MOCK_RUNWAY);
   if (p.startsWith('/ui/api/validation')) return ok(MOCK_VERDICT);
   if (p.startsWith('/ui/api/backtest/strategies')) return ok(MOCK_STRATEGIES);
+  if (p.startsWith('/ui/api/research/scan/status')) return ok(MOCK_SCAN_STATUS);
+  if (p.startsWith('/ui/api/research/feed')) return ok(MOCK_RESEARCH_FEED);
+  if (p === '/ui/api/quantconnect/projects') return ok(MOCK_QC_PROJECTS);
+  if (/\/ui\/api\/quantconnect\/projects\/\d+\/compile\/.+/.test(p)) return ok({ state: 'BuildSuccess', logs: [] });
+  if (/\/ui\/api\/quantconnect\/projects\/\d+\/compile$/.test(p)) return ok({ connected: true, compile_id: 'c-1' });
+  if (/\/ui\/api\/quantconnect\/projects\/\d+\/backtest\/[^/]+\/chart$/.test(p)) return ok(MOCK_QC_CHART);
+  if (/\/ui\/api\/quantconnect\/projects\/\d+\/backtest\/[^/]+$/.test(p)) return ok(MOCK_QC_STATUS);
+  if (/\/ui\/api\/quantconnect\/projects\/\d+\/backtest$/.test(p)) return ok({ connected: true, backtest_id: 'bt-1' });
   const cap = p.match(/^\/ui\/api\/connections\/([^/?]+)\/capability/);
   if (cap) return ok({ asset_kinds: ['equity', 'option'] });
   const detail = p.match(/^\/ui\/api\/connections\/([^/?]+)$/);
@@ -174,6 +288,11 @@ const PANELS: Record<string, (props: { host: never }) => JSX.Element> = {
   runway: RunwayPanel,
   connections: AuracleConnections as (props: { host: never }) => JSX.Element,
   statuschip: AuracleStatusChip as (props: { host: never }) => JSX.Element,
+  research: ResearchPanel as (props: { host: never }) => JSX.Element,
+  qc: QcImportPanel as (props: { host: never }) => JSX.Element,
+  'qc-result': QcResultHarness as (props: { host: never }) => JSX.Element,
+  backtest: BacktestPanel as (props: { host: never }) => JSX.Element,
+  'backtest-result': BacktestResultHarness as (props: { host: never }) => JSX.Element,
 };
 
 const which = new URLSearchParams(location.search).get('panel') ?? 'live';

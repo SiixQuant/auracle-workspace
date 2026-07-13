@@ -18,7 +18,8 @@ import { AuracleConnections } from '../src/components/ConnectionsSettings';
 import { AuracleStatusChip } from '../src/components/StatusChip';
 import { ResearchPanel } from '../src/components/ResearchPanel';
 import { QcImportPanel } from '../src/components/QcImportPanel';
-import { BacktestPanel } from '../src/components/BacktestPanel';
+import { BacktestPanel, BacktestResultView } from '../src/components/BacktestPanel';
+import type { BacktestResultData } from '../src/engine/backtestStore';
 
 /* ── mock data ─────────────────────────────────────────────── */
 
@@ -125,6 +126,38 @@ const MOCK_QC_PROJECTS = {
   ],
 };
 
+// ── backtest result (equity curve + stats + drawdown) ──
+const _EQ = [
+  1.0, 1.03, 1.06, 1.04, 1.09, 1.14, 1.11, 1.08, 1.13, 1.19, 1.22, 1.18,
+  1.15, 1.21, 1.26, 1.24, 1.29, 1.33, 1.3, 1.35, 1.31, 1.28, 1.34, 1.38,
+];
+function _dd(points: number[]): number[] {
+  let peak = -Infinity;
+  return points.map((v) => {
+    peak = Math.max(peak, v);
+    return Number((((v - peak) / peak) * 100).toFixed(2));
+  });
+}
+const MOCK_BACKTEST_RESULT: BacktestResultData = {
+  equity: _EQ,
+  drawdown: _dd(_EQ),
+  stats: {
+    total_return: 0.38, annualized_return: 0.171, sharpe: 1.42,
+    max_drawdown: Math.min(..._dd(_EQ)) / 100, sortino: 1.9, calmar: 1.98,
+  },
+  asOf: '2026-07-10',
+  nBars: _EQ.length,
+  trades: 34,
+};
+
+function BacktestResultHarness(): JSX.Element {
+  return (
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: '22px 28px 48px' }}>
+      <BacktestResultView result={MOCK_BACKTEST_RESULT} />
+    </div>
+  );
+}
+
 // ── connections registry (list + per-connector detail) ──
 const MOCK_CONNECTORS = [
   { id: 'ibkr', display_label: 'Interactive Brokers', blurb: 'Live + paper trading via IB Gateway', kind: 'broker', status: { state: 'connected', detail: 'paper' }, test_supported: true, asset_kinds: ['equity', 'option'] },
@@ -211,6 +244,7 @@ const PANELS: Record<string, (props: { host: never }) => JSX.Element> = {
   research: ResearchPanel as (props: { host: never }) => JSX.Element,
   qc: QcImportPanel as (props: { host: never }) => JSX.Element,
   backtest: BacktestPanel as (props: { host: never }) => JSX.Element,
+  'backtest-result': BacktestResultHarness as (props: { host: never }) => JSX.Element,
 };
 
 const which = new URLSearchParams(location.search).get('panel') ?? 'live';

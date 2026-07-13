@@ -688,3 +688,115 @@ export function CenterState({
     </div>
   );
 }
+
+/* ── equity / return curve ──────────────────────────────────────────── */
+
+/**
+ * A dependency-free SVG area+line over an engine-provided series (a backtest
+ * equity / cumulative-return curve). Honest: renders nothing when there are
+ * fewer than two real points — never a fabricated shape. Green when the run
+ * ends above where it started, red below; a dashed line marks the start (0%),
+ * and the end point is called out with its total return. `mode` picks the
+ * baseline: 'equity' anchors 0% at the first point (growth of $1); 'zero'
+ * anchors at y=0 (a drawdown curve that lives at/under the axis).
+ */
+export function EquityChart({
+  points,
+  height = 168,
+  label,
+  color,
+  mode = 'equity',
+}: {
+  points: number[];
+  height?: number;
+  label?: string;
+  color?: string;
+  mode?: 'equity' | 'zero';
+}): JSX.Element | null {
+  const clean = (points ?? []).filter((p): p is number => typeof p === 'number' && Number.isFinite(p));
+  if (clean.length < 2) return null;
+  const n = clean.length;
+  const lo = Math.min(...clean, mode === 'zero' ? 0 : clean[0]);
+  const hi = Math.max(...clean, mode === 'zero' ? 0 : clean[0]);
+  const span = hi - lo || 1;
+  const base = clean[0];
+  const last = clean[n - 1];
+  const up = last >= base;
+  const c = color ?? (mode === 'zero' ? tone.danger : up ? tone.ok : tone.danger);
+  const nx = (i: number) => (i / (n - 1)) * 100;
+  const ny = (v: number) => 100 - ((v - lo) / span) * 100;
+  const line = clean.map((v, i) => `${i === 0 ? 'M' : 'L'}${nx(i).toFixed(2)},${ny(v).toFixed(3)}`).join(' ');
+  const anchor = mode === 'zero' ? 0 : base;
+  const anchorY = ny(anchor);
+  const area = `${line} L100,${anchorY.toFixed(3)} L0,${anchorY.toFixed(3)} Z`;
+  const gid = `apk-eq-${mode}-${up ? 'up' : 'dn'}`;
+  const retPct = mode === 'zero' ? last : (last / base - 1) * 100;
+
+  return (
+    <div style={{ width: '100%' }}>
+      {label ? (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: 0.3, textTransform: 'uppercase', color: tone.text3 }}>
+            {label}
+          </span>
+          <span style={{ fontSize: 12.5, fontWeight: 650, color: c, ...numeric }}>
+            {(retPct >= 0 ? '+' : '') + retPct.toFixed(2)}%
+          </span>
+        </div>
+      ) : null}
+      <div style={{ position: 'relative', width: '100%', height }}>
+        <svg
+          width="100%"
+          height={height}
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          style={{ display: 'block', overflow: 'visible' }}
+        >
+          <defs>
+            <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={c} stopOpacity="0.24" />
+              <stop offset="100%" stopColor={c} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <line
+            x1="0"
+            y1={anchorY}
+            x2="100"
+            y2={anchorY}
+            stroke={tone.text3}
+            strokeOpacity="0.45"
+            strokeWidth="1"
+            strokeDasharray="2 2"
+            vectorEffect="non-scaling-stroke"
+          />
+          <path d={area} fill={`url(#${gid})`} />
+          <path
+            d={line}
+            fill="none"
+            stroke={c}
+            strokeWidth="1.75"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+        {/* End-point marker as an HTML overlay so it stays circular under
+            preserveAspectRatio="none" (which would squash an SVG <circle>). */}
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute',
+            left: '100%',
+            top: `${ny(last)}%`,
+            transform: 'translate(-50%, -50%)',
+            width: 7,
+            height: 7,
+            borderRadius: '50%',
+            background: c,
+            boxShadow: `0 0 0 3px ${tint(c, 22)}`,
+          }}
+        />
+      </div>
+    </div>
+  );
+}

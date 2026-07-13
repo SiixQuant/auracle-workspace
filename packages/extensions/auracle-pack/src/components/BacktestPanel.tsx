@@ -7,18 +7,22 @@
  * the full engine results and the Validate check rather than inventing numbers.
  */
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
-import { backtestStore } from '../engine/backtestStore';
+import { backtestStore, type BacktestResultData } from '../engine/backtestStore';
 import { backtestContext, backtestPrompt } from '../engine/backtest';
 import { markBacktestPanelMounted, markBacktestPanelUnmounted } from './panelVisibility';
 import { railHeadline, type ValidationSignal } from '../engine/validation';
+import { percent } from '../engine/format';
 import {
   Button,
   CenterState,
+  EquityChart,
   InlineNote,
   PanelShell,
   SkeletonRows,
+  StatBand,
   ToolbarSpring,
   tone,
+  trendColor,
 } from './panelkit';
 import { PanelHostLike, useAiPanelContext, handOffToAgent, type AgentNote } from './aiPanel';
 
@@ -60,6 +64,45 @@ function SignalLine({ signal }: { signal: ValidationSignal }) {
         {signal.tier === 'unknown' ? 'not checked' : signal.tier === 'red' ? 'attention' : 'healthy'}
       </span>
     </article>
+  );
+}
+
+/**
+ * The chartable result of a completed run: the equity curve (growth of $1),
+ * the headline stats, and the drawdown. Every figure is an engine value — the
+ * panel renders this only when the engine returned a real series.
+ */
+export function BacktestResultView({ result }: { result: BacktestResultData }): JSX.Element {
+  const s = result.stats;
+  const asPct = (v: number | null | undefined) => (typeof v === 'number' ? percent(v * 100) : '—');
+  const asNum = (v: number | null | undefined, digits = 2) =>
+    typeof v === 'number' ? v.toFixed(digits) : '—';
+  const totalReturn = s.total_return;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ padding: '14px 16px', borderRadius: 11, border: `1px solid ${tone.border}`, background: tone.surface }}>
+        <EquityChart points={result.equity} label="Equity curve — growth of $1" />
+      </div>
+      <StatBand
+        items={[
+          {
+            label: 'Total return',
+            value: asPct(totalReturn),
+            valueColor: trendColor(typeof totalReturn === 'number' ? totalReturn : 0),
+          },
+          { label: 'CAGR', value: asPct(s.annualized_return ?? s.cagr) },
+          { label: 'Sharpe', value: asNum(s.sharpe) },
+          { label: 'Max drawdown', value: asPct(s.max_drawdown) },
+          { label: 'Trades', value: result.trades },
+        ]}
+      />
+      {result.drawdown.length >= 2 ? (
+        <div style={{ padding: '12px 16px', borderRadius: 11, border: `1px solid ${tone.border}`, background: tone.surface }}>
+          <EquityChart points={result.drawdown} mode="zero" height={92} label="Drawdown" color={tone.danger} />
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -129,10 +172,32 @@ export function BacktestPanel({ host }: { host?: PanelHostLike }): JSX.Element {
           ))}
         </div>
       ) : snap.phase === 'queued' || snap.phase === 'running' ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <InlineNote kind="muted">
-            {snap.phase === 'queued' ? 'Queuing the backtest…' : `Backtesting ${snap.cls}…`}
-          </InlineNote>
+        <div className="apk-enter" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 11,
+              padding: '12px 14px',
+              borderRadius: 10,
+              border: `1px solid ${tone.border}`,
+              background: tone.surface,
+            }}
+          >
+            <span
+              aria-hidden
+              className="apk-pulse"
+              style={{ width: 9, height: 9, borderRadius: '50%', background: tone.accent, flex: 'none' }}
+            />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: tone.text }}>
+                {snap.phase === 'queued' ? 'Queuing the backtest…' : `Backtesting ${snap.cls ?? 'strategy'}…`}
+              </span>
+              <span style={{ fontSize: 12, color: tone.text3 }}>
+                Running the vectorized backtest on your local engine — the equity curve and stats appear here when it finishes.
+              </span>
+            </div>
+          </div>
           <SkeletonRows rows={3} />
         </div>
       ) : snap.phase === 'failed' ? (
@@ -162,10 +227,13 @@ export function BacktestPanel({ host }: { host?: PanelHostLike }): JSX.Element {
           </div>
           {note ? <InlineNote kind={note.kind}>{note.text}</InlineNote> : null}
 
+          {snap.result ? <BacktestResultView result={snap.result} /> : null}
+
           {snap.validation.phase === 'idle' ? (
             <span style={{ fontSize: 12, color: tone.text3 }}>
-              The run is recorded in the engine. Validate it above for the seven overfit signals, or ask the agent to
-              open and interpret the full tearsheet.
+              {snap.result
+                ? 'Validate above for the seven overfit signals, or ask the agent to open the full tearsheet.'
+                : 'The run is recorded in the engine. Validate it above for the seven overfit signals, or ask the agent to open and interpret the full tearsheet.'}
             </span>
           ) : snap.validation.phase === 'running' ? (
             <SkeletonRows rows={3} />

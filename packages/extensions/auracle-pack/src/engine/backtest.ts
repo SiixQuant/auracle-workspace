@@ -56,28 +56,54 @@ export function moduleOf(strategyPath: string): string {
   return dot > 0 ? strategyPath.slice(0, dot) : strategyPath;
 }
 
+/** Path split into segments, `.py` dropped: "/a/Potential/t25.py" -> ["a","Potential","t25"]. */
+function pathSegments(filePath: string): string[] {
+  return filePath
+    .replace(/\.py$/i, '')
+    .split(/[\\/]/)
+    .filter((s) => s.length > 0);
+}
+
+/** How many trailing segments two paths agree on, compared from the end. */
+function commonSuffixLength(a: string[], b: string[]): number {
+  let n = 0;
+  while (n < a.length && n < b.length && a[a.length - 1 - n] === b[b.length - 1 - n]) n += 1;
+  return n;
+}
+
 /**
  * Resolve the open file to the strategy the engine should run.
  *
  * A discovery id is `module.Symbol`; the module's LAST segment is the source
  * file's stem (e.g. `strategies.desk.Potential.a3_target25.T25Composite` came
- * from `a3_target25.py`). So a file matches every discovery row whose module
- * ends in that stem — one for a single-strategy file, several when a file
- * defines multiple strategy classes (the caller then disambiguates).
+ * from `a3_target25.py`). Matching on the stem ALONE is directory-blind: two
+ * files with the same basename in different packages — realistic under the desk
+ * mount's subdirs — both match, so the wrong one can run. So we rank every stem
+ * match by how many TRAILING path segments it shares with the open file
+ * (`Potential/breakout.py` prefers `...Potential.breakout` over
+ * `...Sandbox.breakout`) and take the closest. Ties (e.g. several strategy
+ * classes in one file) fall through to the caller's picker.
+ *
+ * ponytail: a lone stem match in a *different* directory still resolves to it
+ * (nothing competes to outrank it). Running a non-strategy file whose basename
+ * collides with a real strategy elsewhere is the residual case; the common
+ * multi-candidate collisions are handled.
  */
 export function resolveStrategyFromFile(
   filePath: string,
   options: StrategyOption[]
 ): Resolution {
-  const stem = fileStem(filePath);
+  const segs = pathSegments(filePath);
+  const stem = segs[segs.length - 1] ?? '';
   if (!stem) return { kind: 'none' };
-  const matched = options.filter((o) => {
-    const moduleLastSegment = moduleOf(o.path).split('.').pop() ?? '';
-    return moduleLastSegment === stem;
-  });
-  if (matched.length === 0) return { kind: 'none' };
-  if (matched.length === 1) return { kind: 'one', option: matched[0] };
-  return { kind: 'many', options: matched };
+  const scored = options
+    .map((o) => ({ option: o, score: commonSuffixLength(segs, moduleOf(o.path).split('.')) }))
+    .filter((s) => s.score >= 1); // the stem itself must match
+  if (scored.length === 0) return { kind: 'none' };
+  const best = Math.max(...scored.map((s) => s.score));
+  const winners = scored.filter((s) => s.score === best).map((s) => s.option);
+  if (winners.length === 1) return { kind: 'one', option: winners[0] };
+  return { kind: 'many', options: winners };
 }
 
 /** Identity of a backtest run, for the results link + AI hand-off. */

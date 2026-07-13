@@ -11,7 +11,6 @@
 import {
   runBacktest as engineRunBacktest,
   backtestJobStatus,
-  getJson,
   getJsonDetailed,
 } from './client';
 import { classifyLoadFailure } from './research';
@@ -198,16 +197,24 @@ export const backtestStore = {
   async validate(): Promise<void> {
     const path = state.strategyPath;
     if (!path) return;
+    // Not a new run — tag this to the current generation so a run/choose/retry
+    // started mid-validation supersedes a late verdict instead of it landing on
+    // the next strategy's panel.
+    const gen = generation;
     setValidation({ phase: 'running' });
     const result = await getJsonDetailed<Record<string, unknown>>(
       `/ui/api/validation?strategy_path=${encodeURIComponent(path)}`
     );
+    if (gen !== generation) return;
     if (!result.ok) {
       if (result.status === 422) {
-        const body = await getJson<{ detail?: string }>(
-          `/ui/api/validation?strategy_path=${encodeURIComponent(path)}`
-        );
-        setValidation({ phase: 'error', detail: body?.detail ?? 'The engine could not measure this strategy.' });
+        // 422 carries {detail} explaining why it's unmeasurable — read it off the
+        // same response (getJsonDetailed keeps the body on failure); no re-fetch.
+        const detail = (result.body as { detail?: string } | null)?.detail;
+        setValidation({
+          phase: 'error',
+          detail: detail ?? 'The engine could not measure this strategy.',
+        });
         return;
       }
       setValidation({ phase: 'failed' });

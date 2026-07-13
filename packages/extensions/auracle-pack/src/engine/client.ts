@@ -58,10 +58,12 @@ export async function getJson<T>(path: string): Promise<T | null> {
  */
 export async function getJsonDetailed<T>(
   path: string
-): Promise<{ ok: true; body: T } | { ok: false; status: number }> {
+): Promise<{ ok: true; body: T } | { ok: false; status: number; body: unknown }> {
   const response = await request('GET', path);
   if (response.ok && response.body !== null) return { ok: true, body: response.body as T };
-  return { ok: false, status: response.status };
+  // Keep the parsed body on failure too: an HTTP 4xx (e.g. a 422 with {detail})
+  // still carries a reason the caller may want to surface. getJson drops it.
+  return { ok: false, status: response.status, body: response.body };
 }
 
 /** Mutation returning the full bridge response so callers can render errors honestly. */

@@ -16,6 +16,7 @@ import {
   Compute,
   DeployWizard,
   Deployment,
+  DeploymentEquity,
   DeploymentOrders,
   LiveAction,
   LiveAlgorithms,
@@ -24,6 +25,7 @@ import {
   canDeploy,
   computeLocked,
   deploymentContext,
+  deploymentEquityPoints,
   deploymentPrompt,
   formatReturn,
   isActive,
@@ -43,6 +45,7 @@ import { money, price, qty, percent } from '../engine/format';
 import {
   Button,
   CenterState,
+  EquityChart,
   InlineNote,
   PanelShell,
   Pill,
@@ -678,6 +681,37 @@ function DeployWizardView({ onDone, onCancel }: { onDone: () => void; onCancel: 
   );
 }
 
+function EquityView({ deployment }: { deployment: Deployment }) {
+  const [points, setPoints] = useState<number[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const body = await getJson<DeploymentEquity>(`/deployments/${deployment.id}/equity`);
+      if (!cancelled) setPoints(deploymentEquityPoints(body));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [deployment.id]);
+
+  // Honest: no chartable series yet (no fills) or an older engine without the
+  // route → no chart, rather than a flat or invented line.
+  if (!points || points.length < 2) return null;
+  return (
+    <div
+      style={{
+        padding: '12px 14px',
+        borderRadius: 9,
+        border: `1px solid ${tone.border}`,
+        background: tone.surface,
+      }}
+    >
+      <EquityChart points={points} height={132} label="Equity curve — marked to daily closes" />
+    </div>
+  );
+}
+
 function LedgerView({ deployment }: { deployment: Deployment }) {
   const [ledger, setLedger] = useState<DeploymentOrders | null | 'unavailable'>(null);
 
@@ -953,6 +987,7 @@ export function LiveAlgorithmsPanel({ host }: PanelHostProps): JSX.Element {
               {investigateNote ? (
                 <InlineNote kind={investigateNote.kind}>{investigateNote.text}</InlineNote>
               ) : null}
+              <EquityView deployment={selectedRow} />
               <LedgerView deployment={selectedRow} />
             </section>
           ) : null}

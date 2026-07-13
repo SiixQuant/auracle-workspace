@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!-- New features go here -->
 - Run a strategy's backtest from the editor — a Run button above any strategy file opens a results panel with a live equity curve, headline stats (return, Sharpe, drawdown), a drawdown chart, and a one-click overfit check.
 - QuantConnect cloud backtests now show their equity curve, not just the statistics table.
+- Live Algorithms now chart each deployment's equity over time, reconstructed from its fills and marked to daily closes.
 
 ### Changed
 <!-- Changes to existing functionality go here -->

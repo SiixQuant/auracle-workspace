@@ -55,6 +55,16 @@ const MOCK_ORDERS = {
   positions: [{ symbol: 'AAPL', quantity: 120, avg_cost: 228.44 }],
 };
 
+const _LIVE_EQ = [
+  250000, 251900, 249400, 254300, 258700, 256100, 261800, 267200,
+  264100, 271600, 277900, 275300, 279100, 280850,
+];
+const MOCK_LIVE_EQUITY = {
+  deployment_id: 1, chartable: true, marks: 'mtm', points: _LIVE_EQ,
+  labels: _LIVE_EQ.map((_, i) => `2026-06-${String(1 + i).padStart(2, '0')}`),
+  n_points: _LIVE_EQ.length,
+};
+
 const MOCK_STRATEGIES = {
   strategies: [
     { path: 'strategies.desk.atlas.AtlasMomentum', kind: 'strategy', doc: '12-1 momentum, vol-scaled' },
@@ -214,6 +224,7 @@ const notFound = { ok: false, status: 404, body: null };
 
 function engineRequest(method: string, path: string): { ok: boolean; status: number; body: unknown } {
   const p = String(path);
+  if (/^\/deployments\/\d+\/equity/.test(p)) return ok(MOCK_LIVE_EQUITY);
   if (/^\/deployments\/\d+\/orders/.test(p)) return ok(MOCK_ORDERS);
   if (p === '/deployments') return ok(MOCK_DEPLOYMENTS);
   if (p.startsWith('/ui/api/orders')) return ok(MOCK_BLOTTER);

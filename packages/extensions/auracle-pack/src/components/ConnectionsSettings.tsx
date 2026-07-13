@@ -25,6 +25,7 @@ import {
   normalizeConnector,
   sectionSummary,
 } from '../engine/model';
+import { Button, InlineNote, ensurePanelKitStyles, tone } from './panelkit';
 
 const KEYLESS_IDS = new Set(['yfinance', 'simulator']);
 
@@ -33,11 +34,6 @@ const SECTIONS: Array<{ kind: string; title: string }> = [
   { kind: 'data_provider', title: 'Data sources' },
   { kind: 'integration', title: 'Integrations' },
 ];
-
-const ACCENT = 'var(--accent-primary, #0053fd)';
-const OK = '#2ea043';
-const DANGER = '#c4554d';
-const CAUTION = '#d4a017';
 
 type LoadState =
   | { phase: 'loading' }
@@ -55,18 +51,18 @@ const styles = {
     flexDirection: 'column' as const,
     gap: 18,
     maxWidth: 720,
-    color: 'var(--text-primary, #d7dae0)',
-    font: '13px/1.5 var(--font-family-ui, system-ui, sans-serif)',
+    color: tone.text,
+    font: `13px/1.5 ${tone.font}`,
   },
   header: { display: 'flex', flexDirection: 'column' as const, gap: 2 },
   title: { fontSize: 17, fontWeight: 600 as const, letterSpacing: -0.2 },
-  subtitle: { fontSize: 12.5, color: 'var(--text-tertiary, #8a8f98)' },
+  subtitle: { fontSize: 12.5, color: tone.text3 },
   sectionHead: {
     fontSize: 11,
     fontWeight: 600 as const,
     textTransform: 'uppercase' as const,
     letterSpacing: 0.7,
-    color: 'var(--text-tertiary, #8a8f98)',
+    color: tone.text3,
     display: 'flex',
     alignItems: 'center' as const,
     gap: 6,
@@ -79,7 +75,7 @@ const styles = {
     userSelect: 'none' as const,
     padding: '2px 0',
   },
-  summary: { fontSize: 12, color: 'var(--text-tertiary, #8a8f98)' },
+  summary: { fontSize: 12, color: tone.text3 },
   rows: { display: 'flex', flexDirection: 'column' as const, gap: 6, marginTop: 8 },
   row: {
     display: 'flex',
@@ -87,8 +83,8 @@ const styles = {
     gap: 10,
     padding: '9px 12px',
     borderRadius: 8,
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.22))',
-    background: 'var(--bg-secondary, rgba(255,255,255,0.018))',
+    border: `1px solid ${tone.border}`,
+    background: tone.surface,
     cursor: 'pointer',
   },
   dot: (color: string) => ({
@@ -101,7 +97,7 @@ const styles = {
   rowLabel: { fontWeight: 500 as const },
   rowBlurb: {
     fontSize: 12,
-    color: 'var(--text-tertiary, #8a8f98)',
+    color: tone.text3,
     whiteSpace: 'nowrap' as const,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
@@ -110,7 +106,7 @@ const styles = {
   },
   statusText: (connected: boolean) => ({
     fontSize: 12,
-    color: connected ? OK : 'var(--text-tertiary, #8a8f98)',
+    color: connected ? tone.ok : tone.text3,
     whiteSpace: 'nowrap' as const,
   }),
   chip: {
@@ -120,16 +116,16 @@ const styles = {
     textTransform: 'uppercase' as const,
     padding: '2px 8px',
     borderRadius: 999,
-    color: CAUTION,
+    color: tone.caution,
     background: 'rgba(212,160,23,0.14)',
     whiteSpace: 'nowrap' as const,
   },
-  chev: { color: 'var(--text-tertiary, #8a8f98)', fontSize: 14 },
+  chev: { color: tone.text3, fontSize: 14 },
   accountCard: {
     padding: '12px 14px',
     borderRadius: 10,
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.22))',
-    background: 'var(--bg-secondary, rgba(255,255,255,0.018))',
+    border: `1px solid ${tone.border}`,
+    background: tone.surface,
   },
 
   // Detail view
@@ -143,7 +139,7 @@ const styles = {
     cursor: 'pointer',
     border: '1px solid transparent',
     background: 'transparent',
-    color: 'var(--text-secondary, #b9bec7)',
+    color: tone.text2,
   },
   detailHead: { display: 'flex', alignItems: 'center' as const, gap: 10, flexWrap: 'wrap' as const },
   detailTitle: { fontSize: 15, fontWeight: 600 as const },
@@ -154,69 +150,31 @@ const styles = {
     maxWidth: 560,
     padding: 18,
     borderRadius: 12,
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.22))',
-    background: 'var(--bg-secondary, rgba(255,255,255,0.018))',
+    border: `1px solid ${tone.border}`,
+    background: tone.surface,
   },
   field: { display: 'flex', flexDirection: 'column' as const, gap: 6 },
-  fieldLabel: { fontSize: 12, color: 'var(--text-secondary, #b9bec7)' },
-  savedTag: { color: 'var(--text-tertiary, #8a8f98)', fontWeight: 400 as const },
+  fieldLabel: { fontSize: 12, color: tone.text2 },
+  savedTag: { color: tone.text3, fontWeight: 400 as const },
   input: {
     width: '100%',
     padding: '7px 9px',
     borderRadius: 6,
     fontSize: 13,
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.35))',
-    background: 'var(--bg-primary, rgba(0,0,0,0.2))',
-    color: 'var(--text-primary, #d7dae0)',
+    border: `1px solid ${tone.borderStrong}`,
+    background: tone.sunken,
+    color: tone.text,
     outline: 'none',
   },
-  note: { fontSize: 12, color: 'var(--text-tertiary, #8a8f98)' },
+  note: { fontSize: 12, color: tone.text3 },
   actions: { display: 'flex', gap: 8, marginTop: 2 },
-  primaryBtn: (disabled: boolean) => ({
-    padding: '7px 16px',
-    borderRadius: 8,
-    fontSize: 13,
-    fontWeight: 600 as const,
-    cursor: disabled ? 'default' : 'pointer',
-    border: '1px solid transparent',
-    background: ACCENT,
-    color: '#fff',
-    opacity: disabled ? 0.6 : 1,
-  }),
-  ghostBtn: (disabled: boolean) => ({
-    padding: '7px 14px',
-    borderRadius: 8,
-    fontSize: 13,
-    cursor: disabled ? 'default' : 'pointer',
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.35))',
-    background: 'transparent',
-    color: 'var(--text-secondary, #b9bec7)',
-    opacity: disabled ? 0.6 : 1,
-  }),
-  result: (ok: boolean) => ({
-    fontSize: 12.5,
-    color: ok ? OK : DANGER,
-    display: 'flex',
-    alignItems: 'center' as const,
-    gap: 7,
-  }),
   gatedBox: {
     fontSize: 12.5,
-    color: 'var(--text-secondary, #b9bec7)',
+    color: tone.text2,
     padding: '11px 13px',
     borderRadius: 8,
     border: '1px solid rgba(212,160,23,0.35)',
     background: 'rgba(212,160,23,0.08)',
-  },
-  retryBtn: {
-    padding: '7px 16px',
-    borderRadius: 8,
-    fontSize: 13,
-    fontWeight: 600 as const,
-    cursor: 'pointer',
-    border: '1px solid transparent',
-    background: ACCENT,
-    color: '#fff',
   },
 };
 
@@ -231,8 +189,8 @@ function statusText(connector: Connector): string {
 /** Green when connected or keyless-ready, muted otherwise. Honest: only a live
  *  connection or a genuinely-ready keyless source reads as good. */
 function dotColor(connector: Connector): string {
-  if (isConnected(connector.status) || KEYLESS_IDS.has(connector.id)) return OK;
-  return 'var(--text-tertiary, #8a8f98)';
+  if (isConnected(connector.status) || KEYLESS_IDS.has(connector.id)) return tone.ok;
+  return tone.text3;
 }
 
 function ConnectorDetail({
@@ -244,6 +202,7 @@ function ConnectorDetail({
   onBack: () => void;
   onChanged: () => void;
 }) {
+  ensurePanelKitStyles();
   const [detail, setDetail] = useState<Connector | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
   const [capability, setCapability] = useState<string>('');
@@ -394,29 +353,21 @@ function ConnectorDetail({
 
           <div style={styles.actions}>
             {shown.test_supported ? (
-              <button type="button" style={styles.ghostBtn(disabled)} disabled={disabled} onClick={() => void runTest()}>
+              <Button variant="ghost" disabled={disabled} onClick={() => void runTest()}>
                 {busy === 'test' ? 'Testing…' : 'Test'}
-              </button>
+              </Button>
             ) : null}
-            <button type="button" style={styles.primaryBtn(disabled)} disabled={disabled} onClick={() => void runSave()}>
+            <Button variant="primary" disabled={disabled} onClick={() => void runSave()}>
               {busy === 'save' ? 'Saving…' : 'Save'}
-            </button>
+            </Button>
             {connected ? (
-              <button
-                type="button"
-                style={styles.ghostBtn(disabled)}
-                disabled={disabled}
-                onClick={() => void runDisconnect()}
-              >
+              <Button variant="danger" disabled={disabled} onClick={() => void runDisconnect()}>
                 {busy === 'disconnect' ? 'Disconnecting…' : 'Disconnect'}
-              </button>
+              </Button>
             ) : null}
           </div>
           {testResult ? (
-            <div style={styles.result(testResult.ok)}>
-              <span aria-hidden style={styles.dot(testResult.ok ? OK : DANGER)} />
-              {testResult.message}
-            </div>
+            <InlineNote kind={testResult.ok ? 'ok' : 'err'}>{testResult.message}</InlineNote>
           ) : null}
         </div>
       )}
@@ -467,6 +418,7 @@ function Section({
 }
 
 export function AuracleConnections(_props: SettingsPanelProps): JSX.Element {
+  ensurePanelKitStyles();
   const [state, setState] = useState<LoadState>({ phase: 'loading' });
   const [selected, setSelected] = useState<Connector | null>(null);
 
@@ -501,9 +453,9 @@ export function AuracleConnections(_props: SettingsPanelProps): JSX.Element {
           Start the Auracle stack (or install through the launcher), then retry.
         </div>
         <div>
-          <button type="button" style={styles.retryBtn} onClick={() => void load()}>
+          <Button variant="primary" onClick={() => void load()}>
             Retry
-          </button>
+          </Button>
         </div>
       </div>
     );

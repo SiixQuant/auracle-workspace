@@ -20,6 +20,7 @@ import { ResearchPanel } from '../src/components/ResearchPanel';
 import { QcImportPanel, QcBacktestResult } from '../src/components/QcImportPanel';
 import { BacktestPanel, BacktestResultView } from '../src/components/BacktestPanel';
 import type { BacktestResultData } from '../src/engine/backtestStore';
+import { EquityChartShad } from '../src/components/charts/EquityChartShad';
 
 /* ── mock data ─────────────────────────────────────────────── */
 
@@ -199,6 +200,31 @@ function BacktestResultHarness(): JSX.Element {
   );
 }
 
+function ShadChartHarness(): JSX.Element {
+  // The shadcn chart block (recharts + shadcn Card chrome) on a real series.
+  const equity = MOCK_BACKTEST_RESULT.equity;
+  const drawdown = MOCK_BACKTEST_RESULT.drawdown;
+  return (
+    <div style={{ maxWidth: 760, margin: '0 auto', padding: '22px 28px 48px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <EquityChartShad
+        points={equity}
+        title="Equity"
+        description="Growth of $1 over the backtest"
+        format={(v) => `$${v.toFixed(2)}`}
+      />
+      <EquityChartShad
+        points={drawdown}
+        variant="drawdown"
+        title="Drawdown"
+        description="Peak-to-trough decline"
+        footer={false}
+        format={(v) => `${v.toFixed(1)}%`}
+      />
+      <EquityChartShad points={[1]} title="Honesty gate (1 point → nothing)" />
+    </div>
+  );
+}
+
 // ── connections registry (list + per-connector detail) ──
 const MOCK_CONNECTORS = [
   { id: 'ibkr', display_label: 'Interactive Brokers', blurb: 'Live + paper trading via IB Gateway', kind: 'broker', status: { state: 'connected', detail: 'paper' }, test_supported: true, asset_kinds: ['equity', 'option'] },
@@ -293,6 +319,7 @@ const PANELS: Record<string, (props: { host: never }) => JSX.Element> = {
   'qc-result': QcResultHarness as (props: { host: never }) => JSX.Element,
   backtest: BacktestPanel as (props: { host: never }) => JSX.Element,
   'backtest-result': BacktestResultHarness as (props: { host: never }) => JSX.Element,
+  'shad-chart': ShadChartHarness as (props: { host: never }) => JSX.Element,
 };
 
 const which = new URLSearchParams(location.search).get('panel') ?? 'live';

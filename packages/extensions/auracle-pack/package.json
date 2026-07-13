@@ -9,6 +9,9 @@
     "dev": "vite build --watch",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "recharts": "^3.5.0"
+  },
   "devDependencies": {
     "@nimbalyst/extension-sdk": "*",
     "@types/react": "^18.2.0",

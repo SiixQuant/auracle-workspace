@@ -15,7 +15,6 @@ import { percent } from '../engine/format';
 import {
   Button,
   CenterState,
-  EquityChart,
   InlineNote,
   PanelShell,
   SkeletonRows,
@@ -24,6 +23,7 @@ import {
   tone,
   trendColor,
 } from './panelkit';
+import { EquityChartShad } from './charts/EquityChartShad';
 import { PanelHostLike, useAiPanelContext, handOffToAgent, type AgentNote } from './aiPanel';
 
 const TIER_COLOR: Record<string, string> = { green: tone.ok, red: tone.danger, unknown: tone.text3 };
@@ -81,9 +81,12 @@ export function BacktestResultView({ result }: { result: BacktestResultData }): 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ padding: '14px 16px', borderRadius: 11, border: `1px solid ${tone.border}`, background: tone.surface }}>
-        <EquityChart points={result.equity} label="Equity curve — growth of $1" />
-      </div>
+      <EquityChartShad
+        points={result.equity}
+        title="Equity curve"
+        description="Growth of $1 over the backtest"
+        format={(v) => `$${v.toFixed(2)}`}
+      />
       <StatBand
         items={[
           {
@@ -97,11 +100,15 @@ export function BacktestResultView({ result }: { result: BacktestResultData }): 
           { label: 'Trades', value: result.trades },
         ]}
       />
-      {result.drawdown.length >= 2 ? (
-        <div style={{ padding: '12px 16px', borderRadius: 11, border: `1px solid ${tone.border}`, background: tone.surface }}>
-          <EquityChart points={result.drawdown} mode="zero" height={92} label="Drawdown" color={tone.danger} />
-        </div>
-      ) : null}
+      <EquityChartShad
+        points={result.drawdown}
+        variant="drawdown"
+        title="Drawdown"
+        description="Peak-to-trough decline"
+        footer={false}
+        height={110}
+        format={(v) => `${v.toFixed(1)}%`}
+      />
     </div>
   );
 }

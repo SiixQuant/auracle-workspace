@@ -26,7 +26,6 @@ import {
   Button,
   CenterState,
   Disclosure,
-  EquityChart,
   Field,
   InlineNote,
   PanelShell,
@@ -35,6 +34,7 @@ import {
   ToolbarSpring,
   tone,
 } from './panelkit';
+import { EquityChartShad } from './charts/EquityChartShad';
 import { useAiPanelContext, handOffToAgent, type AgentNote } from './aiPanel';
 
 interface TranslateReport {
@@ -81,18 +81,13 @@ export function QcBacktestResult({
 }): JSX.Element {
   return (
     <>
-      {equity.length >= 2 ? (
-        <div
-          style={{
-            padding: '12px 14px',
-            borderRadius: 9,
-            border: `1px solid ${tone.border}`,
-            background: tone.surface,
-          }}
-        >
-          <EquityChart points={equity} height={140} label="Equity curve" />
-        </div>
-      ) : null}
+      <EquityChartShad
+        points={equity}
+        title="Equity curve"
+        description="Growth of $1 over the backtest"
+        height={150}
+        format={(v) => `$${v.toFixed(2)}`}
+      />
       {!empty ? (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {stats.map((s) => (

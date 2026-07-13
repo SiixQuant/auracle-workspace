@@ -8,6 +8,12 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ValidationPanel } from '../src/components/ValidationPanel';
 import { LiveAlgorithmsPanel } from '../src/components/LivePanel';
+import {
+  BlotterPanel,
+  IncidentsPanel,
+  RunwayPanel,
+  SchedulesPanel,
+} from '../src/components/MonitorPanels';
 
 /* ── mock data ─────────────────────────────────────────────── */
 
@@ -50,6 +56,42 @@ const MOCK_STRATEGIES = {
   ],
 };
 
+// ── monitor feeds (blotter / incidents / schedules / runway) ──
+const MOCK_BLOTTER = {
+  orders: [
+    { id: 2141, symbol: 'AAPL', action: 'buy', status: 'filled', plain: 'Bought 120 AAPL at $228.44' },
+    { id: 2140, symbol: 'MSFT', action: 'buy', status: 'filled', plain: 'Bought 60 MSFT at $441.02' },
+    { id: 2139, symbol: 'NVDA', action: 'sell', status: 'submitted', plain: 'Selling 40 NVDA — working' },
+  ],
+};
+
+const MOCK_INCIDENTS = {
+  incidents: [
+    { severity: 'critical', cause: 'IBKR gateway disconnected', detail: 'no heartbeat for 4m', dismiss_kind: 'broker', dismiss_id: 7 },
+    { severity: 'warning', cause: 'Daily bars stale for 3 symbols', detail: 'last ingest 26h ago', dismiss_kind: 'data', dismiss_id: 8 },
+    { severity: 'info', cause: 'Scheduler skipped a holiday run' },
+  ],
+};
+
+const MOCK_SCHEDULES = {
+  schedules: [
+    { id: 1, name: 'Atlas Momentum', cron: '30 9 * * 1-5', enabled: true },
+    { id: 2, name: 'Fund Pair rebalance', cron: '0 16 * * 5', enabled: true },
+    { id: 3, name: 'SFX Hardened', cron: '0 10 * * 1-5', enabled: false },
+  ],
+};
+
+const MOCK_RUNWAY = {
+  stages: {
+    research: { reached: 'yes', evidence: 'AtlasMomentum spec + 3 sources' },
+    build: { reached: 'yes', evidence: 'strategy compiles, 41 unit tests' },
+    validate: { reached: 'yes', evidence: '6 of 7 overfit signals green' },
+    paper: { reached: 'partial', evidence: 'paper live 11 days, +2.3%' },
+    go_live: { reached: 'no', evidence: 'awaiting Pro plan + funded broker' },
+    monitor: { reached: 'no', evidence: '' },
+  },
+};
+
 const ok = (body: unknown) => ({ ok: true, status: 200, body });
 const notFound = { ok: false, status: 404, body: null };
 
@@ -57,6 +99,10 @@ function engineRequest(method: string, path: string): { ok: boolean; status: num
   const p = String(path);
   if (/^\/deployments\/\d+\/orders/.test(p)) return ok(MOCK_ORDERS);
   if (p === '/deployments') return ok(MOCK_DEPLOYMENTS);
+  if (p.startsWith('/ui/api/orders')) return ok(MOCK_BLOTTER);
+  if (p.startsWith('/ui/api/incidents')) return ok(MOCK_INCIDENTS);
+  if (p.startsWith('/ui/api/schedules')) return ok(MOCK_SCHEDULES);
+  if (p.startsWith('/ui/api/runway')) return ok(MOCK_RUNWAY);
   if (p.startsWith('/ui/api/validation')) return ok(MOCK_VERDICT);
   if (p.startsWith('/ui/api/backtest/strategies')) return ok(MOCK_STRATEGIES);
   if (p.startsWith('/ui/api/connections')) return ok({ connectors: [] });
@@ -93,8 +139,17 @@ r.setProperty('--accent-primary', '#60a5fa');
 r.setProperty('--font-family-ui', '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif');
 document.body.style.cssText = 'margin:0;background:#0e1013;min-height:100vh';
 
+const PANELS: Record<string, (props: { host: never }) => JSX.Element> = {
+  live: LiveAlgorithmsPanel,
+  validation: ValidationPanel,
+  blotter: BlotterPanel,
+  incidents: IncidentsPanel,
+  schedules: SchedulesPanel,
+  runway: RunwayPanel,
+};
+
 const which = new URLSearchParams(location.search).get('panel') ?? 'live';
-const Panel = which === 'validation' ? ValidationPanel : LiveAlgorithmsPanel;
+const Panel = PANELS[which] ?? LiveAlgorithmsPanel;
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

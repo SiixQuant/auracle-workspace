@@ -10,20 +10,23 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
-import { bumpConnectGeneration, getJson, postJson } from '../engine/client';
+import { bumpConnectGeneration, getJson, getJsonDetailed, postJson } from '../engine/client';
 import {
+  QcChartBody,
   QcProject,
   StatLine,
   compilePhase,
   headlineStats,
   normalizeProject,
   qcContext,
+  qcEquityPoints,
   qcPrompt,
 } from '../engine/quantconnect';
 import {
   Button,
   CenterState,
   Disclosure,
+  EquityChart,
   Field,
   InlineNote,
   PanelShell,
@@ -57,10 +60,67 @@ type BacktestState =
   | { phase: 'compiling' }
   | { phase: 'running' }
   | { phase: 'error'; message: string }
-  | { phase: 'done'; stats: StatLine[]; empty: boolean };
+  | { phase: 'done'; stats: StatLine[]; empty: boolean; equity: number[] };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '_') || 'imported';
+
+/**
+ * A completed QC cloud backtest: its Strategy-Equity curve (when the engine
+ * returned one) above the headline statistics. Every figure is a real QC
+ * value — the curve renders only when there are points, never a placeholder.
+ */
+export function QcBacktestResult({
+  stats,
+  equity,
+  empty,
+}: {
+  stats: StatLine[];
+  equity: number[];
+  empty: boolean;
+}): JSX.Element {
+  return (
+    <>
+      {equity.length >= 2 ? (
+        <div
+          style={{
+            padding: '12px 14px',
+            borderRadius: 9,
+            border: `1px solid ${tone.border}`,
+            background: tone.surface,
+          }}
+        >
+          <EquityChart points={equity} height={140} label="Equity curve" />
+        </div>
+      ) : null}
+      {!empty ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {stats.map((s) => (
+            <div
+              key={s.label}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2,
+                padding: '7px 11px',
+                borderRadius: 8,
+                border: `1px solid ${tone.border}`,
+                minWidth: 120,
+              }}
+            >
+              <span style={{ fontSize: 10.5, color: tone.text3 }}>{s.label}</span>
+              <span style={{ fontSize: 14, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                {s.value}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : equity.length < 2 ? (
+        <InlineNote kind="muted">Backtest finished, but QuantConnect returned no statistics.</InlineNote>
+      ) : null}
+    </>
+  );
+}
 
 function ProjectCard({
   project,
@@ -191,30 +251,12 @@ function ProjectCard({
             <InlineNote kind="muted">Running the cloud backtest… this can take a minute.</InlineNote>
           ) : backtestState.phase === 'error' ? (
             <InlineNote kind="err">{backtestState.message}</InlineNote>
-          ) : backtestState.empty ? (
-            <InlineNote kind="muted">Backtest finished, but QuantConnect returned no statistics.</InlineNote>
           ) : (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {backtestState.stats.map((s) => (
-                <div
-                  key={s.label}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 2,
-                    padding: '7px 11px',
-                    borderRadius: 8,
-                    border: `1px solid ${tone.border}`,
-                    minWidth: 120,
-                  }}
-                >
-                  <span style={{ fontSize: 10.5, color: tone.text3 }}>{s.label}</span>
-                  <span style={{ fontSize: 14, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-                    {s.value}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <QcBacktestResult
+              stats={backtestState.stats}
+              equity={backtestState.equity}
+              empty={backtestState.empty}
+            />
           )}
         </div>
       ) : null}
@@ -380,7 +422,13 @@ export function QcImportPanel({ host }: PanelHostProps): JSX.Element {
       }
       if (res?.completed) {
         const stats = headlineStats(res.statistics);
-        setBacktestState({ phase: 'done', stats, empty: stats.length === 0 });
+        // Pull the Strategy-Equity curve. An older engine without this route
+        // (404) just leaves equity empty — we show the stats without a chart
+        // rather than invent one.
+        const chart = await getJsonDetailed<QcChartBody>(`${base}/backtest/${backtestId}/chart`);
+        if (cancelled.current) return;
+        const equity = chart.ok ? qcEquityPoints(chart.body) : [];
+        setBacktestState({ phase: 'done', stats, empty: stats.length === 0, equity });
         return;
       }
       if (i === 99) {

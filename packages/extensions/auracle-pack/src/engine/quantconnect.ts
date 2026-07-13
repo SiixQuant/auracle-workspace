@@ -50,6 +50,26 @@ export interface StatLine {
   value: string;
 }
 
+/** The engine's QC equity-chart response (`.../backtest/{id}/chart`). */
+export interface QcChartBody {
+  connected?: boolean;
+  /** false when QC is still building or the chart has no equity points. */
+  chartable?: boolean;
+  points?: number[];
+  labels?: string[];
+  n_points?: number;
+}
+
+/**
+ * The equity y-series to plot from a QC chart response, or [] when QC returned
+ * no chartable curve. Every value is a real QC equity value — the panel draws
+ * this only when it's non-empty, never a fabricated line.
+ */
+export function qcEquityPoints(body: QcChartBody | null | undefined): number[] {
+  if (!body || body.chartable !== true || !Array.isArray(body.points)) return [];
+  return body.points.filter((p): p is number => typeof p === 'number' && Number.isFinite(p));
+}
+
 export function headlineStats(statistics: Record<string, unknown> | null | undefined): StatLine[] {
   if (!statistics || typeof statistics !== 'object') return [];
   const out: StatLine[] = [];

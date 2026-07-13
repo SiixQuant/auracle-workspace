@@ -17,7 +17,7 @@ import {
 import { AuracleConnections } from '../src/components/ConnectionsSettings';
 import { AuracleStatusChip } from '../src/components/StatusChip';
 import { ResearchPanel } from '../src/components/ResearchPanel';
-import { QcImportPanel } from '../src/components/QcImportPanel';
+import { QcImportPanel, QcBacktestResult } from '../src/components/QcImportPanel';
 import { BacktestPanel, BacktestResultView } from '../src/components/BacktestPanel';
 import type { BacktestResultData } from '../src/engine/backtestStore';
 
@@ -126,6 +126,24 @@ const MOCK_QC_PROJECTS = {
   ],
 };
 
+// ── quantconnect cloud backtest (compile → run → stats → equity chart) ──
+const MOCK_QC_STATUS = {
+  connected: true, completed: true, progress: 1, error: null,
+  statistics: {
+    'Sharpe Ratio': '1.42', 'Total Return': '31.9%', 'Compounding Annual Return': '17.1%',
+    'Drawdown': '8.4%', 'Win Rate': '58%', 'Total Trades': '212',
+  },
+};
+const _QC_EQUITY = [
+  100000, 101200, 99800, 103400, 106900, 104100, 108800, 112300,
+  110500, 115900, 121200, 118400, 122700, 128100, 125300, 131900,
+];
+const MOCK_QC_CHART = {
+  connected: true, chartable: true, points: _QC_EQUITY,
+  labels: _QC_EQUITY.map((_, i) => `2024-${String(1 + (i % 12)).padStart(2, '0')}-01`),
+  n_points: _QC_EQUITY.length,
+};
+
 // ── backtest result (equity curve + stats + drawdown) ──
 const _EQ = [
   1.0, 1.03, 1.06, 1.04, 1.09, 1.14, 1.11, 1.08, 1.13, 1.19, 1.22, 1.18,
@@ -149,6 +167,19 @@ const MOCK_BACKTEST_RESULT: BacktestResultData = {
   nBars: _EQ.length,
   trades: 34,
 };
+
+function QcResultHarness(): JSX.Element {
+  // The completed-QC-backtest render (equity curve + headline stats), the same
+  // component the QC panel shows after a cloud backtest finishes. The live poll
+  // can't be driven under StrictMode (the panel's cancel-ref trips on the
+  // double-mount), so this exercises the render path directly.
+  const stats = Object.entries(MOCK_QC_STATUS.statistics).map(([label, value]) => ({ label, value }));
+  return (
+    <div style={{ maxWidth: 760, margin: '0 auto', padding: '22px 28px 48px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <QcBacktestResult stats={stats} equity={MOCK_QC_CHART.points} empty={false} />
+    </div>
+  );
+}
 
 function BacktestResultHarness(): JSX.Element {
   return (
@@ -194,6 +225,11 @@ function engineRequest(method: string, path: string): { ok: boolean; status: num
   if (p.startsWith('/ui/api/research/scan/status')) return ok(MOCK_SCAN_STATUS);
   if (p.startsWith('/ui/api/research/feed')) return ok(MOCK_RESEARCH_FEED);
   if (p === '/ui/api/quantconnect/projects') return ok(MOCK_QC_PROJECTS);
+  if (/\/ui\/api\/quantconnect\/projects\/\d+\/compile\/.+/.test(p)) return ok({ state: 'BuildSuccess', logs: [] });
+  if (/\/ui\/api\/quantconnect\/projects\/\d+\/compile$/.test(p)) return ok({ connected: true, compile_id: 'c-1' });
+  if (/\/ui\/api\/quantconnect\/projects\/\d+\/backtest\/[^/]+\/chart$/.test(p)) return ok(MOCK_QC_CHART);
+  if (/\/ui\/api\/quantconnect\/projects\/\d+\/backtest\/[^/]+$/.test(p)) return ok(MOCK_QC_STATUS);
+  if (/\/ui\/api\/quantconnect\/projects\/\d+\/backtest$/.test(p)) return ok({ connected: true, backtest_id: 'bt-1' });
   const cap = p.match(/^\/ui\/api\/connections\/([^/?]+)\/capability/);
   if (cap) return ok({ asset_kinds: ['equity', 'option'] });
   const detail = p.match(/^\/ui\/api\/connections\/([^/?]+)$/);
@@ -243,6 +279,7 @@ const PANELS: Record<string, (props: { host: never }) => JSX.Element> = {
   statuschip: AuracleStatusChip as (props: { host: never }) => JSX.Element,
   research: ResearchPanel as (props: { host: never }) => JSX.Element,
   qc: QcImportPanel as (props: { host: never }) => JSX.Element,
+  'qc-result': QcResultHarness as (props: { host: never }) => JSX.Element,
   backtest: BacktestPanel as (props: { host: never }) => JSX.Element,
   'backtest-result': BacktestResultHarness as (props: { host: never }) => JSX.Element,
 };

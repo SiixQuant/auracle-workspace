@@ -11,6 +11,8 @@ import { AuracleFlowEditor } from './components/FlowEditor';
 import { QcImportPanel } from './components/QcImportPanel';
 import { ResearchPanel } from './components/ResearchPanel';
 import { ValidationPanel } from './components/ValidationPanel';
+import { BacktestPanel } from './components/BacktestPanel';
+import { RunStrategyHeader } from './components/RunStrategyHeader';
 
 export async function activate() {}
 
@@ -49,8 +51,12 @@ export const panels = {
   research: {
     component: ResearchPanel,
   },
+  backtest: {
+    component: BacktestPanel,
+  },
 };
 
 export const components = {
   AuracleFlowEditor,
+  RunStrategyHeader,
 };

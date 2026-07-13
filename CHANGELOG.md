@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 <!-- New features go here -->
+- Run a strategy's backtest from the editor — a Run button above any strategy file opens a results panel with the run status and a one-click overfit check.
 
 ### Changed
 <!-- Changes to existing functionality go here -->

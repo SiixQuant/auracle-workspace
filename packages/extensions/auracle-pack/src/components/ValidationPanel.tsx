@@ -10,7 +10,7 @@
  * Everything is engine-computed; the panel renders the verdict verbatim.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { getJson, getJsonDetailed } from '../engine/client';
+import { getJsonDetailed } from '../engine/client';
 import { classifyLoadFailure, type LoadFailure } from '../engine/research';
 import {
   ValidationVerdict,
@@ -223,14 +223,13 @@ export function ValidationPanel({ host }: { host?: PanelHostLike }): JSX.Element
     );
     if (!result.ok) {
       // 422 carries the engine's "could not measure" detail; other statuses
-      // are outdated/unreachable transport failures.
+      // are outdated/unreachable transport failures. Read {detail} off the same
+      // response (getJsonDetailed keeps the body on failure) — no re-fetch.
       if (result.status === 422) {
-        const body = await getJson<{ detail?: string }>(
-          `/ui/api/validation?strategy_path=${encodeURIComponent(path)}`
-        );
+        const detail = (result.body as { detail?: string } | null)?.detail;
         setRun({
           phase: 'error',
-          detail: body?.detail ?? 'The engine could not measure this strategy.',
+          detail: detail ?? 'The engine could not measure this strategy.',
         });
         return;
       }

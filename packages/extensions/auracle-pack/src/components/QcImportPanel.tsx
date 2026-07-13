@@ -109,7 +109,7 @@ export function QcBacktestResult({
               }}
             >
               <span style={{ fontSize: 10.5, color: tone.text3 }}>{s.label}</span>
-              <span style={{ fontSize: 14, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: tone.text, fontVariantNumeric: 'tabular-nums' }}>
                 {s.value}
               </span>
             </div>

@@ -45,7 +45,6 @@ import { money, price, qty, percent } from '../engine/format';
 import {
   Button,
   CenterState,
-  EquityChart,
   InlineNote,
   PanelShell,
   Pill,
@@ -58,6 +57,7 @@ import {
   tone,
   trendColor,
 } from './panelkit';
+import { EquityChartShad } from './charts/EquityChartShad';
 
 const POLL_MS = 20_000;
 
@@ -699,19 +699,18 @@ function EquityView({ deployment }: { deployment: Deployment }) {
   }, [deployment.id]);
 
   // Honest: no chartable series yet (no fills) or an older engine without the
-  // route → no chart, rather than a flat or invented line.
+  // route → no chart, rather than a flat or invented line. EquityChartShad
+  // self-gates too, but returning early keeps the container out of the DOM.
   if (!points || points.length < 2) return null;
   return (
-    <div
-      style={{
-        padding: '12px 14px',
-        borderRadius: 9,
-        border: `1px solid ${tone.border}`,
-        background: tone.surface,
-      }}
-    >
-      <EquityChart points={points} height={132} label="Equity curve — marked to daily closes" />
-    </div>
+    <EquityChartShad
+      points={points}
+      title="Equity curve"
+      description="Marked to daily closes"
+      height={150}
+      footerNote="Reconstructed from this deployment's fills"
+      format={(v) => `$${qty(v)}`}
+    />
   );
 }
 

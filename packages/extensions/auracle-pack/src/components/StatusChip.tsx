@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { connectCheck, engineConfig, onConnectGeneration } from '../engine/client';
 import type { ConnectCheck } from '../engine/model';
+import { tone } from './panelkit';
 
 const POLL_MS = 30_000;
 
@@ -47,10 +48,10 @@ function chipTitle(state: ChipState): string {
 }
 
 const DOT_COLOR: Record<ChipState['kind'], string> = {
-  'not-configured': '#8a8f98',
-  checking: '#d4a017',
-  connected: '#2ea043',
-  unreachable: '#c4554d',
+  'not-configured': tone.text3,
+  checking: tone.caution,
+  connected: tone.ok,
+  unreachable: tone.danger,
 };
 
 export function AuracleStatusChip(): JSX.Element {
@@ -105,11 +106,11 @@ export function AuracleStatusChip(): JSX.Element {
         gap: 6,
         padding: '3px 10px',
         borderRadius: 999,
-        border: '1px solid var(--border-primary, rgba(127,127,127,0.35))',
+        border: `1px solid ${tone.borderStrong}`,
         background: 'var(--bg-secondary, rgba(20,20,22,0.85))',
         backdropFilter: 'blur(6px)',
-        color: 'var(--text-secondary, #b9bec7)',
-        font: '11px/1.4 var(--font-family-ui, system-ui, sans-serif)',
+        color: tone.text2,
+        font: `11px/1.4 ${tone.font}`,
         cursor: 'pointer',
       }}
     >

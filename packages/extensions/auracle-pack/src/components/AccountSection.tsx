@@ -8,6 +8,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { authPersist, authRequest, authSignout, authStart, authState } from '../engine/client';
+import { Button, ensurePanelKitStyles, tone } from './panelkit';
 
 const POLL_INTERVAL_MS = 3_000;
 const POLL_LIMIT = 100;
@@ -27,36 +28,28 @@ type AccountState =
   | { kind: 'signed-in'; email: string; tier: string; offline: boolean };
 
 const styles = {
-  note: { fontSize: 12, color: 'var(--text-tertiary, #8a8f98)' },
+  note: { fontSize: 12, color: tone.text3 },
   input: {
     width: '100%',
     maxWidth: 320,
     padding: '6px 8px',
     borderRadius: 6,
     fontSize: 13,
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.35))',
-    background: 'var(--bg-primary, rgba(0,0,0,0.2))',
-    color: 'var(--text-primary, #d7dae0)',
+    border: `1px solid ${tone.borderStrong}`,
+    background: tone.sunken,
+    color: tone.text,
   },
-  button: (primary?: boolean) => ({
-    padding: '5px 12px',
-    borderRadius: 6,
-    fontSize: 12,
-    cursor: 'pointer',
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.35))',
-    background: primary ? 'var(--accent-primary, #0053fd)' : 'transparent',
-    color: primary ? '#fff' : 'var(--text-primary, #d7dae0)',
-  }),
   chip: {
     fontSize: 11,
     padding: '1px 8px',
     borderRadius: 999,
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.35))',
-    color: 'var(--text-secondary, #b9bec7)',
+    border: `1px solid ${tone.borderStrong}`,
+    color: tone.text2,
   },
 };
 
 export function AccountSection(): JSX.Element {
+  ensurePanelKitStyles();
   const [state, setState] = useState<AccountState>({ kind: 'loading' });
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -180,9 +173,9 @@ export function AccountSection(): JSX.Element {
         <span style={{ fontWeight: 500 }}>{state.email || 'Signed in'}</span>
         {state.tier ? <span style={styles.chip}>{state.tier}</span> : null}
         {state.offline ? <span style={styles.note}>identity service unreachable — cached</span> : null}
-        <button type="button" style={styles.button()} onClick={() => void signOut()}>
+        <Button variant="danger" onClick={() => void signOut()}>
           Sign out
-        </button>
+        </Button>
       </div>
     );
   }
@@ -202,14 +195,14 @@ export function AccountSection(): JSX.Element {
             value={code}
             onChange={(event) => setCode(event.target.value)}
           />
-          <button type="button" style={styles.button(true)} disabled={busy} onClick={() => void verify()}>
+          <Button variant="primary" disabled={busy} onClick={() => void verify()}>
             {busy ? 'Verifying…' : 'Verify'}
-          </button>
-          <button type="button" style={styles.button()} onClick={() => setState({ kind: 'signed-out' })}>
+          </Button>
+          <Button variant="ghost" onClick={() => setState({ kind: 'signed-out' })}>
             Cancel
-          </button>
+          </Button>
         </div>
-        {state.error ? <div style={{ ...styles.note, color: '#c4554d' }}>{state.error}</div> : null}
+        {state.error ? <div style={{ ...styles.note, color: tone.danger }}>{state.error}</div> : null}
       </div>
     );
   }
@@ -228,16 +221,15 @@ export function AccountSection(): JSX.Element {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
         />
-        <button
-          type="button"
-          style={styles.button(true)}
+        <Button
+          variant="primary"
           disabled={busy || !email.includes('@')}
           onClick={() => void start()}
         >
           {busy ? 'Sending…' : 'Send sign-in link'}
-        </button>
+        </Button>
       </div>
-      {state.error ? <div style={{ ...styles.note, color: '#c4554d' }}>{state.error}</div> : null}
+      {state.error ? <div style={{ ...styles.note, color: tone.danger }}>{state.error}</div> : null}
     </div>
   );
 }

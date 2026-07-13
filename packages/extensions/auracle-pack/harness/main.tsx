@@ -14,6 +14,8 @@ import {
   RunwayPanel,
   SchedulesPanel,
 } from '../src/components/MonitorPanels';
+import { AuracleConnections } from '../src/components/ConnectionsSettings';
+import { AuracleStatusChip } from '../src/components/StatusChip';
 
 /* ── mock data ─────────────────────────────────────────────── */
 
@@ -92,6 +94,26 @@ const MOCK_RUNWAY = {
   },
 };
 
+// ── connections registry (list + per-connector detail) ──
+const MOCK_CONNECTORS = [
+  { id: 'ibkr', display_label: 'Interactive Brokers', blurb: 'Live + paper trading via IB Gateway', kind: 'broker', status: { state: 'connected', detail: 'paper' }, test_supported: true, asset_kinds: ['equity', 'option'] },
+  { id: 'alpaca', display_label: 'Alpaca', blurb: 'Commission-free US equities', kind: 'broker', status: { state: 'not_configured' }, test_supported: true },
+  { id: 'yfinance', display_label: 'Yahoo Finance', blurb: 'Free daily bars, zero config', kind: 'data_provider', status: { state: 'connected' }, test_supported: false },
+  { id: 'polygon', display_label: 'Polygon.io', blurb: 'Real-time + historical market data', kind: 'data_provider', status: { state: 'not_configured' }, gated: true, gated_reason: 'Requires the Pro plan' },
+  { id: 'quantconnect', display_label: 'QuantConnect', blurb: 'Cloud backtesting + live', kind: 'integration', status: { state: 'error', detail: 'token expired' }, test_supported: true },
+];
+
+const connectorDetail = (id: string) => {
+  const base = MOCK_CONNECTORS.find((c) => c.id === id) ?? MOCK_CONNECTORS[0];
+  return {
+    ...base,
+    fields: [
+      { name: 'account', label: 'Account ID', kind: 'text', required: true, has_value: true, preview: 'U1234•••', options: [] },
+      { name: 'port', label: 'Gateway port', kind: 'text', required: false, has_value: false, preview: '', options: [] },
+    ],
+  };
+};
+
 const ok = (body: unknown) => ({ ok: true, status: 200, body });
 const notFound = { ok: false, status: 404, body: null };
 
@@ -105,8 +127,12 @@ function engineRequest(method: string, path: string): { ok: boolean; status: num
   if (p.startsWith('/ui/api/runway')) return ok(MOCK_RUNWAY);
   if (p.startsWith('/ui/api/validation')) return ok(MOCK_VERDICT);
   if (p.startsWith('/ui/api/backtest/strategies')) return ok(MOCK_STRATEGIES);
-  if (p.startsWith('/ui/api/connections')) return ok({ connectors: [] });
-  if (p.startsWith('/ui/api/ide/connect-check')) return ok({ ok: true });
+  const cap = p.match(/^\/ui\/api\/connections\/([^/?]+)\/capability/);
+  if (cap) return ok({ asset_kinds: ['equity', 'option'] });
+  const detail = p.match(/^\/ui\/api\/connections\/([^/?]+)$/);
+  if (detail) return ok(connectorDetail(detail[1]));
+  if (p.startsWith('/ui/api/connections')) return ok({ connections: MOCK_CONNECTORS });
+  if (p.startsWith('/ui/api/ide/connect-check')) return ok({ ok: true, engine: { name: 'Auracle', version: '2.8.1' } });
   return notFound;
 }
 
@@ -146,6 +172,8 @@ const PANELS: Record<string, (props: { host: never }) => JSX.Element> = {
   incidents: IncidentsPanel,
   schedules: SchedulesPanel,
   runway: RunwayPanel,
+  connections: AuracleConnections as (props: { host: never }) => JSX.Element,
+  statuschip: AuracleStatusChip as (props: { host: never }) => JSX.Element,
 };
 
 const which = new URLSearchParams(location.search).get('panel') ?? 'live';

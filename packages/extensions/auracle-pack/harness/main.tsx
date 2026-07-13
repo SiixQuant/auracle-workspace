@@ -16,6 +16,9 @@ import {
 } from '../src/components/MonitorPanels';
 import { AuracleConnections } from '../src/components/ConnectionsSettings';
 import { AuracleStatusChip } from '../src/components/StatusChip';
+import { ResearchPanel } from '../src/components/ResearchPanel';
+import { QcImportPanel } from '../src/components/QcImportPanel';
+import { BacktestPanel } from '../src/components/BacktestPanel';
 
 /* ── mock data ─────────────────────────────────────────────── */
 
@@ -94,6 +97,34 @@ const MOCK_RUNWAY = {
   },
 };
 
+// ── research feed + scan status ──
+const MOCK_RESEARCH_FEED = {
+  findings: [
+    { id: 1, paper_id: 'arXiv:2407.01234', source: 'arXiv', title: 'Cross-Sectional Momentum with Volatility Scaling', authors: 'A. Chen, R. Patel', abstract: 'We show that scaling a cross-sectional momentum signal by trailing realized volatility improves the risk-adjusted return of the long-short portfolio out of sample.', hypothesis: 'Vol-scaling a momentum signal lifts its Sharpe by reducing crash exposure.', technique: 'Cross-sectional ranking + vol targeting', asset_classes: ['equity'], score: 0.87, model: 'gpt', status: 'new', composite: 0.87, band: 'high', confidence: 'high', categories: ['q-fin.PM'], primary_category: 'q-fin.PM', published_at: '2026-07-02', url: 'https://arxiv.org/abs/2407.01234', doi: null, pdf_url: null, citation_count: 12, strategy_path: null },
+    { id: 2, paper_id: 'SSRN:4501992', source: 'SSRN', title: 'Overnight Reversal in Liquid Futures', authors: 'M. Okafor', abstract: 'A robust overnight-to-intraday reversal exists across liquid futures, strongest around macro releases.', hypothesis: 'Overnight moves in liquid futures partially reverse intraday.', technique: 'Time-series reversal', asset_classes: ['futures'], score: 0.64, model: 'gpt', status: 'new', composite: 0.64, band: 'medium', confidence: 'medium', categories: ['q-fin.TR'], primary_category: 'q-fin.TR', published_at: '2026-06-28', url: 'https://ssrn.com/abstract=4501992', doi: null, pdf_url: null, citation_count: 3, strategy_path: null },
+    { id: 3, paper_id: 'arXiv:2406.09981', source: 'arXiv', title: 'Attention-Weighted Factor Timing', authors: 'L. Vasquez, T. Ito', abstract: 'A transformer times classic factors; gains vanish after transaction costs.', hypothesis: 'Learned factor timing beats static weights net of costs.', technique: 'Transformer factor timing', asset_classes: ['equity'], score: 0.31, model: 'gpt', status: 'new', composite: 0.31, band: 'low', confidence: 'low', categories: ['q-fin.CP'], primary_category: 'q-fin.CP', published_at: '2026-06-19', url: 'https://arxiv.org/abs/2406.09981', doi: null, pdf_url: null, citation_count: 0, strategy_path: null },
+  ],
+  last_scan: '2026-07-12T08:00:00Z',
+};
+
+const MOCK_SCAN_STATUS = {
+  running: false,
+  started_at: null,
+  finished_at: '2026-07-12T08:00:00Z',
+  result: { fetched: 40, stored: 18, deduped: 6, llm_refined: 12 },
+  error: null,
+  last_scan: '2026-07-12T08:00:00Z',
+};
+
+// ── quantconnect projects ──
+const MOCK_QC_PROJECTS = {
+  connected: true,
+  projects: [
+    { projectId: 18234221, name: 'Momentum SPY', description: '12-1 momentum, monthly rebalance', modified: '2026-07-10T00:00:00Z', language: 'Py' },
+    { projectId: 18234250, name: 'Mean Reversion Pairs', description: 'Cointegrated ETF pairs', modified: '2026-07-08T00:00:00Z', language: 'Py' },
+  ],
+};
+
 // ── connections registry (list + per-connector detail) ──
 const MOCK_CONNECTORS = [
   { id: 'ibkr', display_label: 'Interactive Brokers', blurb: 'Live + paper trading via IB Gateway', kind: 'broker', status: { state: 'connected', detail: 'paper' }, test_supported: true, asset_kinds: ['equity', 'option'] },
@@ -127,6 +158,9 @@ function engineRequest(method: string, path: string): { ok: boolean; status: num
   if (p.startsWith('/ui/api/runway')) return ok(MOCK_RUNWAY);
   if (p.startsWith('/ui/api/validation')) return ok(MOCK_VERDICT);
   if (p.startsWith('/ui/api/backtest/strategies')) return ok(MOCK_STRATEGIES);
+  if (p.startsWith('/ui/api/research/scan/status')) return ok(MOCK_SCAN_STATUS);
+  if (p.startsWith('/ui/api/research/feed')) return ok(MOCK_RESEARCH_FEED);
+  if (p === '/ui/api/quantconnect/projects') return ok(MOCK_QC_PROJECTS);
   const cap = p.match(/^\/ui\/api\/connections\/([^/?]+)\/capability/);
   if (cap) return ok({ asset_kinds: ['equity', 'option'] });
   const detail = p.match(/^\/ui\/api\/connections\/([^/?]+)$/);
@@ -174,6 +208,9 @@ const PANELS: Record<string, (props: { host: never }) => JSX.Element> = {
   runway: RunwayPanel,
   connections: AuracleConnections as (props: { host: never }) => JSX.Element,
   statuschip: AuracleStatusChip as (props: { host: never }) => JSX.Element,
+  research: ResearchPanel as (props: { host: never }) => JSX.Element,
+  qc: QcImportPanel as (props: { host: never }) => JSX.Element,
+  backtest: BacktestPanel as (props: { host: never }) => JSX.Element,
 };
 
 const which = new URLSearchParams(location.search).get('panel') ?? 'live';

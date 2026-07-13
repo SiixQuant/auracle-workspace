@@ -24,8 +24,11 @@ import {
   CenterState,
   InlineNote,
   PanelShell,
+  Select,
   SkeletonRows,
   ToolbarSpring,
+  numeric,
+  tint,
   tone,
 } from './panelkit';
 import { PanelHostLike, useAiPanelContext, handOffToAgent, type AgentNote } from './aiPanel';
@@ -177,6 +180,63 @@ function SignalRow({
   );
 }
 
+/**
+ * The overall read of the rail — one verdict word in the worst tier's colour,
+ * a plain detail, and the healthy / attention / not-checked tally. Tinted by
+ * severity so the answer to "will this hold up?" lands before the rows do.
+ */
+function VerdictHero({ signals }: { signals: ValidationVerdict['signals'] }): JSX.Element {
+  const green = signals.filter((s) => s.tier === 'green').length;
+  const red = signals.filter((s) => s.tier === 'red').length;
+  const unknown = signals.filter((s) => s.tier === 'unknown').length;
+  const worst = red > 0 ? tone.danger : unknown > 0 ? tone.caution : tone.ok;
+  const verdict = red > 0 ? 'Overfit risk' : unknown > 0 ? 'Mostly holds up' : 'Holds up out of sample';
+  const detail =
+    red > 0
+      ? `${red} signal${red === 1 ? '' : 's'} flagged — review the rows below.`
+      : unknown > 0
+        ? `${unknown} check${unknown === 1 ? '' : 's'} couldn't run on this history.`
+        : 'Every overfit check passes on the out-of-sample window.';
+
+  const tally = (n: number, label: string, color: string) => (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, minWidth: 44 }}>
+      <span style={{ fontSize: 20, fontWeight: 650, color, ...numeric }}>{n}</span>
+      <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: 0.3, textTransform: 'uppercase', color: tone.text3 }}>
+        {label}
+      </span>
+    </div>
+  );
+
+  return (
+    <div
+      className="apk-enter"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 20,
+        flexWrap: 'wrap',
+        padding: '16px 20px',
+        borderRadius: 11,
+        border: `1px solid ${tint(worst, 38)}`,
+        background: tint(worst, 9),
+      }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 220 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, fontWeight: 650, color: worst }}>
+          <span aria-hidden style={{ width: 9, height: 9, borderRadius: '50%', background: worst }} />
+          {verdict}
+        </span>
+        <span style={{ fontSize: 12.5, color: tone.text2 }}>{detail}</span>
+      </div>
+      <div style={{ display: 'flex', gap: 20 }}>
+        {tally(green, 'Healthy', tone.ok)}
+        {tally(red, 'Attention', red > 0 ? tone.danger : tone.text3)}
+        {tally(unknown, 'Not checked', unknown > 0 ? tone.caution : tone.text3)}
+      </div>
+    </div>
+  );
+}
+
 export function ValidationPanel({ host }: { host?: PanelHostLike }): JSX.Element {
   const [list, setList] = useState<ListState>({ phase: 'loading' });
   const [selected, setSelected] = useState('');
@@ -247,27 +307,14 @@ export function ValidationPanel({ host }: { host?: PanelHostLike }): JSX.Element
 
   const picker =
     list.phase === 'ready' && list.strategies.length > 0 ? (
-      <select
+      <Select
+        ariaLabel="Strategy to check"
+        placeholder="Pick a strategy to check…"
+        minWidth={300}
         value={selected}
-        onChange={(e) => onPick(e.target.value)}
-        style={{
-          padding: '6px 10px',
-          borderRadius: 7,
-          fontSize: 13,
-          border: `1px solid ${tone.borderStrong}`,
-          background: tone.sunken,
-          color: tone.text,
-          minWidth: 300,
-          fontFamily: tone.font,
-        }}
-      >
-        <option value="">Pick a strategy to check…</option>
-        {list.strategies.map((s) => (
-          <option key={s.path} value={s.path}>
-            {s.label}
-          </option>
-        ))}
-      </select>
+        onChange={onPick}
+        options={list.strategies.map((s) => ({ value: s.path, label: s.label }))}
+      />
     ) : null;
 
   return (
@@ -341,35 +388,29 @@ export function ValidationPanel({ host }: { host?: PanelHostLike }): JSX.Element
           }
         />
       ) : (
-        <div className="apk-enter" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="apk-enter" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <VerdictHero signals={run.verdict.signals} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 12.5, color: tone.text2 }}>
-              {railHeadline(run.verdict.signals)}
-            </span>
-            {run.verdict.signals.some((s) => s.tier === 'red') ? (
-              <InlineNote kind="err">Overfit risk — see the flagged signals below.</InlineNote>
-            ) : run.verdict.signals.some((s) => s.tier === 'unknown') ? (
-              <InlineNote kind="muted">Some checks couldn't run on this history.</InlineNote>
-            ) : (
-              <InlineNote kind="ok">Passes the overfit checks.</InlineNote>
-            )}
+            <span style={{ fontSize: 12, color: tone.text3 }}>{railHeadline(run.verdict.signals)}</span>
             <ToolbarSpring />
             <Button variant="primary" onClick={() => void askAgent(run.verdict)}>
               ⚡ Ask the agent
             </Button>
           </div>
           {note ? <InlineNote kind={note.kind}>{note.text}</InlineNote> : null}
-          {run.verdict.signals.map((signal) => (
-            <SignalRow
-              key={signal.signal}
-              name={signal.name}
-              tier={signal.tier}
-              plain={signal.plain}
-              fix={signal.what_usually_fixes_it}
-              value={signal.value}
-              threshold={signal.threshold}
-            />
-          ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {run.verdict.signals.map((signal) => (
+              <SignalRow
+                key={signal.signal}
+                name={signal.name}
+                tier={signal.tier}
+                plain={signal.plain}
+                fix={signal.what_usually_fixes_it}
+                value={signal.value}
+                threshold={signal.threshold}
+              />
+            ))}
+          </div>
         </div>
       )}
     </PanelShell>

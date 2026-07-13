@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 <!-- Changes to existing functionality go here -->
+- Refreshed the Auracle panels (Live Algorithms, Validation, Monitors, Connections, Research, QuantConnect) with a denser, higher-contrast look — portfolio and verdict summaries, refined tables, clearer status pills, and a stepped research-to-live runway.
 
 ### Fixed
 <!-- Bug fixes go here -->

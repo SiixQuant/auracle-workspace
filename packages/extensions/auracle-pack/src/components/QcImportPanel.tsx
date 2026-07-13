@@ -27,6 +27,7 @@ import {
   Field,
   InlineNote,
   PanelShell,
+  Select,
   SkeletonRows,
   ToolbarSpring,
   tone,
@@ -432,25 +433,14 @@ export function QcImportPanel({ host }: PanelHostProps): JSX.Element {
               <InlineNote kind="muted">No Auracle strategies to export yet — create or import one first.</InlineNote>
             ) : (
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <select
+                <Select
+                  ariaLabel="Strategy to export"
+                  placeholder="Pick a strategy to push…"
+                  minWidth={280}
                   value={exportPath}
-                  onChange={(e) => setExportPath(e.target.value)}
-                  style={{
-                    padding: '6px 10px',
-                    borderRadius: 7,
-                    fontSize: 13,
-                    border: `1px solid ${tone.borderStrong}`,
-                    background: tone.sunken,
-                    color: tone.text,
-                    minWidth: 280,
-                    fontFamily: tone.font,
-                  }}
-                >
-                  <option value="">Pick a strategy to push…</option>
-                  {exportable.map((s) => (
-                    <option key={s.path} value={s.path}>{s.label}</option>
-                  ))}
-                </select>
+                  onChange={setExportPath}
+                  options={exportable.map((s) => ({ value: s.path, label: s.label }))}
+                />
                 <Button variant="primary" busy={exportBusy} disabled={!exportPath} onClick={() => void runExport()}>
                   Push to QuantConnect
                 </Button>

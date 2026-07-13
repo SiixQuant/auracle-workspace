@@ -25,7 +25,7 @@ import {
   normalizeConnector,
   sectionSummary,
 } from '../engine/model';
-import { Button, InlineNote, ensurePanelKitStyles, tone } from './panelkit';
+import { Button, InlineNote, Pill, Select, ensurePanelKitStyles, tint, tone } from './panelkit';
 
 const KEYLESS_IDS = new Set(['yfinance', 'simulator']);
 
@@ -58,22 +58,22 @@ const styles = {
   title: { fontSize: 17, fontWeight: 600 as const, letterSpacing: -0.2 },
   subtitle: { fontSize: 12.5, color: tone.text3 },
   sectionHead: {
-    fontSize: 11,
+    fontSize: 12.5,
     fontWeight: 600 as const,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.7,
-    color: tone.text3,
+    letterSpacing: 0,
+    color: tone.text2,
     display: 'flex',
     alignItems: 'center' as const,
-    gap: 6,
+    gap: 7,
   },
   sectionHeader: {
     display: 'flex',
-    alignItems: 'baseline' as const,
+    alignItems: 'center' as const,
     justifyContent: 'space-between' as const,
     cursor: 'pointer',
     userSelect: 'none' as const,
-    padding: '2px 0',
+    padding: '6px 0',
+    borderBottom: `1px solid ${tone.border}`,
   },
   summary: { fontSize: 12, color: tone.text3 },
   rows: { display: 'flex', flexDirection: 'column' as const, gap: 6, marginTop: 8 },
@@ -173,8 +173,8 @@ const styles = {
     color: tone.text2,
     padding: '11px 13px',
     borderRadius: 8,
-    border: '1px solid rgba(212,160,23,0.35)',
-    background: 'rgba(212,160,23,0.08)',
+    border: `1px solid ${tint(tone.caution, 35)}`,
+    background: tint(tone.caution, 8),
   },
 };
 
@@ -316,20 +316,14 @@ function ConnectorDetail({
                 ) : null}
               </div>
               {field.options.length > 0 ? (
-                <select
-                  style={styles.input}
+                <Select
+                  fluid
+                  ariaLabel={field.label || field.name}
+                  placeholder={field.has_value ? '(keep saved value)' : 'Select…'}
                   value={values[field.name] ?? ''}
-                  onChange={(event) =>
-                    setValues((prev) => ({ ...prev, [field.name]: event.target.value }))
-                  }
-                >
-                  <option value="">{field.has_value ? '(keep saved value)' : 'Select…'}</option>
-                  {field.options.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(next) => setValues((prev) => ({ ...prev, [field.name]: next }))}
+                  options={field.options.map((option) => ({ value: option, label: option }))}
+                />
               ) : (
                 <input
                   style={styles.input}
@@ -396,20 +390,45 @@ function Section({
       </div>
       {expanded ? (
         <div style={styles.rows}>
-          {connectors.map((connector) => (
-            <div key={connector.id} style={styles.row} onClick={() => onSelect(connector)}>
-              <span aria-hidden style={styles.dot(dotColor(connector))} />
-              <span style={styles.rowLabel}>{connector.display_label || connector.id}</span>
-              <span style={styles.rowBlurb}>{connector.blurb}</span>
-              {connector.gated ? <span style={styles.chip}>Upgrade required</span> : null}
-              <span style={styles.statusText(isConnected(connector.status))}>
-                {statusText(connector)}
-              </span>
-              <span aria-hidden style={styles.chev}>
-                ›
-              </span>
-            </div>
-          ))}
+          {connectors.map((connector) => {
+            const connected = isConnected(connector.status);
+            const keyless = KEYLESS_IDS.has(connector.id);
+            const st = connector.status.state;
+            const errored = st === 'error';
+            // Any other non-empty, non-"not_configured" state (connecting, stale,
+            // expired…) must show as-is, not be flattened to "Not configured".
+            const intermediate = !connected && !keyless && !errored && !!st && st !== 'not_configured';
+            return (
+              <div key={connector.id} className="apk-card" style={styles.row} onClick={() => onSelect(connector)}>
+                <span aria-hidden style={styles.dot(dotColor(connector))} />
+                <span style={styles.rowLabel}>{connector.display_label || connector.id}</span>
+                <span style={styles.rowBlurb}>{connector.blurb}</span>
+                {connector.gated ? <Pill kind="caution">Upgrade</Pill> : null}
+                {connected ? (
+                  <Pill kind="ok" dot>
+                    Connected
+                  </Pill>
+                ) : keyless ? (
+                  <Pill kind="ok" dot>
+                    Ready
+                  </Pill>
+                ) : errored ? (
+                  <Pill kind="danger" dot>
+                    {connector.status.detail || 'Error'}
+                  </Pill>
+                ) : intermediate ? (
+                  <Pill kind="caution" dot>
+                    {connector.status.detail || st}
+                  </Pill>
+                ) : (
+                  <span style={styles.statusText(false)}>Not configured</span>
+                )}
+                <span aria-hidden style={styles.chev}>
+                  ›
+                </span>
+              </div>
+            );
+          })}
           {connectors.length === 0 ? <div style={styles.note}>None available.</div> : null}
         </div>
       ) : null}

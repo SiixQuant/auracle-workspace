@@ -39,9 +39,11 @@ const styles = {
     width: NODE_W,
     height: NODE_H,
     borderRadius: 8,
-    border: `1px solid ${selected ? 'var(--accent-primary, #0053fd)' : 'var(--border-primary, rgba(127,127,127,0.35))'}`,
+    border: `1px solid ${selected ? 'var(--accent-primary, #60a5fa)' : 'var(--border-primary, rgba(127,127,127,0.35))'}`,
     background:
-      kind === 'draft' ? 'rgba(0, 83, 253, 0.08)' : 'var(--bg-secondary, rgba(127,127,127,0.08))',
+      kind === 'draft'
+        ? 'color-mix(in srgb, var(--accent-primary, #60a5fa) 10%, transparent)'
+        : 'var(--bg-secondary, rgba(127,127,127,0.08))',
     padding: 10,
     display: 'flex',
     flexDirection: 'column' as const,
@@ -56,7 +58,7 @@ const styles = {
     fontSize: 11,
     cursor: 'pointer',
     border: '1px solid var(--border-primary, rgba(127,127,127,0.35))',
-    background: primary ? 'var(--accent-primary, #0053fd)' : 'transparent',
+    background: primary ? 'var(--accent-primary, #60a5fa)' : 'transparent',
     color: primary ? '#fff' : 'var(--text-primary, #d7dae0)',
   }),
   drawer: {
@@ -208,7 +210,7 @@ export function AuracleFlowEditor({ host }: EditorHostProps): JSX.Element {
                 y1={from.y}
                 x2={to.x}
                 y2={to.y}
-                stroke="var(--accent-primary, #0053fd)"
+                stroke="var(--accent-primary, #60a5fa)"
                 strokeDasharray="5 4"
                 strokeWidth={1.5}
               />

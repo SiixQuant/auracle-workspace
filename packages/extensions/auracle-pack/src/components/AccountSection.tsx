@@ -8,7 +8,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { authPersist, authRequest, authSignout, authStart, authState } from '../engine/client';
-import { Button, ensurePanelKitStyles, tone } from './panelkit';
+import { Button, Pill, ensurePanelKitStyles, tint, tone } from './panelkit';
 
 const POLL_INTERVAL_MS = 3_000;
 const POLL_LIMIT = 100;
@@ -39,12 +39,19 @@ const styles = {
     background: tone.sunken,
     color: tone.text,
   },
-  chip: {
-    fontSize: 11,
-    padding: '1px 8px',
-    borderRadius: 999,
-    border: `1px solid ${tone.borderStrong}`,
-    color: tone.text2,
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: '50%',
+    flex: 'none' as const,
+    display: 'flex',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    fontSize: 16,
+    fontWeight: 650 as const,
+    color: tone.accent,
+    background: tint(tone.accent, 16),
+    border: `1px solid ${tint(tone.accent, 42)}`,
   },
 };
 
@@ -168,11 +175,23 @@ export function AccountSection(): JSX.Element {
   }
 
   if (state.kind === 'signed-in') {
+    const initial = (state.email || '?').trim().charAt(0).toUpperCase() || '?';
+    const isPro = /pro|enterprise|team/i.test(state.tier);
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <span style={{ fontWeight: 500 }}>{state.email || 'Signed in'}</span>
-        {state.tier ? <span style={styles.chip}>{state.tier}</span> : null}
-        {state.offline ? <span style={styles.note}>identity service unreachable — cached</span> : null}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span aria-hidden style={styles.avatar}>
+          {initial}
+        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+          <span style={{ fontWeight: 600, color: tone.text, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {state.email || 'Signed in'}
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: tone.text3 }}>
+            {state.tier ? <Pill kind={isPro ? 'accent' : 'muted'}>{state.tier}</Pill> : null}
+            {state.offline ? 'cached — identity service unreachable' : 'Signed in'}
+          </span>
+        </div>
+        <span style={{ flex: 1 }} />
         <Button variant="danger" onClick={() => void signOut()}>
           Sign out
         </Button>

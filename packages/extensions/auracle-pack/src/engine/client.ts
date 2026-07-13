@@ -73,6 +73,42 @@ export async function putJson(path: string, body?: unknown): Promise<BridgeRespo
   return request('PUT', path, body);
 }
 
+/**
+ * Queue a backtest of `strategyPath` (a dotted `module.Symbol` discovery id).
+ * The engine runs it as a background job, so this returns the job id; poll
+ * {@link backtestJobStatus} until the status is terminal. Blank dates let the
+ * engine default the window (last ~5 years).
+ */
+export async function runBacktest(
+  strategyPath: string,
+  start = '',
+  end = ''
+): Promise<{ ok: true; jobId: number } | { ok: false; status: number; error?: string }> {
+  const res = await postJson('/ui/api/backtest/run', {
+    strategy_path: strategyPath,
+    start,
+    end,
+  });
+  const body = (res.body ?? {}) as { ok?: boolean; job_id?: number; error?: string };
+  if (res.ok && body.ok && typeof body.job_id === 'number') {
+    return { ok: true, jobId: body.job_id };
+  }
+  return { ok: false, status: res.status, error: body.error };
+}
+
+/** Poll a backtest job's status. `status` is 'pending'|'running'|'succeeded'|'failed'. */
+export async function backtestJobStatus(
+  jobId: number
+): Promise<{ ok: true; status: string } | { ok: false; status: number }> {
+  const res = await getJsonDetailed<{ status?: string }>(
+    `/ui/api/backtest/job/${jobId}/status`
+  );
+  if (res.ok) {
+    return { ok: true, status: typeof res.body.status === 'string' ? res.body.status : 'unknown' };
+  }
+  return { ok: false, status: res.status };
+}
+
 /** Engine reachability + identity probe (`/ui/api/ide/connect-check`). */
 export async function connectCheck(): Promise<ConnectCheck | null> {
   return getJson<ConnectCheck>('/ui/api/ide/connect-check');

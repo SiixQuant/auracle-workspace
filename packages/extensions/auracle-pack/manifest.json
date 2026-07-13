@@ -29,6 +29,15 @@
         "defaultContent": ""
       }
     ],
+    "documentHeaders": [
+      {
+        "id": "run-strategy",
+        "filePatterns": ["*.py"],
+        "displayName": "Run Strategy",
+        "component": "RunStrategyHeader",
+        "priority": 100
+      }
+    ],
     "claudePlugin": {
       "path": "claude-plugin",
       "displayName": "Auracle Quant Commands",
@@ -128,6 +137,15 @@
         "order": 69,
         "aiSupported": true,
         "tooltip": "Fresh quant papers, ranked for tradability by the engine's scan."
+      },
+      {
+        "id": "backtest",
+        "title": "Backtest",
+        "icon": "play_circle",
+        "placement": "bottom",
+        "order": 68,
+        "aiSupported": true,
+        "tooltip": "Backtest the open strategy and check it for overfitting."
       }
     ]
   }

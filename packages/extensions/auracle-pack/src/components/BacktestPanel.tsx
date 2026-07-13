@@ -6,9 +6,10 @@
  * for a backtest's headline stats, so a completed run confirms + hands off to
  * the full engine results and the Validate check rather than inventing numbers.
  */
-import { useCallback, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { backtestStore } from '../engine/backtestStore';
 import { backtestContext, backtestPrompt } from '../engine/backtest';
+import { markBacktestPanelMounted, markBacktestPanelUnmounted } from './panelVisibility';
 import { railHeadline, type ValidationSignal } from '../engine/validation';
 import {
   Button,
@@ -65,6 +66,13 @@ function SignalLine({ signal }: { signal: ValidationSignal }) {
 export function BacktestPanel({ host }: { host?: PanelHostLike }): JSX.Element {
   const snap = useSyncExternalStore(backtestStore.subscribe, backtestStore.getSnapshot);
   const [note, setNote] = useState<AgentNote>(null);
+
+  // The host only exposes a toggle event to open panels; report our mount state
+  // so the Run header can avoid toggling an already-open panel shut on a re-run.
+  useEffect(() => {
+    markBacktestPanelMounted();
+    return markBacktestPanelUnmounted;
+  }, []);
 
   const run = snap.strategyPath && snap.cls && snap.jobId
     ? { strategyPath: snap.strategyPath, cls: snap.cls, jobId: snap.jobId }

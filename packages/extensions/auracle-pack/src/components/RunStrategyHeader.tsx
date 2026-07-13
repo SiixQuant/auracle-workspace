@@ -8,6 +8,7 @@
 import React, { useCallback, useState } from 'react';
 import { backtestStore } from '../engine/backtestStore';
 import { tone } from './panelkit';
+import { isBacktestPanelOpen } from './panelVisibility';
 
 /** Full panel id (extensionId.panelId) — the toggle-panel event routes by it. */
 const BACKTEST_PANEL_ID = 'com.auracle.pack.backtest';
@@ -33,7 +34,9 @@ export const RunStrategyHeader: React.FC<DocumentHeaderComponentProps> = ({ file
 
   const onRun = useCallback(() => {
     void backtestStore.run(filePath);
-    openBacktestPanel();
+    // The host event is a pure toggle, so only dispatch it when the panel is
+    // closed — otherwise a re-run would toggle the open results panel shut.
+    if (!isBacktestPanelOpen()) openBacktestPanel();
     // Brief press feedback; the panel owns the real running/done state.
     setPinged(true);
     window.setTimeout(() => setPinged(false), 1000);

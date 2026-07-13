@@ -82,6 +82,35 @@ describe('resolveStrategyFromFile', () => {
     expect(resolveStrategyFromFile('/w/utils.py', [t25, ma]).kind).toBe('none');
     expect(resolveStrategyFromFile('', [t25]).kind).toBe('none');
   });
+
+  it('disambiguates same-basename files in different packages by directory', () => {
+    const potential = opt('strategies.desk.Potential.breakout.Breakout');
+    const sandbox = opt('strategies.desk.Sandbox.breakout.Breakout');
+    // Opening the Sandbox file must run the Sandbox strategy, not Potential's.
+    const r = resolveStrategyFromFile(
+      '/Users/x/Desktop/Auracle Strategies/Sandbox/breakout.py',
+      [potential, sandbox]
+    );
+    expect(r.kind).toBe('one');
+    if (r.kind === 'one') expect(r.option.path).toBe('strategies.desk.Sandbox.breakout.Breakout');
+  });
+
+  it('still resolves a nested file when only its directory sibling shares the stem', () => {
+    const potential = opt('strategies.desk.Potential.breakout.Breakout');
+    const sandbox = opt('strategies.desk.Sandbox.breakout.Breakout');
+    const r = resolveStrategyFromFile(
+      '/Users/x/Desktop/Auracle Strategies/Potential/breakout.py',
+      [potential, sandbox]
+    );
+    expect(r.kind).toBe('one');
+    if (r.kind === 'one') expect(r.option.path).toBe('strategies.desk.Potential.breakout.Breakout');
+  });
+
+  it('handles Windows path separators', () => {
+    const r = resolveStrategyFromFile('C:\\w\\Potential\\a3_target25.py', [t25, ma]);
+    expect(r.kind).toBe('one');
+    if (r.kind === 'one') expect(r.option.path).toBe('strategies.desk.Potential.a3_target25.T25Composite');
+  });
 });
 
 describe('backtestContext / backtestPrompt', () => {

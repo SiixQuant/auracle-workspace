@@ -42,6 +42,8 @@ const SHEET = `
 .apk-btn-primary:active:not(:disabled) { filter: brightness(0.94); }
 .apk-btn-ghost:hover:not(:disabled), .apk-btn-quiet:hover:not(:disabled) { background: color-mix(in srgb, var(--text-primary, #d7dae0) 7%, transparent); }
 .apk-btn-ghost:active:not(:disabled), .apk-btn-quiet:active:not(:disabled) { background: color-mix(in srgb, var(--text-primary, #d7dae0) 11%, transparent); }
+.apk-btn-danger:hover:not(:disabled) { background: color-mix(in srgb, #c4554d 12%, transparent); }
+.apk-btn-danger:active:not(:disabled) { background: color-mix(in srgb, #c4554d 18%, transparent); }
 .apk-card { transition: border-color 150ms ease-out, background-color 150ms ease-out; }
 .apk-card:hover { border-color: var(--border-primary, rgba(127,127,127,0.45)); }
 .apk-input { transition: border-color 150ms ease-out; }
@@ -132,7 +134,7 @@ export function ToolbarSpring(): JSX.Element {
 
 /* ── buttons ────────────────────────────────────────────────────────── */
 
-type ButtonVariant = 'primary' | 'ghost' | 'quiet';
+type ButtonVariant = 'primary' | 'ghost' | 'quiet' | 'danger';
 
 const BUTTON_BASE: CSSProperties = {
   display: 'inline-flex',
@@ -167,6 +169,15 @@ const BUTTON_VARIANTS: Record<ButtonVariant, CSSProperties> = {
     border: `1px solid ${tone.border}`,
     background: 'transparent',
     color: tone.text2,
+  },
+  // Compact destructive action — matches `quiet`'s geometry so it sits evenly
+  // beside other row controls, but reads red. For cancel / delete / liquidate.
+  danger: {
+    padding: '3px 9px',
+    fontSize: 11.5,
+    border: `1px solid color-mix(in srgb, ${tone.danger} 50%, transparent)`,
+    background: 'transparent',
+    color: tone.danger,
   },
 };
 
@@ -272,6 +283,44 @@ export function InlineNote({
           ✕
         </button>
       ) : null}
+    </span>
+  );
+}
+
+/* ── status pill ────────────────────────────────────────────────────── */
+
+type PillKind = 'ok' | 'caution' | 'danger' | 'muted' | 'accent';
+
+const PILL_COLOR: Record<PillKind, string> = {
+  ok: tone.ok,
+  caution: tone.caution,
+  danger: tone.danger,
+  muted: tone.text3,
+  accent: tone.accent,
+};
+
+/**
+ * Compact status chip — a state word (running / paused / filled / critical)
+ * in its semantic colour with a tinted border. One place for the pill shape
+ * so panels stop re-declaring the four brand colour literals inline.
+ */
+export function Pill({ kind, children }: { kind: PillKind; children: ReactNode }): JSX.Element {
+  const c = PILL_COLOR[kind];
+  return (
+    <span
+      style={{
+        fontSize: 11,
+        fontWeight: 500,
+        padding: '1px 8px',
+        borderRadius: 999,
+        border: `1px solid color-mix(in srgb, ${c} 45%, transparent)`,
+        color: c,
+        whiteSpace: 'nowrap',
+        letterSpacing: 0.2,
+        flex: 'none',
+      }}
+    >
+      {children}
     </span>
   );
 }

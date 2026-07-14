@@ -61,6 +61,9 @@ permissions:
 jobs:
   build:
     strategy:
+      # Don't let one platform's failure cancel the others — the macOS dmg the
+      # launcher consumes must build even if a Windows/Linux job trips.
+      fail-fast: false
       matrix:
         include:
           - os: macos-latest
@@ -522,8 +525,8 @@ jobs:
         shell: bash
         run: |
           set -e
-          src="packages/electron/release/Nimbalyst-Windows-x64.exe"
-          dest="packages/electron/release/Nimbalyst-Windows.exe"
+          src="packages/electron/release/Auracle IDE-Windows-x64.exe"
+          dest="packages/electron/release/Auracle IDE-Windows.exe"
           if [ ! -f "$src" ]; then
             echo "Expected signed artifact not found: $src"
             ls -la packages/electron/release/

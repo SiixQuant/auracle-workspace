@@ -1,17 +1,21 @@
 /**
  * RunStrategyHeader — a slim control strip the host mounts ABOVE a .py editor
  * (the `documentHeaders` contribution; there is no editor-toolbar/gutter
- * contribution point for extensions). One primary action: run the strategy in
- * the open file. It hands the file to the shared backtestStore and opens the
- * Backtest panel, which owns the run lifecycle + results + the Validate action.
+ * contribution point for extensions). Two everyday actions for the strategy in
+ * the open file: Run backtest (hands the file to backtestStore + opens the
+ * Backtest panel) and Deploy (hands the file to deployStore + opens the Live
+ * Algorithms panel's wizard, pre-bound to this file's strategy). Each panel
+ * owns its own lifecycle + results; the header only launches.
  */
 import React, { useCallback, useState } from 'react';
 import { backtestStore } from '../engine/backtestStore';
+import { deployStore } from '../engine/deployStore';
 import { tone } from './panelkit';
-import { isBacktestPanelOpen } from './panelVisibility';
+import { isBacktestPanelOpen, isLivePanelOpen } from './panelVisibility';
 
-/** Full panel id (extensionId.panelId) — the toggle-panel event routes by it. */
+/** Full panel ids (extensionId.panelId) — the toggle-panel event routes by id. */
 const BACKTEST_PANEL_ID = 'com.auracle.pack.backtest';
+const LIVE_PANEL_ID = 'com.auracle.pack.live-algorithms';
 
 /** Props the host hands every document-header component. */
 interface DocumentHeaderComponentProps {
@@ -23,24 +27,48 @@ interface DocumentHeaderComponentProps {
   editor?: unknown;
 }
 
-function openBacktestPanel(): void {
+function togglePanel(panelId: string): void {
   window.dispatchEvent(
-    new CustomEvent('nimbalyst:toggle-panel', { detail: { panelId: BACKTEST_PANEL_ID } })
+    new CustomEvent('nimbalyst:toggle-panel', { detail: { panelId } })
   );
 }
 
 export const RunStrategyHeader: React.FC<DocumentHeaderComponentProps> = ({ filePath }) => {
-  const [pinged, setPinged] = useState(false);
+  const [pinged, setPinged] = useState<null | 'run' | 'deploy'>(null);
+
+  const ping = useCallback((which: 'run' | 'deploy') => {
+    setPinged(which);
+    window.setTimeout(() => setPinged((prev) => (prev === which ? null : prev)), 1000);
+  }, []);
 
   const onRun = useCallback(() => {
     void backtestStore.run(filePath);
     // The host event is a pure toggle, so only dispatch it when the panel is
     // closed — otherwise a re-run would toggle the open results panel shut.
-    if (!isBacktestPanelOpen()) openBacktestPanel();
-    // Brief press feedback; the panel owns the real running/done state.
-    setPinged(true);
-    window.setTimeout(() => setPinged(false), 1000);
-  }, [filePath]);
+    if (!isBacktestPanelOpen()) togglePanel(BACKTEST_PANEL_ID);
+    ping('run');
+  }, [filePath, ping]);
+
+  const onDeploy = useCallback(() => {
+    void deployStore.deploy(filePath);
+    // Same toggle guard as Run: don't shut an already-open Live panel; it
+    // re-renders into the pre-bound wizard when the binding lands.
+    if (!isLivePanelOpen()) togglePanel(LIVE_PANEL_ID);
+    ping('deploy');
+  }, [filePath, ping]);
+
+  const btnBase: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 5,
+    height: 26,
+    padding: '0 11px',
+    borderRadius: 7,
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  };
 
   return (
     <div
@@ -71,25 +99,35 @@ export const RunStrategyHeader: React.FC<DocumentHeaderComponentProps> = ({ file
         onClick={onRun}
         title="Backtest the strategy in this file"
         style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 5,
-          padding: '4px 12px',
-          borderRadius: 7,
+          ...btnBase,
           border: '1px solid transparent',
           background: tone.accent,
           color: '#fff',
-          fontSize: 12,
-          fontWeight: 600,
-          cursor: 'pointer',
-          fontFamily: 'inherit',
-          opacity: pinged ? 0.85 : 1,
+          opacity: pinged === 'run' ? 0.85 : 1,
         }}
       >
         <span className="material-symbols-outlined" aria-hidden style={{ fontSize: 15 }}>
           play_arrow
         </span>
         Run backtest
+      </button>
+      <button
+        type="button"
+        className="auracle-run-header__deploy"
+        onClick={onDeploy}
+        title="Deploy the strategy in this file to paper or live"
+        style={{
+          ...btnBase,
+          border: `1px solid ${tone.borderStrong}`,
+          background: 'transparent',
+          color: tone.text2,
+          opacity: pinged === 'deploy' ? 0.7 : 1,
+        }}
+      >
+        <span className="material-symbols-outlined" aria-hidden style={{ fontSize: 15 }}>
+          rocket_launch
+        </span>
+        Deploy
       </button>
     </div>
   );

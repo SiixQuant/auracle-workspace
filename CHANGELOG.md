@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 <!-- New features go here -->
+- Deploy a strategy straight from the editor — a Deploy button beside Run backtest opens the deploy wizard already set to that file's strategy, files that can't deploy live get an honest explanation of why, and the strategy picker now discloses which files were excluded and for what reason.
 
 ### Changed
 <!-- Changes to existing functionality go here -->

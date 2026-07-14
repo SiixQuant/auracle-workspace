@@ -7,7 +7,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ValidationPanel } from '../src/components/ValidationPanel';
-import { LiveAlgorithmsPanel } from '../src/components/LivePanel';
+import { LiveAlgorithmsPanel, DeployWizardView } from '../src/components/LivePanel';
+import type { DeploySnapshot } from '../src/engine/deploy';
 import {
   BlotterPanel,
   IncidentsPanel,
@@ -68,8 +69,15 @@ const MOCK_LIVE_EQUITY = {
 
 const MOCK_STRATEGIES = {
   strategies: [
-    { path: 'strategies.desk.atlas.AtlasMomentum', kind: 'strategy', doc: '12-1 momentum, vol-scaled' },
-    { path: 'strategies.desk.fundpair.FundPair', kind: 'strategy', doc: '60/40 blend' },
+    { path: 'strategies.desk.atlas.AtlasMomentum', kind: 'class', doc: '12-1 momentum, vol-scaled' },
+    { path: 'strategies.desk.fundpair.FundPair', kind: 'class', doc: '60/40 blend' },
+    { path: 'strategies.desk.signals.backtest_meanrev', kind: 'function', doc: 'mean-reversion signal' },
+  ],
+  // Additive discovery field: files discovery saw but dropped, with reasons.
+  excluded: [
+    { file: 'strategies/desk/wip_breakout.py', reason: "ImportError: No module named 'ta_lib'" },
+    { file: 'strategies/desk/notes.py', reason: 'no Strategy class or backtest_* function' },
+    { file: 'strategies/desk/a2_scheduler.py', reason: 'defines only a cron-scheduled module, not a Strategy class' },
   ],
 };
 
@@ -305,8 +313,47 @@ r.setProperty('--accent-primary', '#60a5fa');
 r.setProperty('--font-family-ui', '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif');
 document.body.style.cssText = 'margin:0;background:#0e1013;min-height:100vh';
 
+// ── deploy wizard states (pre-bound happy / non-deployable / picker+exclusions) ──
+const DEPLOY_BOUND: DeploySnapshot = {
+  file: '/Users/you/Desktop/Auracle Strategies/desk/atlas.py',
+  phase: 'one',
+  option: {
+    path: 'strategies.desk.atlas.AtlasMomentum',
+    cls: 'AtlasMomentum',
+    label: 'AtlasMomentum — 12-1 momentum, vol-scaled',
+  },
+  options: [],
+  reason: null,
+  outdated: false,
+};
+const DEPLOY_BLOCKED: DeploySnapshot = {
+  file: '/Users/you/Desktop/Auracle Strategies/desk/signals.py',
+  phase: 'blocked',
+  option: null,
+  options: [],
+  reason: 'function-only',
+  outdated: false,
+};
+
+function DeployWizardHarness({ deploy }: { deploy: DeploySnapshot | null }): JSX.Element {
+  return (
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: '22px 28px 48px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div>
+        <div style={{ fontSize: 17, fontWeight: 600, color: '#d7dae0' }}>Deploy a strategy</div>
+        <div style={{ fontSize: 12.5, color: '#8a8f98', marginTop: 2 }}>
+          Launch to paper or live. You can stop or liquidate it any time from the dashboard.
+        </div>
+      </div>
+      <DeployWizardView deploy={deploy} onDone={() => {}} onCancel={() => {}} onClear={() => {}} />
+    </div>
+  );
+}
+
 const PANELS: Record<string, (props: { host: never }) => JSX.Element> = {
   live: LiveAlgorithmsPanel,
+  'deploy-bound': (() => <DeployWizardHarness deploy={DEPLOY_BOUND} />) as (props: { host: never }) => JSX.Element,
+  'deploy-blocked': (() => <DeployWizardHarness deploy={DEPLOY_BLOCKED} />) as (props: { host: never }) => JSX.Element,
+  'deploy-wizard': (() => <DeployWizardHarness deploy={null} />) as (props: { host: never }) => JSX.Element,
   validation: ValidationPanel,
   blotter: BlotterPanel,
   incidents: IncidentsPanel,

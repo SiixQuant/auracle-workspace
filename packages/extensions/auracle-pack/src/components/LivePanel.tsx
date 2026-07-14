@@ -5,10 +5,20 @@
  * Liquidate always confirms, the broker list comes from the engine (never a
  * hardcoded set), and every number shown is an engine value.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import { authState, getJson, onConnectGeneration, postJson } from '../engine/client';
 import { Connector, isConnected, normalizeConnector } from '../engine/model';
+import { deployStore } from '../engine/deployStore';
+import {
+  blockedReasonText,
+  deployWizardMode,
+  exclusionsFromDiscovery,
+  type DeployExclusion,
+  type DeploySnapshot,
+  type StrategyOption,
+} from '../engine/deploy';
+import { markLivePanelMounted, markLivePanelUnmounted } from './panelVisibility';
 import {
   ACTION_LABELS,
   COMPUTE_LABELS,
@@ -340,6 +350,60 @@ const styles = {
     border: `1px solid rgba(196,85,77,0.4)`,
     background: 'rgba(196,85,77,0.1)',
   },
+
+  // Pre-bound strategy identity row (replaces the picker when deploying a file)
+  identityRow: {
+    display: 'flex',
+    alignItems: 'center' as const,
+    gap: 10,
+    padding: '8px 11px',
+    borderRadius: 7,
+    border: '1px solid var(--border-primary, rgba(127,127,127,0.35))',
+    background: 'var(--bg-primary, rgba(0,0,0,0.22))',
+  },
+  changeBtn: {
+    padding: '3px 10px',
+    borderRadius: 6,
+    fontSize: 11.5,
+    cursor: 'pointer',
+    border: '1px solid var(--border-primary, rgba(127,127,127,0.3))',
+    background: 'transparent',
+    color: 'var(--text-secondary, #b9bec7)',
+    flexShrink: 0,
+  },
+
+  // "N files can't be deployed — why" exclusions expander
+  exclWrap: { display: 'flex', flexDirection: 'column' as const, gap: 8 },
+  exclToggle: {
+    display: 'inline-flex',
+    alignItems: 'center' as const,
+    gap: 6,
+    alignSelf: 'flex-start' as const,
+    padding: '3px 2px',
+    fontSize: 12,
+    cursor: 'pointer',
+    border: 'none',
+    background: 'transparent',
+    color: 'var(--text-secondary, #b9bec7)',
+    fontFamily: 'inherit',
+  },
+  exclList: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 8,
+    padding: '10px 12px',
+    borderRadius: 8,
+    border: '1px solid var(--border-primary, rgba(127,127,127,0.22))',
+    background: 'var(--bg-primary, rgba(0,0,0,0.14))',
+  },
+  exclRow: { display: 'flex', flexDirection: 'column' as const, gap: 1, minWidth: 0 },
+  exclFile: {
+    fontSize: 12,
+    color: 'var(--text-primary, #d7dae0)',
+    fontFamily: 'var(--font-family-mono, ui-monospace, SFMono-Regular, monospace)',
+    wordBreak: 'break-all' as const,
+  },
+  exclReason: { fontSize: 11.5, color: 'var(--text-tertiary, #8a8f98)' },
 };
 
 /** Dashboard / ledger table language — panelkit-toned, right-aligned money. */
@@ -384,17 +448,187 @@ function statePill(state: string): 'ok' | 'danger' | 'caution' | 'muted' {
   return isActive(state) ? 'caution' : 'muted';
 }
 
-interface StrategyOption {
+/** A deployable strategy as the picker lists it — `path` is the import module
+ *  (post-split), `cls` the class; the deploy loader needs them separately. */
+interface PickerStrategy {
   path: string;
   cls: string;
   label: string;
 }
 
-function DeployWizardView({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
-  const [wizard, setWizard] = useState<DeployWizard>(newWizard());
+/** The locked strategy identity, shown instead of the picker on a pre-bound deploy. */
+function DeployIdentityRow({ locked, onClear }: { locked: StrategyOption; onClear: () => void }) {
+  const modulePath = splitStrategyPath(locked.path).path;
+  return (
+    <div style={styles.identityRow}>
+      <span className="material-symbols-outlined" aria-hidden style={{ fontSize: 18, color: ACCENT }}>
+        deployed_code
+      </span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary, #d7dae0)' }}>{locked.cls}</span>
+        <span
+          style={{
+            fontSize: 11.5,
+            color: 'var(--text-tertiary, #8a8f98)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {modulePath}
+        </span>
+      </div>
+      <span style={{ flex: 1 }} />
+      <button type="button" onClick={onClear} style={styles.changeBtn} title="Pick a different strategy">
+        Change
+      </button>
+    </div>
+  );
+}
+
+/** The honest "N files can't be deployed — why" expander, collapsed by default.
+ *  Renders nothing when there are no exclusions (older engine / clean workspace). */
+function ExclusionsExpander({ exclusions }: { exclusions: DeployExclusion[] }) {
+  const [open, setOpen] = useState(false);
+  if (exclusions.length === 0) return null;
+  const n = exclusions.length;
+  return (
+    <div style={styles.exclWrap}>
+      <button
+        type="button"
+        style={styles.exclToggle}
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+      >
+        <span aria-hidden style={{ fontSize: 10, color: NEUTRAL }}>
+          {open ? '▾' : '▸'}
+        </span>
+        {n} file{n === 1 ? '' : 's'} can’t be deployed — why
+      </button>
+      {open ? (
+        <div className="apk-enter" style={styles.exclList}>
+          {exclusions.map((e) => (
+            <div key={e.file} style={styles.exclRow}>
+              <span style={styles.exclFile}>{e.file}</span>
+              <span style={styles.exclReason}>{e.reason}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * The Deploy wizard. Opened two ways:
+ *  - from the Live Algorithms page (`deploy` null): the full strategy picker,
+ *    plus the honest exclusions expander.
+ *  - pre-bound from the editor Deploy header (`deploy` set): the resolved file's
+ *    strategy as a locked identity row, or an honest non-deployable / scoped
+ *    chooser / engine-down state — the wizard owns every failure state.
+ * Everything else (mode, brokerage, capital, compute, resilience) is identical.
+ */
+export function DeployWizardView({
+  deploy,
+  onDone,
+  onCancel,
+  onClear,
+}: {
+  deploy: DeploySnapshot | null;
+  onDone: () => void;
+  onCancel: () => void;
+  onClear: () => void;
+}): JSX.Element {
+  const mode = deployWizardMode(deploy);
+
+  if (mode.view === 'resolving') {
+    return (
+      <div style={styles.card}>
+        <SkeletonRows rows={3} />
+      </div>
+    );
+  }
+  if (mode.view === 'engine-down') {
+    return (
+      <CenterState
+        icon="⚡"
+        tone="danger"
+        title={mode.outdated ? 'Engine update required' : "The engine isn't reachable"}
+        detail={
+          mode.outdated
+            ? 'This engine build predates the deploy surface. Update the Auracle stack, then deploy again.'
+            : 'Deploy reads your strategies from the local Auracle engine. Start the stack, then deploy again.'
+        }
+        actions={
+          <Button variant="ghost" onClick={onCancel}>
+            Back
+          </Button>
+        }
+      />
+    );
+  }
+  if (mode.view === 'blocked') {
+    const { title, detail } = blockedReasonText(mode.reason);
+    return (
+      <CenterState
+        icon="○"
+        title={title}
+        detail={detail}
+        actions={
+          <Button variant="ghost" onClick={onCancel}>
+            Back to Live Algorithms
+          </Button>
+        }
+      />
+    );
+  }
+  if (mode.view === 'chooser') {
+    return (
+      <div className="apk-enter" style={{ ...styles.card, gap: 12 }}>
+        <div style={styles.sectionHead}>This file defines more than one strategy</div>
+        <span style={{ fontSize: 12.5, color: 'var(--text-secondary, #b9bec7)' }}>Pick which one to deploy:</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {mode.options.map((opt) => (
+            <Button key={opt.path} variant="ghost" onClick={() => deployStore.choose(opt)}>
+              {opt.label}
+            </Button>
+          ))}
+        </div>
+        <div>
+          <button type="button" style={styles.ghostBtn} onClick={onCancel}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+  return <DeployForm key={mode.locked?.path ?? 'unbound'} locked={mode.locked} onDone={onDone} onCancel={onCancel} onClear={onClear} />;
+}
+
+function DeployForm({
+  locked,
+  onDone,
+  onCancel,
+  onClear,
+}: {
+  locked: StrategyOption | null;
+  onDone: () => void;
+  onCancel: () => void;
+  onClear: () => void;
+}) {
+  const [wizard, setWizard] = useState<DeployWizard>(() => {
+    const w = newWizard();
+    if (locked) {
+      const { path, cls } = splitStrategyPath(locked.path);
+      w.strategy_path = path;
+      w.strategy_cls = cls;
+    }
+    return w;
+  });
   const [brokers, setBrokers] = useState<Connector[]>([]);
   const [dataProviders, setDataProviders] = useState<Connector[]>([]);
-  const [strategies, setStrategies] = useState<StrategyOption[]>([]);
+  const [strategies, setStrategies] = useState<PickerStrategy[]>([]);
+  const [exclusions, setExclusions] = useState<DeployExclusion[]>([]);
   const [paid, setPaid] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -408,12 +642,20 @@ function DeployWizardView({ onDone, onCancel }: { onDone: () => void; onCancel: 
       setBrokers(all.filter((connector) => connector.kind === 'broker'));
       setDataProviders(all.filter((connector) => connector.kind === 'data_provider'));
 
+      const auth = await authState();
+      setPaid(isPaidTier(auth.tier));
+
+      // The global picker (and its exclusions) only exists in the unbound
+      // wizard — a pre-bound deploy already knows its one strategy.
+      if (locked) return;
+
       // Only the user's own, deployable strategies (bundled/examples dropped,
       // workspace bucket preferred). Discovery hands back the class combined
       // into the path, so split it — the deploy loader needs module + class
       // separately. Function-based backtests can't run live, so drop them.
       const strategiesBody = await getJson<{
         strategies?: Array<{ path?: string; kind?: string; doc?: string }>;
+        excluded?: unknown;
       }>('/ui/api/backtest/strategies?deployable=1');
       const options = (strategiesBody?.strategies ?? [])
         .filter((raw) => (raw.kind ?? 'class') === 'class' && typeof raw.path === 'string' && raw.path.length > 0)
@@ -424,11 +666,10 @@ function DeployWizardView({ onDone, onCancel }: { onDone: () => void; onCancel: 
         })
         .filter((option) => option.path.length > 0 && option.cls.length > 0);
       setStrategies(options);
-
-      const auth = await authState();
-      setPaid(isPaidTier(auth.tier));
+      // Additive, dual-read: absent field → [] → no expander.
+      setExclusions(exclusionsFromDiscovery(strategiesBody));
     })();
-  }, []);
+  }, [locked]);
 
   const errors = useMemo(() => validateWizard(wizard), [wizard]);
 
@@ -493,20 +734,24 @@ function DeployWizardView({ onDone, onCancel }: { onDone: () => void; onCancel: 
         <div style={styles.grid2}>
           <div style={styles.field}>
             <div style={styles.fieldLabel}>Strategy</div>
-            <Select
-              fluid
-              ariaLabel="Strategy"
-              placeholder="Select a strategy…"
-              value={wizard.strategy_path && wizard.strategy_cls ? `${wizard.strategy_path}::${wizard.strategy_cls}` : ''}
-              onChange={(next) => {
-                const [path, cls] = next.split('::');
-                set({ strategy_path: path ?? '', strategy_cls: cls ?? '' });
-              }}
-              options={strategies.map((option) => ({
-                value: `${option.path}::${option.cls}`,
-                label: option.label,
-              }))}
-            />
+            {locked ? (
+              <DeployIdentityRow locked={locked} onClear={onClear} />
+            ) : (
+              <Select
+                fluid
+                ariaLabel="Strategy"
+                placeholder="Select a strategy…"
+                value={wizard.strategy_path && wizard.strategy_cls ? `${wizard.strategy_path}::${wizard.strategy_cls}` : ''}
+                onChange={(next) => {
+                  const [path, cls] = next.split('::');
+                  set({ strategy_path: path ?? '', strategy_cls: cls ?? '' });
+                }}
+                options={strategies.map((option) => ({
+                  value: `${option.path}::${option.cls}`,
+                  label: option.label,
+                }))}
+              />
+            )}
           </div>
           <div style={styles.field}>
             <div style={styles.fieldLabel}>Brokerage</div>
@@ -525,6 +770,7 @@ function DeployWizardView({ onDone, onCancel }: { onDone: () => void; onCancel: 
             />
           </div>
         </div>
+        {locked ? null : <ExclusionsExpander exclusions={exclusions} />}
       </div>
 
       <hr style={styles.divider} />
@@ -797,6 +1043,18 @@ export function LiveAlgorithmsPanel({ host }: PanelHostProps): JSX.Element {
   const [pendingConfirm, setPendingConfirm] = useState<{ id: number; action: LiveAction } | null>(null);
   const [investigateNote, setInvestigateNote] = useState<AgentNote>(null);
 
+  // The editor Deploy button resolves a file to a strategy and hands the
+  // binding here; a non-idle phase means "open the wizard pre-bound".
+  const deploySnap = useSyncExternalStore(deployStore.subscribe, deployStore.getSnapshot);
+  const hasBinding = deploySnap.phase !== 'idle';
+
+  // Report mount state so that Deploy button won't toggle an already-open Live
+  // panel shut — it re-renders into the pre-bound wizard instead.
+  useEffect(() => {
+    markLivePanelMounted();
+    return markLivePanelUnmounted;
+  }, []);
+
   // Publish the selected deployment to the AI chat (ambient), and offer a
   // one-click investigate hand-off for it.
   const selectedRow = selectedDeployment(model);
@@ -840,11 +1098,24 @@ export function LiveAlgorithmsPanel({ host }: PanelHostProps): JSX.Element {
     await load();
   };
 
-  if (view === 'wizard') {
+  // Cancel / finish: drop any binding and return to the dashboard (reloading so
+  // a fresh deploy shows). Change: drop the binding but stay on the global
+  // picker so the user can pick a different strategy.
+  const closeWizard = () => {
+    deployStore.clear();
+    setView('table');
+    void load();
+  };
+  const clearBinding = () => {
+    deployStore.clear();
+    setView('wizard');
+  };
+
+  if (view === 'wizard' || hasBinding) {
     return (
       <div style={styles.page}>
         <div>
-          <button type="button" style={styles.backBtn} onClick={() => setView('table')}>
+          <button type="button" style={styles.backBtn} onClick={closeWizard}>
             <span aria-hidden>‹</span> Live Algorithms
           </button>
           <div style={{ ...styles.title, fontSize: 17, marginTop: 4 }}>Deploy a strategy</div>
@@ -853,11 +1124,10 @@ export function LiveAlgorithmsPanel({ host }: PanelHostProps): JSX.Element {
           </div>
         </div>
         <DeployWizardView
-          onDone={() => {
-            setView('table');
-            void load();
-          }}
-          onCancel={() => setView('table')}
+          deploy={hasBinding ? deploySnap : null}
+          onDone={closeWizard}
+          onCancel={closeWizard}
+          onClear={clearBinding}
         />
       </div>
     );

@@ -48,11 +48,10 @@ env:
   npm_config_fetch_retry_mintimeout: '20000'
   npm_config_fetch_retry_maxtimeout: '120000'
   npm_config_fetch_timeout: '300000'
-  # Keep this enabled for exactly the transition build so existing alpha
-  # installs still hard-coded to the R2 feed can migrate to the new
-  # GitHub-backed alpha channel. After shipping that bridge release, flip
-  # this to "false" (or remove the R2 step entirely) to complete cutover.
-  LEGACY_ALPHA_TRANSITION_R2_UPLOAD: 'true'
+  # The Auracle fork distributes through the GitHub-backed feed only; the
+  # Cloudflare R2 alpha bridge is unconfigured here (no R2 secrets), so leave
+  # it off — enabling it fails the release job on an empty endpoint.
+  LEGACY_ALPHA_TRANSITION_R2_UPLOAD: 'false'
 
 permissions:
   contents: write

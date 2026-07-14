@@ -460,7 +460,15 @@ jobs:
           # handled explicitly later in this workflow, and electron-builder
           # must not create GitHub Releases on its own.
           if [ "${{ matrix.platform }}" == "mac" ]; then
-            if [ "${{ github.ref_type }}" == "tag" ] || [ "${{ inputs.release }}" == "true" ]; then
+            if [ -z "$CSC_LINK" ]; then
+              # No signing certificate: unset the empty CSC vars (electron-builder
+              # treats "" as a cert path) and build the unsigned local profile,
+              # even for tag builds.
+              echo "No signing certificate available - building unsigned."
+              unset CSC_LINK CSC_KEY_PASSWORD CSC_NAME
+              export CSC_IDENTITY_AUTO_DISCOVERY=false CSC_DISABLE=true
+              npm run build:mac:local -- --${{ matrix.arch }} --mac dmg zip --publish never
+            elif [ "${{ github.ref_type }}" == "tag" ] || [ "${{ inputs.release }}" == "true" ]; then
               npm run build:mac:notarized -- --${{ matrix.arch }} --mac dmg zip --publish never
             else
               npm run build:mac:local -- --${{ matrix.arch }} --mac dmg zip --publish never

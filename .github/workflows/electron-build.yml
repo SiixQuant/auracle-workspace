@@ -460,6 +460,10 @@ jobs:
           # handled explicitly later in this workflow, and electron-builder
           # must not create GitHub Releases on its own.
           if [ "${{ matrix.platform }}" == "mac" ]; then
+            # build:mac:local already passes --publish never; appending it again
+            # makes yargs collect publish=["never","never"], which fails the
+            # string comparison inside electron-builder and re-enables its
+            # GitHub publisher (crashes on the absent GH_TOKEN).
             if [ -z "$CSC_LINK" ]; then
               # No signing certificate: unset the empty CSC vars (electron-builder
               # treats "" as a cert path) and build the unsigned local profile,
@@ -467,11 +471,11 @@ jobs:
               echo "No signing certificate available - building unsigned."
               unset CSC_LINK CSC_KEY_PASSWORD CSC_NAME
               export CSC_IDENTITY_AUTO_DISCOVERY=false CSC_DISABLE=true
-              npm run build:mac:local -- --${{ matrix.arch }} --mac dmg zip --publish never
+              npm run build:mac:local -- --${{ matrix.arch }} --mac dmg zip
             elif [ "${{ github.ref_type }}" == "tag" ] || [ "${{ inputs.release }}" == "true" ]; then
               npm run build:mac:notarized -- --${{ matrix.arch }} --mac dmg zip --publish never
             else
-              npm run build:mac:local -- --${{ matrix.arch }} --mac dmg zip --publish never
+              npm run build:mac:local -- --${{ matrix.arch }} --mac dmg zip
             fi
           elif [ "${{ matrix.platform }}" == "win" ]; then
             if [ "${{ matrix.arch }}" == "arm64" ]; then

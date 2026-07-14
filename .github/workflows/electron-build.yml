@@ -321,6 +321,15 @@ jobs:
           MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
+          # Skip keychain setup entirely when no certificate is configured, so
+          # the build produces an UNSIGNED app instead of hard-failing on an
+          # empty .p12. (Windows signing already guards on its secret; mac now
+          # matches.) The app is then unsigned — Gatekeeper will warn on first
+          # open — which is the accepted state until Apple certs are provisioned.
+          if [ -z "$MACOS_CERTIFICATE" ]; then
+            echo "No MACOS_CERTIFICATE secret set — building unsigned, skipping keychain import."
+            exit 0
+          fi
           # Create temporary keychain
           KEYCHAIN_NAME="build.keychain"
           KEYCHAIN_PASSWORD="${KEYCHAIN_PASSWORD:-$(openssl rand -base64 32)}"
@@ -439,7 +448,7 @@ jobs:
           # in this workflow creates or updates the GitHub release explicitly.
           # Require notarization for release builds
           # Release builds require notarization (push to tag, or explicit release input)
-          REQUIRE_NOTARIZE: ${{ github.ref_type == 'tag' || inputs.release == true || inputs.release == 'true' }}
+          REQUIRE_NOTARIZE: ${{ (github.ref_type == 'tag' || inputs.release == true || inputs.release == 'true') && secrets.MACOS_CERTIFICATE != '' }}
           # Mark as official build for analytics tracking
           # This ensures PostHog only sends data from official GitHub release builds
           OFFICIAL_BUILD: 'true'

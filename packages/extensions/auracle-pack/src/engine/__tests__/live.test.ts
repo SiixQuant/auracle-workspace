@@ -35,6 +35,14 @@ describe('isPaidTier', () => {
     expect(isPaidTier(null)).toBe(false);
     expect(isPaidTier(undefined)).toBe(false);
   });
+
+  it('fail-closes tiers it does not recognize (engine ranks unknowns as community)', () => {
+    for (const tier of ['trial', 'starter', 'plus', 'garbage-tier']) {
+      expect(isPaidTier(tier)).toBe(false);
+    }
+    expect(isPaidTier('enterprise')).toBe(true);
+    expect(isPaidTier(' TEAM ')).toBe(true);
+  });
 });
 
 describe('computeLocked', () => {

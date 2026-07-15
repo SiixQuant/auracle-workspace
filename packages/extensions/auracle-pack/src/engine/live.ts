@@ -86,8 +86,12 @@ export const COMPUTE_LABELS: Record<Compute, string> = {
  * surfacing a 402/403 only after the user clicks Deploy.
  */
 export function isPaidTier(tier: string | null | undefined): boolean {
+  // Allow-list, not deny-list: the engine ranks any UNRECOGNIZED tier as
+  // community (fail-closed), so treating "not community" as paid here would
+  // pre-approve tiers the engine will refuse at deploy time. Covers both
+  // vocabularies (engine license tiers + account plans).
   const t = (tier ?? '').toLowerCase().trim();
-  return t.length > 0 && t !== 'community' && t !== 'free' && t !== 'unknown';
+  return t === 'pro' || t === 'institutional' || t === 'enterprise' || t === 'team';
 }
 
 /** A cloud compute target the current tier cannot run. */
@@ -97,6 +101,11 @@ export function computeLocked(compute: Compute, paid: boolean): boolean {
 
 export const COMPUTE_PAID_REASON =
   'Cloud compute is a Pro feature. Run on this machine, or upgrade for Oracle Cloud or AWS.';
+
+/** Mirrors the engine's live-mode refusal (live/tiers.py) so the wizard says
+ * the same thing BEFORE the click that the engine would say after it. */
+export const LIVE_PAID_REASON =
+  'Live execution requires a paid plan — paper deployments are free.';
 
 /**
  * Split a discovery dotted path "strategies.<module>.<Class>" into the

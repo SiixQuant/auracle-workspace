@@ -176,7 +176,7 @@ export function AccountSection(): JSX.Element {
 
   if (state.kind === 'signed-in') {
     const initial = (state.email || '?').trim().charAt(0).toUpperCase() || '?';
-    const isPro = /pro|enterprise|team/i.test(state.tier);
+    const isPro = /pro|institutional|enterprise|team/i.test(state.tier);
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <span aria-hidden style={styles.avatar}>

@@ -147,6 +147,17 @@ export async function connectCheck(): Promise<ConnectCheck | null> {
 }
 
 /**
+ * Same probe, keeping the HTTP status on failure so a caller can tell a rejected
+ * credential (401/403) from an engine that never answered (status 0) — a
+ * distinction {@link connectCheck} erases by collapsing every failure to null.
+ */
+export async function connectCheckDetailed(): Promise<
+  { ok: true; body: ConnectCheck } | { ok: false; status: number; body: unknown }
+> {
+  return getJsonDetailed<ConnectCheck>('/ui/api/ide/connect-check');
+}
+
+/**
  * Keyless sign-in transport. `/auth/*` is unauthenticated JSON served by both
  * the hosted identity deployment (HQ) and the local engine; the bridge tries
  * HQ first and reports which base opened the session, and every later call is

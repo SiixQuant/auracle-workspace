@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 <!-- Bug fixes go here -->
+- Deploy in the editor header now opens Live Algorithms with the wizard set to that file's strategy, instead of doing nothing.
+- The engine status chip now says when your credentials were rejected, rather than reporting the engine as unreachable.
 
 ### Removed
 <!-- Removed features go here -->

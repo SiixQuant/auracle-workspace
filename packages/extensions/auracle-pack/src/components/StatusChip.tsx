@@ -4,17 +4,11 @@
  * completed engine round-trip; every other state says exactly what is known.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { connectCheck, engineConfig, onConnectGeneration } from '../engine/client';
-import type { ConnectCheck } from '../engine/model';
+import { connectCheckDetailed, engineConfig, onConnectGeneration } from '../engine/client';
 import { ensurePanelKitStyles, tint, tone } from './panelkit';
+import { classifyChipState, type ChipState } from './statusChipState';
 
 const POLL_MS = 30_000;
-
-type ChipState =
-  | { kind: 'not-configured' }
-  | { kind: 'checking' }
-  | { kind: 'connected'; check: ConnectCheck }
-  | { kind: 'unreachable' };
 
 function chipText(state: ChipState): string {
   switch (state.kind) {
@@ -22,6 +16,8 @@ function chipText(state: ChipState): string {
       return 'engine: not configured';
     case 'checking':
       return 'engine: checking…';
+    case 'key-rejected':
+      return 'engine: key rejected';
     case 'unreachable':
       return 'engine: unreachable';
     case 'connected': {
@@ -38,6 +34,8 @@ function chipTitle(state: ChipState): string {
       return 'No engine credentials found. Install through the Auracle launcher or set the engine connection in the config file.';
     case 'checking':
       return 'Contacting the local Auracle engine…';
+    case 'key-rejected':
+      return 'The Auracle engine rejected your credentials. Re-provision through the launcher, or sign in again.';
     case 'unreachable':
       return 'The Auracle engine did not respond. Is the stack running?';
     case 'connected': {
@@ -51,6 +49,9 @@ const DOT_COLOR: Record<ChipState['kind'], string> = {
   'not-configured': tone.text3,
   checking: tone.caution,
   connected: tone.ok,
+  // Amber (caution), not red: a rejected key is a fix-it-yourself state
+  // (re-provision / re-auth), distinct from a genuinely unreachable engine.
+  'key-rejected': tone.caution,
   unreachable: tone.danger,
 };
 
@@ -65,13 +66,26 @@ export function AuracleStatusChip(): JSX.Element {
       setState({ kind: 'not-configured' });
       return;
     }
-    const check = await connectCheck();
-    if (check && check.ok !== false) {
-      setState({ kind: 'connected', check });
-    } else if (!config.hasKey) {
-      setState({ kind: 'not-configured' });
-    } else {
-      setState({ kind: 'unreachable' });
+    // Detailed variant keeps the HTTP status, so a 401/403 reads as a rejected
+    // key instead of a dead engine.
+    const detailed = await connectCheckDetailed();
+    const check = detailed.ok ? detailed.body : null;
+    const ok = detailed.ok && check?.ok !== false;
+    const status = detailed.ok ? 200 : detailed.status;
+    const kind = classifyChipState({ hasKey: config.hasKey, status, ok });
+    switch (kind) {
+      case 'connected':
+        setState(check ? { kind: 'connected', check } : { kind: 'unreachable' });
+        break;
+      case 'key-rejected':
+        setState({ kind: 'key-rejected' });
+        break;
+      case 'not-configured':
+        setState({ kind: 'not-configured' });
+        break;
+      case 'unreachable':
+        setState({ kind: 'unreachable' });
+        break;
     }
   }, []);
 

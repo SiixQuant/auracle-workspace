@@ -157,6 +157,7 @@ import { TipProvider } from './tips';
 import {
   initializePanelRegistry,
   getPanelById,
+  panelToggleSlot,
   PanelContainer,
   electronStorageBackend,
   initializeElectronStorageBackend,
@@ -1460,8 +1461,18 @@ export default function App() {
   useEffect(() => {
     const handleTogglePanel = (e: Event) => {
       const panelId = (e as CustomEvent).detail?.panelId;
-      if (typeof panelId === 'string') {
+      if (typeof panelId !== 'string') return;
+      // Route to the state slot that actually renders the panel: fullscreen and
+      // sidebar panels live in activeExtensionPanel, bottom panels in
+      // activeExtensionBottomPanel. Toggling the wrong slot mutates a state no
+      // render slot reads — which is why fullscreen Deploy opened nothing.
+      const slot = panelToggleSlot(getPanelById(panelId));
+      if (slot === 'panel') {
+        setActiveExtensionPanel(prev => prev === panelId ? null : panelId);
+      } else if (slot === 'bottomPanel') {
         setActiveExtensionBottomPanel(prev => prev === panelId ? null : panelId);
+      } else {
+        console.debug('[App] toggle-panel: ignoring unknown panel id', panelId);
       }
     };
 

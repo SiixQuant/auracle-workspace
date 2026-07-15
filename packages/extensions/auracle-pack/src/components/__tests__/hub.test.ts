@@ -7,6 +7,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { getActiveHubTab, HUB_ALIASES, openHubTab, resolveHubAlias } from '../hub';
+import manifest from '../../../manifest.json';
 
 describe('resolveHubAlias', () => {
   it.each([
@@ -41,6 +42,28 @@ describe('resolveHubAlias', () => {
       'schedules',
       'validation',
     ]);
+  });
+});
+
+describe('manifest and hub map stay in lockstep', () => {
+  type ManifestPanel = { id: string; aliases?: string[] };
+  const panels = (manifest as { contributions: { panels: ManifestPanel[] } }).contributions.panels;
+
+  it('the rail declares exactly the three consolidated surfaces', () => {
+    expect(panels.map(p => p.id).sort()).toEqual(['backtest', 'live-desk', 'strategy-lab']);
+  });
+
+  it('every manifest alias is a hub alias owned by the declaring hub, and vice versa', () => {
+    const manifestAliases = new Map<string, string>();
+    for (const p of panels) {
+      for (const a of p.aliases ?? []) manifestAliases.set(a, p.id);
+    }
+    // Same key set — the two maps cannot drift silently.
+    expect([...manifestAliases.keys()].sort()).toEqual(Object.keys(HUB_ALIASES).sort());
+    // And each alias's owning hub agrees on both sides.
+    for (const [alias, hubId] of manifestAliases) {
+      expect(HUB_ALIASES[alias].hub).toBe(hubId);
+    }
   });
 });
 

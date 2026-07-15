@@ -50,6 +50,12 @@ export interface RegisteredPanel {
    */
   tooltip?: string;
 
+  /**
+   * Former full panel ids (extensionId.alias) this panel absorbed.
+   * `getPanelById` resolves them to this panel so old hand-offs keep working.
+   */
+  aliases: string[];
+
   /** Main panel component */
   component: ComponentType<PanelHostProps>;
 
@@ -65,6 +71,8 @@ export interface RegisteredPanel {
 // ============================================================================
 
 let registeredPanels: RegisteredPanel[] = [];
+/** Full alias id → canonical full id, rebuilt on every sync. */
+let aliasIndex = new Map<string, string>();
 const listeners = new Set<() => void>();
 
 // ============================================================================
@@ -99,10 +107,34 @@ export function getPanelsByPlacement(placement: 'sidebar' | 'fullscreen' | 'floa
 }
 
 /**
- * Get a panel by its full ID.
+ * Build the alias → canonical-id index for a panel set. Canonical ids always
+ * win a collision: a stale alias can never shadow a real registered panel.
+ * Pure — exported for tests.
+ */
+export function buildAliasIndex(
+  panels: Array<Pick<RegisteredPanel, 'id' | 'aliases'>>
+): Map<string, string> {
+  const index = new Map<string, string>();
+  for (const panel of panels) {
+    for (const alias of panel.aliases) {
+      index.set(alias, panel.id);
+    }
+  }
+  for (const panel of panels) {
+    index.delete(panel.id);
+  }
+  return index;
+}
+
+/**
+ * Get a panel by its full ID, resolving absorbed-panel aliases to the panel
+ * that owns them (so a toggle of a retired id opens its consolidated home).
  */
 export function getPanelById(panelId: string): RegisteredPanel | undefined {
-  return registeredPanels.find(p => p.id === panelId);
+  const direct = registeredPanels.find(p => p.id === panelId);
+  if (direct) return direct;
+  const canonical = aliasIndex.get(panelId);
+  return canonical ? registeredPanels.find(p => p.id === canonical) : undefined;
 }
 
 /**
@@ -144,6 +176,8 @@ function syncPanels(): void {
   registeredPanels = loadedPanels.map(p =>
     convertToRegisteredPanel(p, channelByExtension.get(p.extensionId))
   );
+
+  aliasIndex = buildAliasIndex(registeredPanels);
 
   // Auto-register panel toggle commands for new panels
   for (const panel of registeredPanels) {
@@ -190,6 +224,8 @@ function convertToRegisteredPanel(
     order: loaded.contribution.order ?? 100,
     requiredReleaseChannel,
     tooltip: loaded.contribution.tooltip,
+    // Manifest aliases are short ids; namespace them like the panel id.
+    aliases: (loaded.contribution.aliases ?? []).map(a => `${loaded.extensionId}.${a}`),
     component: loaded.component,
     gutterButton: loaded.gutterButton,
     settingsComponent: loaded.settingsComponent,

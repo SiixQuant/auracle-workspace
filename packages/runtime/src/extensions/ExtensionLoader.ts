@@ -569,6 +569,17 @@ function validateManifest(
                 suggestion: 'Use "sidebar", "fullscreen", "floating", or "bottom"',
               });
             }
+            if (
+              panelRecord.aliases !== undefined &&
+              (!Array.isArray(panelRecord.aliases) ||
+                panelRecord.aliases.some(a => typeof a !== 'string' || !a))
+            ) {
+              errors.push({
+                error: `panels[${index}] has invalid 'aliases'`,
+                field: `contributions.panels[${index}].aliases`,
+                suggestion: 'aliases should be an array of non-empty panel-id strings',
+              });
+            }
           });
         }
       }

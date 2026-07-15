@@ -3,10 +3,9 @@
  *
  * Pack panels render inside the host DOM but are bundled separately, so
  * host Tailwind utilities are unavailable (purged) — the kit therefore
- * builds on the host's THEME VARIABLES via inline styles, plus ONE
- * injected stylesheet for what inline styles cannot express (hover /
- * focus-visible / keyframes / reduced-motion). Every color rides a host
- * var with a dark fallback, so panels track the IDE theme.
+ * styles inline, plus ONE injected stylesheet for what inline styles
+ * cannot express (hover / focus-visible / keyframes / reduced-motion).
+ * The palette is the pack-owned Hermes-on-dark token table below.
  *
  * Design contract (PRODUCT.md): native-first, one primary action per
  * panel, states are the design (skeleton / empty / error / outdated are
@@ -18,26 +17,59 @@ import type { CSSProperties, ReactNode } from 'react';
 
 /* ── tokens ─────────────────────────────────────────────────────────── */
 
+/**
+ * Hermes-on-dark, matched to the launcher's implementation (the reference
+ * material palette) so all three surfaces — website, launcher, IDE — read
+ * as one product. The pack OWNS these values: the host never injected the
+ * old --text-primary/--accent-primary variables (panels always rendered
+ * their fallbacks), so the palette lives here as literals.
+ *
+ * Accent ramp discipline: `accent` (#0053fd) is a DARK blue — fills,
+ * borders, dots, and filled-button backgrounds only, always with white
+ * ink on top. It fails contrast as text on charcoal (~3.2:1); anything
+ * that reads — link-like text, glyphs, active-tab labels, thin strokes —
+ * uses `accentText` (#7aa2ff, ≥7:1 on every surface step).
+ */
 export const tone = {
-  text: 'var(--text-primary, #d7dae0)',
-  text2: 'var(--text-secondary, #b9bec7)',
-  text3: 'var(--text-tertiary, #8a8f98)',
-  border: 'var(--border-primary, rgba(146,152,166,0.20))',
-  borderStrong: 'var(--border-primary, rgba(146,152,166,0.34))',
+  text: '#e6edf3',
+  text2: '#9da7b3',
+  text3: '#7c8694',
+  border: 'rgba(255,255,255,0.08)',
+  borderStrong: 'rgba(255,255,255,0.14)',
+  /** Charcoal canvas the panel column sits on. */
+  bg: '#0b0c0e',
   /** Card surface — a real, visible plane, not a 2%-alpha whisper. */
-  surface: 'var(--bg-secondary, #16191e)',
+  surface: '#131519',
+  /** Interactive controls / hover step above a card. */
+  surface2: '#1b1e23',
+  /** Pressed / strongest neutral fill. */
+  surface3: '#23272d',
   /** Deepest well — inputs, sunken tables. */
-  sunken: 'var(--bg-primary, #0e1013)',
-  accent: 'var(--accent-primary, #60a5fa)',
+  sunken: '#08090b',
+  /** Brand fill (Nous-blue). Fills and brand moments ONLY — never text. */
+  accent: '#0053fd',
+  /** Hover/pressed tier of the fill. */
+  accentHover: '#0042cc',
+  /** The accent as something you READ: text, glyphs, thin strokes on dark. */
+  accentText: '#7aa2ff',
+  /** Soft brand wash for selected/active backgrounds. */
+  accentSoft: 'rgba(0,83,253,0.16)',
+  /** Stronger brand stroke for focus borders and emphasis rings. */
+  accentDim: 'rgba(0,83,253,0.34)',
+  /** Ink on a filled accent — blue is dark, so white, never black. */
+  accentInk: '#ffffff',
   ok: '#3fb950',
   danger: '#e5534b',
   caution: '#d4a017',
   font: 'var(--font-family-ui, system-ui, sans-serif)',
+  /** Display serif (Hermes DNA) — heroes, panel titles, empty states.
+   *  Never data tables, numerals, or controls. */
+  display: '"Bodoni 72", Didot, "Times New Roman", Georgia, serif',
 } as const;
 
-/** Elevated surface for heroes — a touch lighter than a card, so summary
+/** Elevated surface for heroes — one step above a card, so summary
  *  bands read as raised above the content they summarise. */
-export const RAISE = 'color-mix(in srgb, var(--bg-secondary, #16191e) 92%, var(--text-primary, #d7dae0) 8%)';
+export const RAISE = tone.surface2;
 
 /** Semantic tint of a colour at low alpha — for status backgrounds. */
 export const tint = (c: string, pct = 14): string => `color-mix(in srgb, ${c} ${pct}%, transparent)`;
@@ -52,29 +84,33 @@ export const trendColor = (n: number | null | undefined): string =>
 /* ── injected stylesheet (once) ─────────────────────────────────────── */
 
 const STYLE_ID = 'auracle-panelkit-styles';
-const ACCENT = 'var(--accent-primary, #60a5fa)';
 
 const SHEET = `
-.apk-btn { transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out, opacity 150ms ease-out, filter 150ms ease-out, box-shadow 150ms ease-out; }
-.apk-btn:focus-visible, .apk-input:focus-visible, .apk-selectwrap:focus-within, .apk-rowbtn:focus-visible { outline: 2px solid ${ACCENT}; outline-offset: 1px; }
-.apk-btn-primary:hover:not(:disabled) { filter: brightness(1.08); box-shadow: 0 2px 10px -4px color-mix(in srgb, ${ACCENT} 70%, transparent); }
-.apk-btn-primary:active:not(:disabled) { filter: brightness(0.95); box-shadow: none; }
-.apk-btn-ghost:hover:not(:disabled), .apk-btn-quiet:hover:not(:disabled) { background: color-mix(in srgb, var(--text-primary, #d7dae0) 8%, transparent); border-color: color-mix(in srgb, var(--text-primary, #d7dae0) 28%, transparent); }
-.apk-btn-ghost:active:not(:disabled), .apk-btn-quiet:active:not(:disabled) { background: color-mix(in srgb, var(--text-primary, #d7dae0) 12%, transparent); }
+.apk-btn { transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out, opacity 150ms ease-out, box-shadow 150ms ease-out; }
+.apk-btn:focus-visible, .apk-input:focus-visible, .apk-selectwrap:focus-within, .apk-rowbtn:focus-visible { outline: 2px solid ${tone.accentText}; outline-offset: 1px; }
+.apk-btn-primary { background: ${tone.accent}; color: ${tone.accentInk}; box-shadow: inset 0 1px 0 rgba(255,255,255,0.14); }
+.apk-btn-primary:hover:not(:disabled) { background: ${tone.accentHover}; box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 2px 12px -4px ${tone.accentDim}; }
+.apk-btn-primary:active:not(:disabled) { background: #00379f; box-shadow: none; }
+.apk-btn-ghost:hover:not(:disabled), .apk-btn-quiet:hover:not(:disabled) { background: color-mix(in srgb, ${tone.text} 8%, transparent); border-color: color-mix(in srgb, ${tone.text} 28%, transparent); }
+.apk-btn-ghost:active:not(:disabled), .apk-btn-quiet:active:not(:disabled) { background: color-mix(in srgb, ${tone.text} 12%, transparent); }
 .apk-btn-danger:hover:not(:disabled) { background: color-mix(in srgb, ${tone.danger} 14%, transparent); }
 .apk-btn-danger:active:not(:disabled) { background: color-mix(in srgb, ${tone.danger} 20%, transparent); }
 .apk-card { transition: border-color 150ms ease-out, background-color 150ms ease-out, box-shadow 150ms ease-out; }
-.apk-card:hover { border-color: color-mix(in srgb, var(--text-primary, #d7dae0) 22%, transparent); }
+.apk-card:hover { border-color: color-mix(in srgb, ${tone.text} 22%, transparent); }
 .apk-input { transition: border-color 150ms ease-out, box-shadow 150ms ease-out; }
-.apk-input:focus { border-color: ${ACCENT}; box-shadow: 0 0 0 3px color-mix(in srgb, ${ACCENT} 22%, transparent); }
+.apk-input:focus { border-color: ${tone.accentDim}; box-shadow: 0 0 0 3px ${tone.accentSoft}; }
 .apk-selectwrap { transition: border-color 150ms ease-out; }
-.apk-selectwrap:hover { border-color: color-mix(in srgb, var(--text-primary, #d7dae0) 30%, transparent); }
+.apk-selectwrap:hover { border-color: color-mix(in srgb, ${tone.text} 30%, transparent); }
 .apk-select { appearance: none; -webkit-appearance: none; -moz-appearance: none; }
+.apk-hubtab { appearance: none; border: 1px solid transparent; background: transparent; color: ${tone.text2}; font-family: inherit; font-size: 12px; font-weight: 600; line-height: 1; padding: 7px 13px; border-radius: 7px; cursor: pointer; white-space: nowrap; transition: background-color 150ms ease-out, color 150ms ease-out; }
+.apk-hubtab:hover { background: ${tone.surface2}; color: ${tone.text}; }
+.apk-hubtab[data-active] { background: ${tone.accentSoft}; color: ${tone.accentText}; }
+.apk-hubtab:focus-visible { outline: 2px solid ${tone.accentText}; outline-offset: 1px; }
 .apk-row { transition: background-color 120ms ease-out; }
-.apk-row:hover { background: color-mix(in srgb, var(--text-primary, #d7dae0) 4%, transparent); }
+.apk-row:hover { background: color-mix(in srgb, ${tone.text} 4%, transparent); }
 .apk-enter { animation: apk-enter 180ms cubic-bezier(0.22, 1, 0.36, 1); }
 @keyframes apk-enter { from { opacity: 0; transform: translateY(2px); } }
-.apk-skeleton { background: linear-gradient(90deg, color-mix(in srgb, var(--text-primary, #d7dae0) 5%, transparent) 25%, color-mix(in srgb, var(--text-primary, #d7dae0) 11%, transparent) 50%, color-mix(in srgb, var(--text-primary, #d7dae0) 5%, transparent) 75%); background-size: 200% 100%; animation: apk-shimmer 1.6s ease-in-out infinite; border-radius: 4px; }
+.apk-skeleton { background: linear-gradient(90deg, color-mix(in srgb, ${tone.text} 5%, transparent) 25%, color-mix(in srgb, ${tone.text} 11%, transparent) 50%, color-mix(in srgb, ${tone.text} 5%, transparent) 75%); background-size: 200% 100%; animation: apk-shimmer 1.6s ease-in-out infinite; border-radius: 4px; }
 @keyframes apk-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .apk-spin { animation: apk-spin 800ms linear infinite; }
 @keyframes apk-spin { to { transform: rotate(360deg); } }
@@ -83,7 +119,7 @@ const SHEET = `
 @media (prefers-reduced-motion: reduce) {
   .apk-btn, .apk-card, .apk-input, .apk-row, .apk-selectwrap { transition: none; }
   .apk-enter { animation: none; }
-  .apk-skeleton { animation: none; background: color-mix(in srgb, var(--text-primary, #d7dae0) 8%, transparent); }
+  .apk-skeleton { animation: none; background: color-mix(in srgb, ${tone.text} 8%, transparent); }
   .apk-spin, .apk-pulse { animation: none; }
 }
 `;
@@ -120,7 +156,7 @@ export function PanelShell({
 }): JSX.Element {
   ensurePanelKitStyles();
   return (
-    <div className="auracle-panel" style={{ height: '100%', overflowY: 'auto', background: 'var(--bg-primary, transparent)' }}>
+    <div className="auracle-panel" style={{ height: '100%', overflowY: 'auto', background: tone.bg }}>
       <div
         style={{
           display: 'flex',
@@ -135,8 +171,21 @@ export function PanelShell({
       >
         <header style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1, minWidth: 0 }}>
-            {/* Explicit color: host stylesheets restyle bare headings. */}
-            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 650, letterSpacing: -0.3, color: tone.text }}>
+            {/* Explicit color: host stylesheets restyle bare headings.
+                Display serif — the panel title is a hero moment (Hermes DNA);
+                weight drops because serifs read heavier than the sans. */}
+            <h1
+              style={{
+                margin: 0,
+                fontSize: 21,
+                fontWeight: 500,
+                letterSpacing: 0,
+                lineHeight: 1.2,
+                color: tone.text,
+                fontFamily: tone.display,
+                textWrap: 'balance' as never,
+              }}
+            >
               {title}
             </h1>
             {description ? (
@@ -195,14 +244,14 @@ const BUTTON_BASE: CSSProperties = {
 };
 
 const BUTTON_VARIANTS: Record<ButtonVariant, CSSProperties> = {
+  // Background/ink/shadow live in the injected sheet (.apk-btn-primary) so
+  // hover can swap the fill to the darker accent tier — inline backgrounds
+  // would win over any :hover rule.
   primary: {
     padding: '6px 14px',
     fontSize: 12.5,
     fontWeight: 600,
     border: '1px solid transparent',
-    background: tone.accent,
-    color: '#fff',
-    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.16)`,
   },
   ghost: {
     padding: '6px 12px',
@@ -420,7 +469,8 @@ const PILL_COLOR: Record<PillKind, string> = {
   caution: tone.caution,
   danger: tone.danger,
   muted: tone.text3,
-  accent: tone.accent,
+  // Pills are READ (state word + thin border) — the ramp's text tier.
+  accent: tone.accentText,
 };
 
 /**
@@ -680,7 +730,10 @@ export function CenterState({
           {icon}
         </span>
       ) : null}
-      <div style={{ fontSize: 13.5, fontWeight: 600, color: tone.text2 }}>{title}</div>
+      {/* Empty/error rests are display moments — serif title, sans detail. */}
+      <div style={{ fontSize: 16, fontWeight: 500, color: tone.text, fontFamily: tone.display, lineHeight: 1.3 }}>
+        {title}
+      </div>
       {detail ? (
         <div style={{ fontSize: 12.5, lineHeight: 1.5, color: tone.text3, maxWidth: '52ch' }}>{detail}</div>
       ) : null}

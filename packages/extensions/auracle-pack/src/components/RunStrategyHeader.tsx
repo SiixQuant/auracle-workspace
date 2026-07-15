@@ -1,21 +1,23 @@
 /**
- * RunStrategyHeader — a slim control strip the host mounts ABOVE a .py editor
+ * RunStrategyHeader — the control strip the host mounts ABOVE a .py editor
  * (the `documentHeaders` contribution; there is no editor-toolbar/gutter
- * contribution point for extensions). Two everyday actions for the strategy in
- * the open file: Run backtest (hands the file to backtestStore + opens the
- * Backtest panel) and Deploy (hands the file to deployStore + opens the Live
- * Algorithms panel's wizard, pre-bound to this file's strategy). Each panel
- * owns its own lifecycle + results; the header only launches.
+ * contribution point for extensions). The flagship surface of the Hermes
+ * design pass (PRD #59): a brand tile, the strategy's name, and the two
+ * everyday actions — Run backtest (hands the file to backtestStore + opens
+ * the Backtest panel) and Deploy (hands the file to deployStore + fronts
+ * the Live Desk's Deployments tab, pre-bound to this file's strategy).
+ * Each panel owns its own lifecycle + results; the header only launches.
  */
 import React, { useCallback, useState } from 'react';
 import { backtestStore } from '../engine/backtestStore';
 import { deployStore } from '../engine/deployStore';
-import { tone } from './panelkit';
+import { ensurePanelKitStyles, tone } from './panelkit';
+import { openHubTab } from './hub';
 import { isBacktestPanelOpen, isLivePanelOpen } from './panelVisibility';
 
 /** Full panel ids (extensionId.panelId) — the toggle-panel event routes by id. */
 const BACKTEST_PANEL_ID = 'com.auracle.pack.backtest';
-const LIVE_PANEL_ID = 'com.auracle.pack.live-algorithms';
+const LIVE_DESK_PANEL_ID = 'com.auracle.pack.live-desk';
 
 /** Props the host hands every document-header component. */
 interface DocumentHeaderComponentProps {
@@ -33,12 +35,16 @@ function togglePanel(panelId: string): void {
   );
 }
 
-export const RunStrategyHeader: React.FC<DocumentHeaderComponentProps> = ({ filePath }) => {
+export const RunStrategyHeader: React.FC<DocumentHeaderComponentProps> = ({
+  filePath,
+  fileName,
+}) => {
+  ensurePanelKitStyles();
   const [pinged, setPinged] = useState<null | 'run' | 'deploy'>(null);
 
   const ping = useCallback((which: 'run' | 'deploy') => {
     setPinged(which);
-    window.setTimeout(() => setPinged((prev) => (prev === which ? null : prev)), 1000);
+    window.setTimeout(() => setPinged(prev => (prev === which ? null : prev)), 1000);
   }, []);
 
   const onRun = useCallback(() => {
@@ -51,23 +57,27 @@ export const RunStrategyHeader: React.FC<DocumentHeaderComponentProps> = ({ file
 
   const onDeploy = useCallback(() => {
     void deployStore.deploy(filePath);
-    // Same toggle guard as Run: don't shut an already-open Live panel; it
-    // re-renders into the pre-bound wizard when the binding lands.
-    if (!isLivePanelOpen()) togglePanel(LIVE_PANEL_ID);
+    // Front the wizard's tab regardless of desk state, then open the desk
+    // only when it's closed — the same toggle guard as Run, hub-aware.
+    openHubTab('live-desk', 'deployments');
+    if (!isLivePanelOpen()) togglePanel(LIVE_DESK_PANEL_ID);
     ping('deploy');
   }, [filePath, ping]);
 
-  const btnBase: React.CSSProperties = {
+  const strategyName = fileName?.replace(/\.py$/i, '') || 'Strategy';
+
+  const btnGeometry: React.CSSProperties = {
     display: 'inline-flex',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
     height: 26,
-    padding: '0 11px',
+    padding: '0 12px',
     borderRadius: 7,
     fontSize: 12,
     fontWeight: 600,
     cursor: 'pointer',
     fontFamily: 'inherit',
+    whiteSpace: 'nowrap',
   };
 
   return (
@@ -76,8 +86,8 @@ export const RunStrategyHeader: React.FC<DocumentHeaderComponentProps> = ({ file
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 8,
-        padding: '4px 12px',
+        gap: 10,
+        padding: '5px 14px',
         borderBottom: `1px solid ${tone.border}`,
         background: tone.surface,
         font: `12px/1.4 ${tone.font}`,
@@ -85,24 +95,56 @@ export const RunStrategyHeader: React.FC<DocumentHeaderComponentProps> = ({ file
       }}
     >
       <span
-        className="material-symbols-outlined"
         aria-hidden
-        style={{ fontSize: 16, color: tone.accent }}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 22,
+          height: 22,
+          borderRadius: 6,
+          background: tone.accentSoft,
+          border: `1px solid ${tone.accentDim}`,
+          color: tone.accentText,
+          flex: 'none',
+        }}
       >
-        bolt
+        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+          bolt
+        </span>
       </span>
-      <span style={{ color: tone.text3 }}>Auracle strategy</span>
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'baseline',
+          gap: 7,
+          minWidth: 0,
+          overflow: 'hidden',
+        }}
+      >
+        <span
+          style={{
+            fontSize: 12.5,
+            fontWeight: 600,
+            color: tone.text,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {strategyName}
+        </span>
+        <span style={{ color: tone.text3, flex: 'none' }}>Auracle strategy</span>
+      </span>
       <span style={{ flex: 1 }} />
       <button
         type="button"
-        className="auracle-run-header__run"
+        className="apk-btn apk-btn-primary auracle-run-header__run"
         onClick={onRun}
         title="Backtest the strategy in this file"
         style={{
-          ...btnBase,
+          ...btnGeometry,
           border: '1px solid transparent',
-          background: tone.accent,
-          color: '#fff',
           opacity: pinged === 'run' ? 0.85 : 1,
         }}
       >
@@ -113,18 +155,22 @@ export const RunStrategyHeader: React.FC<DocumentHeaderComponentProps> = ({ file
       </button>
       <button
         type="button"
-        className="auracle-run-header__deploy"
+        className="apk-btn apk-btn-ghost auracle-run-header__deploy"
         onClick={onDeploy}
         title="Deploy the strategy in this file to paper or live"
         style={{
-          ...btnBase,
+          ...btnGeometry,
           border: `1px solid ${tone.borderStrong}`,
           background: 'transparent',
-          color: tone.text2,
+          color: tone.text,
           opacity: pinged === 'deploy' ? 0.7 : 1,
         }}
       >
-        <span className="material-symbols-outlined" aria-hidden style={{ fontSize: 15 }}>
+        <span
+          className="material-symbols-outlined"
+          aria-hidden
+          style={{ fontSize: 15, color: tone.accentText }}
+        >
           rocket_launch
         </span>
         Deploy

@@ -22,6 +22,8 @@ import { QcImportPanel, QcBacktestResult } from '../src/components/QcImportPanel
 import { BacktestPanel, BacktestResultView } from '../src/components/BacktestPanel';
 import type { BacktestResultData } from '../src/engine/backtestStore';
 import { EquityChartShad } from '../src/components/charts/EquityChartShad';
+import { LiveDeskPanel, StrategyLabPanel } from '../src/components/hubPanels';
+import { RunStrategyHeader } from '../src/components/RunStrategyHeader';
 
 /* ── mock data ─────────────────────────────────────────────── */
 
@@ -301,17 +303,11 @@ function engineRequest(method: string, path: string): { ok: boolean; status: num
   },
 };
 
-/* ── IDE dark theme vars so panelkit tokens resolve ─────────── */
+/* ── host shell stubs. The pack owns its Hermes palette as literals now;
+      only the UI font var and the charcoal canvas matter here. ─────────── */
 const r = document.documentElement.style;
-r.setProperty('--bg-primary', '#0e1013');
-r.setProperty('--bg-secondary', '#16191e');
-r.setProperty('--text-primary', '#d7dae0');
-r.setProperty('--text-secondary', '#b9bec7');
-r.setProperty('--text-tertiary', '#8a8f98');
-r.setProperty('--border-primary', 'rgba(146,152,166,0.20)');
-r.setProperty('--accent-primary', '#60a5fa');
 r.setProperty('--font-family-ui', '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif');
-document.body.style.cssText = 'margin:0;background:#0e1013;min-height:100vh';
+document.body.style.cssText = 'margin:0;background:#0b0c0e;min-height:100vh';
 
 // ── deploy wizard states (pre-bound happy / non-deployable / picker+exclusions) ──
 const DEPLOY_BOUND: DeploySnapshot = {
@@ -349,8 +345,36 @@ function DeployWizardHarness({ deploy }: { deploy: DeploySnapshot | null }): JSX
   );
 }
 
+function RunHeaderHarness(): JSX.Element {
+  return (
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#0b0c0e' }}>
+      <RunStrategyHeader
+        filePath="/Users/you/Desktop/Auracle Strategies/desk/atlas_momentum.py"
+        fileName="atlas_momentum.py"
+        getContent={() => ''}
+        contentVersion={0}
+      />
+      <div
+        style={{
+          flex: 1,
+          padding: 20,
+          fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+          fontSize: 12.5,
+          color: '#7c8694',
+          opacity: 0.5,
+        }}
+      >
+        <pre style={{ margin: 0 }}>{'# editor surface (mock)\nclass AtlasMomentum(Strategy):\n    ...'}</pre>
+      </div>
+    </div>
+  );
+}
+
 const PANELS: Record<string, (props: { host: never }) => JSX.Element> = {
   live: LiveAlgorithmsPanel,
+  'strategy-lab': StrategyLabPanel as (props: { host: never }) => JSX.Element,
+  'live-desk': LiveDeskPanel as (props: { host: never }) => JSX.Element,
+  'run-header': RunHeaderHarness as (props: { host: never }) => JSX.Element,
   'deploy-bound': (() => <DeployWizardHarness deploy={DEPLOY_BOUND} />) as (props: { host: never }) => JSX.Element,
   'deploy-blocked': (() => <DeployWizardHarness deploy={DEPLOY_BLOCKED} />) as (props: { host: never }) => JSX.Element,
   'deploy-wizard': (() => <DeployWizardHarness deploy={null} />) as (props: { host: never }) => JSX.Element,

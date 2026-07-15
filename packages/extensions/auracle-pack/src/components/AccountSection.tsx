@@ -49,7 +49,8 @@ const styles = {
     justifyContent: 'center' as const,
     fontSize: 16,
     fontWeight: 650 as const,
-    color: tone.accent,
+    // Initials are READ — text tier; the washes stay on the brand fill hue.
+    color: tone.accentText,
     background: tint(tone.accent, 16),
     border: `1px solid ${tint(tone.accent, 42)}`,
   },

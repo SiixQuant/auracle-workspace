@@ -1466,11 +1466,15 @@ export default function App() {
       // sidebar panels live in activeExtensionPanel, bottom panels in
       // activeExtensionBottomPanel. Toggling the wrong slot mutates a state no
       // render slot reads — which is why fullscreen Deploy opened nothing.
-      const slot = panelToggleSlot(getPanelById(panelId));
+      // getPanelById also resolves absorbed-panel aliases, so store the
+      // CANONICAL id: state carrying an alias would never match the rail
+      // button or a follow-up toggle of the real id.
+      const panel = getPanelById(panelId);
+      const slot = panelToggleSlot(panel);
       if (slot === 'panel') {
-        setActiveExtensionPanel(prev => prev === panelId ? null : panelId);
+        setActiveExtensionPanel(prev => prev === panel!.id ? null : panel!.id);
       } else if (slot === 'bottomPanel') {
-        setActiveExtensionBottomPanel(prev => prev === panelId ? null : panelId);
+        setActiveExtensionBottomPanel(prev => prev === panel!.id ? null : panel!.id);
       } else {
         console.debug('[App] toggle-panel: ignoring unknown panel id', panelId);
       }

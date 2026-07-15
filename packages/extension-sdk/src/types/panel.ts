@@ -104,6 +104,14 @@ export interface PanelContribution {
    * @example "Browse commit history, inspect diffs, push/pull, and manage branches."
    */
   tooltip?: string;
+
+  /**
+   * Former panel ids (short form, like `id`) this panel absorbed. Toggles,
+   * commands, and lookups addressed to an alias resolve to this panel, so
+   * existing hand-offs keep working after panels are consolidated. Aliases
+   * get no gutter button and must not collide with any registered panel id.
+   */
+  aliases?: string[];
 }
 
 /**

@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
-import { authState, getJson, onConnectGeneration, postJson } from '../engine/client';
+import { authState, connectCheck, getJson, onConnectGeneration, postJson } from '../engine/client';
 import { Connector, isConnected, normalizeConnector } from '../engine/model';
 import { deployStore } from '../engine/deployStore';
 import {
@@ -23,6 +23,7 @@ import {
   ACTION_LABELS,
   COMPUTE_LABELS,
   COMPUTE_PAID_REASON,
+  LIVE_PAID_REASON,
   Compute,
   DeployWizard,
   Deployment,
@@ -630,6 +631,7 @@ function DeployForm({
   const [strategies, setStrategies] = useState<PickerStrategy[]>([]);
   const [exclusions, setExclusions] = useState<DeployExclusion[]>([]);
   const [paid, setPaid] = useState(false);
+  const [liveAllowed, setLiveAllowed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -644,6 +646,17 @@ function DeployForm({
 
       const auth = await authState();
       setPaid(isPaidTier(auth.tier));
+
+      // Live mode is gated on the ENGINE's answer (connect-check reports the
+      // install's live entitlement); the account tier is only the fallback
+      // for engines that predate the field. Coerce a stuck 'live' selection
+      // back to paper so a click raced against this probe can't survive.
+      const check = await connectCheck();
+      const allowed = typeof check?.live_allowed === 'boolean' ? check.live_allowed : isPaidTier(auth.tier);
+      setLiveAllowed(allowed);
+      if (!allowed) {
+        setWizard((prev) => (prev.mode === 'live' ? { ...prev, mode: 'paper' } : prev));
+      }
 
       // The global picker (and its exclusions) only exists in the unbound
       // wizard — a pre-bound deploy already knows its one strategy.
@@ -712,21 +725,34 @@ function DeployForm({
         <div style={styles.field}>
           <div style={styles.fieldLabel}>Mode</div>
           <div style={styles.segWrap}>
-            {(['paper', 'live'] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                style={styles.seg(wizard.mode === mode, mode === 'live' ? 'caution' : undefined)}
-                onClick={() => set({ mode })}
-              >
-                {mode === 'paper' ? 'Paper' : 'Live'}
-              </button>
-            ))}
+            {(['paper', 'live'] as const).map((mode) => {
+              const locked = mode === 'live' && !liveAllowed;
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  disabled={locked}
+                  title={locked ? LIVE_PAID_REASON : undefined}
+                  style={{
+                    ...styles.seg(wizard.mode === mode, mode === 'live' ? 'caution' : undefined),
+                    ...(locked ? { opacity: 0.5, cursor: 'not-allowed' } : {}),
+                  }}
+                  onClick={() => {
+                    if (!locked) set({ mode });
+                  }}
+                >
+                  {mode === 'paper' ? 'Paper' : 'Live'}
+                  {locked ? <span style={styles.proTag}>Pro</span> : null}
+                </button>
+              );
+            })}
           </div>
           {live ? (
             <div style={styles.caution}>
               <span aria-hidden>▲</span> Live places real orders through your broker.
             </div>
+          ) : !liveAllowed ? (
+            <div style={styles.help}>{LIVE_PAID_REASON}</div>
           ) : (
             <div style={styles.help}>Paper trades against the simulator. No credentials needed.</div>
           )}
@@ -765,7 +791,10 @@ function DeployForm({
                 value: broker.id,
                 label:
                   (broker.display_label || broker.id) +
-                  (isConnected(broker.status) ? '' : ' (not connected)'),
+                  (broker.gated ? ' — Pro' : isConnected(broker.status) ? '' : ' (not connected)'),
+                // The engine's per-broker paywall verdict (connections API
+                // `gated`) — same rule route_orders enforces at execution.
+                disabled: broker.gated,
               }))}
             />
           </div>

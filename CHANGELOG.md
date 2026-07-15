@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 <!-- Changes to existing functionality go here -->
+- The Live panel now pre-gates live mode and tier-gated brokerages on the plan entitlement, labeling them Pro up front instead of surfacing engine rejections after submit.
 
 ### Fixed
 <!-- Bug fixes go here -->

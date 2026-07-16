@@ -268,7 +268,7 @@ export function OpenCodePanel({
               The OpenCode CLI is required to run the agent.
             </p>
             <button
-              className="inline-flex items-center justify-center py-2 px-4 rounded-md text-sm font-medium cursor-pointer transition-all bg-[var(--nim-primary)] text-white border border-[var(--nim-primary)] hover:opacity-90"
+              className="inline-flex items-center justify-center py-2 px-4 rounded-md text-sm font-medium cursor-pointer transition-all bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border border-[var(--nim-primary)] hover:opacity-90"
               onClick={handleInstall}
             >
               Install OpenCode CLI
@@ -370,7 +370,7 @@ export function OpenCodePanel({
               />
               <button
                 data-testid="opencode-lmstudio-connect"
-                className="inline-flex items-center justify-center py-2 px-4 rounded-md text-sm font-medium cursor-pointer transition-all bg-[var(--nim-primary)] text-white border border-[var(--nim-primary)] hover:opacity-90 disabled:opacity-60 disabled:cursor-wait"
+                className="inline-flex items-center justify-center py-2 px-4 rounded-md text-sm font-medium cursor-pointer transition-all bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border border-[var(--nim-primary)] hover:opacity-90 disabled:opacity-60 disabled:cursor-wait"
                 onClick={handleConnectLMStudio}
                 disabled={lmStudioStatus === 'configuring' || !lmStudioBaseUrl.trim()}
               >

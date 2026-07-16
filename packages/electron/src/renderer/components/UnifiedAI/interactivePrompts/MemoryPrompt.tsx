@@ -113,7 +113,7 @@ export function MemorySaveButton({
 }) {
   return (
     <button
-      className="memory-save-button flex items-center justify-center w-9 h-9 p-0 rounded-md border-none cursor-pointer text-white shrink-0 transition-all duration-150 bg-[var(--nim-primary)] hover:enabled:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+      className="memory-save-button flex items-center justify-center w-9 h-9 p-0 rounded-md border-none cursor-pointer text-[var(--nim-on-primary)] shrink-0 transition-all duration-150 bg-[var(--nim-primary)] hover:enabled:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
       onClick={onSave}
       disabled={disabled || isSaving}
       title="Save to memory (Enter)"

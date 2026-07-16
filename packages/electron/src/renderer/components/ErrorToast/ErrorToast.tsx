@@ -153,7 +153,7 @@ ${JSON.stringify(notification.context, null, 2)}
               )}
               {(notification.details || notification.stack || notification.context) && (
                 <button
-                  className="error-toast-copy-btn bg-[var(--nim-primary)] text-white border-none px-3 py-1.5 rounded text-xs cursor-pointer transition-colors duration-200 hover:bg-[var(--nim-primary-hover)]"
+                  className="error-toast-copy-btn bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-none px-3 py-1.5 rounded text-xs cursor-pointer transition-colors duration-200 hover:bg-[var(--nim-primary-hover)]"
                   onClick={() => handleCopyDetails(notification)}
                 >
                   Copy Details

@@ -521,7 +521,7 @@ export function ShareToTeamDialog({
             disabled={!sharedName.trim()}
             className={`px-3.5 py-1.5 rounded-md text-[13px] font-medium inline-flex items-center gap-1.5 ${
               sharedName.trim()
-                ? 'bg-[var(--nim-primary)] text-[#0f1115] hover:bg-[var(--nim-primary-hover)] hover:text-white cursor-pointer'
+                ? 'bg-[var(--nim-primary)] text-[#0f1115] hover:bg-[var(--nim-primary-hover)] hover:text-[var(--nim-on-primary)] cursor-pointer'
                 : 'bg-[var(--nim-primary)] text-[#0f1115] opacity-50 cursor-not-allowed'
             }`}
           >

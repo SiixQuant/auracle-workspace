@@ -512,7 +512,7 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
                     <div className="flex flex-wrap gap-2">
                       {selectedExtension.availableUpdate && selectedExtension.registryEntry && (
                         <button
-                          className="py-1.5 px-3 border-none rounded text-xs font-medium cursor-pointer transition-opacity duration-150 bg-[var(--nim-primary)] text-white hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+                          className="py-1.5 px-3 border-none rounded text-xs font-medium cursor-pointer transition-opacity duration-150 bg-[var(--nim-primary)] text-[var(--nim-on-primary)] hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
                           onClick={() => handleUpdate(selectedExtension)}
                           disabled={processingId === selectedExtension.id}
                           data-testid={`installed-update-${selectedExtension.id}`}

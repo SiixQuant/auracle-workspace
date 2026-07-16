@@ -111,7 +111,7 @@ export function BoardConfigDialog({ visible, onHide, onSelect, initialConfig }: 
           </button>
           <button
             onClick={handleSave}
-            className="board-config-button board-config-button-save py-2 px-4 rounded cursor-pointer text-sm transition-all font-inherit border border-[var(--nim-primary)] bg-[var(--nim-primary)] text-white hover:bg-[var(--nim-primary-hover)]"
+            className="board-config-button board-config-button-save py-2 px-4 rounded cursor-pointer text-sm transition-all font-inherit border border-[var(--nim-primary)] bg-[var(--nim-primary)] text-[var(--nim-on-primary)] hover:bg-[var(--nim-primary-hover)]"
           >
             Save Configuration
           </button>

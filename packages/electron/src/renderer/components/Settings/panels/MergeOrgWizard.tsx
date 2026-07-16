@@ -188,7 +188,7 @@ export function MergeOrgWizard({ drainedOrg, survivorCandidates, projectCount, m
             </>
           )}
           {step === 'done' && (
-            <button className="px-3.5 py-2 text-[13px] rounded-md bg-[var(--nim-primary)] text-white" onClick={onClose} data-testid="merge-org-finish">
+            <button className="px-3.5 py-2 text-[13px] rounded-md bg-[var(--nim-primary)] text-[var(--nim-on-primary)]" onClick={onClose} data-testid="merge-org-finish">
               Done
             </button>
           )}

@@ -496,7 +496,7 @@ export function ExtensionMarketplacePanel({
 
           <div className="flex items-center gap-3 pt-2 border-t border-[var(--nim-border)]">
             <button
-              className="py-2.5 px-5 border-none rounded-md bg-[var(--nim-primary)] text-white text-sm font-medium cursor-pointer transition-opacity duration-150 hover:opacity-90"
+              className="py-2.5 px-5 border-none rounded-md bg-[var(--nim-primary)] text-[var(--nim-on-primary)] text-sm font-medium cursor-pointer transition-opacity duration-150 hover:opacity-90"
               onClick={handleAcceptRisk}
               data-testid="marketplace-accept-risk"
             >
@@ -526,7 +526,7 @@ export function ExtensionMarketplacePanel({
           Error: {error}
           <button
             onClick={loadData}
-            className="ml-4 px-4 py-2 bg-[var(--nim-primary)] text-white border-none rounded cursor-pointer"
+            className="ml-4 px-4 py-2 bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-none rounded cursor-pointer"
             data-testid="marketplace-retry"
           >
             Retry
@@ -584,7 +584,7 @@ export function ExtensionMarketplacePanel({
               className={`py-1.5 px-3 border-none rounded text-xs font-medium cursor-pointer transition-opacity duration-150 ${
                 status === 'installing'
                   ? 'bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]'
-                  : 'bg-[var(--nim-primary)] text-white hover:opacity-90'
+                  : 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)] hover:opacity-90'
               } disabled:opacity-60 disabled:cursor-not-allowed`}
               onClick={(e) => {
                 e.stopPropagation();
@@ -608,7 +608,7 @@ export function ExtensionMarketplacePanel({
               className={`py-1.5 px-3 border-none rounded text-xs font-medium cursor-pointer transition-opacity duration-150 ${
                 status === 'installing'
                   ? 'bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]'
-                  : 'bg-[var(--nim-primary)] text-white hover:opacity-90'
+                  : 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)] hover:opacity-90'
               } disabled:opacity-60 disabled:cursor-not-allowed`}
               onClick={(e) => {
                 e.stopPropagation();
@@ -655,7 +655,7 @@ export function ExtensionMarketplacePanel({
           <button
             className={`py-1.5 px-3 border rounded-full text-xs font-medium cursor-pointer transition-all duration-150 ${
               !selectedCategory
-                ? 'border-[var(--nim-primary)] bg-[var(--nim-primary)] text-white'
+                ? 'border-[var(--nim-primary)] bg-[var(--nim-primary)] text-[var(--nim-on-primary)]'
                 : 'border-[var(--nim-border)] bg-transparent text-[var(--nim-text-muted)] hover:border-[var(--nim-primary)] hover:text-[var(--nim-text)]'
             }`}
             onClick={() => setSelectedCategory(null)}
@@ -670,7 +670,7 @@ export function ExtensionMarketplacePanel({
                 key={cat.id}
                 className={`py-1.5 px-3 border rounded-full text-xs font-medium cursor-pointer transition-all duration-150 ${
                   selectedCategory === cat.id
-                    ? 'border-[var(--nim-primary)] bg-[var(--nim-primary)] text-white'
+                    ? 'border-[var(--nim-primary)] bg-[var(--nim-primary)] text-[var(--nim-on-primary)]'
                     : 'border-[var(--nim-border)] bg-transparent text-[var(--nim-text-muted)] hover:border-[var(--nim-primary)] hover:text-[var(--nim-text)]'
                 }`}
                 onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
@@ -747,7 +747,7 @@ export function ExtensionMarketplacePanel({
             data-testid="marketplace-github-url"
           />
           <button
-            className="py-2.5 px-4 border-none rounded-lg bg-[var(--nim-primary)] text-white text-sm font-medium cursor-pointer transition-opacity duration-150 hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="py-2.5 px-4 border-none rounded-lg bg-[var(--nim-primary)] text-[var(--nim-on-primary)] text-sm font-medium cursor-pointer transition-opacity duration-150 hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
             onClick={handleGithubInstall}
             disabled={githubInstalling || !githubUrl.trim()}
             data-testid="marketplace-github-install"
@@ -920,7 +920,7 @@ export function ExtensionMarketplacePanel({
                   className={`flex-1 py-3 px-6 border-none rounded-md text-[0.9375rem] font-medium cursor-pointer transition-opacity duration-150 ${
                     status === 'installing'
                       ? 'bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]'
-                      : 'bg-[var(--nim-primary)] text-white hover:opacity-90'
+                      : 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)] hover:opacity-90'
                   } disabled:opacity-60 disabled:cursor-not-allowed`}
                   onClick={() => handleUpdate(selectedExtension)}
                   disabled={status === 'installing'}
@@ -963,7 +963,7 @@ export function ExtensionMarketplacePanel({
                 className={`flex-1 py-3 px-6 border-none rounded-md text-[0.9375rem] font-medium cursor-pointer transition-opacity duration-150 ${
                   status === 'installing'
                     ? 'bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]'
-                    : 'bg-[var(--nim-primary)] text-white hover:opacity-90'
+                    : 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)] hover:opacity-90'
                 } disabled:opacity-60 disabled:cursor-not-allowed`}
                 onClick={() => handleInstall(selectedExtension)}
                 disabled={status === 'installing'}

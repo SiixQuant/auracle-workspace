@@ -139,7 +139,7 @@ export const ProjectSelectionDialog: React.FC<ProjectSelectionDialogProps> = ({
                   key={project.path}
                   className={`project-selection-item px-4 py-3 cursor-pointer border-b border-[var(--nim-border)] last:border-b-0 transition-colors duration-150 ${
                     selectedProject === project.path
-                      ? 'selected bg-[var(--nim-primary)] [&_.project-selection-item-name]:text-white [&_.project-selection-item-path]:text-white'
+                      ? 'selected bg-[var(--nim-primary)] [&_.project-selection-item-name]:text-[var(--nim-on-primary)] [&_.project-selection-item-path]:text-[var(--nim-on-primary)]'
                       : 'hover:bg-[var(--nim-bg-hover)]'
                   }`}
                   onClick={() => setSelectedProject(project.path)}

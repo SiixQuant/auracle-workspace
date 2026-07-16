@@ -890,7 +890,7 @@ export const TrackerMainView: React.FC<TrackerMainViewProps> = ({
           return model?.creatable !== false;
         })() && (
           <button
-            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-[var(--nim-primary)] rounded hover:opacity-90 transition-opacity"
+            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-[var(--nim-on-primary)] bg-[var(--nim-primary)] rounded hover:opacity-90 transition-opacity"
             onClick={() => handleNewItem(filterType !== 'all' ? filterType : 'task')}
             data-testid="tracker-toolbar-new-button"
           >

@@ -312,7 +312,9 @@ const PromptAdditionsInline: React.FC<{
                   className="px-1 py-0.5 rounded text-[9px] font-medium uppercase"
                   style={{
                     backgroundColor: att.type === 'image' ? 'var(--nim-info)' : 'var(--nim-primary)',
-                    color: 'white',
+                    // Both fills are light in the dark themes and both are dark
+                    // in the light theme, so on-primary reads on either branch.
+                    color: 'var(--nim-on-primary)',
                   }}
                 >
                   {att.type}
@@ -2477,7 +2479,7 @@ export const RichTranscriptView = React.forwardRef<
                 const targetIdx = pendingPermissionIndices[0];
                 vlistRef.current?.scrollToIndex(targetIdx, { align: 'center' });
               }}
-              className="pointer-events-auto flex items-center gap-2 px-4 py-2 bg-[var(--nim-primary)] text-white rounded-full shadow-lg text-sm font-medium cursor-pointer border-none transition-all hover:brightness-110"
+              className="pointer-events-auto flex items-center gap-2 px-4 py-2 bg-[var(--nim-primary)] text-[var(--nim-on-primary)] rounded-full shadow-lg text-sm font-medium cursor-pointer border-none transition-all hover:brightness-110"
             >
               <MaterialSymbol icon="shield" size={16} />
               {pendingPermissionIndices.length} pending permission{pendingPermissionIndices.length > 1 ? 's' : ''} — click to review
@@ -2489,7 +2491,7 @@ export const RichTranscriptView = React.forwardRef<
         <div ref={scrollButtonRef} className="rich-transcript-scroll-button-container sticky bottom-3 flex justify-center opacity-0 transition-opacity">
           <button
             onClick={scrollToBottom}
-            className="rich-transcript-scroll-button w-9 h-9 flex items-center justify-center bg-[var(--nim-primary)] text-white rounded-full border-none shadow-lg cursor-pointer transition-all hover:bg-[var(--nim-primary-hover)] hover:scale-110 pointer-events-auto"
+            className="rich-transcript-scroll-button w-9 h-9 flex items-center justify-center bg-[var(--nim-primary)] text-[var(--nim-on-primary)] rounded-full border-none shadow-lg cursor-pointer transition-all hover:bg-[var(--nim-primary-hover)] hover:scale-110 pointer-events-auto"
             title="Scroll to bottom"
           >
             <MaterialSymbol icon="arrow_downward" size={20} />

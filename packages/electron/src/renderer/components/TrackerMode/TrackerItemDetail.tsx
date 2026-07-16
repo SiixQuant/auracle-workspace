@@ -1311,7 +1311,7 @@ export const TrackerItemDetail: React.FC<TrackerItemDetailProps> = ({
           <span className="flex-1">The source body changed upstream. Update to overwrite the local body, or dismiss to keep yours.</span>
           <button
             type="button"
-            className="px-2 py-0.5 rounded text-white bg-[var(--nim-primary)] hover:opacity-90 disabled:opacity-50"
+            className="px-2 py-0.5 rounded text-[var(--nim-on-primary)] bg-[var(--nim-primary)] hover:opacity-90 disabled:opacity-50"
             disabled={bodyBusy}
             onClick={() => handleBodyAction('applyBody')}
           >

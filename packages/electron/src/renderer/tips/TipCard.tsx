@@ -148,7 +148,7 @@ export function TipCard({
     ? 'flex items-center gap-3 px-3.5 pb-3.5'
     : 'flex items-center gap-3 px-5 pb-5';
   const primaryButtonClasses = isFloating
-    ? 'inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[var(--nim-primary)] text-white border-none rounded-md text-[12.5px] font-medium cursor-pointer transition-all duration-150 hover:brightness-110 font-[inherit]'
+    ? 'inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-none rounded-md text-[12.5px] font-medium cursor-pointer transition-all duration-150 hover:brightness-110 font-[inherit]'
     : 'inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[color-mix(in_srgb,var(--nim-primary)_12%,transparent)] text-[var(--nim-primary)] border border-[color-mix(in_srgb,var(--nim-primary)_20%,transparent)] rounded-md text-[13px] font-medium cursor-pointer transition-all duration-150 hover:bg-[color-mix(in_srgb,var(--nim-primary)_18%,transparent)] font-[inherit]';
   const secondaryButtonClasses = isFloating
     ? 'text-[12.5px] text-[var(--nim-text-faint)] bg-transparent border-none cursor-pointer font-[inherit] transition-colors duration-150 hover:text-[var(--nim-text-muted)] hover:underline'

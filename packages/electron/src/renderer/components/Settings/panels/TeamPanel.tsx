@@ -323,7 +323,7 @@ function NoTeamState({ gitRemote, onCreateTeam, loading, adminOrgs, onAddToOrg, 
           <button
             onClick={onCreateTeam}
             disabled={loading}
-            className={`inline-flex items-center gap-1.5 px-5 py-2 bg-[var(--nim-primary)] border-none rounded-md text-white text-[13px] font-medium ${
+            className={`inline-flex items-center gap-1.5 px-5 py-2 bg-[var(--nim-primary)] border-none rounded-md text-[var(--nim-on-primary)] text-[13px] font-medium ${
               loading ? 'cursor-wait opacity-70' : 'cursor-pointer'
             }`}
           >
@@ -366,10 +366,10 @@ function NoTeamState({ gitRemote, onCreateTeam, loading, adminOrgs, onAddToOrg, 
               <button
                 onClick={() => selectedOrgId && onAddToOrg(selectedOrgId)}
                 disabled={!selectedOrgId || addingProject}
-                className={`inline-flex items-center gap-1.5 px-4 py-2 border-none rounded-md text-white text-[12px] font-medium shrink-0 ${
+                className={`inline-flex items-center gap-1.5 px-4 py-2 border-none rounded-md text-[12px] font-medium shrink-0 ${
                   !selectedOrgId || addingProject
                     ? 'bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-faint)] cursor-not-allowed'
-                    : 'bg-[var(--nim-primary)] cursor-pointer'
+                    : 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)] cursor-pointer'
                 }`}
               >
                 <MaterialSymbol icon="add" size={14} />
@@ -504,7 +504,7 @@ function TeamExistsState({ team, projects, workspacePath, adminOrgs, onInvite, o
             {isAdmin && localGitRemote && (
               <button
                 onClick={onLinkProject}
-                className="px-2.5 py-1 text-[11px] bg-[var(--nim-primary)] border-none rounded text-white cursor-pointer"
+                className="px-2.5 py-1 text-[11px] bg-[var(--nim-primary)] border-none rounded text-[var(--nim-on-primary)] cursor-pointer"
               >
                 Link This Project
               </button>
@@ -701,7 +701,7 @@ function TeamExistsState({ team, projects, workspacePath, adminOrgs, onInvite, o
               <button
                 onClick={handleInvite}
                 disabled={!inviteEmail.trim()}
-                className={`px-3 py-1.5 bg-[var(--nim-primary)] border-none rounded text-white text-[12px] font-medium whitespace-nowrap ${
+                className={`px-3 py-1.5 bg-[var(--nim-primary)] border-none rounded text-[var(--nim-on-primary)] text-[12px] font-medium whitespace-nowrap ${
                   inviteEmail.trim()
                     ? 'cursor-pointer opacity-100'
                     : 'cursor-not-allowed opacity-50'
@@ -803,7 +803,7 @@ function InvitePendingState({ invite, onAccept, loading, gitRemote }: {
           <button
             onClick={onAccept}
             disabled={loading}
-            className={`inline-flex items-center gap-1.5 px-5 py-2 bg-[var(--nim-primary)] border-none rounded-md text-white text-[13px] font-medium ${
+            className={`inline-flex items-center gap-1.5 px-5 py-2 bg-[var(--nim-primary)] border-none rounded-md text-[var(--nim-on-primary)] text-[13px] font-medium ${
               loading ? 'cursor-wait opacity-70' : 'cursor-pointer'
             }`}
           >

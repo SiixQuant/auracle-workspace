@@ -24,7 +24,7 @@ function stateBadge(
   }
   switch (pr.state) {
     case 'merged':
-      return { label: 'Merged', className: 'text-white bg-[var(--nim-primary)]', icon: 'merge' };
+      return { label: 'Merged', className: 'text-[var(--nim-on-primary)] bg-[var(--nim-primary)]', icon: 'merge' };
     case 'closed':
       return { label: 'Closed', className: 'text-white bg-[var(--nim-error)]', icon: 'cancel' };
     default:

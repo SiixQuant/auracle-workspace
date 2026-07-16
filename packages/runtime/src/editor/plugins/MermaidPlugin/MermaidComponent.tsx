@@ -224,7 +224,7 @@ function MermaidComponent({ content: initialContent, nodeKey, className }: Merma
           <button
             className={`mermaid-edit-button py-1 px-3 text-xs border rounded cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
               isEditing
-                ? 'bg-[var(--nim-primary)] text-white border-[var(--nim-primary)] hover:bg-[var(--nim-primary-hover)]'
+                ? 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-[var(--nim-primary)] hover:bg-[var(--nim-primary-hover)]'
                 : 'border-[var(--nim-border)] bg-[var(--nim-bg)] text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]'
             }`}
             onClick={handleToggleEdit}

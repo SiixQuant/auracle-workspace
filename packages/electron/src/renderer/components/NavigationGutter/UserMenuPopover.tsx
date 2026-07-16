@@ -110,7 +110,7 @@ export function UserMenuPopover({ onNavigateSettings, onClose, isProjectConnecte
           data-testid="user-menu-identity"
         >
           <div className="relative w-7 h-7 rounded-full bg-nim-primary flex items-center justify-center shrink-0 overflow-hidden">
-            <span className="text-xs font-semibold text-white leading-none">
+            <span className="text-xs font-semibold text-[var(--nim-on-primary)] leading-none">
               {email ? email[0].toUpperCase() : '?'}
             </span>
             {picture ? (

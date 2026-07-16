@@ -1406,7 +1406,7 @@ Please proceed with this strategy.`;
                       rows={3}
                     />
                     <button
-                      className="w-full p-2 border-none rounded bg-[var(--nim-primary)] text-white text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full p-2 border-none rounded bg-[var(--nim-primary)] text-[var(--nim-on-primary)] text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={handleManualCommit}
                       disabled={isCommitting || !commitMessage?.trim() || stagedFiles.size === 0}
                     >
@@ -1423,7 +1423,7 @@ Please proceed with this strategy.`;
                     </p>
                     <HelpTooltip testId="git-operations-commit-with-ai-button">
                       <button
-                        className="w-full p-2 border-none rounded text-white text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-br from-[var(--nim-primary)] to-[var(--nim-primary-hover)]"
+                        className="w-full p-2 border-none rounded text-[var(--nim-on-primary)] text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-br from-[var(--nim-primary)] to-[var(--nim-primary-hover)]"
                         onClick={handleSmartCommit}
                         disabled={!hasChanges}
                         data-testid="git-operations-commit-with-ai-button"
@@ -1538,7 +1538,7 @@ Please proceed with this strategy.`;
                   {worktreeCommitMode === 'manual' ? (
                     <button
                       type="button"
-                      className="w-full p-2 border-none rounded bg-[var(--nim-primary)] text-white text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full p-2 border-none rounded bg-[var(--nim-primary)] text-[var(--nim-on-primary)] text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={handleWorktreeCommit}
                       disabled={!worktreeCanCommit}
                       title={worktreeStagedCount === 0 ? 'Stage files to commit' : !worktreeCommitMessage.trim() ? 'Enter commit message' : 'Commit staged changes'}
@@ -1559,7 +1559,7 @@ Please proceed with this strategy.`;
                     <HelpTooltip testId="git-operations-commit-with-ai-button">
                       <button
                         type="button"
-                        className="w-full p-2 border-none rounded text-white text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-br from-[var(--nim-primary)] to-[var(--nim-primary-hover)]"
+                        className="w-full p-2 border-none rounded text-[var(--nim-on-primary)] text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-br from-[var(--nim-primary)] to-[var(--nim-primary-hover)]"
                         onClick={handleSmartCommit}
                         disabled={!worktreeHasUncommittedChanges}
                         data-testid="git-operations-commit-with-ai-button"
@@ -1662,7 +1662,7 @@ Please proceed with this strategy.`;
                           </button>
                           <button
                             type="button"
-                            className="px-2 py-1 border-none rounded bg-[var(--nim-primary)] text-white text-[10px] font-semibold cursor-pointer hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-2 py-1 border-none rounded bg-[var(--nim-primary)] text-[var(--nim-on-primary)] text-[10px] font-semibold cursor-pointer hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                             onClick={handleSquashClick}
                             disabled={selectedCommits.size < 2 || isSquashing}
                           >

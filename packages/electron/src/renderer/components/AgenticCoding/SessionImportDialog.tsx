@@ -233,7 +233,7 @@ export const SessionImportDialog: React.FC<SessionImportDialogProps> = ({
           <div className="session-import-dialog-error py-10 px-5 text-center text-[var(--nim-text-muted)]">
             <p>{error}</p>
             <button
-              className="mt-3 px-4 py-2 bg-[var(--nim-primary)] text-white border-none rounded cursor-pointer"
+              className="mt-3 px-4 py-2 bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-none rounded cursor-pointer"
               onClick={loadSessions}
             >
               Retry

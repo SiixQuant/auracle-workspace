@@ -182,7 +182,7 @@ function CreateTeamDialogWrapper({
           <button
             onClick={handleCreate}
             disabled={!teamName.trim()}
-            className={`px-5 py-2 bg-[var(--nim-primary)] border-none rounded-md text-white text-[13px] font-medium ${
+            className={`px-5 py-2 bg-[var(--nim-primary)] border-none rounded-md text-[var(--nim-on-primary)] text-[13px] font-medium ${
               teamName.trim()
                 ? 'cursor-pointer opacity-100'
                 : 'cursor-not-allowed opacity-50'

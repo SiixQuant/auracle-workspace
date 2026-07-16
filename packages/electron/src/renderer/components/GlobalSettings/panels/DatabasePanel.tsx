@@ -403,7 +403,7 @@ export function DatabasePanel(): React.ReactElement {
           type="button"
           onClick={startDryRun}
           disabled={dryRunRunning || !status}
-          className="nim-database-dry-run-button setting-button inline-flex items-center gap-2 py-1.5 px-3 rounded-md text-sm font-medium bg-[var(--nim-primary)] text-white border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--nim-primary-hover)]"
+          className="nim-database-dry-run-button setting-button inline-flex items-center gap-2 py-1.5 px-3 rounded-md text-sm font-medium bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--nim-primary-hover)]"
         >
           <MaterialSymbol icon={dryRunRunning ? 'sync' : 'play_arrow'} size={16} />
           {dryRunRunning ? 'Running dry run...' : 'Run dry-run migration'}
@@ -453,7 +453,7 @@ export function DatabasePanel(): React.ReactElement {
           type="button"
           onClick={() => { void openMigrationModal(); }}
           disabled={!status || status.activeBackend !== 'pglite'}
-          className="setting-button inline-flex items-center gap-2 py-1.5 px-3 rounded-md text-sm font-medium bg-[var(--nim-primary)] text-white border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--nim-primary-hover)]"
+          className="setting-button inline-flex items-center gap-2 py-1.5 px-3 rounded-md text-sm font-medium bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--nim-primary-hover)]"
         >
           <MaterialSymbol icon="upgrade" size={16} />
           Migrate to SQLite
@@ -618,7 +618,7 @@ function MigrationModal(props: {
                 type="button"
                 onClick={onStart}
                 disabled={!preflight.ok}
-                className="rounded-md bg-[var(--nim-primary)] px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+                className="rounded-md bg-[var(--nim-primary)] px-3 py-2 text-sm font-medium text-[var(--nim-on-primary)] disabled:opacity-50"
               >
                 Start migration
               </button>
@@ -663,7 +663,7 @@ function MigrationModal(props: {
               </div>
             </div>
             <div className="flex justify-end">
-              <button type="button" onClick={onClose} className="rounded-md bg-[var(--nim-primary)] px-3 py-2 text-sm font-medium text-white">
+              <button type="button" onClick={onClose} className="rounded-md bg-[var(--nim-primary)] px-3 py-2 text-sm font-medium text-[var(--nim-on-primary)]">
                 Continue
               </button>
             </div>
@@ -681,7 +681,7 @@ function MigrationModal(props: {
               <button type="button" onClick={onCopyDiagnostic} className="rounded-md border border-[var(--nim-border)] px-3 py-2 text-sm text-[var(--nim-text)]">
                 Copy diagnostic info
               </button>
-              <button type="button" onClick={onClose} className="rounded-md bg-[var(--nim-primary)] px-3 py-2 text-sm font-medium text-white">
+              <button type="button" onClick={onClose} className="rounded-md bg-[var(--nim-primary)] px-3 py-2 text-sm font-medium text-[var(--nim-on-primary)]">
                 Continue using PGLite
               </button>
             </div>
@@ -795,7 +795,7 @@ function AdoptDryRunSection({
         type="button"
         onClick={onAdopt}
         disabled={running}
-        className="setting-button inline-flex items-center gap-2 py-1.5 px-3 rounded-md text-sm font-medium bg-[var(--nim-primary)] text-white border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--nim-primary-hover)] nim-database-adopt-button"
+        className="setting-button inline-flex items-center gap-2 py-1.5 px-3 rounded-md text-sm font-medium bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--nim-primary-hover)] nim-database-adopt-button"
       >
         <MaterialSymbol icon={running ? 'sync' : 'swap_horiz'} size={16} />
         {running ? 'Switching...' : 'Switch to this SQLite copy'}

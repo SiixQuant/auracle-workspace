@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!-- Changes to existing functionality go here -->
 
 ### Fixed
-<!-- Bug fixes go here -->
+- Buttons, toggles, checkboxes, and avatars are readable again on the black-and-white palette: anything drawn on the white primary now takes its ink from the palette instead of assuming white.
 
 ### Removed
 <!-- Removed features go here -->

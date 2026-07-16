@@ -422,7 +422,7 @@ export const VoiceModePanel: React.FC<VoiceModePanelProps> = ({
                 {micPlatform === 'darwin' && (
                   <button
                     onClick={handleOpenMicSettings}
-                    className="px-3 py-1.5 rounded border border-[var(--nim-border)] bg-[var(--nim-primary)] text-white cursor-pointer text-sm flex items-center gap-1.5"
+                    className="px-3 py-1.5 rounded border border-[var(--nim-border)] bg-[var(--nim-primary)] text-[var(--nim-on-primary)] cursor-pointer text-sm flex items-center gap-1.5"
                     data-testid="voice-mode-open-mic-settings"
                   >
                     <MaterialSymbol icon="open_in_new" size={14} />
@@ -519,7 +519,7 @@ export const VoiceModePanel: React.FC<VoiceModePanelProps> = ({
                   disabled={isPreviewPlaying && !audioRef.current}
                   className={`px-3 py-1.5 rounded border border-[var(--nim-border)] cursor-pointer flex items-center gap-1 ${
                     isPreviewPlaying
-                      ? 'bg-[var(--nim-primary)] text-white'
+                      ? 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)]'
                       : 'bg-[var(--nim-bg-secondary)] text-[var(--nim-text)]'
                   }`}
                   title={isPreviewPlaying ? 'Stop preview' : 'Preview this voice'}
@@ -732,7 +732,7 @@ export const VoiceModePanel: React.FC<VoiceModePanelProps> = ({
                   <button
                     onClick={handleGenerateSummary}
                     disabled={!hasAgentConfigured}
-                    className="px-3 py-1.5 rounded border border-[var(--nim-border)] bg-[var(--nim-primary)] text-white cursor-pointer text-sm flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-1.5 rounded border border-[var(--nim-border)] bg-[var(--nim-primary)] text-[var(--nim-on-primary)] cursor-pointer text-sm flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                     data-testid="voice-mode-summary-generate"
                   >
                     <MaterialSymbol icon="auto_awesome" size={16} />

@@ -63,7 +63,7 @@ export const FloatingEditorButton: React.FC<FloatingEditorButtonProps> = ({
 }) => {
   return (
     <button
-      className={`floating-editor-button pointer-events-auto w-9 h-9 rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg)] cursor-pointer flex items-center justify-center transition-all duration-200 p-0 text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${isActive ? 'active bg-[var(--nim-primary)] text-white border-[var(--nim-primary)]' : ''}`}
+      className={`floating-editor-button pointer-events-auto w-9 h-9 rounded-md border border-[var(--nim-border)] bg-[var(--nim-bg)] cursor-pointer flex items-center justify-center transition-all duration-200 p-0 text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${isActive ? 'active bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-[var(--nim-primary)]' : ''}`}
       onClick={onClick}
       disabled={disabled}
       title={label}

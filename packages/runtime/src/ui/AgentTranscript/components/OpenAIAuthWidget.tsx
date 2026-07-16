@@ -154,7 +154,7 @@ export const OpenAIAuthWidget: React.FC = () => {
         <button
           onClick={handleLogin}
           disabled={isLoggingIn}
-          className="inline-flex items-center justify-center py-2 px-4 rounded-md text-sm font-medium cursor-pointer transition-all bg-[var(--nim-primary)] text-white hover:bg-[var(--nim-primary-hover)] disabled:opacity-60 disabled:cursor-not-allowed"
+          className="inline-flex items-center justify-center py-2 px-4 rounded-md text-sm font-medium cursor-pointer transition-all bg-[var(--nim-primary)] text-[var(--nim-on-primary)] hover:bg-[var(--nim-primary-hover)] disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {isLoggingIn ? 'Opening Login...' : status?.isLoggedIn ? 'Log In Again' : 'Log In'}
         </button>

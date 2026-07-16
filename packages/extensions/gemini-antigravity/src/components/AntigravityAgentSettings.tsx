@@ -91,7 +91,7 @@ function ToggleSwitch({
         disabled={disabled}
         className="hidden peer"
       />
-      <span className="absolute cursor-pointer inset-0 rounded-full transition-all bg-[var(--nim-bg-tertiary)] before:absolute before:content-[''] before:h-5 before:w-5 before:left-0.5 before:bottom-0.5 before:rounded-full before:transition-all before:bg-white before:shadow-sm peer-checked:bg-[var(--nim-primary)] peer-checked:before:translate-x-5" />
+      <span className="absolute cursor-pointer inset-0 rounded-full transition-all bg-[var(--nim-bg-tertiary)] before:absolute before:content-[''] before:h-5 before:w-5 before:left-0.5 before:bottom-0.5 before:rounded-full before:transition-all before:bg-[var(--nim-text)] peer-checked:before:bg-[var(--nim-on-primary)] before:shadow-sm peer-checked:bg-[var(--nim-primary)] peer-checked:before:translate-x-5" />
     </label>
   );
 }
@@ -237,7 +237,7 @@ export function AntigravityAgentSettings({
                 type="button"
                 onClick={() => { void handleEnableBackendModule(); }}
                 disabled={consentInFlight}
-                className="provider-test-button py-2 px-4 rounded-md text-sm font-medium cursor-pointer transition-all bg-[var(--nim-primary)] text-white border border-[var(--nim-primary)] hover:opacity-90 disabled:opacity-50"
+                className="provider-test-button py-2 px-4 rounded-md text-sm font-medium cursor-pointer transition-all bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border border-[var(--nim-primary)] hover:opacity-90 disabled:opacity-50"
                 data-testid="antigravity-agent-enable-backend-module"
               >
                 {consentInFlight ? 'Requesting consent...' : 'Enable provider'}

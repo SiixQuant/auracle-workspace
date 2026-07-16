@@ -405,8 +405,10 @@ function AgentAccessSection({ enabled, onChange }: {
           }`}
         >
           <span
-            className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform duration-150 ${
-              enabled ? 'translate-x-[18px]' : 'translate-x-0.5'
+            className={`absolute top-0.5 w-4 h-4 rounded-full transition-transform duration-150 ${
+              enabled
+                ? 'bg-[var(--nim-on-primary)] translate-x-[18px]'
+                : 'bg-[var(--nim-text)] translate-x-0.5'
             }`}
           />
         </span>

@@ -64,7 +64,7 @@ export function SpreadsheetToolbar({
 
       <div className="flex gap-1">
         <button
-          className={`px-3 py-1.5 text-[13px] font-medium border rounded cursor-pointer transition-all ${hasHeaders ? 'bg-[var(--nim-primary)] text-white border-[var(--nim-primary)]' : 'bg-nim-secondary text-nim border-nim hover:bg-nim-hover active:bg-nim-tertiary'} disabled:opacity-50 disabled:cursor-not-allowed`}
+          className={`px-3 py-1.5 text-[13px] font-medium border rounded cursor-pointer transition-all ${hasHeaders ? 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-[var(--nim-primary)]' : 'bg-nim-secondary text-nim border-nim hover:bg-nim-hover active:bg-nim-tertiary'} disabled:opacity-50 disabled:cursor-not-allowed`}
           onClick={onToggleHeaders}
           title={hasHeaders ? 'First row is header (click to toggle)' : 'Treat first row as header'}
         >
@@ -116,7 +116,7 @@ export function SpreadsheetToolbar({
 
       <div className="flex gap-1">
         <button
-          className={`px-3 py-1.5 text-[13px] font-medium border rounded cursor-pointer transition-all ${sortConfig?.direction === 'asc' ? 'bg-[var(--nim-primary)] text-white border-[var(--nim-primary)]' : 'bg-nim-secondary text-nim border-nim hover:bg-nim-hover active:bg-nim-tertiary'} disabled:opacity-50 disabled:cursor-not-allowed`}
+          className={`px-3 py-1.5 text-[13px] font-medium border rounded cursor-pointer transition-all ${sortConfig?.direction === 'asc' ? 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-[var(--nim-primary)]' : 'bg-nim-secondary text-nim border-nim hover:bg-nim-hover active:bg-nim-tertiary'} disabled:opacity-50 disabled:cursor-not-allowed`}
           onClick={onSortAsc}
           disabled={!hasSelection}
           title="Sort Ascending"
@@ -124,7 +124,7 @@ export function SpreadsheetToolbar({
           A-Z
         </button>
         <button
-          className={`px-3 py-1.5 text-[13px] font-medium border rounded cursor-pointer transition-all ${sortConfig?.direction === 'desc' ? 'bg-[var(--nim-primary)] text-white border-[var(--nim-primary)]' : 'bg-nim-secondary text-nim border-nim hover:bg-nim-hover active:bg-nim-tertiary'} disabled:opacity-50 disabled:cursor-not-allowed`}
+          className={`px-3 py-1.5 text-[13px] font-medium border rounded cursor-pointer transition-all ${sortConfig?.direction === 'desc' ? 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-[var(--nim-primary)]' : 'bg-nim-secondary text-nim border-nim hover:bg-nim-hover active:bg-nim-tertiary'} disabled:opacity-50 disabled:cursor-not-allowed`}
           onClick={onSortDesc}
           disabled={!hasSelection}
           title="Sort Descending"

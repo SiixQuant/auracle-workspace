@@ -182,7 +182,7 @@ export const LoginRequiredWidget: React.FC = () => {
         <button
           onClick={handleLogin}
           disabled={isLoggingIn}
-          className="login-button w-full py-3 px-5 rounded-md text-sm font-semibold cursor-pointer transition-all border-none bg-[var(--nim-primary)] text-white whitespace-nowrap hover:bg-[var(--nim-primary-hover)] disabled:cursor-not-allowed disabled:bg-[var(--nim-text-faint)] disabled:opacity-60"
+          className="login-button w-full py-3 px-5 rounded-md text-sm font-semibold cursor-pointer transition-all border-none bg-[var(--nim-primary)] text-[var(--nim-on-primary)] whitespace-nowrap hover:bg-[var(--nim-primary-hover)] disabled:cursor-not-allowed disabled:bg-[var(--nim-text-faint)] disabled:opacity-60"
         >
           {loginButtonLabel}
         </button>

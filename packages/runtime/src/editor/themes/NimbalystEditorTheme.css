@@ -641,7 +641,9 @@
 .nim-list-item-checked:after {
   content: '';
   cursor: pointer;
-  border-color: #fff;
+  /* The tick is drawn ON the :before checkbox, which fills with
+     --nim-primary — light in the dark themes. Ink must follow the fill. */
+  border-color: var(--nim-on-primary);
   border-style: solid;
   position: absolute;
   display: block;

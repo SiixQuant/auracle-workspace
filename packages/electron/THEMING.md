@@ -275,7 +275,7 @@ const darkColors = getBaseThemeColors(true); // isDark = true
 <button className={`bg-transparent ${isActive ? 'bg-nim-primary' : ''}`}>
 
 // CORRECT: Use ternary to apply mutually exclusive class sets
-<button className={`${isActive ? 'bg-nim-primary text-white' : 'bg-transparent text-nim-muted'}`}>
+<button className={`${isActive ? 'bg-nim-primary text-[var(--nim-on-primary)]' : 'bg-transparent text-nim-muted'}`}>
 ```
 
 ### Primary vs Background Colors
@@ -317,3 +317,33 @@ Examples:
 Extensions can contribute custom themes. See [EXTENSION_THEMING.md](/docs/EXTENSION_THEMING.md) for details.
 
 Users can select extension themes from the theme picker button in the navigation gutter.
+
+## Ink on a primary fill
+
+**Never hardcode `text-white` on a `--nim-primary` background.** Use `text-[var(--nim-on-primary)]`.
+
+`--nim-primary` is not a fixed brightness: it is a dark blue in the Light theme and **white** in Dark and Cursor Dark. `--nim-on-primary` is the ink that tracks it (white and black respectively). A hardcoded `text-white` is correct in exactly one theme and invisible in the other two.
+
+This applies to every way the pair can be written, not just Tailwind classes:
+
+| Fill | Ink |
+| --- | --- |
+| `bg-[var(--nim-primary)]` / `bg-nim-primary` | `text-[var(--nim-on-primary)]` |
+| `style={{ background: 'var(--nim-primary)' }}` | `style={{ color: 'var(--nim-on-primary)' }}` |
+| `background: var(--nim-primary)` in a `.css` file | `color: var(--nim-on-primary)` |
+| `from-[var(--nim-primary)]` gradient stop | `text-[var(--nim-on-primary)]` |
+| `peer-checked:bg-[var(--nim-primary)]` knob | `before:bg-[var(--nim-text)] peer-checked:before:bg-[var(--nim-on-primary)]` |
+| `bg-nim-primary` circle with an `<svg>` inside | `stroke="var(--nim-on-primary)"` / `fill="var(--nim-on-primary)"` |
+| `bg-nim-primary` with a child dot/knob `<span>` | that span's own `bg-[var(--nim-on-primary)]` |
+
+**"Ink" is not always a text colour.** A radio dot, a toggle knob, and an SVG stroke are foregrounds painted with `background-color` or `stroke`. Searching for `text-*` will not find them.
+
+**A knob on a TOGGLE tracks the track, not the fill.** The track is `--nim-bg-tertiary` (dark) when off and `--nim-primary` (white) when on, so a single knob colour is invisible in one of the two states whichever you pick. Give each state its own: `before:bg-[var(--nim-text)] peer-checked:before:bg-[var(--nim-on-primary)]`.
+
+The ink and the fill often live in **different selectors** — a `:before`/`:after` pair, a parent div with a child span, or a `:hover` rule and its descendant. Grepping one line will not find those; follow the element.
+
+**Three tokens are white in the dark themes, not one:** `--nim-primary`, `--nim-border-focus`, and `--nim-link`. All three sit under `colors` in `tailwind.config.ts`, so Tailwind generates every utility family for each (`bg-`, `ring-`, `fill-`, `from-`…). Any of those used as a FILL needs the same ink discipline.
+
+**Opacity modifiers do not work on arbitrary CSS vars.** `text-[var(--nim-on-primary)]/80` is silently dropped by Tailwind 3.4 and emits no rule at all. Use `text-[color-mix(in_srgb,var(--nim-on-primary)_80%,transparent)]`.
+
+Status colours (`--nim-success`, `--nim-error`, `--nim-warning`) are chromatic in every theme, so `text-white` on those fills is correct and should be left alone.

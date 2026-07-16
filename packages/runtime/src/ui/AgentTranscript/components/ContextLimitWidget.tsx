@@ -53,7 +53,7 @@ export const ContextLimitWidget: React.FC<ContextLimitWidgetProps> = ({ sessionI
           <button
             onClick={handleCompact}
             disabled={isCompacting}
-            className="compact-button py-2.5 px-4 rounded-md text-sm font-semibold cursor-pointer transition-all border-none bg-[var(--nim-primary)] text-white whitespace-nowrap hover:bg-[var(--nim-primary-hover)] disabled:cursor-not-allowed disabled:bg-[var(--nim-text-faint)] disabled:opacity-60"
+            className="compact-button py-2.5 px-4 rounded-md text-sm font-semibold cursor-pointer transition-all border-none bg-[var(--nim-primary)] text-[var(--nim-on-primary)] whitespace-nowrap hover:bg-[var(--nim-primary-hover)] disabled:cursor-not-allowed disabled:bg-[var(--nim-text-faint)] disabled:opacity-60"
           >
             {isCompacting ? 'Compacting...' : 'Compact'}
           </button>

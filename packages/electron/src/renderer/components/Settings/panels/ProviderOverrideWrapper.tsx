@@ -140,8 +140,8 @@ export function ProviderOverrideWrapper({
           />
           <span
             className={`toggle-slider relative w-9 h-5 rounded-[10px] transition-colors duration-200 ${
-              isOverriding ? 'bg-[var(--nim-primary)]' : 'bg-[var(--nim-bg-tertiary)]'
-            } before:content-[''] before:absolute before:top-0.5 before:left-0.5 before:w-4 before:h-4 before:bg-white before:rounded-full before:transition-transform before:duration-200 before:shadow-[0_1px_3px_rgba(0,0,0,0.2)] ${
+              isOverriding ? 'bg-[var(--nim-primary)] before:bg-[var(--nim-on-primary)]' : 'bg-[var(--nim-bg-tertiary)] before:bg-[var(--nim-text)]'
+            } before:content-[''] before:absolute before:top-0.5 before:left-0.5 before:w-4 before:h-4 before:rounded-full before:transition-transform before:duration-200 before:shadow-[0_1px_3px_rgba(0,0,0,0.2)] ${
               isOverriding ? 'before:translate-x-4' : ''
             }`}
           ></span>

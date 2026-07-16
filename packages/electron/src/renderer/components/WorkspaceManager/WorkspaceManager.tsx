@@ -721,7 +721,7 @@ export const WorkspaceManager: React.FC = () => {
               </div>
 
               <div className="welcome-actions flex justify-center gap-4">
-                <button className="btn btn-large btn-welcome-primary bg-[var(--nim-primary)] text-white border-none py-3 px-6 text-[15px] font-semibold rounded-lg cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 shadow-[0_2px_8px_rgba(59,130,246,0.3)] hover:bg-[var(--nim-primary-hover)] hover:shadow-[0_4px_12px_rgba(59,130,246,0.4)] hover:-translate-y-px" onClick={handleBrowse}>
+                <button className="btn btn-large btn-welcome-primary bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-none py-3 px-6 text-[15px] font-semibold rounded-lg cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:bg-[var(--nim-primary-hover)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.4)] hover:-translate-y-px" onClick={handleBrowse}>
                   <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>folder_open</span>
                   Open Folder
                 </button>

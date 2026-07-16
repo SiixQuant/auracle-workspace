@@ -177,7 +177,7 @@ const PermissionRequestWidget: React.FC<PermissionRequestWidgetProps> = ({
           Deny
         </button>
         <button
-          className="interactive-prompt__button interactive-prompt__button--allow px-3 py-1.5 text-xs font-medium rounded-md border border-transparent cursor-pointer transition-all bg-[var(--nim-primary)] text-white hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="interactive-prompt__button interactive-prompt__button--allow px-3 py-1.5 text-xs font-medium rounded-md border border-transparent cursor-pointer transition-all bg-[var(--nim-primary)] text-[var(--nim-on-primary)] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={() => onSubmit('allow', 'once')}
           disabled={isSubmitting}
         >
@@ -185,7 +185,7 @@ const PermissionRequestWidget: React.FC<PermissionRequestWidgetProps> = ({
         </button>
         <div className="interactive-prompt__separator w-px bg-[var(--nim-border)] mx-1" />
         <button
-          className="interactive-prompt__button interactive-prompt__button--session px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--nim-border)] cursor-pointer transition-all bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] hover:bg-[var(--nim-primary)] hover:text-white hover:border-[var(--nim-primary)] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="interactive-prompt__button interactive-prompt__button--session px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--nim-border)] cursor-pointer transition-all bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] hover:bg-[var(--nim-primary)] hover:text-[var(--nim-on-primary)] hover:border-[var(--nim-primary)] disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={() => onSubmit('allow', 'session')}
           disabled={isSubmitting}
           title={`Allow ${content.patternDisplayName} for this session`}
@@ -193,7 +193,7 @@ const PermissionRequestWidget: React.FC<PermissionRequestWidgetProps> = ({
           Session
         </button>
         <button
-          className="interactive-prompt__button interactive-prompt__button--always px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--nim-border)] cursor-pointer transition-all bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] hover:bg-[var(--nim-primary)] hover:text-white hover:border-[var(--nim-primary)] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="interactive-prompt__button interactive-prompt__button--always px-3 py-1.5 text-xs font-medium rounded-md border border-[var(--nim-border)] cursor-pointer transition-all bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] hover:bg-[var(--nim-primary)] hover:text-[var(--nim-on-primary)] hover:border-[var(--nim-primary)] disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={() => onSubmit('allow', 'always')}
           disabled={isSubmitting}
           title={`Save ${content.patternDisplayName} to settings`}

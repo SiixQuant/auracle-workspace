@@ -556,7 +556,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             key={mode}
             className={`text-[11px] px-2 py-0.5 rounded cursor-pointer transition-colors ${
               sortMode === mode
-                ? 'bg-[var(--nim-primary)] text-white'
+                ? 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)]'
                 : 'text-nim-muted hover:bg-nim-tertiary'
             }`}
             onClick={() => setSortMode(mode)}

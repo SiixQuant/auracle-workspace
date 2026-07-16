@@ -199,7 +199,7 @@ export function PullRequestActions({
             {...methodMenu.getReferenceProps()}
             onClick={() => methodMenu.setIsOpen(!methodMenu.isOpen)}
             disabled={busy !== null || mergeBlocked}
-            className="flex items-center px-1 bg-nim-primary text-nim-on-primary hover:bg-nim-primary-hover rounded-r border-l border-[var(--nim-on-primary)]/20 transition-colors disabled:opacity-50"
+            className="flex items-center px-1 bg-nim-primary text-nim-on-primary hover:bg-nim-primary-hover rounded-r border-l border-[color-mix(in_srgb,var(--nim-on-primary)_20%,transparent)] transition-colors disabled:opacity-50"
             data-testid="pr-merge-method-button"
             title="More merge options"
           >

@@ -95,7 +95,7 @@ export function CopilotCLIPanel({
               npm install -g @github/copilot
             </code>
             <button
-              className="inline-flex items-center justify-center py-2 px-4 rounded-md text-sm font-medium cursor-pointer transition-all bg-[var(--nim-primary)] text-white border border-[var(--nim-primary)] hover:opacity-90"
+              className="inline-flex items-center justify-center py-2 px-4 rounded-md text-sm font-medium cursor-pointer transition-all bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border border-[var(--nim-primary)] hover:opacity-90"
               onClick={handleInstall}
             >
               Install Copilot CLI

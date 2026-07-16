@@ -1005,7 +1005,7 @@ export function SettingsView({
             <button
               className={`settings-scope-tab py-1.5 px-4 rounded-md text-xs font-medium cursor-pointer transition-all duration-150 border-none ${
                 scope === 'user'
-                  ? 'bg-[var(--nim-primary)] text-white shadow-sm'
+                  ? 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)] shadow-sm'
                   : 'bg-transparent text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]'
               }`}
               onClick={() => handleScopeChange('user')}
@@ -1015,7 +1015,7 @@ export function SettingsView({
             <button
               className={`settings-scope-tab settings-scope-tab-organization py-1.5 px-4 rounded-md text-xs font-medium cursor-pointer transition-all duration-150 border-none disabled:opacity-50 disabled:cursor-not-allowed ${
                 scope === 'organization'
-                  ? 'bg-[var(--nim-primary)] text-white shadow-sm'
+                  ? 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)] shadow-sm'
                   : 'bg-transparent text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]'
               }`}
               onClick={() => handleScopeChange('organization')}
@@ -1027,7 +1027,7 @@ export function SettingsView({
             <button
               className={`settings-scope-tab py-1.5 px-4 rounded-md text-xs font-medium cursor-pointer transition-all duration-150 border-none disabled:opacity-50 disabled:cursor-not-allowed ${
                 scope === 'project'
-                  ? 'bg-[var(--nim-primary)] text-white shadow-sm'
+                  ? 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)] shadow-sm'
                   : 'bg-transparent text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]'
               }`}
               onClick={() => handleScopeChange('project')}

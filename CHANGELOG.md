@@ -9,13 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-<!-- New features go here -->
+- Cursor Dark, a neutral near-black editor theme, alongside the existing Light and Dark.
 
 ### Changed
-<!-- Changes to existing functionality go here -->
+- A finished backtest now reads like a tearsheet: it opens with what kind of evidence it is, leads with CAGR, Sharpe, Sortino, volatility and drawdown, charts growth of $10,000 on a dated log axis, and adds the risk figures the panel used to discard, with Validate as its single action.
+- Auracle's surfaces are black and white throughout: the primary action is a white pill everywhere, matching the launcher, and status colours keep their own hues.
 
 ### Fixed
-<!-- Bug fixes go here -->
+- Backtest charts now show their dates: the equity and drawdown curves label their axes and tooltips instead of counting from zero.
+- A backtest with no losing days now says so on Sortino and profit factor, instead of reporting its best-looking number and a blank.
+- Panels now use the same interface font as the rest of the app.
 
 ### Removed
 <!-- Removed features go here -->

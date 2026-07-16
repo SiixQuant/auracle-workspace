@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@floating-ui/react": "^0.27.19",
     "recharts": "^3.5.0"
   },
   "devDependencies": {

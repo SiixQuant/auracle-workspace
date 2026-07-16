@@ -5,9 +5,10 @@
  * relative-luminance math over the literal token values so a future palette
  * tweak cannot silently ship illegible text:
  *  - every text tier reads on every surface it is allowed to sit on;
- *  - the accent ramp keeps its discipline (#0053fd is a FILL — white ink on
- *    top passes AA; the blue itself is never asserted as body text);
- *  - semantic status colours read as text on cards.
+ *  - the accent is a WHITE fill carrying BLACK ink, matching the launcher's
+ *    primary pill, and is deliberately a single tier;
+ *  - semantic status colours read as text on cards AND stay distinct from
+ *    the accent, so state never renders as brand.
  */
 import { describe, expect, it } from 'vitest';
 import { RAISE, tone } from '../panelkit';
@@ -70,18 +71,41 @@ describe('Hermes token contrast', () => {
     }
   });
 
-  it('white ink passes AA on both accent fill tiers', () => {
+  it('black ink passes AA on both accent fill tiers', () => {
+    // The accent is the launcher's white pill, so its ink is BLACK. This is
+    // the inverse of the retired blue ramp, where the fill was dark and the
+    // ink was white — get it backwards and the primary button goes blank.
     expect(contrast(tone.accentInk, tone.accent)).toBeGreaterThanOrEqual(AA_TEXT);
     expect(contrast(tone.accentInk, tone.accentHover)).toBeGreaterThanOrEqual(AA_TEXT);
   });
 
-  it('the accent fill itself is only UI-grade against cards — never body text', () => {
-    const c = contrast(tone.accent, tone.surface);
-    expect(c).toBeGreaterThanOrEqual(AA_UI);
-    // If this ever passes AA_TEXT the ramp collapsed into one colour and the
-    // accentText tier lost its reason to exist — that would be a redesign,
-    // not a tweak, so fail loudly.
-    expect(c).toBeLessThan(AA_TEXT);
+  it('the accent ramp is deliberately one colour — white reads anywhere', () => {
+    // The retired blue ramp needed a separate brightened `accentText` tier
+    // because #0053fd failed as text on charcoal (~3.2:1). White does not,
+    // so the two tiers are intentionally the same value now. If they ever
+    // diverge again, the ramp grew a tier that needs its own contrast proof.
+    expect(tone.accentText).toBe(tone.accent);
+    expect(contrast(tone.accent, tone.surface)).toBeGreaterThanOrEqual(AA_TEXT);
+  });
+
+  it('every semantic colour stays chromatic — state never renders as brand', () => {
+    // The load-bearing rule of the black-and-white system. The launcher
+    // states it at app.css:2160 — a status lamp "keeps its semantic colour
+    // (green = ready / red = needs you) ... a functional signal, not
+    // decoration". Now that the accent IS white, a status re-pointed at it
+    // would read as an ordinary brand mark and say nothing. Legibility is
+    // covered above; what this pins is that each status stays a distinct HUE
+    // rather than drifting toward the achromatic accent.
+    const chroma = (hex: string): number => {
+      const n = parseInt(hex.slice(1), 16);
+      const [r, g, b] = [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff];
+      return Math.max(r, g, b) - Math.min(r, g, b);
+    };
+    expect(chroma(tone.accent)).toBe(0); // the accent is pure white
+    for (const c of [tone.ok, tone.danger, tone.caution]) {
+      expect(c).not.toBe(tone.accent);
+      expect(chroma(c)).toBeGreaterThan(60);
+    }
   });
 
   it('semantic status colours read as text on cards', () => {

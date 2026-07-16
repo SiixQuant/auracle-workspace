@@ -141,14 +141,16 @@ const lightThemeColors: ExtendedThemeColors = {
 /**
  * Built-in dark theme colors — Hermes-on-dark (PRD #59).
  *
- * The charcoal depth ramp and Nous-blue accent ramp match the launcher and
- * the auracle-pack panelkit, so chrome and panels read as one product.
- * Ramp discipline: `primary` (#0053fd) is a dark blue FILL and always pairs
- * with white `on-primary`; anything blue that must be READ on charcoal —
- * links, focus rings, cursors, info — uses the brightened text tier
- * (#7aa2ff, ≥7:1 on every surface step). Editor syntax, terminal ANSI, and
- * the semantic status colours are deliberately untouched: legibility there
- * outranks brand.
+ * The charcoal depth ramp and the WHITE accent match the launcher and the
+ * auracle-pack panelkit, so chrome and panels read as one product. The
+ * launcher's primary control is a white pill with black text; this is that
+ * value, promoted from a per-screen override into the token.
+ *
+ * Ramp discipline: `primary` (#ffffff) is a LIGHT fill and always pairs with
+ * black `on-primary` — the inverse of the retired blue ramp. White reads on
+ * every charcoal step, so links and focus rings need no separate brightened
+ * tier. Editor syntax, terminal ANSI, and the semantic status colours are
+ * deliberately untouched: legibility and meaning there outrank brand.
  */
 const darkThemeColors: ExtendedThemeColors = {
   // Backgrounds (charcoal ramp: canvas #0b0c0e, card #131519, steps up)
@@ -156,7 +158,7 @@ const darkThemeColors: ExtendedThemeColors = {
   'bg-secondary': '#0b0c0e',
   'bg-tertiary': '#1b1e23',
   'bg-hover': 'rgba(255, 255, 255, 0.05)',
-  'bg-selected': 'rgba(0, 83, 253, 0.18)',
+  'bg-selected': 'rgba(255, 255, 255, 0.10)',
   'bg-active': '#23272d',
 
   // Text
@@ -167,22 +169,28 @@ const darkThemeColors: ExtendedThemeColors = {
 
   // Borders
   'border': 'rgba(255, 255, 255, 0.10)',
-  'border-focus': '#7aa2ff',
+  'border-focus': '#ffffff',
 
-  // Primary (brand fill + white ink; hover darkens like the launcher)
-  'primary': '#0053fd',
-  'primary-hover': '#0042cc',
-  'on-primary': '#ffffff',
+  // Primary — the launcher's white pill (background #fff, colour #000). The
+  // fill is LIGHT, so its ink is black; getting that backwards blanks every
+  // primary button. Status colours below stay chromatic: the launcher's rule
+  // is that a functional signal keeps its hue and never becomes brand.
+  'primary': '#ffffff',
+  'primary-hover': '#e6edf3',
+  'on-primary': '#000000',
 
-  // Links (accent as text — the readable tier of the ramp)
-  'link': '#7aa2ff',
-  'link-hover': '#9fbcff',
+  // Links — white; the retired blue ramp needed a brightened tier to read on
+  // charcoal, white does not.
+  'link': '#ffffff',
+  'link-hover': '#e6edf3',
 
-  // Status
+  // Status — deliberately chromatic. These convey STATE and must never be
+  // re-pointed at the (now white) accent, or "healthy" becomes indistinguishable
+  // from an ordinary brand mark.
   'success': '#4ade80',
   'warning': '#fbbf24',
   'error': '#ef4444',
-  'info': '#7aa2ff',
+  'info': '#9da7b3',
   'purple': '#a78bfa',
 
   // Code
@@ -201,7 +209,7 @@ const darkThemeColors: ExtendedThemeColors = {
   'toolbar-bg': '#131519',
   'toolbar-border': 'rgba(255, 255, 255, 0.10)',
   'toolbar-hover': '#1b1e23',
-  'toolbar-active': 'rgba(0, 83, 253, 0.22)',
+  'toolbar-active': 'rgba(255, 255, 255, 0.14)',
 
   // Special
   'highlight-bg': 'rgba(255, 212, 0, 0.2)',
@@ -234,7 +242,7 @@ const darkThemeColors: ExtendedThemeColors = {
   // Terminal
   'terminal-bg': '#0b0c0e',
   'terminal-fg': '#e6edf3',
-  'terminal-cursor': '#7aa2ff',
+  'terminal-cursor': '#ffffff',
   'terminal-cursor-accent': '#0b0c0e',
   'terminal-selection': 'rgba(255, 255, 255, 0.2)',
 
@@ -259,10 +267,136 @@ const darkThemeColors: ExtendedThemeColors = {
   'terminal-ansi-bright-white': '#ffffff',
 };
 
-// Built-in themes (only light and dark - other themes are loaded from files)
+/**
+ * Cursor Dark — a neutral near-black editor theme.
+ *
+ * Derived from the "Cursor Dark" VS Code theme by Cédric Verlinden, used
+ * under the MIT licence. The full licence and copyright notice ship in the
+ * app's third-party notices, as MIT requires. Source:
+ * https://github.com/CedricVerlinden/cursor-dark
+ *
+ * Two deliberate departures from the upstream values, both to keep this theme
+ * inside the Auracle design system rather than importing another product's
+ * brand:
+ *   1. `primary` / `link` are the house WHITE, not upstream's #4c9df3 blue.
+ *      The rest of the app has no blue in it; a theme should not reintroduce
+ *      one on the buttons.
+ *   2. `info` is neutral for the same reason.
+ * The editor canvas, syntax palette, and terminal ANSI ramp are upstream's,
+ * unchanged — that is the part being adopted.
+ */
+const cursorDarkThemeColors: ExtendedThemeColors = {
+  // Backgrounds — upstream's neutral near-black ladder
+  'bg': '#1a1a1a',
+  'bg-secondary': '#141414',
+  'bg-tertiary': '#292929',
+  'bg-hover': 'rgba(42, 42, 42, 0.6)',
+  'bg-selected': 'rgba(255, 255, 255, 0.11)',
+  'bg-active': 'rgba(255, 255, 255, 0.06)',
+
+  // Text
+  'text': '#d8dee9',
+  'text-muted': '#a0a0a0',
+  'text-faint': '#6d6d6d',
+  'text-disabled': '#505050',
+
+  // Borders
+  'border': 'rgba(255, 255, 255, 0.05)',
+  'border-focus': '#ffffff',
+
+  // Primary — house white, not upstream's #4c9df3
+  'primary': '#ffffff',
+  'primary-hover': '#e6edf3',
+  'on-primary': '#000000',
+
+  // Links — house white, not upstream's #4c9df3
+  'link': '#ffffff',
+  'link-hover': '#e6edf3',
+
+  // Status — chromatic, per the system's brand-vs-state rule
+  'success': '#a3be8c',
+  'warning': '#ebcb8b',
+  'error': '#bf616a',
+  'info': '#a0a0a0',
+  'purple': '#aaa0fa',
+
+  // Code
+  'code-bg': '#141414',
+  'code-text': '#d6d6dd',
+  'code-border': 'rgba(255, 255, 255, 0.05)',
+  'code-gutter': '#1a1a1a',
+
+  // Table
+  'table-border': 'rgba(255, 255, 255, 0.05)',
+  'table-header': '#292929',
+  'table-cell': '#1a1a1a',
+  'table-stripe': '#1e1e1e',
+
+  // Toolbar
+  'toolbar-bg': '#141414',
+  'toolbar-border': 'rgba(255, 255, 255, 0.05)',
+  'toolbar-hover': '#292929',
+  'toolbar-active': 'rgba(255, 255, 255, 0.11)',
+
+  // Special
+  'highlight-bg': 'rgba(255, 212, 0, 0.2)',
+  'highlight-border': 'rgba(255, 212, 0, 0.4)',
+  'quote-text': '#a0a0a0',
+  'quote-border': '#2a2a2a',
+
+  // Scrollbar
+  'scrollbar-thumb': '#404040',
+  'scrollbar-thumb-hover': '#505050',
+  'scrollbar-track': 'transparent',
+
+  // Diff
+  'diff-add-bg': 'rgba(163, 190, 140, 0.14)',
+  'diff-add-border': 'rgba(163, 190, 140, 0.4)',
+  'diff-remove-bg': 'rgba(191, 97, 106, 0.14)',
+  'diff-remove-border': 'rgba(191, 97, 106, 0.4)',
+
+  // Syntax — upstream's palette verbatim
+  'code-comment': '#6d6d6d',
+  'code-punctuation': '#d6d6dd',
+  'code-property': '#aa9bf5',
+  'code-selector': '#83d6c5',
+  'code-operator': '#d6d6dd',
+  'code-attr': '#aaa0fa',
+  'code-variable': '#d6d6dd',
+  'code-function': '#efb080',
+
+  // Terminal
+  'terminal-bg': '#141414',
+  'terminal-fg': '#d8dee9',
+  'terminal-cursor': '#ffffff',
+  'terminal-cursor-accent': '#141414',
+  'terminal-selection': 'rgba(99, 98, 98, 0.87)',
+
+  // Terminal ANSI — upstream's ramp
+  'terminal-ansi-black': '#2a2a2a',
+  'terminal-ansi-red': '#bf616a',
+  'terminal-ansi-green': '#a3be8c',
+  'terminal-ansi-yellow': '#ebcb8b',
+  'terminal-ansi-blue': '#81a1c1',
+  'terminal-ansi-magenta': '#b48ead',
+  'terminal-ansi-cyan': '#88c0d0',
+  'terminal-ansi-white': '#ffffff',
+  'terminal-ansi-bright-black': '#505050',
+  'terminal-ansi-bright-red': '#bf616a',
+  'terminal-ansi-bright-green': '#a3be8c',
+  'terminal-ansi-bright-yellow': '#ebcb8b',
+  'terminal-ansi-bright-blue': '#81a1c1',
+  'terminal-ansi-bright-magenta': '#b48ead',
+  'terminal-ansi-bright-cyan': '#88c0d0',
+  'terminal-ansi-bright-white': '#ffffff',
+};
+
+// Built-in themes. Light and dark are the base pair; cursor-dark is an
+// additional neutral near-black option (see its attribution note above).
 const builtInThemes: Theme[] = [
   { id: 'light', name: 'Light', isDark: false, colors: lightThemeColors },
   { id: 'dark', name: 'Dark', isDark: true, colors: darkThemeColors },
+  { id: 'cursor-dark', name: 'Cursor Dark', isDark: true, colors: cursorDarkThemeColors },
 ];
 
 // Initialize built-in themes

@@ -14,13 +14,14 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
 import { cn, ensureShadChartStyles } from './theme';
-import { finitePoints } from './series';
+import { canUseLogScale, finitePoints, logTicks } from './series';
 
 export type ChartVariant = 'equity' | 'drawdown';
 
@@ -34,11 +35,31 @@ interface EquityChartShadProps {
   variant?: ChartVariant;
   /** Show the trend footer (first→last delta). Default true for equity. */
   footer?: boolean;
+  /**
+   * Show the "Trending up N%" line. Default true. Turn it off when the caller's
+   * `footerNote` already states the outcome — printing both says the same thing
+   * twice in two different units.
+   */
+  trend?: boolean;
   height?: number;
   /** Formats the tooltip / footer value. Default: 2-dp fixed. */
   format?: (v: number) => string;
   /** Extra footer subline; overrides the default "growth of $1" copy. */
   footerNote?: string;
+  /**
+   * Y-axis scale. Defaults to 'linear' so existing callers are untouched;
+   * 'log' silently degrades back to linear when the series touches zero or
+   * goes negative, because a log axis cannot express those.
+   */
+  scale?: 'linear' | 'log';
+  /** Reveal the Y axis. Off by default — existing callers render as before. */
+  showYAxis?: boolean;
+  /** Formats Y-axis ticks. Falls back to `format`. */
+  yTickFormat?: (v: number) => string;
+  /** A horizontal marker, e.g. the max-drawdown line. In DATA units. */
+  refLine?: { y: number; label: string };
+  /** Use the house ALL-CAPS title treatment (scoped; does not restyle other panels). */
+  caps?: boolean;
 }
 
 const COLOR: Record<ChartVariant, string> = {
@@ -93,16 +114,20 @@ export function ChartCard({
   title,
   description,
   footer,
+  caps,
   children,
 }: {
   title?: string;
   description?: string;
   footer?: ReactNode;
+  /** House ALL-CAPS title. Scoped to a modifier class so opting in here does
+   *  NOT restyle `.sc-title` for the panels that don't ask for it. */
+  caps?: boolean;
   children: ReactNode;
 }): JSX.Element {
   ensureShadChartStyles();
   return (
-    <div className={cn('auracle-shad', 'sc-card')}>
+    <div className={cn('auracle-shad', 'sc-card', caps && 'sc-card--house')}>
       {title || description ? (
         <div className="sc-header">
           {title ? <span className="sc-title">{title}</span> : null}
@@ -122,9 +147,15 @@ export function EquityChartShad({
   description,
   variant = 'equity',
   footer = true,
+  trend = true,
   height = 180,
   format = (v) => v.toFixed(2),
   footerNote,
+  scale = 'linear',
+  showYAxis = false,
+  yTickFormat,
+  refLine,
+  caps = false,
 }: EquityChartShadProps): JSX.Element | null {
   ensureShadChartStyles();
   // Honesty gate: drop non-finite points (the engine serialises NaN/Inf as
@@ -143,21 +174,37 @@ export function EquityChartShad({
   const delta = variant === 'drawdown' ? last : first !== 0 ? (last / first - 1) * 100 : 0;
   const up = delta >= 0;
 
+  // A log axis needs strictly-positive data. A wiped-out curve reaches zero,
+  // so degrade to linear rather than render an empty axis — and say so in the
+  // footer, because a silently-linear "log scale" chart is a lie by omission.
+  const logRequested = scale === 'log' && variant === 'equity';
+  const useLog = logRequested && canUseLogScale(data);
+  const logFellBack = logRequested && !useLog;
+
+  const lo = Math.min(...data.map((d) => d.v));
+  const hi = Math.max(...data.map((d) => d.v));
+  const yTick = yTickFormat ?? format;
+
   const footerEl =
     footer && variant === 'equity' ? (
       <>
-        <span className="sc-trend" style={{ color: up ? 'var(--chart-1)' : 'var(--chart-2)' }}>
-          {up ? 'Trending up' : 'Trending down'} {Math.abs(delta).toFixed(1)}% over the window
-          {up ? <ArrowUp /> : <ArrowDown />}
+        {trend ? (
+          <span className="sc-trend" style={{ color: up ? 'var(--chart-1)' : 'var(--chart-2)' }}>
+            {up ? 'Trending up' : 'Trending down'} {Math.abs(delta).toFixed(1)}% over the window
+            {up ? <ArrowUp /> : <ArrowDown />}
+          </span>
+        ) : null}
+        <span className="sc-sub">
+          {footerNote ?? 'Growth of $1 across the tested window'}
+          {logFellBack ? ' · Linear scale: the curve reaches zero, which a log axis cannot show.' : ''}
         </span>
-        <span className="sc-sub">{footerNote ?? 'Growth of $1 across the tested window'}</span>
       </>
     ) : null;
 
   const axisTick = { fill: 'var(--sc-muted)', fontSize: 11 };
 
   return (
-    <ChartCard title={title} description={description} footer={footerEl}>
+    <ChartCard title={title} description={description} footer={footerEl} caps={caps}>
       <div style={{ width: '100%', height }}>
         <ResponsiveContainer width="100%" height="100%">
           {variant === 'drawdown' ? (
@@ -172,7 +219,30 @@ export function EquityChartShad({
                 minTickGap={44}
                 tick={axisTick}
               />
-              <YAxis hide domain={['dataMin', 0]} />
+              <YAxis
+                hide={!showYAxis}
+                domain={['dataMin', 0]}
+                tickLine={false}
+                axisLine={false}
+                tickMargin={6}
+                width={showYAxis ? 52 : 0}
+                tick={axisTick}
+                tickFormatter={(v: number) => yTick(v)}
+              />
+              {refLine ? (
+                <ReferenceLine
+                  y={refLine.y}
+                  stroke={color}
+                  strokeDasharray="4 4"
+                  strokeOpacity={0.7}
+                  label={{
+                    value: refLine.label,
+                    position: 'insideBottomRight',
+                    fill: 'var(--sc-muted)',
+                    fontSize: 10.5,
+                  }}
+                />
+              ) : null}
               <Tooltip
                 cursor={{ stroke: 'var(--sc-border)' }}
                 content={(p) => (
@@ -208,7 +278,21 @@ export function EquityChartShad({
                 minTickGap={44}
                 tick={axisTick}
               />
-              <YAxis hide domain={['auto', 'auto']} />
+              {/* Recharts produces no usable ticks on a log axis and mishandles
+                  domain={['auto','auto']} there, so both are explicit. */}
+              <YAxis
+                hide={!showYAxis}
+                scale={useLog ? 'log' : 'linear'}
+                domain={useLog ? [lo, hi] : ['auto', 'auto']}
+                ticks={useLog ? logTicks(lo, hi) : undefined}
+                allowDataOverflow={false}
+                tickLine={false}
+                axisLine={false}
+                tickMargin={6}
+                width={showYAxis ? 52 : 0}
+                tick={axisTick}
+                tickFormatter={(v: number) => yTick(v)}
+              />
               <Tooltip
                 cursor={{ stroke: 'var(--sc-border)' }}
                 content={(p) => (

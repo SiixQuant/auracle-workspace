@@ -27,7 +27,11 @@ const SHEET = `
   --sc-muted: ${tone.text3};
   --sc-border: ${tone.border};
   --sc-radius: 12px;
-  --chart-1: ${tone.ok};
+  /* The primary series is the ACCENT, not a verdict. It was tone.ok, which
+     painted every equity curve green — including a strategy that lost money.
+     White states the series without claiming an outcome. */
+  --chart-1: ${tone.accent};
+  /* Drawdown stays red: a loss is semantic, not brand. */
   --chart-2: ${tone.danger};
   --sc-accent: ${tone.accentText};
 }
@@ -42,6 +46,14 @@ const SHEET = `
 }
 .sc-header { display: flex; flex-direction: column; gap: 3px; padding: 14px 18px 6px; }
 .sc-title { font-size: 15px; font-weight: 600; letter-spacing: -0.1px; color: var(--sc-fg); }
+/* The house's ALL-CAPS chart title. Scoped to a modifier so opting in on one
+   card never restyles the panels that render the default title. */
+.sc-card--house .sc-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
 .sc-desc { font-size: 12.5px; color: var(--sc-muted); }
 .sc-content { padding: 6px 8px 2px; }
 .sc-footer { display: flex; flex-direction: column; gap: 2px; padding: 8px 18px 15px; }

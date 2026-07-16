@@ -8,6 +8,7 @@
 import type { ComponentType } from 'react';
 import { getExtensionLoader, type LoadedPanel, type PanelHostProps, type PanelGutterButtonProps } from '@nimbalyst/runtime';
 import { registerCommand, unregisterExtension } from '../commands/ExtensionCommandRegistry';
+import { buildAliasIndex } from './panelRouting';
 
 // ============================================================================
 // Types
@@ -104,26 +105,6 @@ export function getRegisteredPanels(): RegisteredPanel[] {
  */
 export function getPanelsByPlacement(placement: 'sidebar' | 'fullscreen' | 'floating' | 'bottom'): RegisteredPanel[] {
   return registeredPanels.filter(p => p.placement === placement);
-}
-
-/**
- * Build the alias → canonical-id index for a panel set. Canonical ids always
- * win a collision: a stale alias can never shadow a real registered panel.
- * Pure — exported for tests.
- */
-export function buildAliasIndex(
-  panels: Array<Pick<RegisteredPanel, 'id' | 'aliases'>>
-): Map<string, string> {
-  const index = new Map<string, string>();
-  for (const panel of panels) {
-    for (const alias of panel.aliases) {
-      index.set(alias, panel.id);
-    }
-  }
-  for (const panel of panels) {
-    index.delete(panel.id);
-  }
-  return index;
 }
 
 /**

@@ -33,3 +33,43 @@ export function panelToggleSlot(
     ? 'panel'
     : 'bottomPanel';
 }
+
+/**
+ * Build the alias → canonical-id index for a panel set. Canonical ids always
+ * win a collision: a stale alias can never shadow a real registered panel.
+ */
+export function buildAliasIndex(
+  panels: Array<Pick<RegisteredPanel, 'id' | 'aliases'>>
+): Map<string, string> {
+  const index = new Map<string, string>();
+  for (const panel of panels) {
+    for (const alias of panel.aliases) {
+      index.set(alias, panel.id);
+    }
+  }
+  for (const panel of panels) {
+    index.delete(panel.id);
+  }
+  return index;
+}
+
+/**
+ * Next value for a toggle slot.
+ *
+ * A request addressed to the panel's OWN id is a toggle: pressing the rail
+ * button again closes it. A request addressed to an ABSORBED id (resolved
+ * here through an alias) is a NAVIGATION — the caller asked for a specific
+ * surface, not for a toggle — so it must never close the hub that now owns
+ * that surface. Without this split, a hand-off to e.g. `…pack.blotter` while
+ * the Live Desk is already open would shut the desk instead of showing the
+ * blotter.
+ */
+export function panelToggleNext(
+  prev: string | null,
+  panel: Pick<RegisteredPanel, 'id'>,
+  requestedId: string
+): string | null {
+  const viaAlias = panel.id !== requestedId;
+  if (viaAlias) return panel.id;
+  return prev === panel.id ? null : panel.id;
+}

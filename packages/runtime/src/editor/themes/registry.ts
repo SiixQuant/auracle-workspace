@@ -209,9 +209,10 @@ const darkThemeColors: ExtendedThemeColors = {
   'quote-text': '#9da7b3',
   'quote-border': '#2a2f36',
 
-  // Scrollbar
-  'scrollbar-thumb': '#2a2f36',
-  'scrollbar-thumb-hover': '#3a4048',
+  // Scrollbar — lifted off the charcoal: a thumb near the canvas value is
+  // invisible on the terminal/editor wells (#0b0c0e).
+  'scrollbar-thumb': '#3a4048',
+  'scrollbar-thumb-hover': '#4a5058',
   'scrollbar-track': 'transparent',
 
   // Diff

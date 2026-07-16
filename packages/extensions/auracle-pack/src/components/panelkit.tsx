@@ -28,7 +28,7 @@ import type { CSSProperties, ReactNode } from 'react';
  * borders, dots, and filled-button backgrounds only, always with white
  * ink on top. It fails contrast as text on charcoal (~3.2:1); anything
  * that reads — link-like text, glyphs, active-tab labels, thin strokes —
- * uses `accentText` (#7aa2ff, ≥7:1 on every surface step).
+ * uses `accentText` (#7aa2ff, ≥6:1 on every surface step; 7.35 on a card).
  */
 export const tone = {
   text: '#e6edf3',

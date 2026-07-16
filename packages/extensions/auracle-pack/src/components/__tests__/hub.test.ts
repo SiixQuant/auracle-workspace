@@ -6,7 +6,13 @@
  */
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { getActiveHubTab, HUB_ALIASES, openHubTab, resolveHubAlias } from '../hub';
+import { getActiveHubTab, HUB_ALIASES, openHubTab, resolveHubAlias, type HubId } from '../hub';
+import {
+  LIVE_DESK_DEFAULT_TAB,
+  LIVE_DESK_TABS,
+  STRATEGY_LAB_DEFAULT_TAB,
+  STRATEGY_LAB_TABS,
+} from '../hubPanels';
 import manifest from '../../../manifest.json';
 
 describe('resolveHubAlias', () => {
@@ -64,6 +70,30 @@ describe('manifest and hub map stay in lockstep', () => {
     for (const [alias, hubId] of manifestAliases) {
       expect(HUB_ALIASES[alias].hub).toBe(hubId);
     }
+  });
+});
+
+describe('alias tab targets point at tabs that actually exist', () => {
+  // HubShell silently falls back to tabs[0] for an unknown tab id, so a
+  // renamed or mistyped target would land a hand-off on the wrong surface
+  // with every other test still green. This is the guard.
+  const TAB_IDS: Record<HubId, string[]> = {
+    'strategy-lab': STRATEGY_LAB_TABS.map(t => t.id),
+    'live-desk': LIVE_DESK_TABS.map(t => t.id),
+  };
+
+  it.each(Object.entries(HUB_ALIASES))('%s targets a real tab on its hub', (_alias, target) => {
+    expect(TAB_IDS[target.hub]).toContain(target.tab);
+  });
+
+  it('each hub default tab is one of its own tabs', () => {
+    expect(TAB_IDS['strategy-lab']).toContain(STRATEGY_LAB_DEFAULT_TAB);
+    expect(TAB_IDS['live-desk']).toContain(LIVE_DESK_DEFAULT_TAB);
+  });
+
+  it('every tab on each hub is reachable — no orphan tabs', () => {
+    expect(TAB_IDS['strategy-lab'].length).toBe(3);
+    expect(TAB_IDS['live-desk'].length).toBe(5);
   });
 });
 

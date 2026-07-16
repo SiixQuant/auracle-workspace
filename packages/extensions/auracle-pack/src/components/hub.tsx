@@ -15,7 +15,7 @@
  *    `openHubTab` directly, which works even when no toggle event fires
  *    because the hub is already open.
  */
-import { useEffect, useState, type ComponentType, type ReactNode } from 'react';
+import { useSyncExternalStore, type ComponentType, type ReactNode } from 'react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import { ensurePanelKitStyles, tone } from './panelkit';
 
@@ -55,7 +55,7 @@ export function openHubTab(hub: HubId, tab: string): void {
   for (const l of listeners) l();
 }
 
-function subscribeHubTabs(listener: () => void): () => void {
+export function subscribeHubTabs(listener: () => void): () => void {
   listeners.add(listener);
   return () => {
     listeners.delete(listener);
@@ -98,12 +98,11 @@ export function HubShell({
   banner?: ReactNode;
 }): JSX.Element {
   ensurePanelKitStyles();
-  const [tabId, setTabId] = useState<string>(() => getActiveHubTab(hubId, defaultTab));
-
-  useEffect(
-    () => subscribeHubTabs(() => setTabId(getActiveHubTab(hubId, defaultTab))),
-    [hubId, defaultTab]
-  );
+  // useSyncExternalStore, not useState+useEffect: the tab store lives outside
+  // React and openHubTab can fire between render and a post-commit subscribe
+  // (an editor Deploy racing the desk's first mount). This reconciles on
+  // subscribe, so no tab change can be dropped.
+  const tabId = useSyncExternalStore(subscribeHubTabs, () => getActiveHubTab(hubId, defaultTab));
 
   const active = tabs.find(t => t.id === tabId) ?? tabs[0];
   const Active = active.component;

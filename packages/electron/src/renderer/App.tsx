@@ -158,6 +158,7 @@ import {
   initializePanelRegistry,
   getPanelById,
   panelToggleSlot,
+  panelToggleNext,
   PanelContainer,
   electronStorageBackend,
   initializeElectronStorageBackend,
@@ -1468,13 +1469,14 @@ export default function App() {
       // render slot reads — which is why fullscreen Deploy opened nothing.
       // getPanelById also resolves absorbed-panel aliases, so store the
       // CANONICAL id: state carrying an alias would never match the rail
-      // button or a follow-up toggle of the real id.
+      // button or a follow-up toggle of the real id. panelToggleNext then
+      // decides toggle-vs-navigate — an aliased request opens, never closes.
       const panel = getPanelById(panelId);
       const slot = panelToggleSlot(panel);
       if (slot === 'panel') {
-        setActiveExtensionPanel(prev => prev === panel!.id ? null : panel!.id);
+        setActiveExtensionPanel(prev => panelToggleNext(prev, panel!, panelId));
       } else if (slot === 'bottomPanel') {
-        setActiveExtensionBottomPanel(prev => prev === panel!.id ? null : panel!.id);
+        setActiveExtensionBottomPanel(prev => panelToggleNext(prev, panel!, panelId));
       } else {
         console.debug('[App] toggle-panel: ignoring unknown panel id', panelId);
       }

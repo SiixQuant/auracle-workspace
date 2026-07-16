@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+<!-- New features go here -->
+
+### Changed
+<!-- Changes to existing functionality go here -->
+
+### Fixed
+<!-- Bug fixes go here -->
+
+### Removed
+<!-- Removed features go here -->
+
+## [1.2.0] - 2026-07-15
+
+### Added
 - Strategy Lab and Live Desk hubs: the Auracle rail is now three buttons. Strategy Lab gathers Research, QC Import, and Validation; Live Desk gathers Deployments, Blotter, Incidents, Schedules, and Runway. Every surface is one tab away, and existing links and hand-offs still land on the right one.
 
 ### Changed

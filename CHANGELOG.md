@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!-- New features go here -->
 
 ### Changed
-<!-- Changes to existing functionality go here -->
+- Panel titles now use the system typeface instead of a serif display face, so the workbench reads as one interface.
 
 ### Fixed
 <!-- Bug fixes go here -->

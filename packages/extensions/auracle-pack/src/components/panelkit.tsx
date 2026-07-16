@@ -83,9 +83,6 @@ export const tone = {
   danger: '#e5534b',
   caution: '#d4a017',
   font: 'var(--font-family-ui, system-ui, sans-serif)',
-  /** Display serif (Hermes DNA) — heroes, panel titles, empty states.
-   *  Never data tables, numerals, or controls. */
-  display: '"Bodoni 72", Didot, "Times New Roman", Georgia, serif',
 } as const;
 
 /** Elevated surface for heroes — one step above a card, so summary
@@ -193,17 +190,18 @@ export function PanelShell({
         <header style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1, minWidth: 0 }}>
             {/* Explicit color: host stylesheets restyle bare headings.
-                Display serif — the panel title is a hero moment (Hermes DNA);
-                weight drops because serifs read heavier than the sans. */}
+                System sans (the display serif was retired IDE-side); the hero
+                moment is carried by weight and tight tracking, not a typeface —
+                weight comes back up now that the heavier serif is gone. */}
             <h1
               style={{
                 margin: 0,
                 fontSize: 21,
-                fontWeight: 500,
-                letterSpacing: 0,
+                fontWeight: 600,
+                letterSpacing: -0.3,
                 lineHeight: 1.2,
                 color: tone.text,
-                fontFamily: tone.display,
+                fontFamily: tone.font,
                 textWrap: 'balance' as never,
               }}
             >
@@ -970,8 +968,9 @@ export function CenterState({
           {icon}
         </span>
       ) : null}
-      {/* Empty/error rests are display moments — serif title, sans detail. */}
-      <div style={{ fontSize: 16, fontWeight: 500, color: tone.text, fontFamily: tone.display, lineHeight: 1.3 }}>
+      {/* Empty/error rests are quiet display moments — system sans throughout;
+          the title leans on weight, not a serif. */}
+      <div style={{ fontSize: 16, fontWeight: 600, color: tone.text, fontFamily: tone.font, lineHeight: 1.3 }}>
         {title}
       </div>
       {detail ? (

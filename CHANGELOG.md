@@ -12,6 +12,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!-- New features go here -->
 
 ### Changed
+<!-- Changes to existing functionality go here -->
+
+### Fixed
+<!-- Bug fixes go here -->
+
+### Removed
+<!-- Removed features go here -->
+
+## [1.3.2] - 2026-07-16
+
+
+### Added
+<!-- New features go here -->
+
+### Changed
 - Panel titles now use the system typeface instead of a serif display face, so the workbench reads as one interface.
 
 ### Fixed

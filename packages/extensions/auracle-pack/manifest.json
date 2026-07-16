@@ -68,77 +68,6 @@
     },
     "panels": [
       {
-        "id": "live-algorithms",
-        "title": "Live Algorithms",
-        "icon": "monitoring",
-        "placement": "fullscreen",
-        "order": 70,
-        "aiSupported": true,
-        "tooltip": "Deploy strategies and monitor live/paper algorithms with their order ledgers."
-      },
-      {
-        "id": "blotter",
-        "title": "Blotter",
-        "icon": "receipt_long",
-        "placement": "bottom",
-        "order": 71,
-        "aiSupported": true,
-        "tooltip": "Order feed from the engine, with cancel-all."
-      },
-      {
-        "id": "incidents",
-        "title": "Incidents",
-        "icon": "warning",
-        "placement": "bottom",
-        "order": 72,
-        "aiSupported": true,
-        "tooltip": "Everything that needs your attention, dismissible."
-      },
-      {
-        "id": "schedules",
-        "title": "Schedules",
-        "icon": "schedule",
-        "placement": "bottom",
-        "order": 73,
-        "tooltip": "Cron schedules: run now, pause/resume, delete."
-      },
-      {
-        "id": "validation",
-        "title": "Validation",
-        "icon": "fact_check",
-        "placement": "fullscreen",
-        "order": 74,
-        "aiSupported": true,
-        "tooltip": "Check a strategy for overfitting — the seven signals, with concrete fixes."
-      },
-      {
-        "id": "runway",
-        "title": "Runway",
-        "icon": "flight_takeoff",
-        "placement": "bottom",
-        "order": 75,
-        "aiSupported": true,
-        "tooltip": "The research-to-live spine with engine evidence per stage."
-      },
-      {
-        "id": "qc-import",
-        "title": "QC Import",
-        "icon": "cloud_download",
-        "placement": "fullscreen",
-        "order": 76,
-        "aiSupported": true,
-        "tooltip": "Translate a QuantConnect project into an Auracle strategy scaffold."
-      },
-      {
-        "id": "research",
-        "title": "Research",
-        "icon": "science",
-        "placement": "fullscreen",
-        "order": 69,
-        "aiSupported": true,
-        "tooltip": "Fresh quant papers, ranked for tradability by the engine's scan."
-      },
-      {
         "id": "backtest",
         "title": "Backtest",
         "icon": "play_circle",
@@ -146,6 +75,26 @@
         "order": 68,
         "aiSupported": true,
         "tooltip": "Backtest the open strategy and check it for overfitting."
+      },
+      {
+        "id": "strategy-lab",
+        "title": "Strategy Lab",
+        "icon": "science",
+        "placement": "fullscreen",
+        "order": 69,
+        "aiSupported": true,
+        "tooltip": "Research, QC import, and validation — the build-and-prove pipeline in one place.",
+        "aliases": ["research", "qc-import", "validation"]
+      },
+      {
+        "id": "live-desk",
+        "title": "Live Desk",
+        "icon": "monitoring",
+        "placement": "fullscreen",
+        "order": 70,
+        "aiSupported": true,
+        "tooltip": "Deployments, blotter, incidents, schedules, and runway — the live floor.",
+        "aliases": ["live-algorithms", "blotter", "incidents", "schedules", "runway"]
       }
     ]
   }

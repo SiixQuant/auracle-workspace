@@ -9,11 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-<!-- New features go here -->
+- Strategy Lab and Live Desk hubs: the Auracle rail is now three buttons. Strategy Lab gathers Research, QC Import, and Validation; Live Desk gathers Deployments, Blotter, Incidents, Schedules, and Runway. Every surface is one tab away, and existing links and hand-offs still land on the right one.
 
 ### Changed
-<!-- Changes to existing functionality go here -->
 - The Live panel now pre-gates live mode and tier-gated brokerages on the plan entitlement, labeling them Pro up front instead of surfacing engine rejections after submit.
+- The Auracle surfaces now wear the same look as the launcher and the website: charcoal depth, the brand blue, and the display serif for titles.
+- The strategy file header was redesigned around its two actions, Run backtest and Deploy.
+- The IDE chrome — tabs, sidebars, terminal, status bar — was retuned to match, with links and focus colors moved to a readable tier of the brand blue.
 
 ### Fixed
 <!-- Bug fixes go here -->

@@ -9,24 +9,27 @@
  * panel — no shadcn `globals.css` needed.
  */
 
+import { tone } from '../panelkit';
+
 const STYLE_ID = 'auracle-shadchart-styles';
 
 /**
- * The shadcn token surface, scoped under `.auracle-shad`, mapped onto Auracle's
- * theme vars. `--chart-1` is the equity green, `--chart-2` the drawdown red;
- * both fall back to fixed hexes so the cards render even before the host
- * injects its variables (the same contrast trap that bit the QC stats).
+ * The shadcn token surface, scoped under `.auracle-shad`, mapped onto the
+ * pack's Hermes-on-dark tokens (panelkit `tone`). `--chart-1` is the equity
+ * green, `--chart-2` the drawdown red — semantic, not brand, and unchanged
+ * by the restyle. The accent here is the ramp's TEXT tier: chart accents
+ * are read (labels, reference lines), never filled brand moments.
  */
 const SHEET = `
 .auracle-shad {
-  --sc-card: var(--bg-secondary, #16191e);
-  --sc-fg: var(--text-primary, #d7dae0);
-  --sc-muted: var(--text-tertiary, #8a8f98);
-  --sc-border: var(--border-primary, rgba(146,152,166,0.20));
+  --sc-card: ${tone.surface};
+  --sc-fg: ${tone.text};
+  --sc-muted: ${tone.text3};
+  --sc-border: ${tone.border};
   --sc-radius: 12px;
-  --chart-1: #3fb950;
-  --chart-2: #e5534b;
-  --sc-accent: var(--accent-primary, #60a5fa);
+  --chart-1: ${tone.ok};
+  --chart-2: ${tone.danger};
+  --sc-accent: ${tone.accentText};
 }
 .auracle-shad.sc-card {
   display: flex;

@@ -23,6 +23,7 @@ import {
   setSummary,
   summaryFromEngine,
 } from '../engine/flow';
+import { tone } from './panelkit';
 
 const styles = {
   root: {
@@ -30,20 +31,20 @@ const styles = {
     width: '100%',
     height: '100%',
     overflow: 'auto',
-    background: 'var(--bg-primary, #101114)',
-    color: 'var(--text-primary, #d7dae0)',
-    font: '12px/1.45 var(--font-family-ui, system-ui, sans-serif)',
+    background: tone.bg,
+    color: tone.text,
+    font: `12px/1.45 ${tone.font}`,
   },
   node: (kind: string, selected: boolean) => ({
     position: 'absolute' as const,
     width: NODE_W,
     height: NODE_H,
     borderRadius: 8,
-    border: `1px solid ${selected ? 'var(--accent-primary, #60a5fa)' : 'var(--border-primary, rgba(127,127,127,0.35))'}`,
+    border: `1px solid ${selected ? tone.accent : tone.borderStrong}`,
     background:
       kind === 'draft'
-        ? 'color-mix(in srgb, var(--accent-primary, #60a5fa) 10%, transparent)'
-        : 'var(--bg-secondary, rgba(127,127,127,0.08))',
+        ? tone.accentSoft
+        : tone.surface,
     padding: 10,
     display: 'flex',
     flexDirection: 'column' as const,
@@ -51,15 +52,15 @@ const styles = {
     cursor: 'grab',
     userSelect: 'none' as const,
   }),
-  small: { fontSize: 11, color: 'var(--text-tertiary, #8a8f98)' },
+  small: { fontSize: 11, color: tone.text3 },
   button: (primary?: boolean) => ({
     padding: '2px 8px',
     borderRadius: 5,
     fontSize: 11,
     cursor: 'pointer',
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.35))',
-    background: primary ? 'var(--accent-primary, #60a5fa)' : 'transparent',
-    color: primary ? '#fff' : 'var(--text-primary, #d7dae0)',
+    border: `1px solid ${tone.borderStrong}`,
+    background: primary ? tone.accent : 'transparent',
+    color: primary ? '#fff' : tone.text,
   }),
   drawer: {
     position: 'fixed' as const,
@@ -69,8 +70,8 @@ const styles = {
     width: 340,
     overflow: 'auto',
     padding: 14,
-    borderLeft: '1px solid var(--border-primary, rgba(127,127,127,0.35))',
-    background: 'var(--bg-secondary, #17181c)',
+    borderLeft: `1px solid ${tone.borderStrong}`,
+    background: tone.surface,
     zIndex: 20,
   },
 };
@@ -210,7 +211,7 @@ export function AuracleFlowEditor({ host }: EditorHostProps): JSX.Element {
                 y1={from.y}
                 x2={to.x}
                 y2={to.y}
-                stroke="var(--accent-primary, #60a5fa)"
+                stroke={tone.accentText}
                 strokeDasharray="5 4"
                 strokeWidth={1.5}
               />
@@ -295,7 +296,7 @@ export function AuracleFlowEditor({ host }: EditorHostProps): JSX.Element {
                 <span>{metric(row.b)}</span>
                 <span
                   style={{
-                    color: better === true ? '#2ea043' : better === false ? '#c4554d' : 'var(--text-tertiary, #8a8f98)',
+                    color: better === true ? tone.ok : better === false ? tone.danger : tone.text3,
                   }}
                 >
                   {row.delta === null ? '—' : `${row.delta >= 0 ? '+' : ''}${row.delta.toFixed(2)}`}
@@ -320,7 +321,7 @@ export function AuracleFlowEditor({ host }: EditorHostProps): JSX.Element {
           {'__loading' in diagnostics ? (
             <div style={styles.small}>Running out-of-sample diagnostics…</div>
           ) : '__error' in diagnostics ? (
-            <div style={{ ...styles.small, color: '#c4554d' }}>{String(diagnostics.__error)}</div>
+            <div style={{ ...styles.small, color: tone.danger }}>{String(diagnostics.__error)}</div>
           ) : (
             <pre style={{ ...styles.small, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
               {JSON.stringify(diagnostics, null, 2)}

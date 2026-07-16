@@ -139,70 +139,80 @@ const lightThemeColors: ExtendedThemeColors = {
 };
 
 /**
- * Built-in dark theme colors.
+ * Built-in dark theme colors — Hermes-on-dark (PRD #59).
+ *
+ * The charcoal depth ramp and Nous-blue accent ramp match the launcher and
+ * the auracle-pack panelkit, so chrome and panels read as one product.
+ * Ramp discipline: `primary` (#0053fd) is a dark blue FILL and always pairs
+ * with white `on-primary`; anything blue that must be READ on charcoal —
+ * links, focus rings, cursors, info — uses the brightened text tier
+ * (#7aa2ff, ≥7:1 on every surface step). Editor syntax, terminal ANSI, and
+ * the semantic status colours are deliberately untouched: legibility there
+ * outranks brand.
  */
 const darkThemeColors: ExtendedThemeColors = {
-  // Backgrounds
-  'bg': '#2d2d2d',
-  'bg-secondary': '#1a1a1a',
-  'bg-tertiary': '#3a3a3a',
+  // Backgrounds (charcoal ramp: canvas #0b0c0e, card #131519, steps up)
+  'bg': '#131519',
+  'bg-secondary': '#0b0c0e',
+  'bg-tertiary': '#1b1e23',
   'bg-hover': 'rgba(255, 255, 255, 0.05)',
-  'bg-selected': 'rgba(96, 165, 250, 0.15)',
-  'bg-active': '#4a4a4a',
+  'bg-selected': 'rgba(0, 83, 253, 0.18)',
+  'bg-active': '#23272d',
 
   // Text
   'text': '#ffffff',
-  'text-muted': '#b3b3b3',
-  'text-faint': '#808080',
-  'text-disabled': '#666666',
+  'text-muted': '#9da7b3',
+  'text-faint': '#7c8694',
+  'text-disabled': '#545c66',
 
   // Borders
-  'border': '#4a4a4a',
-  'border-focus': '#60a5fa',
+  'border': 'rgba(255, 255, 255, 0.10)',
+  'border-focus': '#7aa2ff',
 
-  // Primary
-  'primary': '#60a5fa',
-  'primary-hover': '#3b82f6',
-  'on-primary': '#0b1220',
+  // Primary (brand fill + white ink; hover darkens like the launcher)
+  'primary': '#0053fd',
+  'primary-hover': '#0042cc',
+  'on-primary': '#ffffff',
 
-  // Links
-  'link': '#60a5fa',
-  'link-hover': '#93c5fd',
+  // Links (accent as text — the readable tier of the ramp)
+  'link': '#7aa2ff',
+  'link-hover': '#9fbcff',
 
   // Status
   'success': '#4ade80',
   'warning': '#fbbf24',
   'error': '#ef4444',
-  'info': '#60a5fa',
+  'info': '#7aa2ff',
   'purple': '#a78bfa',
 
   // Code
-  'code-bg': '#1e1e1e',
+  'code-bg': '#0b0c0e',
   'code-text': '#d4d4d4',
-  'code-border': '#4a4a4a',
-  'code-gutter': '#2a2a2a',
+  'code-border': 'rgba(255, 255, 255, 0.10)',
+  'code-gutter': '#16191d',
 
   // Table
-  'table-border': '#4a4a4a',
-  'table-header': '#3a3a3a',
-  'table-cell': '#2d2d2d',
-  'table-stripe': '#363636',
+  'table-border': 'rgba(255, 255, 255, 0.10)',
+  'table-header': '#1b1e23',
+  'table-cell': '#131519',
+  'table-stripe': '#171a1f',
 
   // Toolbar
-  'toolbar-bg': '#2d2d2d',
-  'toolbar-border': '#4a4a4a',
-  'toolbar-hover': '#3a3a3a',
-  'toolbar-active': 'rgba(96, 165, 250, 0.2)',
+  'toolbar-bg': '#131519',
+  'toolbar-border': 'rgba(255, 255, 255, 0.10)',
+  'toolbar-hover': '#1b1e23',
+  'toolbar-active': 'rgba(0, 83, 253, 0.22)',
 
   // Special
   'highlight-bg': 'rgba(255, 212, 0, 0.2)',
   'highlight-border': 'rgba(255, 212, 0, 0.4)',
-  'quote-text': '#b3b3b3',
-  'quote-border': '#4a4a4a',
+  'quote-text': '#9da7b3',
+  'quote-border': '#2a2f36',
 
-  // Scrollbar
-  'scrollbar-thumb': '#4a4a4a',
-  'scrollbar-thumb-hover': '#5a5a5a',
+  // Scrollbar — lifted off the charcoal: a thumb near the canvas value is
+  // invisible on the terminal/editor wells (#0b0c0e).
+  'scrollbar-thumb': '#3a4048',
+  'scrollbar-thumb-hover': '#4a5058',
   'scrollbar-track': 'transparent',
 
   // Diff
@@ -222,10 +232,10 @@ const darkThemeColors: ExtendedThemeColors = {
   'code-function': '#dcdcaa',
 
   // Terminal
-  'terminal-bg': '#1a1a1a',
-  'terminal-fg': '#e5e5e5',
-  'terminal-cursor': '#60a5fa',
-  'terminal-cursor-accent': '#1a1a1a',
+  'terminal-bg': '#0b0c0e',
+  'terminal-fg': '#e6edf3',
+  'terminal-cursor': '#7aa2ff',
+  'terminal-cursor-accent': '#0b0c0e',
   'terminal-selection': 'rgba(255, 255, 255, 0.2)',
 
   // Terminal ANSI standard colors (Tailwind palette)

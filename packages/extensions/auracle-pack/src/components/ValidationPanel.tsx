@@ -88,7 +88,7 @@ function SignalGauge({ tier, value, threshold }: { tier: string; value: number; 
           position: 'relative',
           height: 6,
           borderRadius: 4,
-          background: 'color-mix(in srgb, var(--text-primary, #d7dae0) 9%, transparent)',
+          background: `color-mix(in srgb, ${tone.text} 9%, transparent)`,
         }}
       >
         <span

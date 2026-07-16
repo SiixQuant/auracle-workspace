@@ -122,7 +122,7 @@ export function AuracleStatusChip(): JSX.Element {
         padding: '3px 10px',
         borderRadius: 999,
         border: `1px solid ${tone.borderStrong}`,
-        background: 'var(--bg-secondary, rgba(20,20,22,0.85))',
+        background: 'rgba(11,12,14,0.88)',
         backdropFilter: 'blur(6px)',
         color: tone.text2,
         font: `11px/1.4 ${tone.font}`,

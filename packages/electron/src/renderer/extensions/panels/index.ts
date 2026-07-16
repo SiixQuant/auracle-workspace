@@ -13,7 +13,12 @@ export {
   type RegisteredPanel,
 } from './PanelRegistry';
 
-export { panelToggleSlot, type ExtensionPanelSlot } from './panelRouting';
+export {
+  panelToggleSlot,
+  panelToggleNext,
+  buildAliasIndex,
+  type ExtensionPanelSlot,
+} from './panelRouting';
 
 export { createPanelHost } from './PanelHostImpl';
 

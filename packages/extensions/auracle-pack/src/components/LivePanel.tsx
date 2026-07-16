@@ -18,7 +18,6 @@ import {
   type DeploySnapshot,
   type StrategyOption,
 } from '../engine/deploy';
-import { markLivePanelMounted, markLivePanelUnmounted } from './panelVisibility';
 import {
   ACTION_LABELS,
   COMPUTE_LABELS,
@@ -72,11 +71,11 @@ import { EquityChartShad } from './charts/EquityChartShad';
 
 const POLL_MS = 20_000;
 
-const ACCENT = 'var(--accent-primary, #60a5fa)';
-const CAUTION = '#d4a017';
-const DANGER = '#c4554d';
-const OK = '#2ea043';
-const NEUTRAL = 'var(--text-tertiary, #8a8f98)';
+const ACCENT = tone.accent;
+const CAUTION = tone.caution;
+const DANGER = tone.danger;
+const OK = tone.ok;
+const NEUTRAL = tone.text3;
 
 /** Status colour by lifecycle state — green live, red errored, amber preparing, grey idle. */
 function stateColor(state: string): string {
@@ -104,8 +103,8 @@ const styles = {
     padding: 16,
     height: '100%',
     overflow: 'auto',
-    color: 'var(--text-primary, #d7dae0)',
-    font: '13px/1.5 var(--font-family-ui, system-ui, sans-serif)',
+    color: tone.text,
+    font: `13px/1.5 ${tone.font}`,
   },
   headerRow: { display: 'flex', alignItems: 'center' as const, justifyContent: 'space-between' as const },
   title: { fontSize: 15, fontWeight: 600 },
@@ -114,9 +113,9 @@ const styles = {
     borderRadius: 6,
     fontSize: 12,
     cursor: 'pointer',
-    border: `1px solid ${danger ? DANGER : 'var(--border-primary, rgba(127,127,127,0.35))'}`,
+    border: `1px solid ${danger ? DANGER : tone.borderStrong}`,
     background: primary ? ACCENT : 'transparent',
-    color: primary ? '#fff' : danger ? DANGER : 'var(--text-primary, #d7dae0)',
+    color: primary ? '#fff' : danger ? DANGER : tone.text,
   }),
   table: { width: '100%', borderCollapse: 'collapse' as const, fontSize: 13 },
   th: {
@@ -125,29 +124,29 @@ const styles = {
     fontSize: 11,
     textTransform: 'uppercase' as const,
     letterSpacing: 0.4,
-    color: 'var(--text-tertiary, #8a8f98)',
-    borderBottom: '1px solid var(--border-primary, rgba(127,127,127,0.25))',
+    color: tone.text3,
+    borderBottom: `1px solid ${tone.border}`,
   },
-  td: { padding: '7px 8px', borderBottom: '1px solid var(--border-primary, rgba(127,127,127,0.15))' },
+  td: { padding: '7px 8px', borderBottom: `1px solid ${tone.border}` },
   tdNum: {
     padding: '7px 8px',
-    borderBottom: '1px solid var(--border-primary, rgba(127,127,127,0.15))',
+    borderBottom: `1px solid ${tone.border}`,
     textAlign: 'right' as const,
     fontVariantNumeric: 'tabular-nums' as const,
     whiteSpace: 'nowrap' as const,
   },
-  note: { fontSize: 12, color: 'var(--text-tertiary, #8a8f98)' },
+  note: { fontSize: 12, color: tone.text3 },
   input: {
     width: '100%',
     padding: '7px 9px',
     borderRadius: 6,
     fontSize: 13,
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.35))',
-    background: 'var(--bg-primary, rgba(0,0,0,0.2))',
-    color: 'var(--text-primary, #d7dae0)',
+    border: `1px solid ${tone.borderStrong}`,
+    background: tone.sunken,
+    color: tone.text,
     outline: 'none',
   },
-  fieldLabel: { fontSize: 12, color: 'var(--text-secondary, #b9bec7)', marginBottom: 4 },
+  fieldLabel: { fontSize: 12, color: tone.text2, marginBottom: 4 },
   error: { fontSize: 12, color: DANGER },
 
   // --- Deploy wizard chrome -------------------------------------------------
@@ -161,9 +160,9 @@ const styles = {
     cursor: 'pointer',
     border: '1px solid transparent',
     background: 'transparent',
-    color: 'var(--text-secondary, #b9bec7)',
+    color: tone.text2,
   },
-  wizSubtitle: { fontSize: 12.5, color: 'var(--text-tertiary, #8a8f98)', marginTop: 2 },
+  wizSubtitle: { fontSize: 12.5, color: tone.text3, marginTop: 2 },
   card: {
     display: 'flex',
     flexDirection: 'column' as const,
@@ -171,8 +170,8 @@ const styles = {
     maxWidth: 640,
     padding: 20,
     borderRadius: 12,
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.22))',
-    background: 'var(--bg-secondary, rgba(255,255,255,0.018))',
+    border: `1px solid ${tone.border}`,
+    background: tone.surface,
   },
   section: { display: 'flex', flexDirection: 'column' as const, gap: 12 },
   sectionHead: {
@@ -180,9 +179,9 @@ const styles = {
     fontWeight: 600 as const,
     textTransform: 'uppercase' as const,
     letterSpacing: 0.7,
-    color: 'var(--text-tertiary, #8a8f98)',
+    color: tone.text3,
   },
-  divider: { height: 1, border: 0, margin: 0, background: 'var(--border-primary, rgba(127,127,127,0.16))' },
+  divider: { height: 1, border: 0, margin: 0, background: tone.border },
   grid2: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 12 },
   field: { display: 'flex', flexDirection: 'column' as const, gap: 6 },
   labelRow: { display: 'flex', alignItems: 'baseline' as const, justifyContent: 'space-between' as const, gap: 8 },
@@ -193,10 +192,10 @@ const styles = {
     padding: 3,
     gap: 3,
     borderRadius: 8,
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.3))',
-    background: 'var(--bg-primary, rgba(0,0,0,0.22))',
+    border: `1px solid ${tone.borderStrong}`,
+    background: tone.sunken,
   },
-  seg: (active: boolean, tone?: 'caution') => ({
+  seg: (active: boolean, kind?: 'caution') => ({
     padding: '5px 14px',
     borderRadius: 6,
     fontSize: 12.5,
@@ -204,9 +203,9 @@ const styles = {
     cursor: 'pointer',
     border: '1px solid transparent',
     whiteSpace: 'nowrap' as const,
-    background: active ? (tone === 'caution' ? 'rgba(212,160,23,0.16)' : ACCENT) : 'transparent',
-    color: active ? (tone === 'caution' ? CAUTION : '#fff') : 'var(--text-secondary, #b9bec7)',
-    boxShadow: active && tone === 'caution' ? `inset 0 0 0 1px ${CAUTION}` : 'none',
+    background: active ? (kind === 'caution' ? 'rgba(212,160,23,0.16)' : ACCENT) : 'transparent',
+    color: active ? (kind === 'caution' ? CAUTION : '#fff') : tone.text2,
+    boxShadow: active && kind === 'caution' ? `inset 0 0 0 1px ${CAUTION}` : 'none',
   }),
 
   // AUM hero field
@@ -216,17 +215,17 @@ const styles = {
     gap: 4,
     padding: '10px 12px',
     borderRadius: 8,
-    border: `1px solid ${warn ? CAUTION : 'var(--border-primary, rgba(127,127,127,0.35))'}`,
-    background: 'var(--bg-primary, rgba(0,0,0,0.22))',
+    border: `1px solid ${warn ? CAUTION : tone.borderStrong}`,
+    background: tone.sunken,
   }),
-  aumPrefix: { fontSize: 20, color: 'var(--text-tertiary, #8a8f98)', fontWeight: 500 as const },
+  aumPrefix: { fontSize: 20, color: tone.text3, fontWeight: 500 as const },
   aumInput: {
     flex: 1,
     minWidth: 0,
     border: 'none',
     background: 'transparent',
     outline: 'none',
-    color: 'var(--text-primary, #d7dae0)',
+    color: tone.text,
     fontSize: 20,
     fontWeight: 600 as const,
     fontVariantNumeric: 'tabular-nums' as const,
@@ -239,8 +238,8 @@ const styles = {
     textTransform: 'uppercase' as const,
     padding: '2px 7px',
     borderRadius: 999,
-    color: required ? CAUTION : 'var(--text-tertiary, #8a8f98)',
-    background: required ? 'rgba(212,160,23,0.14)' : 'var(--bg-primary, rgba(0,0,0,0.2))',
+    color: required ? CAUTION : tone.text3,
+    background: required ? 'rgba(212,160,23,0.14)' : tone.sunken,
   }),
 
   // Chips (data sources)
@@ -252,9 +251,9 @@ const styles = {
     borderRadius: 999,
     fontSize: 12,
     cursor: 'pointer',
-    border: `1px solid ${active ? ACCENT : 'var(--border-primary, rgba(127,127,127,0.3))'}`,
+    border: `1px solid ${active ? ACCENT : tone.borderStrong}`,
     background: active ? tint(ACCENT, 14) : 'transparent',
-    color: active ? 'var(--text-primary, #d7dae0)' : 'var(--text-secondary, #b9bec7)',
+    color: active ? tone.text : tone.text2,
   }),
 
   // Resilience switch row
@@ -265,8 +264,8 @@ const styles = {
     gap: 12,
     padding: '10px 12px',
     borderRadius: 8,
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.22))',
-    background: 'var(--bg-primary, rgba(0,0,0,0.14))',
+    border: `1px solid ${tone.border}`,
+    background: tone.sunken,
   },
   track: (on: boolean) => ({
     position: 'relative' as const,
@@ -276,7 +275,7 @@ const styles = {
     flexShrink: 0,
     cursor: 'pointer',
     transition: 'background 120ms ease',
-    background: on ? ACCENT : 'var(--border-primary, rgba(127,127,127,0.4))',
+    background: on ? ACCENT : tone.borderStrong,
   }),
   knob: (on: boolean) => ({
     position: 'absolute' as const,
@@ -290,7 +289,7 @@ const styles = {
   }),
 
   caution: { fontSize: 12, color: CAUTION, display: 'flex', alignItems: 'center' as const, gap: 6 },
-  help: { fontSize: 11.5, color: 'var(--text-tertiary, #8a8f98)' },
+  help: { fontSize: 11.5, color: tone.text3 },
   proTag: {
     marginLeft: 6,
     fontSize: 9,
@@ -299,8 +298,8 @@ const styles = {
     textTransform: 'uppercase' as const,
     padding: '1px 5px',
     borderRadius: 999,
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.35))',
-    color: 'var(--text-tertiary, #8a8f98)',
+    border: `1px solid ${tone.borderStrong}`,
+    color: tone.text3,
     verticalAlign: 'middle',
   },
 
@@ -313,7 +312,7 @@ const styles = {
     flexWrap: 'wrap' as const,
   },
   checklist: { display: 'flex', flexDirection: 'column' as const, gap: 3 },
-  checkItem: { display: 'flex', alignItems: 'center' as const, gap: 7, fontSize: 12, color: 'var(--text-tertiary, #8a8f98)' },
+  checkItem: { display: 'flex', alignItems: 'center' as const, gap: 7, fontSize: 12, color: tone.text3 },
   dot: (color: string, filled: boolean) => ({
     width: 7,
     height: 7,
@@ -330,8 +329,8 @@ const styles = {
     fontWeight: 600 as const,
     cursor: enabled ? 'pointer' : 'not-allowed',
     border: '1px solid transparent',
-    background: enabled ? ACCENT : 'var(--bg-primary, rgba(127,127,127,0.15))',
-    color: enabled ? '#fff' : 'var(--text-tertiary, #8a8f98)',
+    background: enabled ? ACCENT : tone.sunken,
+    color: enabled ? '#fff' : tone.text3,
     opacity: enabled ? 1 : 0.85,
   }),
   ghostBtn: {
@@ -339,9 +338,9 @@ const styles = {
     borderRadius: 8,
     fontSize: 13,
     cursor: 'pointer',
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.35))',
+    border: `1px solid ${tone.borderStrong}`,
     background: 'transparent',
-    color: 'var(--text-secondary, #b9bec7)',
+    color: tone.text2,
   },
   serverError: {
     fontSize: 12.5,
@@ -359,17 +358,17 @@ const styles = {
     gap: 10,
     padding: '8px 11px',
     borderRadius: 7,
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.35))',
-    background: 'var(--bg-primary, rgba(0,0,0,0.22))',
+    border: `1px solid ${tone.borderStrong}`,
+    background: tone.sunken,
   },
   changeBtn: {
     padding: '3px 10px',
     borderRadius: 6,
     fontSize: 11.5,
     cursor: 'pointer',
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.3))',
+    border: `1px solid ${tone.borderStrong}`,
     background: 'transparent',
-    color: 'var(--text-secondary, #b9bec7)',
+    color: tone.text2,
     flexShrink: 0,
   },
 
@@ -385,7 +384,7 @@ const styles = {
     cursor: 'pointer',
     border: 'none',
     background: 'transparent',
-    color: 'var(--text-secondary, #b9bec7)',
+    color: tone.text2,
     fontFamily: 'inherit',
   },
   exclList: {
@@ -394,17 +393,17 @@ const styles = {
     gap: 8,
     padding: '10px 12px',
     borderRadius: 8,
-    border: '1px solid var(--border-primary, rgba(127,127,127,0.22))',
-    background: 'var(--bg-primary, rgba(0,0,0,0.14))',
+    border: `1px solid ${tone.border}`,
+    background: tone.sunken,
   },
   exclRow: { display: 'flex', flexDirection: 'column' as const, gap: 1, minWidth: 0 },
   exclFile: {
     fontSize: 12,
-    color: 'var(--text-primary, #d7dae0)',
-    fontFamily: 'var(--font-family-mono, ui-monospace, SFMono-Regular, monospace)',
+    color: tone.text,
+    fontFamily: 'ui-monospace, SFMono-Regular, monospace',
     wordBreak: 'break-all' as const,
   },
-  exclReason: { fontSize: 11.5, color: 'var(--text-tertiary, #8a8f98)' },
+  exclReason: { fontSize: 11.5, color: tone.text3 },
 };
 
 /** Dashboard / ledger table language — panelkit-toned, right-aligned money. */
@@ -462,15 +461,16 @@ function DeployIdentityRow({ locked, onClear }: { locked: StrategyOption; onClea
   const modulePath = splitStrategyPath(locked.path).path;
   return (
     <div style={styles.identityRow}>
-      <span className="material-symbols-outlined" aria-hidden style={{ fontSize: 18, color: ACCENT }}>
+      {/* A glyph is READ — the ramp's text tier, not the fill blue. */}
+      <span className="material-symbols-outlined" aria-hidden style={{ fontSize: 18, color: tone.accentText }}>
         deployed_code
       </span>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary, #d7dae0)' }}>{locked.cls}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: tone.text }}>{locked.cls}</span>
         <span
           style={{
             fontSize: 11.5,
-            color: 'var(--text-tertiary, #8a8f98)',
+            color: tone.text3,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -587,7 +587,7 @@ export function DeployWizardView({
     return (
       <div className="apk-enter" style={{ ...styles.card, gap: 12 }}>
         <div style={styles.sectionHead}>This file defines more than one strategy</div>
-        <span style={{ fontSize: 12.5, color: 'var(--text-secondary, #b9bec7)' }}>Pick which one to deploy:</span>
+        <span style={{ fontSize: 12.5, color: tone.text2 }}>Pick which one to deploy:</span>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {mode.options.map((opt) => (
             <Button key={opt.path} variant="ghost" onClick={() => deployStore.choose(opt)}>
@@ -932,7 +932,7 @@ function DeployForm({
           <div style={styles.checklist}>
             {errors.map((error) => (
               <span key={error} style={styles.checkItem}>
-                <span aria-hidden style={styles.dot('var(--text-tertiary, #8a8f98)', false)} />
+                <span aria-hidden style={styles.dot(tone.text3, false)} />
                 {error}
               </span>
             ))}
@@ -1077,12 +1077,8 @@ export function LiveAlgorithmsPanel({ host }: PanelHostProps): JSX.Element {
   const deploySnap = useSyncExternalStore(deployStore.subscribe, deployStore.getSnapshot);
   const hasBinding = deploySnap.phase !== 'idle';
 
-  // Report mount state so that Deploy button won't toggle an already-open Live
-  // panel shut — it re-renders into the pre-bound wizard instead.
-  useEffect(() => {
-    markLivePanelMounted();
-    return markLivePanelUnmounted;
-  }, []);
+  // Mount tracking moved to LiveDeskPanel: the hub owns "the live surface is
+  // open" so Deploy won't toggle the desk shut while a sibling tab is up.
 
   // Publish the selected deployment to the AI chat (ambient), and offer a
   // one-click investigate hand-off for it.

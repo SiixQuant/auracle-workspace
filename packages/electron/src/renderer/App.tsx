@@ -158,6 +158,7 @@ import {
   initializePanelRegistry,
   getPanelById,
   panelToggleSlot,
+  panelToggleNext,
   PanelContainer,
   electronStorageBackend,
   initializeElectronStorageBackend,
@@ -1466,11 +1467,16 @@ export default function App() {
       // sidebar panels live in activeExtensionPanel, bottom panels in
       // activeExtensionBottomPanel. Toggling the wrong slot mutates a state no
       // render slot reads — which is why fullscreen Deploy opened nothing.
-      const slot = panelToggleSlot(getPanelById(panelId));
+      // getPanelById also resolves absorbed-panel aliases, so store the
+      // CANONICAL id: state carrying an alias would never match the rail
+      // button or a follow-up toggle of the real id. panelToggleNext then
+      // decides toggle-vs-navigate — an aliased request opens, never closes.
+      const panel = getPanelById(panelId);
+      const slot = panelToggleSlot(panel);
       if (slot === 'panel') {
-        setActiveExtensionPanel(prev => prev === panelId ? null : panelId);
+        setActiveExtensionPanel(prev => panelToggleNext(prev, panel!, panelId));
       } else if (slot === 'bottomPanel') {
-        setActiveExtensionBottomPanel(prev => prev === panelId ? null : panelId);
+        setActiveExtensionBottomPanel(prev => panelToggleNext(prev, panel!, panelId));
       } else {
         console.debug('[App] toggle-panel: ignoring unknown panel id', panelId);
       }

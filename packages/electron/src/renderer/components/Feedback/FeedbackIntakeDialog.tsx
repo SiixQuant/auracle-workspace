@@ -217,7 +217,7 @@ export const FeedbackIntakeDialog: React.FC<FeedbackIntakeDialogProps> = ({
               type="button"
               className={`feedback-intake-start-button flex w-full items-center justify-between rounded-[18px] px-4 py-3 text-left text-[13px] font-semibold transition-all duration-150 ${
                 selectedKind
-                  ? 'border border-[var(--nim-primary)] bg-[var(--nim-primary)] text-white hover:bg-[var(--nim-primary-hover)]'
+                  ? 'border border-[var(--nim-primary)] bg-[var(--nim-primary)] text-[var(--nim-on-primary)] hover:bg-[var(--nim-primary-hover)]'
                   : 'border border-[var(--nim-border)] bg-[var(--nim-bg)] text-[var(--nim-text-disabled)]'
               }`}
               onClick={handleLaunch}
@@ -234,7 +234,7 @@ export const FeedbackIntakeDialog: React.FC<FeedbackIntakeDialogProps> = ({
               <MaterialSymbol
                 icon="arrow_forward"
                 size={18}
-                className={selectedKind ? 'text-white' : 'text-[var(--nim-text-faint)]'}
+                className={selectedKind ? 'text-[var(--nim-on-primary)]' : 'text-[var(--nim-text-faint)]'}
               />
             </button>
           </div>

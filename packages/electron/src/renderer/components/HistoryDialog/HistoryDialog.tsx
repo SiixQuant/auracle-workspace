@@ -499,14 +499,14 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
             {fileType === 'markdown' && (
               <div className="view-variant-toggle flex bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-md p-0.5 gap-0.5">
                 <button
-                  className={`view-mode-button py-1 px-3 text-[11px] font-medium border-none rounded cursor-pointer transition-all duration-200 ${richView ? 'text-white bg-[var(--nim-primary)]' : 'text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]'}`}
+                  className={`view-mode-button py-1 px-3 text-[11px] font-medium border-none rounded cursor-pointer transition-all duration-200 ${richView ? 'text-[var(--nim-on-primary)] bg-[var(--nim-primary)]' : 'text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]'}`}
                   onClick={() => setRichView(true)}
                   title="Rendered view"
                 >
                   Rich
                 </button>
                 <button
-                  className={`view-mode-button py-1 px-3 text-[11px] font-medium border-none rounded cursor-pointer transition-all duration-200 ${!richView ? 'text-white bg-[var(--nim-primary)]' : 'text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]'}`}
+                  className={`view-mode-button py-1 px-3 text-[11px] font-medium border-none rounded cursor-pointer transition-all duration-200 ${!richView ? 'text-[var(--nim-on-primary)] bg-[var(--nim-primary)]' : 'text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]'}`}
                   onClick={() => setRichView(false)}
                   title="Raw source"
                 >
@@ -516,14 +516,14 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
             )}
             <div className="view-mode-toggle flex bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded-md p-0.5 gap-0.5">
               <button
-                className={`view-mode-button py-1 px-3 text-[11px] font-medium border-none rounded cursor-pointer transition-all duration-200 ${viewMode === 'changes' ? 'text-white bg-[var(--nim-primary)]' : 'text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]'}`}
+                className={`view-mode-button py-1 px-3 text-[11px] font-medium border-none rounded cursor-pointer transition-all duration-200 ${viewMode === 'changes' ? 'text-[var(--nim-on-primary)] bg-[var(--nim-primary)]' : 'text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]'}`}
                 onClick={() => setViewMode('changes')}
                 title="Show diff with previous version"
               >
                 Diff
               </button>
               <button
-                className={`view-mode-button py-1 px-3 text-[11px] font-medium border-none rounded cursor-pointer transition-all duration-200 ${viewMode === 'version' ? 'text-white bg-[var(--nim-primary)]' : 'text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]'}`}
+                className={`view-mode-button py-1 px-3 text-[11px] font-medium border-none rounded cursor-pointer transition-all duration-200 ${viewMode === 'version' ? 'text-[var(--nim-on-primary)] bg-[var(--nim-primary)]' : 'text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]'}`}
                 onClick={() => setViewMode('version')}
                 title="View full content"
               >
@@ -590,15 +590,15 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
                   >
                     <div className="history-item-content py-1.5 px-2 flex items-center justify-between">
                       <div className="history-item-main flex items-center gap-2 flex-1 min-w-0">
-                        <span className={`history-item-icon material-symbols-outlined text-lg shrink-0 ${isSelected ? 'text-white' : 'text-[var(--nim-text-muted)]'}`}>{getSnapshotIcon(snapshot.type)}</span>
+                        <span className={`history-item-icon material-symbols-outlined text-lg shrink-0 ${isSelected ? 'text-[var(--nim-on-primary)]' : 'text-[var(--nim-text-muted)]'}`}>{getSnapshotIcon(snapshot.type)}</span>
                         <div className="history-item-info flex flex-col gap-0.5 min-w-0 flex-1">
                           <div className="history-item-type-row flex items-center justify-between gap-2">
-                            <span className={`history-item-type text-xs font-medium capitalize whitespace-nowrap ${isSelected ? 'text-white' : 'text-[var(--nim-text)]'}`}>{snapshot.type.replace('-', ' ')}</span>
-                            <span className={`history-item-time text-[11px] whitespace-nowrap shrink-0 ${isSelected ? 'text-white' : 'text-[var(--nim-text-faint)]'}`}>{relativeTime}</span>
+                            <span className={`history-item-type text-xs font-medium capitalize whitespace-nowrap ${isSelected ? 'text-[var(--nim-on-primary)]' : 'text-[var(--nim-text)]'}`}>{snapshot.type.replace('-', ' ')}</span>
+                            <span className={`history-item-time text-[11px] whitespace-nowrap shrink-0 ${isSelected ? 'text-[var(--nim-on-primary)]' : 'text-[var(--nim-text-faint)]'}`}>{relativeTime}</span>
                           </div>
                           {isAIEdit && session && (
                             <span
-                              className={`history-item-session-link flex items-center gap-1 text-[11px] cursor-pointer transition-colors duration-150 max-w-full overflow-hidden no-underline ${isSelected ? 'text-white/80 hover:text-white' : 'text-[var(--nim-link)] hover:text-[var(--nim-link-hover)]'}`}
+                              className={`history-item-session-link flex items-center gap-1 text-[11px] cursor-pointer transition-colors duration-150 max-w-full overflow-hidden no-underline ${isSelected ? 'text-[color-mix(in_srgb,var(--nim-on-primary)_80%,transparent)] hover:text-[var(--nim-on-primary)]' : 'text-[var(--nim-link)] hover:text-[var(--nim-link-hover)]'}`}
                             >
                               <ProviderIcon provider={session.provider} size={11} />
                               <a title="Open AI session in chat"
@@ -618,7 +618,7 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
                           }}
                           title="Delete snapshot"
                         >
-                          <span className={`material-symbols-outlined text-base ${isSelected ? 'text-white' : 'text-[var(--nim-text-muted)]'} [.history-item-delete:hover_&]:text-[var(--nim-error)]`}>delete</span>
+                          <span className={`material-symbols-outlined text-base ${isSelected ? 'text-[var(--nim-on-primary)]' : 'text-[var(--nim-text-muted)]'} [.history-item-delete:hover_&]:text-[var(--nim-error)]`}>delete</span>
                         </button>
                       </div>
                     </div>
@@ -684,7 +684,7 @@ export function HistoryDialog({ isOpen, onClose, filePath, onRestore, theme = 'l
               </div>
               {selectedVersions.length === 1 && (
                 <button
-                  className="history-restore-button py-1.5 px-4 bg-[var(--nim-primary)] text-white border-none rounded-md text-[13px] font-medium cursor-pointer transition-all duration-200 shrink-0 whitespace-nowrap hover:not-disabled:bg-[var(--nim-primary-hover)] hover:not-disabled:-translate-y-px hover:not-disabled:shadow-[0_2px_8px_rgba(59,130,246,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="history-restore-button py-1.5 px-4 bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-none rounded-md text-[13px] font-medium cursor-pointer transition-all duration-200 shrink-0 whitespace-nowrap hover:not-disabled:bg-[var(--nim-primary-hover)] hover:not-disabled:-translate-y-px hover:not-disabled:shadow-[0_2px_8px_rgba(0,0,0,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={handleRestore}
                   disabled={!previewContent}
                 >

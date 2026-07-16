@@ -359,7 +359,7 @@ export function SQLiteBrowserCore({
           <div className="flex gap-2">
             {onOpenClick && (
               <button
-                className="px-3 py-1.5 text-xs font-medium border-none rounded cursor-pointer bg-[var(--nim-primary)] text-white transition-all hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 text-xs font-medium border-none rounded cursor-pointer bg-[var(--nim-primary)] text-[var(--nim-on-primary)] transition-all hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
                 onClick={onOpenClick}
                 disabled={loading}
               >
@@ -406,7 +406,7 @@ export function SQLiteBrowserCore({
             </p>
             {onOpenClick && (
               <button
-                className="px-5 py-2.5 text-[13px] font-medium border-none rounded cursor-pointer bg-[var(--nim-primary)] text-white transition-all hover:opacity-90"
+                className="px-5 py-2.5 text-[13px] font-medium border-none rounded cursor-pointer bg-[var(--nim-primary)] text-[var(--nim-on-primary)] transition-all hover:opacity-90"
                 onClick={onOpenClick}
               >
                 Open Database
@@ -428,7 +428,7 @@ export function SQLiteBrowserCore({
               {!readOnly && (
                 <div className="p-2 border-b border-nim">
                   <button
-                    className={`flex items-center gap-2 w-full p-2 text-xs font-medium text-left border-none rounded cursor-pointer transition-all ${viewMode === 'query' ? 'bg-[var(--nim-primary)] text-white' : 'bg-transparent text-nim hover:bg-nim-hover'}`}
+                    className={`flex items-center gap-2 w-full p-2 text-xs font-medium text-left border-none rounded cursor-pointer transition-all ${viewMode === 'query' ? 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)]' : 'bg-transparent text-nim hover:bg-nim-hover'}`}
                     onClick={() => {
                       setViewMode('query');
                       setSelectedTable(null);
@@ -450,7 +450,7 @@ export function SQLiteBrowserCore({
                   {database.tables.map((table) => (
                     <button
                       key={table}
-                      className={`block w-full p-1.5 px-3 my-px text-xs font-mono text-left border-none rounded cursor-pointer transition-all ${selectedTable === table && viewMode === 'browse' ? 'bg-[var(--nim-primary)] text-white' : 'bg-transparent text-nim hover:bg-nim-hover'}`}
+                      className={`block w-full p-1.5 px-3 my-px text-xs font-mono text-left border-none rounded cursor-pointer transition-all ${selectedTable === table && viewMode === 'browse' ? 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)]' : 'bg-transparent text-nim hover:bg-nim-hover'}`}
                       onClick={() => {
                         setViewMode('browse');
                         handleTableSelect(table);
@@ -475,7 +475,7 @@ export function SQLiteBrowserCore({
                           {tableSchema.map((col) => (
                             <div key={col.name} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-nim-secondary rounded text-xs">
                               <span className="font-mono font-medium">
-                                {col.pk && <span className="inline-block px-1 py-0.5 mr-1 text-[9px] font-semibold bg-[var(--nim-primary)] text-white rounded-sm">PK</span>}
+                                {col.pk && <span className="inline-block px-1 py-0.5 mr-1 text-[9px] font-semibold bg-[var(--nim-primary)] text-[var(--nim-on-primary)] rounded-sm">PK</span>}
                                 {col.name}
                               </span>
                               <span className="text-nim-muted text-[11px]">{col.type}</span>
@@ -537,7 +537,7 @@ export function SQLiteBrowserCore({
                       className="w-full min-h-[100px] p-3 text-[13px] font-mono bg-nim-secondary border border-nim rounded text-nim resize-y focus:outline-none focus:border-[var(--nim-border-focus)]"
                     />
                     <button
-                      className="self-start px-5 py-2 text-sm font-medium rounded cursor-pointer bg-[var(--nim-primary)] text-white border-none transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="self-start px-5 py-2 text-sm font-medium rounded cursor-pointer bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-none transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={handleRunQuery}
                       disabled={!query.trim()}
                     >

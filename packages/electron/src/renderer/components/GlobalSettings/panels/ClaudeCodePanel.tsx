@@ -656,7 +656,7 @@ export function ClaudeCodePanel({
                                 setEditingKey(null);
                                 setEditingValue('');
                               }}
-                              className="py-1.5 px-3 rounded text-xs font-medium bg-[var(--nim-primary)] text-white hover:bg-[var(--nim-primary-hover)] transition-colors"
+                              className="py-1.5 px-3 rounded text-xs font-medium bg-[var(--nim-primary)] text-[var(--nim-on-primary)] hover:bg-[var(--nim-primary-hover)] transition-colors"
                             >
                               Save
                             </button>
@@ -728,7 +728,7 @@ export function ClaudeCodePanel({
                       }
                     }}
                     disabled={!newEnvKey.trim()}
-                    className="py-1.5 px-3 rounded text-xs font-medium bg-[var(--nim-primary)] text-white hover:bg-[var(--nim-primary-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="py-1.5 px-3 rounded text-xs font-medium bg-[var(--nim-primary)] text-[var(--nim-on-primary)] hover:bg-[var(--nim-primary-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Add
                   </button>

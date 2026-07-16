@@ -551,7 +551,7 @@ export function SyncPanel() {
                   : acct.isPrimary;
                 return (
                   <div key={acct.personalOrgId} className={`flex items-center gap-3 p-2.5 rounded-lg ${isSyncAccount ? 'bg-nim-primary/8 border border-nim-primary/20' : 'bg-nim-secondary'}`}>
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0 ${isSyncAccount ? 'bg-nim-primary' : 'bg-nim-tertiary'}`}>
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center font-semibold text-sm shrink-0 ${isSyncAccount ? 'text-[var(--nim-on-primary)] bg-nim-primary' : 'text-[var(--nim-text)] bg-nim-tertiary'}`}>
                       {(acct.email?.[0] || '?').toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -629,7 +629,7 @@ export function SyncPanel() {
               // Magic link sent confirmation
               <div className="text-center">
                 <div className="w-12 h-12 mx-auto mb-3 bg-nim-primary rounded-full flex items-center justify-center">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--nim-on-primary)" strokeWidth="2">
                     <path d="M22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6z" />
                     <path d="M22 6l-10 7L2 6" />
                   </svg>

@@ -371,7 +371,7 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
       <div className="provider-panel flex flex-col">
         <div className="plugin-error p-8 text-center text-[#e74c3c]">
           Error: {error}
-          <button onClick={loadData} className="plugin-retry-button ml-4 px-4 py-2 bg-[var(--nim-primary)] text-white border-none rounded cursor-pointer">Retry</button>
+          <button onClick={loadData} className="plugin-retry-button ml-4 px-4 py-2 bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-none rounded cursor-pointer">Retry</button>
         </div>
       </div>
     );
@@ -443,7 +443,7 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
                         <span className="plugin-card-badge installed inline-flex items-center px-2 py-1 rounded text-[0.6875rem] font-semibold uppercase tracking-tight bg-[rgba(39,174,96,0.15)] text-[#27ae60]">Installed</span>
                       ) : (
                         <button
-                          className={`plugin-install-button py-1.5 px-3 border-none rounded bg-[var(--nim-primary)] text-white text-xs font-medium cursor-pointer transition-opacity duration-150 hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed ${status === 'installing' ? 'installing bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]' : ''}`}
+                          className={`plugin-install-button py-1.5 px-3 border-none rounded bg-[var(--nim-primary)] text-[var(--nim-on-primary)] text-xs font-medium cursor-pointer transition-opacity duration-150 hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed ${status === 'installing' ? 'installing bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]' : ''}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleInstall(plugin);
@@ -478,7 +478,7 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
           <span className="plugin-empty-icon material-symbols-outlined text-5xl mb-4 opacity-50">extension_off</span>
           <p className="m-0 mb-6 text-[0.9375rem]">No plugins installed yet</p>
           <button
-            className="plugin-empty-cta py-2.5 px-5 rounded-md border-none bg-[var(--nim-primary)] text-white text-sm font-medium cursor-pointer transition-opacity duration-150 hover:opacity-90"
+            className="plugin-empty-cta py-2.5 px-5 rounded-md border-none bg-[var(--nim-primary)] text-[var(--nim-on-primary)] text-sm font-medium cursor-pointer transition-opacity duration-150 hover:opacity-90"
             onClick={() => setViewState('discover')}
           >
             Browse Plugins
@@ -616,7 +616,7 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
               </>
             ) : (
               <button
-                className={`plugin-details-install-button flex-1 py-3 px-6 border-none rounded-md bg-[var(--nim-primary)] text-white text-[0.9375rem] font-medium cursor-pointer transition-opacity duration-150 hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed ${status === 'installing' ? 'installing bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]' : ''}`}
+                className={`plugin-details-install-button flex-1 py-3 px-6 border-none rounded-md bg-[var(--nim-primary)] text-[var(--nim-on-primary)] text-[0.9375rem] font-medium cursor-pointer transition-opacity duration-150 hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed ${status === 'installing' ? 'installing bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]' : ''}`}
                 onClick={() => handleInstall(selectedPlugin)}
                 disabled={status === 'installing'}
               >
@@ -643,7 +643,7 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
         <button
           className={`plugin-view-button py-2 px-4 border-none rounded-md text-sm font-medium cursor-pointer transition-all duration-150 ${
             viewState === 'discover'
-              ? 'bg-[var(--nim-primary)] text-white shadow-sm'
+              ? 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)] shadow-sm'
               : 'bg-transparent text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]'
           }`}
           onClick={() => setViewState('discover')}
@@ -653,7 +653,7 @@ function ClaudeCodePluginsPanelInner({ scope = 'user', workspacePath }: ClaudeCo
         <button
           className={`plugin-view-button py-2 px-4 border-none rounded-md text-sm font-medium cursor-pointer transition-all duration-150 ${
             viewState === 'installed'
-              ? 'bg-[var(--nim-primary)] text-white shadow-sm'
+              ? 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)] shadow-sm'
               : 'bg-transparent text-[var(--nim-text-muted)] hover:text-[var(--nim-text)] hover:bg-[var(--nim-bg-hover)]'
           }`}
           onClick={() => setViewState('installed')}
@@ -694,7 +694,7 @@ export function ClaudeCodePluginsPanel(props: ClaudeCodePluginsPanelProps) {
             </p>
             <button
               onClick={() => window.location.reload()}
-              className="plugin-retry-button py-2 px-4 bg-[var(--nim-primary)] text-white border-none rounded-md cursor-pointer"
+              className="plugin-retry-button py-2 px-4 bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-none rounded-md cursor-pointer"
             >
               Reload Application
             </button>

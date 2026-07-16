@@ -38,7 +38,7 @@ export function Toolbar({ totalPages, scale, fitToWidth, onScaleChange, onFitToW
 
         <div className="flex items-center gap-3">
           <button
-            className={`px-3 py-1 rounded cursor-pointer text-base font-semibold transition-all border border-nim ${fitToWidth ? 'bg-[var(--nim-primary)] text-white border-[var(--nim-primary)] hover:opacity-90' : 'bg-nim-tertiary text-nim hover:bg-nim-hover'}`}
+            className={`px-3 py-1 rounded cursor-pointer text-base font-semibold transition-all border border-nim ${fitToWidth ? 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-[var(--nim-primary)] hover:opacity-90' : 'bg-nim-tertiary text-nim hover:bg-nim-hover'}`}
             onClick={onFitToWidthToggle}
             title="Fit to Width"
           >

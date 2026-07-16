@@ -551,7 +551,7 @@ export function DatabaseBrowser() {
           {tables.map(table => (
             <div
               key={table}
-              className={`table-item py-2 px-3 cursor-pointer rounded mb-0.5 text-sm hover:bg-[var(--nim-bg-hover)] ${selectedTable === table ? 'bg-[var(--nim-primary)] text-white' : ''}`}
+              className={`table-item py-2 px-3 cursor-pointer rounded mb-0.5 text-sm hover:bg-[var(--nim-bg-hover)] ${selectedTable === table ? 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)]' : ''}`}
               onClick={() => handleTableSelect(table)}
             >
               {table}
@@ -571,7 +571,7 @@ export function DatabaseBrowser() {
               <button
                 onClick={(e) => { e.stopPropagation(); executeQuery(); }}
                 disabled={loading}
-                className="execute-button text-white border-none py-1.5 px-4 rounded text-sm cursor-pointer font-medium bg-[var(--nim-primary)] hover:enabled:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="execute-button text-[var(--nim-on-primary)] border-none py-1.5 px-4 rounded text-sm cursor-pointer font-medium bg-[var(--nim-primary)] hover:enabled:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Execute
               </button>
@@ -603,13 +603,13 @@ export function DatabaseBrowser() {
               <h3 className="text-base font-semibold m-0">Table: {selectedTable}</h3>
               <div className="tab-buttons flex gap-2">
                 <button
-                  className={`tab-button border border-[var(--nim-border)] py-1.5 px-4 rounded cursor-pointer text-[13px] font-medium transition-all duration-200 ${activeTab === 'data' ? 'bg-[var(--nim-primary)] text-white border-[var(--nim-primary)]' : 'bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)]'}`}
+                  className={`tab-button border border-[var(--nim-border)] py-1.5 px-4 rounded cursor-pointer text-[13px] font-medium transition-all duration-200 ${activeTab === 'data' ? 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-[var(--nim-primary)]' : 'bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)]'}`}
                   onClick={() => setActiveTab('data')}
                 >
                   Data
                 </button>
                 <button
-                  className={`tab-button border border-[var(--nim-border)] py-1.5 px-4 rounded cursor-pointer text-[13px] font-medium transition-all duration-200 ${activeTab === 'schema' ? 'bg-[var(--nim-primary)] text-white border-[var(--nim-primary)]' : 'bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)]'}`}
+                  className={`tab-button border border-[var(--nim-border)] py-1.5 px-4 rounded cursor-pointer text-[13px] font-medium transition-all duration-200 ${activeTab === 'schema' ? 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-[var(--nim-primary)]' : 'bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)]'}`}
                   onClick={() => setActiveTab('schema')}
                 >
                   Schema
@@ -850,7 +850,7 @@ export function DatabaseBrowser() {
                       Cancel
                     </button>
                     <button
-                      className="text-white border-none py-1.5 px-3 rounded text-[13px] cursor-pointer min-w-[70px] bg-[var(--nim-primary)] hover:bg-[var(--nim-primary-hover)] disabled:opacity-50"
+                      className="text-[var(--nim-on-primary)] border-none py-1.5 px-3 rounded text-[13px] cursor-pointer min-w-[70px] bg-[var(--nim-primary)] hover:bg-[var(--nim-primary-hover)] disabled:opacity-50"
                       onClick={handleModalEditSave}
                       disabled={modalEditSaving}
                     >
@@ -868,7 +868,7 @@ export function DatabaseBrowser() {
                       </button>
                     )}
                     <button
-                      className="text-white border-none py-1.5 px-3 rounded text-[13px] cursor-pointer min-w-[70px] bg-[var(--nim-primary)] hover:bg-[var(--nim-primary-hover)]"
+                      className="text-[var(--nim-on-primary)] border-none py-1.5 px-3 rounded text-[13px] cursor-pointer min-w-[70px] bg-[var(--nim-primary)] hover:bg-[var(--nim-primary-hover)]"
                       onClick={handleCopyCellValue}
                     >
                       {copiedCell ? 'Copied!' : 'Copy'}

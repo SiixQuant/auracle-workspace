@@ -63,7 +63,7 @@ export function DownloadProgressToast({
       {/* Progress section */}
       <div className="update-toast-progress-section flex items-center gap-3 mb-2">
         {/* App icon placeholder */}
-        <div className="update-toast-app-icon w-10 h-10 rounded-lg bg-gradient-to-br from-[var(--nim-primary)] to-[#6366f1] flex items-center justify-center shrink-0 [&>svg]:w-6 [&>svg]:h-6 [&>svg]:text-white">
+        <div className="update-toast-app-icon w-10 h-10 rounded-lg bg-gradient-to-br from-[var(--nim-primary)] to-[var(--nim-primary-hover)] flex items-center justify-center shrink-0 [&>svg]:w-6 [&>svg]:h-6 [&>svg]:text-[var(--nim-on-primary)]">
           <svg viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
           </svg>

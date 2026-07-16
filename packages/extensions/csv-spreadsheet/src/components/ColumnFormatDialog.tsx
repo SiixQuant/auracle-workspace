@@ -213,7 +213,7 @@ export function ColumnFormatDialog({
             Cancel
           </button>
           <button
-            className="px-4 py-2 text-sm font-medium rounded cursor-pointer transition-all bg-[var(--nim-primary)] border border-[var(--nim-primary)] text-white hover:opacity-90"
+            className="px-4 py-2 text-sm font-medium rounded cursor-pointer transition-all bg-[var(--nim-primary)] border border-[var(--nim-primary)] text-[var(--nim-on-primary)] hover:opacity-90"
             onClick={handleSave}
           >
             Apply

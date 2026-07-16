@@ -205,7 +205,7 @@ export const UnifiedDiffHeader: React.FC<UnifiedDiffHeaderProps> = ({
                 Revert
               </button>
               <button
-                className="unified-diff-header-button unified-diff-header-button-accept-single py-1.5 px-3 rounded-md text-[13px] font-medium cursor-pointer transition-all duration-150 border border-[var(--nim-primary)] flex items-center gap-1.5 whitespace-nowrap bg-[var(--nim-primary)] text-white hover:enabled:opacity-90 active:enabled:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed @[max-450px]/diff-header:py-1.5 @[max-450px]/diff-header:px-2.5 @[max-350px]/diff-header:py-[5px] @[max-350px]/diff-header:px-2 @[max-350px]/diff-header:text-xs"
+                className="unified-diff-header-button unified-diff-header-button-accept-single py-1.5 px-3 rounded-md text-[13px] font-medium cursor-pointer transition-all duration-150 border border-[var(--nim-primary)] flex items-center gap-1.5 whitespace-nowrap bg-[var(--nim-primary)] text-[var(--nim-on-primary)] hover:enabled:opacity-90 active:enabled:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed @[max-450px]/diff-header:py-1.5 @[max-450px]/diff-header:px-2.5 @[max-350px]/diff-header:py-[5px] @[max-350px]/diff-header:px-2 @[max-350px]/diff-header:text-xs"
                 onClick={handleAcceptCurrent}
                 title="Keep this change"
                 disabled={!hasSelection}
@@ -232,7 +232,7 @@ export const UnifiedDiffHeader: React.FC<UnifiedDiffHeaderProps> = ({
             Revert{hasChangeGroups && supportsPerChangeActions ? ' All' : ''}
           </button>
           <button
-            className="unified-diff-header-button unified-diff-header-button-accept py-1.5 px-3 rounded-md text-[13px] font-medium cursor-pointer transition-all duration-150 border border-[var(--nim-primary)] flex items-center gap-1.5 whitespace-nowrap bg-[var(--nim-primary)] text-white hover:enabled:opacity-90 active:enabled:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed @[max-450px]/diff-header:py-1.5 @[max-450px]/diff-header:px-2.5 @[max-350px]/diff-header:py-[5px] @[max-350px]/diff-header:px-2 @[max-350px]/diff-header:text-xs"
+            className="unified-diff-header-button unified-diff-header-button-accept py-1.5 px-3 rounded-md text-[13px] font-medium cursor-pointer transition-all duration-150 border border-[var(--nim-primary)] flex items-center gap-1.5 whitespace-nowrap bg-[var(--nim-primary)] text-[var(--nim-on-primary)] hover:enabled:opacity-90 active:enabled:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed @[max-450px]/diff-header:py-1.5 @[max-450px]/diff-header:px-2.5 @[max-350px]/diff-header:py-[5px] @[max-350px]/diff-header:px-2 @[max-350px]/diff-header:text-xs"
             onClick={handleAcceptAll}
             type="button"
             data-testid="diff-keep-all"

@@ -294,7 +294,7 @@ const BlockedFeedbackCard: React.FC<{ args: ProgressUpdateArgs; sessionId: strin
                   fontSize: '11px',
                   fontWeight: 500,
                   background: 'var(--nim-primary)',
-                  color: 'white',
+                  color: 'var(--nim-on-primary)',
                   border: 'none',
                   borderRadius: '4px',
                   cursor: (!feedback.trim() || isSubmitting || !host) ? 'not-allowed' : 'pointer',

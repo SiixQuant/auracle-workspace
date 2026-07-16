@@ -334,7 +334,7 @@ export const ProjectPermissionsPanel: React.FC<ProjectPermissionsPanelProps> = (
               </button>
             ) : (
               <button
-                className="btn-primary px-3 py-1.5 rounded text-xs font-medium bg-[var(--nim-primary)] text-white hover:bg-[var(--nim-primary-hover)] cursor-pointer"
+                className="btn-primary px-3 py-1.5 rounded text-xs font-medium bg-[var(--nim-primary)] text-[var(--nim-on-primary)] hover:bg-[var(--nim-primary-hover)] cursor-pointer"
                 onClick={handleTrustWorkspace}
               >
                 Trust Workspace
@@ -574,7 +574,7 @@ export const ProjectPermissionsPanel: React.FC<ProjectPermissionsPanelProps> = (
                       Cancel
                     </button>
                     <button
-                      className="btn-primary px-3 py-1.5 rounded text-xs font-medium bg-[var(--nim-primary)] text-white hover:bg-[var(--nim-primary-hover)] cursor-pointer disabled:opacity-50"
+                      className="btn-primary px-3 py-1.5 rounded text-xs font-medium bg-[var(--nim-primary)] text-[var(--nim-on-primary)] hover:bg-[var(--nim-primary-hover)] cursor-pointer disabled:opacity-50"
                       onClick={handleAddUrlPattern}
                       disabled={!newUrlPattern.trim()}
                     >

@@ -97,7 +97,7 @@ export const CustomEditorAIEditedBar: React.FC<CustomEditorAIEditedBarProps> = (
         <div className="unified-diff-header-actions flex items-center gap-2 ml-auto shrink-0">
           {onViewHistory && (
             <button
-              className="unified-diff-header-button unified-diff-header-button-accept py-1.5 px-3 rounded-md text-[13px] font-medium cursor-pointer transition-all duration-150 border border-[var(--nim-primary)] flex items-center gap-1.5 whitespace-nowrap bg-[var(--nim-primary)] text-white hover:enabled:opacity-90 active:enabled:scale-[0.98]"
+              className="unified-diff-header-button unified-diff-header-button-accept py-1.5 px-3 rounded-md text-[13px] font-medium cursor-pointer transition-all duration-150 border border-[var(--nim-primary)] flex items-center gap-1.5 whitespace-nowrap bg-[var(--nim-primary)] text-[var(--nim-on-primary)] hover:enabled:opacity-90 active:enabled:scale-[0.98]"
               onClick={onViewHistory}
               type="button"
               title="View changes in history"

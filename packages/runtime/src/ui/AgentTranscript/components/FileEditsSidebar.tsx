@@ -839,7 +839,7 @@ export const FileEditsSidebar: React.FC<FileEditsSidebarProps> = ({
         <div className="file-edits-sidebar__controls flex items-center gap-1 p-2 border-b border-[var(--nim-border)] bg-[var(--nim-bg-secondary)]">
           <button
             onClick={() => setGroupByDirectory(!groupByDirectory)}
-            className={`file-edits-sidebar__control-button flex items-center justify-center w-7 h-7 p-0 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text-muted)] cursor-pointer transition-all hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)] disabled:opacity-40 disabled:cursor-not-allowed ${groupByDirectory ? 'bg-[var(--nim-primary)] text-white border-[var(--nim-primary)]' : ''}`}
+            className={`file-edits-sidebar__control-button flex items-center justify-center w-7 h-7 p-0 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text-muted)] cursor-pointer transition-all hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)] disabled:opacity-40 disabled:cursor-not-allowed ${groupByDirectory ? 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-[var(--nim-primary)]' : ''}`}
             title="Group by directory"
           >
             <MaterialSymbol icon="folder" size={18} />

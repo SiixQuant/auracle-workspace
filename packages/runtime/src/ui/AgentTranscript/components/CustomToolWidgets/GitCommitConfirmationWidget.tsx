@@ -1167,7 +1167,7 @@ export const GitCommitConfirmationWidget: React.FC<CustomToolWidgetProps> = ({
           </button>
           <button
             data-testid="git-commit-confirm"
-            className="git-commit-widget__confirm-btn flex items-center gap-1.5 py-1.5 px-3 text-[0.8125rem] font-medium border-none rounded bg-[var(--nim-primary)] text-white cursor-pointer transition-all hover:bg-[var(--nim-primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="git-commit-widget__confirm-btn flex items-center gap-1.5 py-1.5 px-3 text-[0.8125rem] font-medium border-none rounded bg-[var(--nim-primary)] text-[var(--nim-on-primary)] cursor-pointer transition-all hover:bg-[var(--nim-primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handleConfirm}
             disabled={isCommitting || filesToStage.size === 0 || !commitMessage.trim()}
           >

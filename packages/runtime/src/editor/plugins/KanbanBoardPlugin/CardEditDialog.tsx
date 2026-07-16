@@ -136,7 +136,7 @@ export function CardEditDialog({ visible, onHide, onSave, initialData }: CardEdi
         <div className="card-edit-actions flex gap-2.5 justify-end mt-5 border-t border-[var(--nim-border)] pt-4">
           <button
             onClick={handleSave}
-            className="card-edit-button card-edit-button-save py-2 px-4 rounded cursor-pointer text-sm transition-all font-inherit bg-[var(--nim-primary)] border border-[var(--nim-primary)] text-white hover:bg-[var(--nim-primary-hover)]"
+            className="card-edit-button card-edit-button-save py-2 px-4 rounded cursor-pointer text-sm transition-all font-inherit bg-[var(--nim-primary)] border border-[var(--nim-primary)] text-[var(--nim-on-primary)] hover:bg-[var(--nim-primary-hover)]"
           >
             Save
           </button>

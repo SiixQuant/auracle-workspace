@@ -317,7 +317,7 @@ export const ImportFromSourceDialog: React.FC<ImportFromSourceDialogProps> = ({
             Cancel
           </button>
           <button
-            className="px-3 py-1 text-xs font-medium text-white bg-[var(--nim-primary)] rounded hover:opacity-90 disabled:opacity-50"
+            className="px-3 py-1 text-xs font-medium text-[var(--nim-on-primary)] bg-[var(--nim-primary)] rounded hover:opacity-90 disabled:opacity-50"
             onClick={runImport}
             disabled={importing || selected.size === 0}
             data-testid="import-from-source-confirm"

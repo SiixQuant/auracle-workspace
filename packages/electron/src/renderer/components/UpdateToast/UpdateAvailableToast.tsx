@@ -47,7 +47,7 @@ export function UpdateAvailableToast({
       {/* Action buttons */}
       <div className="update-toast-actions flex gap-2 flex-wrap">
         <button
-          className="update-toast-btn update-toast-btn-primary flex-1 py-2 px-3.5 border-none rounded-md text-[13px] font-medium cursor-pointer transition-all duration-200 font-[inherit] whitespace-nowrap bg-[var(--nim-primary)] text-white hover:brightness-110"
+          className="update-toast-btn update-toast-btn-primary flex-1 py-2 px-3.5 border-none rounded-md text-[13px] font-medium cursor-pointer transition-all duration-200 font-[inherit] whitespace-nowrap bg-[var(--nim-primary)] text-[var(--nim-on-primary)] hover:brightness-110"
           onClick={onUpdateNow}
           data-testid="update-now-btn"
         >

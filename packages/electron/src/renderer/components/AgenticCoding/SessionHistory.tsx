@@ -3066,7 +3066,7 @@ const SessionHistoryComponent: React.FC = () => {
           <>
           <HelpTooltip testId="session-kanban-button">
             <button
-              className={`flex items-center gap-1 px-2 py-1.5 text-[11px] font-semibold rounded border cursor-pointer transition-all duration-150 shrink-0 ${viewMode === 'kanban' ? 'bg-[var(--nim-primary)] border-[var(--nim-primary)] text-white hover:opacity-90' : 'bg-[var(--nim-bg-secondary)] border-[var(--nim-border)] text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] hover:text-[var(--nim-text)]'}`}
+              className={`flex items-center gap-1 px-2 py-1.5 text-[11px] font-semibold rounded border cursor-pointer transition-all duration-150 shrink-0 ${viewMode === 'kanban' ? 'bg-[var(--nim-primary)] border-[var(--nim-primary)] text-[var(--nim-on-primary)] hover:opacity-90' : 'bg-[var(--nim-bg-secondary)] border-[var(--nim-border)] text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] hover:text-[var(--nim-text)]'}`}
               data-testid="session-kanban-button"
               onClick={() => {
                 const newMode = viewMode === 'kanban' ? 'list' : 'kanban';
@@ -3276,7 +3276,7 @@ const SessionHistoryComponent: React.FC = () => {
             <button
               className={`flex items-center justify-center w-5 h-5 rounded transition-all duration-150 ${
                 showSearchFilters || searchFilters.timeRange !== '30d' || searchFilters.direction !== 'all'
-                  ? 'bg-[var(--nim-primary)] text-white'
+                  ? 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)]'
                   : 'text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]'
               }`}
               onClick={() => setShowSearchFilters(!showSearchFilters)}
@@ -3359,7 +3359,7 @@ const SessionHistoryComponent: React.FC = () => {
       </div>
       <div className="session-history-filters flex items-center px-3 py-2 border-b border-[var(--nim-border)] gap-1.5 shrink-0">
         <button
-          className={`session-history-archive-filter flex items-center justify-center px-1.5 py-1 text-xs rounded border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] text-[var(--nim-text-faint)] cursor-pointer transition-all duration-150 outline-none hover:bg-[var(--nim-bg-tertiary)] hover:border-[var(--nim-primary)] hover:text-[var(--nim-text)] [&_svg]:block ${showArchived ? 'bg-[var(--nim-primary)] border-[var(--nim-primary)] text-white hover:opacity-90' : ''}`}
+          className={`session-history-archive-filter flex items-center justify-center px-1.5 py-1 text-xs rounded border border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] text-[var(--nim-text-faint)] cursor-pointer transition-all duration-150 outline-none hover:bg-[var(--nim-bg-tertiary)] hover:border-[var(--nim-primary)] hover:text-[var(--nim-text)] [&_svg]:block ${showArchived ? 'bg-[var(--nim-primary)] border-[var(--nim-primary)] text-[var(--nim-on-primary)] hover:opacity-90' : ''}`}
           onClick={toggleShowArchived}
           title={showArchived ? 'Hide archived sessions' : 'Show archived sessions'}
           aria-label={showArchived ? 'Hide archived sessions' : 'Show archived sessions'}

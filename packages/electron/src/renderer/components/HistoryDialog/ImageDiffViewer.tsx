@@ -23,19 +23,19 @@ export function ImageDiffViewer({
       <div className="image-diff-controls flex items-center gap-4 px-4 py-3 border-b border-[var(--nim-border)] bg-[var(--nim-bg)]">
         <div className="image-diff-mode-toggle flex gap-1">
           <button
-            className={`image-diff-mode-button px-3 py-1.5 text-[13px] bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded text-[var(--nim-text)] cursor-pointer transition-all duration-200 hover:bg-[var(--nim-bg-hover)] ${viewMode === 'side-by-side' ? 'active !bg-[var(--nim-primary)] !text-white !border-[var(--nim-primary)]' : ''}`}
+            className={`image-diff-mode-button px-3 py-1.5 text-[13px] bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded text-[var(--nim-text)] cursor-pointer transition-all duration-200 hover:bg-[var(--nim-bg-hover)] ${viewMode === 'side-by-side' ? 'active !bg-[var(--nim-primary)] !text-[var(--nim-on-primary)] !border-[var(--nim-primary)]' : ''}`}
             onClick={() => setViewMode('side-by-side')}
           >
             Side by Side
           </button>
           <button
-            className={`image-diff-mode-button px-3 py-1.5 text-[13px] bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded text-[var(--nim-text)] cursor-pointer transition-all duration-200 hover:bg-[var(--nim-bg-hover)] ${viewMode === 'swipe' ? 'active !bg-[var(--nim-primary)] !text-white !border-[var(--nim-primary)]' : ''}`}
+            className={`image-diff-mode-button px-3 py-1.5 text-[13px] bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded text-[var(--nim-text)] cursor-pointer transition-all duration-200 hover:bg-[var(--nim-bg-hover)] ${viewMode === 'swipe' ? 'active !bg-[var(--nim-primary)] !text-[var(--nim-on-primary)] !border-[var(--nim-primary)]' : ''}`}
             onClick={() => setViewMode('swipe')}
           >
             Swipe
           </button>
           <button
-            className={`image-diff-mode-button px-3 py-1.5 text-[13px] bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded text-[var(--nim-text)] cursor-pointer transition-all duration-200 hover:bg-[var(--nim-bg-hover)] ${viewMode === 'onion-skin' ? 'active !bg-[var(--nim-primary)] !text-white !border-[var(--nim-primary)]' : ''}`}
+            className={`image-diff-mode-button px-3 py-1.5 text-[13px] bg-[var(--nim-bg-secondary)] border border-[var(--nim-border)] rounded text-[var(--nim-text)] cursor-pointer transition-all duration-200 hover:bg-[var(--nim-bg-hover)] ${viewMode === 'onion-skin' ? 'active !bg-[var(--nim-primary)] !text-[var(--nim-on-primary)] !border-[var(--nim-primary)]' : ''}`}
             onClick={() => setViewMode('onion-skin')}
           >
             Overlay

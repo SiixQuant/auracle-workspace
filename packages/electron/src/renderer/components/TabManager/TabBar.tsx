@@ -695,7 +695,7 @@ export const TabBar: React.FC<TabBarProps> = ({
                       {tabs.map((tab, index) => (
                         <div
                           key={tab.id}
-                          className={`tab-menu-item flex items-center justify-between px-3 py-2 text-[13px] text-[var(--nim-text-muted)] cursor-pointer transition-colors duration-150 whitespace-nowrap overflow-hidden text-ellipsis outline-none hover:bg-[var(--nim-bg-tertiary)] ${tab.id === activeTabId ? 'active bg-[var(--nim-primary)] text-white' : ''} ${menuSelectedIndex === index + 1 ? 'selected bg-[var(--nim-bg-tertiary)] shadow-[inset_0_0_0_1px_var(--nim-primary)]' : ''}`}
+                          className={`tab-menu-item flex items-center justify-between px-3 py-2 text-[13px] text-[var(--nim-text-muted)] cursor-pointer transition-colors duration-150 whitespace-nowrap overflow-hidden text-ellipsis outline-none hover:bg-[var(--nim-bg-tertiary)] ${tab.id === activeTabId ? 'active bg-[var(--nim-primary)] text-[var(--nim-on-primary)]' : ''} ${menuSelectedIndex === index + 1 ? 'selected bg-[var(--nim-bg-tertiary)] shadow-[inset_0_0_0_1px_var(--nim-primary)]' : ''}`}
                           onClick={() => handleTabMenuSelect(tab.id)}
                           role="menuitem"
                           tabIndex={0}

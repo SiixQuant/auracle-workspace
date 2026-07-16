@@ -224,7 +224,7 @@ const SuperBlockedContinueUI: React.FC<{ loopId: string }> = memo(({ loopId }) =
         disabled={isContinuing}
       />
       <button
-        className="mt-1 px-3 py-1 text-xs bg-[var(--nim-primary)] text-white rounded hover:opacity-90 disabled:opacity-50"
+        className="mt-1 px-3 py-1 text-xs bg-[var(--nim-primary)] text-[var(--nim-on-primary)] rounded hover:opacity-90 disabled:opacity-50"
         onClick={handleContinue}
         disabled={isContinuing || !input.trim()}
       >

@@ -313,7 +313,7 @@ export function WalkthroughCallout({
             </button>
           )}
           <button
-            className={`walkthrough-callout-btn walkthrough-callout-btn--next px-3 py-1.5 rounded-[5px] text-[13px] font-medium border-none cursor-pointer transition-all duration-150 text-white hover:brightness-110 ${isLastStep ? 'walkthrough-callout-btn--done bg-[#10b981]' : 'bg-[var(--nim-primary)]'}`}
+            className={`walkthrough-callout-btn walkthrough-callout-btn--next px-3 py-1.5 rounded-[5px] text-[13px] font-medium border-none cursor-pointer transition-all duration-150 hover:brightness-110 ${isLastStep ? 'walkthrough-callout-btn--done bg-[#10b981] text-white' : 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)]'}`}
             onClick={handleNextOrComplete}
           >
             {isLastStep ? 'Done' : 'Next'}

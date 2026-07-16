@@ -57,7 +57,7 @@ export const CodexAuthRequiredWidget: React.FC<{ fallbackMessage?: string }> = (
         <button
           type="button"
           onClick={handleClick}
-          className="inline-flex items-center justify-center py-2 px-4 rounded-md text-sm font-medium cursor-pointer transition-all bg-[var(--nim-primary)] text-white hover:bg-[var(--nim-primary-hover)]"
+          className="inline-flex items-center justify-center py-2 px-4 rounded-md text-sm font-medium cursor-pointer transition-all bg-[var(--nim-primary)] text-[var(--nim-on-primary)] hover:bg-[var(--nim-primary-hover)]"
           data-testid="codex-auth-required-sign-in"
         >
           Sign In

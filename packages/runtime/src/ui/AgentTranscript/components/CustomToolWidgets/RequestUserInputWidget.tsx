@@ -503,7 +503,7 @@ function SingleSelectRenderer({
                 isSelected ? 'bg-nim-primary border-nim-primary' : 'bg-nim border-nim'
               }`}
             >
-              {isSelected && <span className="w-2 h-2 rounded-full bg-white" />}
+              {isSelected && <span className="w-2 h-2 rounded-full bg-[var(--nim-on-primary)]" />}
             </span>
             <span className="flex-1 min-w-0 flex flex-col gap-0.5">
               <span className="text-[0.8125rem] font-medium text-nim leading-snug">{option.label}</span>
@@ -534,7 +534,7 @@ function SingleSelectRenderer({
                 draft.state.otherSelected ? 'bg-nim-primary border-nim-primary' : 'bg-nim border-nim'
               }`}
             >
-              {draft.state.otherSelected && <span className="w-2 h-2 rounded-full bg-white" />}
+              {draft.state.otherSelected && <span className="w-2 h-2 rounded-full bg-[var(--nim-on-primary)]" />}
             </span>
             <span className="text-[0.8125rem] font-medium text-nim leading-snug">Other</span>
           </button>

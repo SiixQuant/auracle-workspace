@@ -159,7 +159,7 @@ export const TrackerSidebar: React.FC<TrackerSidebarProps> = ({
                   data-testid={`tracker-filter-${chip.id}`}
                   className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-colors ${
                     isActive
-                      ? 'bg-[var(--nim-primary)] text-white'
+                      ? 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)]'
                       : 'bg-nim-tertiary text-nim-muted hover:bg-nim-active hover:text-nim'
                   }`}
                   onClick={() => onToggleFilter(chip.id)}
@@ -213,7 +213,7 @@ export const TrackerSidebar: React.FC<TrackerSidebarProps> = ({
                 data-testid="tracker-saved-view-name-input"
               />
               <button
-                className="px-1.5 py-1 text-[11px] text-white bg-[var(--nim-primary)] rounded hover:opacity-90 disabled:opacity-40"
+                className="px-1.5 py-1 text-[11px] text-[var(--nim-on-primary)] bg-[var(--nim-primary)] rounded hover:opacity-90 disabled:opacity-40"
                 onClick={commitSaveView}
                 disabled={!newViewName.trim()}
                 data-testid="tracker-saved-view-save"

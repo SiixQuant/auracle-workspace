@@ -409,7 +409,7 @@ export const TranscriptSearchBar: React.FC<TranscriptSearchBarProps> = ({
         </button>
 
         <button
-          className={`transcript-search-button transcript-search-case-button p-1.5 text-xs font-semibold font-mono bg-[var(--nim-bg)] border border-[var(--nim-border)] rounded-md text-[var(--nim-text-muted)] cursor-pointer transition-all flex items-center justify-center hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] hover:text-[var(--nim-text)] ${caseSensitive ? 'bg-[var(--nim-primary)] border-[var(--nim-primary)] text-white' : ''}`}
+          className={`transcript-search-button transcript-search-case-button p-1.5 text-xs font-semibold font-mono bg-[var(--nim-bg)] border border-[var(--nim-border)] rounded-md text-[var(--nim-text-muted)] cursor-pointer transition-all flex items-center justify-center hover:bg-[var(--nim-bg-hover)] hover:border-[var(--nim-primary)] hover:text-[var(--nim-text)] ${caseSensitive ? 'bg-[var(--nim-primary)] border-[var(--nim-primary)] text-[var(--nim-on-primary)]' : ''}`}
           onClick={() => setCaseSensitive(!caseSensitive)}
           title={caseSensitive ? 'Case sensitive' : 'Case insensitive'}
           data-active={caseSensitive}

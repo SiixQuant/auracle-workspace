@@ -258,7 +258,7 @@ export const BackgroundTaskIndicator: React.FC<BackgroundTaskIndicatorProps> = (
             size={20}
           />
           {activeTaskCount > 0 ? (
-            <span className="absolute -right-0.5 -top-0.5 flex min-h-[16px] min-w-[16px] items-center justify-center rounded-full bg-[var(--nim-primary)] px-1 text-[10px] font-semibold text-white">
+            <span className="absolute -right-0.5 -top-0.5 flex min-h-[16px] min-w-[16px] items-center justify-center rounded-full bg-[var(--nim-primary)] px-1 text-[10px] font-semibold text-[var(--nim-on-primary)]">
               {activeTaskCount > 9 ? '9+' : activeTaskCount}
             </span>
           ) : null}

@@ -100,7 +100,7 @@ export function ReleaseNotesDialog({
             </svg>
           </span>
           <span className="update-dialog-version-label text-xs text-[var(--nim-text-muted)]">The latest version is:</span>
-          <span className="update-dialog-version-badge update-dialog-version-badge-new text-xs font-medium py-1 px-2 rounded font-mono bg-[var(--nim-primary)] text-white" data-testid="new-version-badge">{newVersion}</span>
+          <span className="update-dialog-version-badge update-dialog-version-badge-new text-xs font-medium py-1 px-2 rounded font-mono bg-[var(--nim-primary)] text-[var(--nim-on-primary)]" data-testid="new-version-badge">{newVersion}</span>
         </div>
 
         {/* Release notes */}
@@ -123,7 +123,7 @@ export function ReleaseNotesDialog({
             Later
           </button>
           <button
-            className="update-dialog-btn update-dialog-btn-primary flex items-center gap-2 py-2.5 px-[18px] border-none rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 font-[inherit] bg-[var(--nim-primary)] text-white hover:brightness-110 [&>svg]:w-4 [&>svg]:h-4"
+            className="update-dialog-btn update-dialog-btn-primary flex items-center gap-2 py-2.5 px-[18px] border-none rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 font-[inherit] bg-[var(--nim-primary)] text-[var(--nim-on-primary)] hover:brightness-110 [&>svg]:w-4 [&>svg]:h-4"
             onClick={onUpdate}
             data-testid="release-notes-update-btn"
           >

@@ -359,7 +359,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                     <button
                       type="submit"
                       disabled={authLoading || !isStytchAvailable || !authEmail}
-                      className="w-full px-4 py-2.5 rounded-lg border-none text-[0.8125rem] font-medium text-white bg-[var(--nim-primary)] cursor-pointer disabled:opacity-50 disabled:cursor-default"
+                      className="w-full px-4 py-2.5 rounded-lg border-none text-[0.8125rem] font-medium text-[var(--nim-on-primary)] bg-[var(--nim-primary)] cursor-pointer disabled:opacity-50 disabled:cursor-default"
                     >
                       {authLoading ? 'Sending...' : 'Send sign-in link'}
                     </button>
@@ -476,7 +476,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                       Cancel
                     </button>
                     <button
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-lg border-none text-[0.8125rem] font-medium cursor-pointer text-white bg-[var(--nim-primary)] transition-all duration-150 hover:brightness-110 disabled:opacity-50 disabled:cursor-default"
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-lg border-none text-[0.8125rem] font-medium cursor-pointer text-[var(--nim-on-primary)] bg-[var(--nim-primary)] transition-all duration-150 hover:brightness-110 disabled:opacity-50 disabled:cursor-default"
                       onClick={handleShare}
                       disabled={shareState === 'sharing'}
                     >

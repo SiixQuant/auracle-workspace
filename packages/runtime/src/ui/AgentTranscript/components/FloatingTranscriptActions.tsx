@@ -132,7 +132,7 @@ export const PromptsMenuButton: React.FC<PromptsMenuButtonProps> = ({
           style={{ backgroundImage: `url(${tableOfContentsIconUrl})` }}
         />
         {prompts.length > 0 && (
-          <span className="prompts-badge absolute -top-1 -right-1 bg-[var(--nim-primary)] text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none shadow-sm">{prompts.length}</span>
+          <span className="prompts-badge absolute -top-1 -right-1 bg-[var(--nim-primary)] text-[var(--nim-on-primary)] text-[10px] font-semibold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none shadow-sm">{prompts.length}</span>
         )}
       </button>
       {dropdownContent}

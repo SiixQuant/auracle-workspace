@@ -1628,7 +1628,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
       <div className="provider-panel flex flex-col">
         <div className="mcp-error p-8 text-center text-[#e74c3c]">
           Error: {error}
-          <button onClick={loadServers} className="mcp-retry-button ml-4 px-4 py-2 bg-[var(--nim-primary)] text-white border-none rounded cursor-pointer">Retry</button>
+          <button onClick={loadServers} className="mcp-retry-button ml-4 px-4 py-2 bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-none rounded cursor-pointer">Retry</button>
         </div>
       </div>
     );
@@ -1885,7 +1885,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                 <button
                   onClick={handleAuthorize}
                   disabled={oauthAction !== 'idle'}
-                  className="mcp-oauth-button authorize px-4 py-2 rounded text-sm font-medium cursor-pointer transition-all duration-150 bg-[var(--nim-primary)] text-white border-none disabled:opacity-60 disabled:cursor-not-allowed hover:enabled:opacity-90"
+                  className="mcp-oauth-button authorize px-4 py-2 rounded text-sm font-medium cursor-pointer transition-all duration-150 bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-none disabled:opacity-60 disabled:cursor-not-allowed hover:enabled:opacity-90"
                   aria-label="Authorize OAuth connection"
                   aria-busy={oauthAction === 'authorizing'}
                 >
@@ -1931,7 +1931,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                 {testHelpUrl && (
                   <button
                     type="button"
-                    className="mcp-help-link-button block mt-2 px-2 py-1 text-xs font-medium text-[var(--nim-primary)] bg-transparent border border-[var(--nim-primary)] rounded cursor-pointer transition-all duration-150 hover:bg-[var(--nim-primary)] hover:text-white"
+                    className="mcp-help-link-button block mt-2 px-2 py-1 text-xs font-medium text-[var(--nim-primary)] bg-transparent border border-[var(--nim-primary)] rounded cursor-pointer transition-all duration-150 hover:bg-[var(--nim-primary)] hover:text-[var(--nim-on-primary)]"
                     onClick={() => window.electronAPI.openExternal(testHelpUrl)}
                   >
                     Install Instructions
@@ -2015,7 +2015,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                   {testHelpUrl && testStatus === 'error' && (
                     <button
                       type="button"
-                      className="mcp-help-link-button ml-3 px-2 py-1 text-xs font-medium text-[var(--nim-primary)] bg-transparent border border-[var(--nim-primary)] rounded cursor-pointer transition-all duration-150 hover:bg-[var(--nim-primary)] hover:text-white"
+                      className="mcp-help-link-button ml-3 px-2 py-1 text-xs font-medium text-[var(--nim-primary)] bg-transparent border border-[var(--nim-primary)] rounded cursor-pointer transition-all duration-150 hover:bg-[var(--nim-primary)] hover:text-[var(--nim-on-primary)]"
                       onClick={() => window.electronAPI.openExternal(testHelpUrl)}
                     >
                       Install Instructions
@@ -2067,7 +2067,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
           {isNewConfig && formName.trim() && (formCommand.trim() || formUrl.trim()) && (
             <button
               onClick={autoSave}
-              className="mcp-save-button ml-auto px-4 py-2 border-none rounded bg-[var(--nim-primary)] text-white text-sm cursor-pointer hover:opacity-90"
+              className="mcp-save-button ml-auto px-4 py-2 border-none rounded bg-[var(--nim-primary)] text-[var(--nim-on-primary)] text-sm cursor-pointer hover:opacity-90"
               disabled={saveStatus === 'saving'}
               aria-label="Add new MCP server"
               aria-busy={saveStatus === 'saving'}
@@ -2160,7 +2160,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                   {testHelpUrl && testStatus === 'error' && (
                     <button
                       type="button"
-                      className="mcp-help-link-button ml-3 px-2 py-1 text-xs font-medium text-[var(--nim-primary)] bg-transparent border border-[var(--nim-primary)] rounded cursor-pointer transition-all duration-150 hover:bg-[var(--nim-primary)] hover:text-white"
+                      className="mcp-help-link-button ml-3 px-2 py-1 text-xs font-medium text-[var(--nim-primary)] bg-transparent border border-[var(--nim-primary)] rounded cursor-pointer transition-all duration-150 hover:bg-[var(--nim-primary)] hover:text-[var(--nim-on-primary)]"
                       onClick={() => window.electronAPI.openExternal(testHelpUrl)}
                     >
                       Install Instructions
@@ -2236,7 +2236,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                 {testHelpUrl && testStatus === 'error' && (
                   <button
                     type="button"
-                    className="mcp-help-link-button ml-3 px-2 py-1 text-xs font-medium text-[var(--nim-primary)] bg-transparent border border-[var(--nim-primary)] rounded cursor-pointer transition-all duration-150 hover:bg-[var(--nim-primary)] hover:text-white"
+                    className="mcp-help-link-button ml-3 px-2 py-1 text-xs font-medium text-[var(--nim-primary)] bg-transparent border border-[var(--nim-primary)] rounded cursor-pointer transition-all duration-150 hover:bg-[var(--nim-primary)] hover:text-[var(--nim-on-primary)]"
                     onClick={() => window.electronAPI.openExternal(testHelpUrl)}
                   >
                     Install Instructions
@@ -2337,7 +2337,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                   <button
                     onClick={handleAuthorize}
                     disabled={oauthAction !== 'idle'}
-                    className="mcp-oauth-button authorize px-4 py-2 rounded text-sm font-medium cursor-pointer transition-all duration-150 bg-[var(--nim-primary)] text-white border-none disabled:opacity-60 disabled:cursor-not-allowed hover:enabled:opacity-90"
+                    className="mcp-oauth-button authorize px-4 py-2 rounded text-sm font-medium cursor-pointer transition-all duration-150 bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-none disabled:opacity-60 disabled:cursor-not-allowed hover:enabled:opacity-90"
                   >
                     {oauthAction === 'authorizing' ? 'Authorizing...' : 'Authorize'}
                   </button>
@@ -2390,7 +2390,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
               <h4 className="m-0 text-sm font-semibold text-[var(--nim-text)]">Servers</h4>
               <button
                 onClick={handleNewServer}
-                className="mcp-add-server-button flex items-center gap-1.5 px-3 py-1.5 rounded-md border-none bg-[var(--nim-primary)] text-white text-[0.8125rem] font-medium cursor-pointer transition-opacity duration-150 hover:opacity-90"
+                className="mcp-add-server-button flex items-center gap-1.5 px-3 py-1.5 rounded-md border-none bg-[var(--nim-primary)] text-[var(--nim-on-primary)] text-[0.8125rem] font-medium cursor-pointer transition-opacity duration-150 hover:opacity-90"
                 aria-label="Add new MCP server"
               >
                 <span className="mcp-add-icon text-base leading-none" aria-hidden="true">+</span>
@@ -2436,7 +2436,7 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                   return (
                     <div
                       key={server.name}
-                      className={`mcp-server-item flex items-center gap-3 px-4 py-3 border-b border-[var(--nim-border)] cursor-pointer transition-colors duration-150 hover:bg-[var(--nim-bg-hover)] ${isActive ? 'active bg-[var(--nim-primary)] text-white' : ''} ${isDisabled ? 'disabled opacity-50' : ''}`}
+                      className={`mcp-server-item flex items-center gap-3 px-4 py-3 border-b border-[var(--nim-border)] cursor-pointer transition-colors duration-150 hover:bg-[var(--nim-bg-hover)] ${isActive ? 'active bg-[var(--nim-primary)] text-[var(--nim-on-primary)]' : ''} ${isDisabled ? 'disabled opacity-50' : ''}`}
                       onClick={() => handleServerSelect(server)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
@@ -2490,8 +2490,8 @@ function MCPServersPanelInner({ scope = 'user', workspacePath }: MCPServersPanel
                         </div>
                       )}
                       <div className="mcp-server-item-info flex-1 min-w-0">
-                        <div className={`mcp-server-item-name font-medium text-sm mb-0.5 ${isActive ? 'text-white' : ''} ${isDisabled ? 'line-through' : ''}`}>{server.name}</div>
-                        <div className={`mcp-server-item-command text-xs overflow-hidden text-ellipsis whitespace-nowrap ${isActive ? 'text-white/80' : 'text-[var(--nim-text-faint)]'}`}>{server.command || server.url}</div>
+                        <div className={`mcp-server-item-name font-medium text-sm mb-0.5 ${isActive ? 'text-[var(--nim-on-primary)]' : ''} ${isDisabled ? 'line-through' : ''}`}>{server.name}</div>
+                        <div className={`mcp-server-item-command text-xs overflow-hidden text-ellipsis whitespace-nowrap ${isActive ? 'text-[color-mix(in_srgb,var(--nim-on-primary)_80%,transparent)]' : 'text-[var(--nim-text-faint)]'}`}>{server.command || server.url}</div>
                       </div>
                       {isOAuthServer(server) && serverOAuthStatuses[server.name] === 'not-authorized' && (
                         <div className={`mcp-server-status-icon mcp-server-status-not-authorized flex items-center justify-center shrink-0 ${isActive ? 'text-[#fbbf24]' : 'text-[#f39c12]'}`}>
@@ -2538,7 +2538,7 @@ export function MCPServersPanel(props: MCPServersPanelProps) {
             </p>
             <button
               onClick={() => window.location.reload()}
-              className="mcp-retry-button px-4 py-2 bg-[var(--nim-primary)] text-white border-none rounded-md cursor-pointer"
+              className="mcp-retry-button px-4 py-2 bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-none rounded-md cursor-pointer"
             >
               Reload Application
             </button>

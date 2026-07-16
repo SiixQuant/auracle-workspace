@@ -358,7 +358,7 @@ function IdleBody({
             onClick={onMigrate}
             className={`h2-migrate-button px-3.5 py-2 rounded-md text-[13px] font-semibold border ${
               canMigrate
-                ? 'bg-[var(--nim-primary)] text-white border-[var(--nim-primary)] hover:opacity-90 cursor-pointer'
+                ? 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-[var(--nim-primary)] hover:opacity-90 cursor-pointer'
                 : 'bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-faint)] border-[var(--nim-border)] cursor-not-allowed'
             }`}
           >
@@ -409,7 +409,7 @@ function DoneBody({ itemsMarked, onClose }: { itemsMarked: number | null; onClos
         <button
           type="button"
           onClick={onClose}
-          className="px-3.5 py-2 rounded-md text-[13px] font-semibold bg-[var(--nim-primary)] text-white border border-[var(--nim-primary)] hover:opacity-90 cursor-pointer"
+          className="px-3.5 py-2 rounded-md text-[13px] font-semibold bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border border-[var(--nim-primary)] hover:opacity-90 cursor-pointer"
         >
           Done
         </button>

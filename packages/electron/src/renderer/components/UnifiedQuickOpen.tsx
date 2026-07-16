@@ -1635,7 +1635,7 @@ const SessionsPane: React.FC<SessionsPaneProps> = memo(({
                   <div className="text-sm font-medium text-nim flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap">
                     {session.title || 'New conversation'}
                     {session.parentSessionId && (
-                      <span className="shrink-0 text-[10px] py-0.5 px-1.5 rounded font-semibold bg-[var(--nim-primary)] text-white">
+                      <span className="shrink-0 text-[10px] py-0.5 px-1.5 rounded font-semibold bg-[var(--nim-primary)] text-[var(--nim-on-primary)]">
                         In Workstream
                       </span>
                     )}
@@ -1881,7 +1881,7 @@ const PromptsPane: React.FC<PromptsPaneProps> = memo(({
                     </span>
                     {prompt.sessionTitle}
                     {prompt.parentSessionId && (
-                      <span className="shrink-0 text-[10px] py-0.5 px-1.5 bg-[var(--nim-primary)] text-white rounded font-semibold">
+                      <span className="shrink-0 text-[10px] py-0.5 px-1.5 bg-[var(--nim-primary)] text-[var(--nim-on-primary)] rounded font-semibold">
                         In Workstream
                       </span>
                     )}
@@ -2053,7 +2053,7 @@ const ProjectsPane: React.FC<ProjectsPaneProps> = memo(({
                 <div className="text-sm font-medium text-nim flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap">
                   {project.name}
                   {project.isCurrent && (
-                    <span className="shrink-0 text-[10px] py-0.5 px-1.5 rounded font-semibold bg-[var(--nim-primary)] text-white">
+                    <span className="shrink-0 text-[10px] py-0.5 px-1.5 rounded font-semibold bg-[var(--nim-primary)] text-[var(--nim-on-primary)]">
                       Current
                     </span>
                   )}

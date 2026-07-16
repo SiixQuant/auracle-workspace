@@ -311,7 +311,7 @@ export function MoveProjectWizard({ srcOrgId, project, destCandidates, onClose, 
                 Back
               </button>
               <button
-                className="px-3.5 py-2 text-[13px] rounded-md bg-[var(--nim-primary)] text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3.5 py-2 text-[13px] rounded-md bg-[var(--nim-primary)] text-[var(--nim-on-primary)] disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={runMove}
                 disabled={!confirmOk}
                 data-testid="move-project-run"
@@ -322,7 +322,7 @@ export function MoveProjectWizard({ srcOrgId, project, destCandidates, onClose, 
           )}
           {step === 'review' && preview?.custodyBlocked && onUpdateEncryption && (
             <button
-              className="px-3.5 py-2 text-[13px] rounded-md bg-[var(--nim-primary)] text-white"
+              className="px-3.5 py-2 text-[13px] rounded-md bg-[var(--nim-primary)] text-[var(--nim-on-primary)]"
               onClick={() => { onClose(); onUpdateEncryption(); }}
               data-testid="move-project-update-encryption"
             >
@@ -340,7 +340,7 @@ export function MoveProjectWizard({ srcOrgId, project, destCandidates, onClose, 
           )}
           {step === 'done' && (
             <button
-              className="px-3.5 py-2 text-[13px] rounded-md bg-[var(--nim-primary)] text-white"
+              className="px-3.5 py-2 text-[13px] rounded-md bg-[var(--nim-primary)] text-[var(--nim-on-primary)]"
               onClick={onClose}
               data-testid="move-project-finish"
             >

@@ -337,7 +337,9 @@
 }
 
 .kanban-card-edit:hover .material-symbols-outlined {
-  color: white;
+  /* Sits on the --nim-primary hover fill above, which is light in the dark
+     themes — a hardcoded white icon disappears exactly when aimed at. */
+  color: var(--nim-on-primary);
 }
 
 .kanban-card-delete {

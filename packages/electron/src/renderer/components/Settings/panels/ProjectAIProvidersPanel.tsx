@@ -317,7 +317,7 @@ export function ProjectAIProvidersPanel({ workspacePath, workspaceName }: Projec
                           onChange={(e) => handleOverrideToggle(provider.id, e.target.checked)}
                           className="hidden"
                         />
-                        <span className={`toggle-slider relative w-11 h-6 rounded-xl shrink-0 transition-colors duration-200 before:content-[''] before:absolute before:top-0.5 before:left-0.5 before:w-5 before:h-5 before:bg-white before:rounded-full before:transition-transform before:duration-200 before:shadow-[0_1px_3px_rgba(0,0,0,0.2)] ${overriding ? 'bg-[var(--nim-primary)] before:translate-x-5' : 'bg-[var(--nim-bg-tertiary)]'}`}></span>
+                        <span className={`toggle-slider relative w-11 h-6 rounded-xl shrink-0 transition-colors duration-200 before:content-[''] before:absolute before:top-0.5 before:left-0.5 before:w-5 before:h-5 before:rounded-full before:transition-transform before:duration-200 before:shadow-[0_1px_3px_rgba(0,0,0,0.2)] ${overriding ? 'bg-[var(--nim-primary)] before:bg-[var(--nim-on-primary)] before:translate-x-5' : 'bg-[var(--nim-bg-tertiary)] before:bg-[var(--nim-text)]'}`}></span>
                         <span className="toggle-label text-[13px] text-[var(--nim-text-muted)]">
                           {overriding ? 'Override enabled - using project settings' : 'Using global settings'}
                         </span>
@@ -337,7 +337,7 @@ export function ProjectAIProvidersPanel({ workspacePath, workspaceName }: Projec
                                 onChange={(e) => handleEnabledChange(provider.id, e.target.checked)}
                                 className="hidden"
                               />
-                              <span className={`toggle-slider relative block w-9 h-5 rounded-xl transition-colors duration-200 before:content-[''] before:absolute before:top-0.5 before:left-0.5 before:w-4 before:h-4 before:bg-white before:rounded-full before:transition-transform before:duration-200 before:shadow-[0_1px_3px_rgba(0,0,0,0.2)] ${override?.enabled ? 'bg-[var(--nim-primary)] before:translate-x-4' : 'bg-[var(--nim-bg-tertiary)]'}`}></span>
+                              <span className={`toggle-slider relative block w-9 h-5 rounded-xl transition-colors duration-200 before:content-[''] before:absolute before:top-0.5 before:left-0.5 before:w-4 before:h-4 before:rounded-full before:transition-transform before:duration-200 before:shadow-[0_1px_3px_rgba(0,0,0,0.2)] ${override?.enabled ? 'bg-[var(--nim-primary)] before:bg-[var(--nim-on-primary)] before:translate-x-4' : 'bg-[var(--nim-bg-tertiary)] before:bg-[var(--nim-text)]'}`}></span>
                             </label>
                           </div>
                         </div>

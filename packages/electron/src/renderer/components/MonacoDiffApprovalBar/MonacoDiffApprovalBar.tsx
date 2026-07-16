@@ -133,7 +133,7 @@ export const MonacoDiffApprovalBar: React.FC<MonacoDiffApprovalBarProps> = ({
           </HelpTooltip>
           <HelpTooltip testId="diff-keep-all-button">
             <button
-              className="monaco-diff-approval-bar-button monaco-diff-approval-bar-button-accept px-4 py-1.5 rounded text-[13px] font-medium cursor-pointer transition-all duration-150 border border-[var(--nim-primary)] bg-[var(--nim-primary)] text-white hover:opacity-90 active:scale-[0.98]"
+              className="monaco-diff-approval-bar-button monaco-diff-approval-bar-button-accept px-4 py-1.5 rounded text-[13px] font-medium cursor-pointer transition-all duration-150 border border-[var(--nim-primary)] bg-[var(--nim-primary)] text-[var(--nim-on-primary)] hover:opacity-90 active:scale-[0.98]"
               onClick={handleAcceptClick}
               type="button"
               data-testid="diff-keep-all-button"

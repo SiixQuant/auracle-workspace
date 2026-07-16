@@ -470,7 +470,7 @@ export function FileGutter({ sessionId, workspacePath, type, onFileClick, pendin
           <div className="file-gutter__controls flex items-center gap-1 shrink-0">
             <button
               onClick={() => setGroupByDirectory(!groupByDirectory)}
-              className={`file-gutter__control-button flex items-center justify-center w-6 h-6 p-0 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text-muted)] cursor-pointer transition-all duration-200 hover:not-disabled:bg-[var(--nim-bg-hover)] hover:not-disabled:text-[var(--nim-text)] hover:not-disabled:border-[var(--nim-border-secondary)] disabled:opacity-40 disabled:cursor-not-allowed ${groupByDirectory ? 'file-gutter__control-button--active bg-[var(--nim-primary)] text-white border-[var(--nim-primary)] hover:bg-[var(--nim-primary)] hover:border-[var(--nim-primary)]' : ''}`}
+              className={`file-gutter__control-button flex items-center justify-center w-6 h-6 p-0 border border-[var(--nim-border)] rounded bg-[var(--nim-bg)] text-[var(--nim-text-muted)] cursor-pointer transition-all duration-200 hover:not-disabled:bg-[var(--nim-bg-hover)] hover:not-disabled:text-[var(--nim-text)] hover:not-disabled:border-[var(--nim-border-secondary)] disabled:opacity-40 disabled:cursor-not-allowed ${groupByDirectory ? 'file-gutter__control-button--active bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-[var(--nim-primary)] hover:bg-[var(--nim-primary)] hover:border-[var(--nim-primary)]' : ''}`}
               title="Group by directory"
             >
               <MaterialSymbol icon="folder" size={16} />

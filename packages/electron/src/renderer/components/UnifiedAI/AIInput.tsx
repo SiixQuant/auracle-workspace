@@ -1406,7 +1406,7 @@ export const AIInput = forwardRef<AIInputRef, AIInputProps>(
             )
           ) : (
             <button
-              className="ai-chat-send-button w-9 h-9 flex items-center justify-center bg-[var(--nim-primary)] border-none rounded-md text-white cursor-pointer transition-all duration-200 shrink-0 hover:enabled:bg-[var(--nim-primary-hover)] hover:enabled:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="ai-chat-send-button w-9 h-9 flex items-center justify-center bg-[var(--nim-primary)] border-none rounded-md text-[var(--nim-on-primary)] cursor-pointer transition-all duration-200 shrink-0 hover:enabled:bg-[var(--nim-primary-hover)] hover:enabled:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
               onClick={handleSend}
               disabled={disabled || !value.trim() || processingAttachments.length > 0}
               title={processingAttachments.length > 0 ? "Processing attachments..." : "Send message (Enter)"}

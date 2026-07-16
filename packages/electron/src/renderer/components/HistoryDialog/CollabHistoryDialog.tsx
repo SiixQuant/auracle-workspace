@@ -224,7 +224,7 @@ export const CollabHistoryDialog: React.FC<CollabHistoryDialogProps> = ({
                     <div
                       key={rev.revisionId}
                       data-testid={`collab-revision-${rev.revisionId}`}
-                      className={`collab-history-item flex items-center gap-2 py-1.5 px-2 mb-0.5 rounded cursor-pointer ${isSelected ? 'bg-[var(--nim-primary)] text-white' : 'hover:bg-[var(--nim-bg-hover)]'}`}
+                      className={`collab-history-item flex items-center gap-2 py-1.5 px-2 mb-0.5 rounded cursor-pointer ${isSelected ? 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)]' : 'hover:bg-[var(--nim-bg-hover)]'}`}
                       onClick={() => setSelectedId(rev.revisionId)}
                     >
                       <span className="material-symbols-outlined text-lg shrink-0">
@@ -234,7 +234,7 @@ export const CollabHistoryDialog: React.FC<CollabHistoryDialogProps> = ({
                         <div className="text-xs font-medium truncate">
                           {REVISION_LABELS[rev.revisionKind] ?? rev.revisionKind}
                         </div>
-                        <div className={`text-[11px] truncate ${isSelected ? 'text-white/80' : 'text-[var(--nim-text-faint)]'}`}>
+                        <div className={`text-[11px] truncate ${isSelected ? 'text-[color-mix(in_srgb,var(--nim-on-primary)_80%,transparent)]' : 'text-[var(--nim-text-faint)]'}`}>
                           {getRelativeTimeString(rev.createdAt)}
                         </div>
                       </div>
@@ -251,7 +251,7 @@ export const CollabHistoryDialog: React.FC<CollabHistoryDialogProps> = ({
                 Details
               </div>
               <button
-                className="history-restore-button py-1.5 px-4 bg-[var(--nim-primary)] text-white border-none rounded-md text-[13px] font-medium cursor-pointer transition-all duration-200 hover:not-disabled:bg-[var(--nim-primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="history-restore-button py-1.5 px-4 bg-[var(--nim-primary)] text-[var(--nim-on-primary)] border-none rounded-md text-[13px] font-medium cursor-pointer transition-all duration-200 hover:not-disabled:bg-[var(--nim-primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={handleRestore}
                 disabled={!selectedRevision || restoring || !restoreSafe || !supportsRestore}
                 title={

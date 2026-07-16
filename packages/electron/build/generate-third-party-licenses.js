@@ -34,6 +34,45 @@ const REVIEW_LICENSE_PATTERNS = [
   /\bMPL\b/i,
 ];
 
+/**
+ * Third-party work adopted BY VALUE rather than as a dependency.
+ *
+ * This generator derives everything else from package-lock.json, so vendored
+ * material is invisible to it — and its notice obligations are identical.
+ * Listing it here (rather than hand-editing the output) is what keeps the
+ * notice alive across regeneration.
+ */
+const VENDORED_NOTICES = [
+  {
+    name: 'Cursor Dark (VS Code theme)',
+    source: 'https://github.com/CedricVerlinden/cursor-dark',
+    license: 'MIT',
+    usage:
+      'Editor, syntax, and terminal colour values adapted into the built-in "Cursor Dark" theme (packages/runtime/src/editor/themes/registry.ts). Modified: primary, link, and info are the Auracle palette, not upstream\'s.',
+    text: `MIT License
+
+Copyright (c) 2025 Cédric Verlinden
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.`,
+  },
+];
+
 function main() {
   const lockfile = JSON.parse(fs.readFileSync(lockfilePath, 'utf8'));
   const approvals = loadApprovals();
@@ -455,6 +494,16 @@ function renderNotices(records, summary) {
         sections.push('');
       }
     }
+  }
+
+  for (const item of VENDORED_NOTICES) {
+    sections.push('-'.repeat(78));
+    sections.push(`${item.name} (${item.license})`);
+    sections.push(`Source: ${item.source}`);
+    sections.push(`Used as: ${item.usage}`);
+    sections.push('');
+    sections.push(item.text);
+    sections.push('');
   }
 
   return `${sections.join('\n').replace(/\n{3,}/g, '\n\n')}\n`;

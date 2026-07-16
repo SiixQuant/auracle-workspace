@@ -4,7 +4,7 @@
  * without running the full IDE host. Dev-only; not part of the pack build
  * (vite entry is src/index.tsx) and never committed.
  */
-import { StrictMode } from 'react';
+import { StrictMode, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ValidationPanel } from '../src/components/ValidationPanel';
 import { LiveAlgorithmsPanel, DeployWizardView } from '../src/components/LivePanel';
@@ -20,7 +20,7 @@ import { AuracleStatusChip } from '../src/components/StatusChip';
 import { ResearchPanel } from '../src/components/ResearchPanel';
 import { QcImportPanel, QcBacktestResult } from '../src/components/QcImportPanel';
 import { BacktestPanel, BacktestResultView } from '../src/components/BacktestPanel';
-import type { BacktestResultData } from '../src/engine/backtestStore';
+import { backtestStore, type BacktestResultData } from '../src/engine/backtestStore';
 import { EquityChartShad } from '../src/components/charts/EquityChartShad';
 import { LiveDeskPanel, StrategyLabPanel } from '../src/components/hubPanels';
 import { RunStrategyHeader } from '../src/components/RunStrategyHeader';
@@ -166,10 +166,34 @@ const MOCK_QC_CHART = {
 };
 
 // ── backtest result (equity curve + stats + drawdown) ──
-const _EQ = [
-  1.0, 1.03, 1.06, 1.04, 1.09, 1.14, 1.11, 1.08, 1.13, 1.19, 1.22, 1.18,
-  1.15, 1.21, 1.26, 1.24, 1.29, 1.33, 1.3, 1.35, 1.31, 1.28, 1.34, 1.38,
-];
+// Shaped like a real decade-long run — a compounding curve over ISO dates, so
+// the log axis, the date axis and the $-formatted ticks all get exercised. A
+// two-dozen-point stub with "d0" labels exercised none of them, which is part
+// of why the panel's own layout went unexamined for so long. Deterministic
+// (no Math.random) so screenshots are stable across runs.
+const _BARS = 2600; // ~10.3y of DAILY bars — n_bars from the engine is daily
+const _EQ: number[] = (() => {
+  const out: number[] = [];
+  let v = 1;
+  let seed = 7;
+  const rand = (): number => {
+    seed = (seed * 1103515245 + 12345) % 2 ** 31;
+    return seed / 2 ** 31;
+  };
+  // Sum-of-uniforms as a cheap normal, tuned to ~18% annualized vol and a
+  // drift that compounds to roughly 74x, so the drawdown lands near -19%.
+  for (let i = 0; i < _BARS; i += 1) {
+    const z = rand() + rand() + rand() - 1.5;
+    v = Math.max(0.05, v * (1 + 0.00166 + z * 0.0134));
+    out.push(Number(v.toFixed(5)));
+  }
+  return out;
+})();
+/** Trading-day ISO labels, the shape the engine's `labels` array carries. */
+const _LABELS: string[] = _EQ.map((_, i) => {
+  const d = new Date(Date.UTC(2015, 9, 1) + i * 86_400_000 * 1.42);
+  return d.toISOString().slice(0, 10);
+});
 function _dd(points: number[]): number[] {
   let peak = -Infinity;
   return points.map((v) => {
@@ -180,13 +204,41 @@ function _dd(points: number[]): number[] {
 const MOCK_BACKTEST_RESULT: BacktestResultData = {
   equity: _EQ,
   drawdown: _dd(_EQ),
+  labels: _LABELS,
+  // The full set the engine actually returns — all fractions, never percents.
   stats: {
-    total_return: 0.38, annualized_return: 0.171, sharpe: 1.42,
-    max_drawdown: Math.min(..._dd(_EQ)) / 100, sortino: 1.9, calmar: 1.98,
+    total_return: _EQ[_EQ.length - 1] - 1,
+    annualized_return: 0.2981,
+    sharpe: 1.31,
+    sortino: 1.84,
+    annualized_vol: 0.1804,
+    max_drawdown: Math.min(..._dd(_EQ)) / 100,
+    calmar: 1.56,
+    worst_day: -0.0448,
+    best_day: 0.0521,
+    win_rate: 0.5503,
+    profit_factor: 1.42,
+    var_5pct: -0.021,
+    cvar_5pct: -0.0318,
   },
-  asOf: '2026-07-10',
+  asOf: '2026-07-15',
   nBars: _EQ.length,
-  trades: 34,
+  trades: 200,
+};
+
+// What the engine's /result route actually returns (wire shape) — the store
+// parses this into the BacktestResultData above.
+const MOCK_BACKTEST_RESULT_BODY = {
+  status: 'succeeded',
+  chartable: true,
+  strategy_path: 'strategies.desk.atlas.AtlasMomentum',
+  as_of: MOCK_BACKTEST_RESULT.asOf,
+  n_bars: MOCK_BACKTEST_RESULT.nBars,
+  stats: MOCK_BACKTEST_RESULT.stats,
+  // The route hands the SAME labels array to both curves.
+  chart: { labels: _LABELS, points: MOCK_BACKTEST_RESULT.equity },
+  drawdown: { labels: _LABELS, points: MOCK_BACKTEST_RESULT.drawdown },
+  trades: MOCK_BACKTEST_RESULT.trades,
 };
 
 function QcResultHarness(): JSX.Element {
@@ -206,6 +258,21 @@ function BacktestResultHarness(): JSX.Element {
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '22px 28px 48px' }}>
       <BacktestResultView result={MOCK_BACKTEST_RESULT} />
+    </div>
+  );
+}
+
+function BacktestSuccessHarness(): JSX.Element {
+  // The whole panel in its finished state, driven through the REAL store flow
+  // (resolve -> run -> poll -> fetch result) against the mocked engine — the
+  // only way to see the result-leads/one-verb layout without the IDE host.
+  useEffect(() => {
+    void backtestStore.run('/Users/you/Desktop/Auracle Strategies/desk/atlas.py');
+    return () => backtestStore.reset();
+  }, []);
+  return (
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: '22px 28px 48px' }}>
+      <BacktestPanel />
     </div>
   );
 }
@@ -269,6 +336,9 @@ function engineRequest(method: string, path: string): { ok: boolean; status: num
   if (p.startsWith('/ui/api/runway')) return ok(MOCK_RUNWAY);
   if (p.startsWith('/ui/api/validation')) return ok(MOCK_VERDICT);
   if (p.startsWith('/ui/api/backtest/strategies')) return ok(MOCK_STRATEGIES);
+  if (/^\/ui\/api\/backtest\/job\/\d+\/result$/.test(p)) return ok(MOCK_BACKTEST_RESULT_BODY);
+  if (/^\/ui\/api\/backtest\/job\/\d+\/status$/.test(p)) return ok({ status: 'succeeded' });
+  if (p === '/ui/api/backtest/run') return ok({ ok: true, job_id: 33 });
   if (p.startsWith('/ui/api/research/scan/status')) return ok(MOCK_SCAN_STATUS);
   if (p.startsWith('/ui/api/research/feed')) return ok(MOCK_RESEARCH_FEED);
   if (p === '/ui/api/quantconnect/projects') return ok(MOCK_QC_PROJECTS);
@@ -389,6 +459,7 @@ const PANELS: Record<string, (props: { host: never }) => JSX.Element> = {
   qc: QcImportPanel as (props: { host: never }) => JSX.Element,
   'qc-result': QcResultHarness as (props: { host: never }) => JSX.Element,
   backtest: BacktestPanel as (props: { host: never }) => JSX.Element,
+  'backtest-success': BacktestSuccessHarness as (props: { host: never }) => JSX.Element,
   'backtest-result': BacktestResultHarness as (props: { host: never }) => JSX.Element,
   'shad-chart': ShadChartHarness as (props: { host: never }) => JSX.Element,
 };

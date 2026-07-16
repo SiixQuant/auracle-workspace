@@ -41,6 +41,10 @@ export interface BacktestResultData {
   equity: number[];
   /** Peak-to-trough drawdown %, aligned to `equity`. */
   drawdown: number[];
+  /** ISO dates for both curves. The engine hands the same array to `chart`
+   *  and `drawdown`, so one field carries both. Without these the charts
+   *  render no x-axis and tooltips read "0", "1", "2". */
+  labels: string[];
   /** Headline metrics (total_return, annualized_return, sharpe, max_drawdown, …). */
   stats: Record<string, number | null>;
   asOf: string;
@@ -149,6 +153,7 @@ async function fetchResult(jobId: number, gen: number): Promise<void> {
     result: {
       equity: res.body.chart.points ?? [],
       drawdown: res.body.drawdown?.points ?? [],
+      labels: res.body.chart.labels ?? [],
       stats: res.body.stats ?? {},
       asOf: res.body.as_of ?? '',
       nBars: res.body.n_bars ?? 0,

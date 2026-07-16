@@ -14,6 +14,18 @@
  * semantic colour carrying meaning, tabular numerics — not a marketing page.
  */
 import type { CSSProperties, ReactNode } from 'react';
+import { useState } from 'react';
+import {
+  FloatingPortal,
+  flip,
+  offset,
+  shift,
+  useClick,
+  useDismiss,
+  useFloating,
+  useInteractions,
+  useRole,
+} from '@floating-ui/react';
 
 /* ── tokens ─────────────────────────────────────────────────────────── */
 
@@ -24,11 +36,18 @@ import type { CSSProperties, ReactNode } from 'react';
  * old --text-primary/--accent-primary variables (panels always rendered
  * their fallbacks), so the palette lives here as literals.
  *
- * Accent ramp discipline: `accent` (#0053fd) is a DARK blue — fills,
- * borders, dots, and filled-button backgrounds only, always with white
- * ink on top. It fails contrast as text on charcoal (~3.2:1); anything
- * that reads — link-like text, glyphs, active-tab labels, thin strokes —
- * uses `accentText` (#7aa2ff, ≥6:1 on every surface step; 7.35 on a card).
+ * Accent ramp discipline: the accent is WHITE, matching the launcher's
+ * primary pill (`background: #fff; color: #000`). A white fill is LIGHT,
+ * so its ink is black — the inverse of the old blue ramp, where ink was
+ * white. White reads at maximum contrast on every surface step, so
+ * `accentText` needs no separate brightened tier.
+ *
+ * The accent is BRAND ONLY: filled primaries, focus rings, selection.
+ * Anything conveying STATE — ok/danger/caution — keeps its semantic hue.
+ * The launcher states the rule directly (app.css:2160): the lamp core
+ * "keeps its semantic colour (green = ready / red = needs you) — that's a
+ * functional signal, not decoration, so it stays". Never route a status
+ * through `accent`; a white health dot says nothing.
  */
 export const tone = {
   text: '#e6edf3',
@@ -46,18 +65,20 @@ export const tone = {
   surface3: '#23272d',
   /** Deepest well — inputs, sunken tables. */
   sunken: '#08090b',
-  /** Brand fill (Nous-blue). Fills and brand moments ONLY — never text. */
-  accent: '#0053fd',
-  /** Hover/pressed tier of the fill. */
-  accentHover: '#0042cc',
-  /** The accent as something you READ: text, glyphs, thin strokes on dark. */
-  accentText: '#7aa2ff',
+  /** Brand fill — the launcher's white pill. Fills and brand moments ONLY. */
+  accent: '#ffffff',
+  /** Hover tier of the fill — the launcher dims its white pill on hover
+   *  (rgba(255,255,255,0.88)); this is that dim as a solid, so the token
+   *  table stays literal-hex and testable. */
+  accentHover: '#e6edf3',
+  /** The accent as something you READ. White needs no brightened tier. */
+  accentText: '#ffffff',
   /** Soft brand wash for selected/active backgrounds. */
-  accentSoft: 'rgba(0,83,253,0.16)',
+  accentSoft: 'rgba(255,255,255,0.10)',
   /** Stronger brand stroke for focus borders and emphasis rings. */
-  accentDim: 'rgba(0,83,253,0.34)',
-  /** Ink on a filled accent — blue is dark, so white, never black. */
-  accentInk: '#ffffff',
+  accentDim: 'rgba(255,255,255,0.24)',
+  /** Ink on a filled accent — white is light, so black, never white. */
+  accentInk: '#000000',
   ok: '#3fb950',
   danger: '#e5534b',
   caution: '#d4a017',
@@ -555,6 +576,121 @@ export function Metric({ label, value, sub, valueColor, emphasis }: MetricProps)
 }
 
 /** A raised band of metrics divided by hairlines — the panel summary hero. */
+/**
+ * The house section title: ALL-CAPS, bold, left-aligned. This is the single
+ * most recognizable tell of an Auracle results surface — the tearsheet uses
+ * it for every chart and table heading, so section headers and chart titles
+ * must not drift apart. One implementation, used by both.
+ */
+export function SectionTitle({ children }: { children: ReactNode }): JSX.Element {
+  return (
+    <span
+      style={{
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: 0.6,
+        textTransform: 'uppercase',
+        color: tone.text,
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+/**
+ * A wrapping metric grid on a FIXED column count.
+ *
+ * StatBand is a single non-wrapping `repeat(items.length, 1fr)` row, so past
+ * ~6 tiles every value crushes into a sliver. MetricGrid fixes the column
+ * count and lets CSS grid flow onto a second row instead, which is what the
+ * house's six-card layout actually needs. StatBand is left untouched for the
+ * panels already using it.
+ */
+export function MetricGrid({
+  items,
+  columns = 6,
+}: {
+  items: MetricProps[];
+  columns?: number;
+}): JSX.Element {
+  return (
+    <div
+      className="apk-enter"
+      style={{
+        display: 'grid',
+        gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+        gap: '18px 20px',
+        padding: '16px 20px',
+        borderRadius: 11,
+        border: `1px solid ${tone.border}`,
+        background: RAISE,
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
+      }}
+    >
+      {items.map((item) => (
+        <Metric key={item.label} {...item} />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * The house's SAMPLE STATUS strip. The tearsheet's first rule is to lead
+ * with what kind of evidence this is, not with the number it produced — so
+ * this sits above the metrics, and the panel's one primary verb lives in it,
+ * answering the claim the strip makes.
+ */
+export function SampleStrip({
+  headline,
+  takeaway,
+  actions,
+}: {
+  headline: ReactNode;
+  takeaway?: ReactNode;
+  actions?: ReactNode;
+}): JSX.Element {
+  return (
+    <div
+      className="apk-enter"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 16,
+        padding: '12px 16px',
+        borderRadius: 10,
+        border: `1px solid ${tone.border}`,
+        background: 'rgba(255,255,255,0.035)',
+      }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+        <span
+          style={{
+            fontSize: 9.5,
+            fontWeight: 700,
+            letterSpacing: 0.6,
+            textTransform: 'uppercase',
+            color: tone.text3,
+          }}
+        >
+          Sample status
+        </span>
+        <span style={{ fontSize: 13.5, fontWeight: 650, color: tone.text }}>{headline}</span>
+      </div>
+      {takeaway ? (
+        <span style={{ fontSize: 11.5, color: tone.text2, marginLeft: 'auto', textAlign: 'right' }}>
+          {takeaway}
+        </span>
+      ) : null}
+      {actions ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: takeaway ? 0 : 'auto' }}>
+          {actions}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function StatBand({ items }: { items: MetricProps[] }): JSX.Element {
   return (
     <div
@@ -644,6 +780,110 @@ export function Disclosure({ children }: { children: ReactNode }): JSX.Element {
     >
       {children}
     </section>
+  );
+}
+
+/* ── overflow menu ──────────────────────────────────────────────────── */
+
+export interface OverflowItem {
+  label: string;
+  onClick: () => void;
+}
+
+/**
+ * The secondary actions a panel keeps out of sight so its ONE primary verb
+ * reads (the design contract above). Positioned with floating-ui through a
+ * portal: pack panels mount at placement:'bottom', i.e. hard against the
+ * viewport edge inside a clipping container, where hand-computed coordinates
+ * flip or get cut off.
+ */
+export function OverflowMenu({
+  items,
+  label = 'More actions',
+}: {
+  items: OverflowItem[];
+  label?: string;
+}): JSX.Element | null {
+  const [open, setOpen] = useState(false);
+  const { refs, floatingStyles, context } = useFloating({
+    open,
+    onOpenChange: setOpen,
+    placement: 'top-end',
+    middleware: [offset(6), flip({ padding: 8 }), shift({ padding: 8 })],
+  });
+  const { getReferenceProps, getFloatingProps, getItemProps } = useInteractions([
+    useClick(context),
+    useDismiss(context),
+    useRole(context, { role: 'menu' }),
+  ]);
+
+  if (!items.length) return null;
+  return (
+    <>
+      <button
+        ref={refs.setReference}
+        type="button"
+        aria-label={label}
+        title={label}
+        className="apk-btn apk-btn-ghost"
+        style={{ ...BUTTON_BASE, ...BUTTON_VARIANTS.ghost, cursor: 'pointer', paddingInline: 9 }}
+        {...getReferenceProps()}
+      >
+        <span aria-hidden style={{ fontSize: 14, lineHeight: '10px', letterSpacing: 1 }}>
+          •••
+        </span>
+      </button>
+      {open ? (
+        <FloatingPortal>
+          <div
+            ref={refs.setFloating}
+            className="apk-enter"
+            style={{
+              ...floatingStyles,
+              zIndex: 40,
+              minWidth: 168,
+              display: 'flex',
+              flexDirection: 'column',
+              padding: 4,
+              borderRadius: 9,
+              border: `1px solid ${tone.border}`,
+              background: RAISE,
+              boxShadow: '0 10px 28px rgba(0,0,0,0.45)',
+            }}
+            {...getFloatingProps()}
+          >
+            {items.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                role="menuitem"
+                className="apk-row"
+                style={{
+                  ...BUTTON_BASE,
+                  justifyContent: 'flex-start',
+                  padding: '7px 10px',
+                  fontSize: 12.5,
+                  // Explicit colour: the kit never inherits a foreground — an
+                  // ambient-only colour renders invisible outside the IDE host.
+                  color: tone.text,
+                  background: 'transparent',
+                  border: '1px solid transparent',
+                  cursor: 'pointer',
+                }}
+                {...getItemProps({
+                  onClick: () => {
+                    setOpen(false);
+                    item.onClick();
+                  },
+                })}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </FloatingPortal>
+      ) : null}
+    </>
   );
 }
 

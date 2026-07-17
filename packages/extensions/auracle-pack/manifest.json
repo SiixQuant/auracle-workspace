@@ -27,6 +27,12 @@
         "displayName": "Strategy Flow",
         "icon": "account_tree",
         "defaultContent": ""
+      },
+      {
+        "extension": ".py",
+        "displayName": "Strategy",
+        "icon": "trending_up",
+        "defaultContent": "\"\"\"New strategy - fill in the two blanks below, then press Run backtest.\n\nA strategy is a Python class that inherits from Strategy and answers\ntwo questions:\n\n  1. WHICH symbols may it trade?   ->  the `universe` list\n  2. HOW MUCH of each to hold?     ->  the `prices_to_signals` method\n\nThat is the whole contract. Market data, the backtester, tearsheets,\nscheduling, and live deployment are already built around this file.\nYou only write the idea.\n\n`prices` is a table indexed by date. Its columns are (field, symbol),\nwhere field is one of: open, high, low, close, adj_close, volume.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport pandas as pd\n\nfrom auracle.backtest import Strategy\n\n\nclass MyStrategy(Strategy):\n    \"\"\"Rename this class to whatever your strategy is called.\"\"\"\n\n    # 1) UNIVERSE - the symbols this strategy is allowed to trade.\n    #    Each entry is (ticker, exchange), for example:\n    #        universe = [(\"AAPL\", \"NASDAQ\"), (\"MSFT\", \"NASDAQ\")]\n    #    Left empty, Run stops and asks you to add symbols first.\n    universe: list[tuple[str, str]] = []\n\n    def prices_to_signals(self, prices: pd.DataFrame) -> pd.DataFrame:\n        \"\"\"2) SIGNAL - how much of each symbol to hold, each day.\n\n        Return a table shaped like `close`: one number per symbol per day.\n            > 0 = long    < 0 = short    0 = flat\n        Magnitude is conviction - the engine turns your numbers into\n        portfolio weights for you.\n        \"\"\"\n        close = prices.xs(\"close\", axis=1, level=0)\n\n        # TODO: your signal here. Zeros mean \"hold nothing\" (a flat backtest).\n        return pd.DataFrame(0.0, index=close.index, columns=close.columns)\n"
       }
     ],
     "documentHeaders": [

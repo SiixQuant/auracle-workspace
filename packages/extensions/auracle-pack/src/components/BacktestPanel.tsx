@@ -14,7 +14,20 @@
  */
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { backtestStore, type BacktestResultData } from '../engine/backtestStore';
-import { backtestContext, backtestPrompt } from '../engine/backtest';
+import {
+  backtestContext,
+  backtestPrompt,
+  excludedReasonForFile,
+  knownStrategyBasenames,
+} from '../engine/backtest';
+import { postJson } from '../engine/client';
+import {
+  STRATEGY_SCAFFOLD,
+  classifyScaffoldSave,
+  emptyUniverseCopy,
+  firstFreeScaffoldRel,
+  isEmptyUniverseError,
+} from '../engine/strategyTemplate';
 import { markBacktestPanelMounted, markBacktestPanelUnmounted } from './panelVisibility';
 import { railHeadline, type ValidationSignal } from '../engine/validation';
 import { detailCards, headlineCards, houseFootnote, tailFacts } from '../engine/houseStats';
@@ -173,6 +186,12 @@ export function BacktestResultView({ result }: { result: BacktestResultData }): 
 export function BacktestPanel({ host }: { host?: PanelHostLike }): JSX.Element {
   const snap = useSyncExternalStore(backtestStore.subscribe, backtestStore.getSnapshot);
   const [note, setNote] = useState<AgentNote>(null);
+  // Rescue flow (the 'unmatched' phase): create a scaffold through the engine
+  // and open it. `creating` drives the button spinner; `createError` shows a
+  // failed create. Reset when the target file changes so a stale error can't
+  // ride onto the next run.
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   // The host only exposes a toggle event to open panels; report our mount state
   // so the Run header can avoid toggling an already-open panel shut on a re-run.
@@ -180,6 +199,10 @@ export function BacktestPanel({ host }: { host?: PanelHostLike }): JSX.Element {
     markBacktestPanelMounted();
     return markBacktestPanelUnmounted;
   }, []);
+
+  useEffect(() => {
+    setCreateError(null);
+  }, [snap.file]);
 
   const run = snap.strategyPath && snap.cls && snap.jobId
     ? { strategyPath: snap.strategyPath, cls: snap.cls, jobId: snap.jobId }
@@ -194,6 +217,50 @@ export function BacktestPanel({ host }: { host?: PanelHostLike }): JSX.Element {
   const retryFromFile = () => {
     if (snap.file) void backtestStore.run(snap.file);
   };
+
+  // Create a runnable scaffold through the engine (the same POST lane the QC
+  // import panel's "Save as strategy" uses) and open it. Pick a slot whose file
+  // the engine doesn't already know FIRST, so the save (which itself overwrites)
+  // can never clobber a user's file.
+  const startFromScaffold = useCallback(async () => {
+    setCreating(true);
+    setCreateError(null);
+    const rel = firstFreeScaffoldRel(knownStrategyBasenames(snap.options, snap.excluded));
+    if (rel === null) {
+      setCreating(false);
+      setCreateError(
+        'Every scaffold slot (my_strategy.py through my_strategy_9.py) is taken — rename or remove one, then try again.'
+      );
+      return;
+    }
+    const response = await postJson('/ui/api/strategy/source', {
+      path: `strategies/${rel}`,
+      source: STRATEGY_SCAFFOLD,
+    });
+    const outcome = classifyScaffoldSave(response.ok, response.status, response.body);
+    setCreating(false);
+    if (outcome.kind === 'created') {
+      // Mirror ResearchPanel's drafted-strategy open: workspace-relative,
+      // rooted at strategies/.
+      host?.openFile?.(`strategies/${rel}`);
+      return;
+    }
+    // A conflict here means discovery hadn't yet caught a file at the chosen
+    // slot; surface it rather than retrying onto a name that might be real.
+    setCreateError(
+      outcome.kind === 'conflict'
+        ? outcome.message || 'That strategy name was just taken — try again.'
+        : outcome.message
+    );
+  }, [host, snap.options, snap.excluded]);
+
+  // The engine's own reason the open file was left out of discovery, if any.
+  const exclusionReason =
+    snap.phase === 'unmatched' && snap.file ? excludedReasonForFile(snap.file, snap.excluded) : null;
+  // An empty-universe stop is a next step, not an error — swap the raw message
+  // for the "add your universe" copy.
+  const emptyUniverse = snap.phase === 'failed' && snap.detail ? isEmptyUniverseError(snap.detail) : false;
+  const failedCopy = emptyUniverse ? emptyUniverseCopy() : null;
 
   // The job id rides the subtitle: traceable back to the engine's own record,
   // without spending a row of the panel on a line that says "complete".
@@ -224,10 +291,44 @@ export function BacktestPanel({ host }: { host?: PanelHostLike }): JSX.Element {
           }
         />
       ) : snap.phase === 'unmatched' ? (
-        <CenterState
-          title="Not a recognized strategy"
-          detail="This file doesn't match a strategy the engine discovered. A backtestable strategy is a Strategy subclass or a backtest_* function in your Auracle workspace."
-        />
+        <div
+          className="apk-enter"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            textAlign: 'center',
+            gap: 10,
+            padding: '48px 24px',
+          }}
+        >
+          <div style={{ fontSize: 16, fontWeight: 600, color: tone.text, fontFamily: tone.font, lineHeight: 1.3 }}>
+            Not a recognized strategy
+          </div>
+          <div style={{ fontSize: 12.5, lineHeight: 1.5, color: tone.text3, maxWidth: '52ch' }}>
+            This file isn't one the engine can backtest. A backtestable strategy is a Strategy subclass
+            (or a backtest_* function) in your Auracle workspace.
+          </div>
+          {exclusionReason ? (
+            <div
+              data-testid="engine-exclusion-reason"
+              style={{ fontSize: 12, lineHeight: 1.5, color: tone.caution, maxWidth: '52ch' }}
+            >
+              Engine: {exclusionReason}
+            </div>
+          ) : null}
+          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            <Button
+              variant="primary"
+              busy={creating}
+              testId="start-from-scaffold"
+              onClick={() => void startFromScaffold()}
+            >
+              Start from the Auracle scaffold
+            </Button>
+            {createError ? <InlineNote kind="err">{createError}</InlineNote> : null}
+          </div>
+        </div>
       ) : snap.phase === 'ambiguous' ? (
         <div className="apk-enter" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <span style={{ fontSize: 12.5, color: tone.text2 }}>
@@ -270,8 +371,8 @@ export function BacktestPanel({ host }: { host?: PanelHostLike }): JSX.Element {
         </div>
       ) : snap.phase === 'failed' ? (
         <CenterState
-          title="The backtest didn't complete"
-          detail={snap.detail ?? undefined}
+          title={failedCopy ? failedCopy.title : "The backtest didn't complete"}
+          detail={failedCopy ? failedCopy.body : (snap.detail ?? undefined)}
           actions={
             <Button variant="primary" onClick={() => void backtestStore.retry()}>
               Try again

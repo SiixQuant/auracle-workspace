@@ -264,7 +264,7 @@ interface ElectronAPI {
   // Workspace operations
   getFolderContents: (dirPath: string) => Promise<FileTreeItem[]>;
   refreshFolderContents: (folderPath: string) => Promise<FileTreeItem[]>;
-  createFile: (filePath: string, content: string) => Promise<{ success: boolean; filePath?: string; error?: string }>;
+  createFile: (filePath: string, content: string) => Promise<{ success: boolean; filePath?: string; error?: string; errorCode?: string }>;
   createFolder: (folderPath: string) => Promise<{ success: boolean; error?: string }>;
   switchWorkspaceFile: (filePath: string) => Promise<{ filePath: string; content: string } | { error: string } | null>;
   readFileContent: (filePath: string, options?: { binary?: boolean }) => Promise<

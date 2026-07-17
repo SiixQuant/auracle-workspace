@@ -16,8 +16,10 @@ import {
 } from './client';
 import { classifyLoadFailure } from './research';
 import {
+  excludedFromDiscovery,
   resolveStrategyFromFile,
   strategyOptionsFromDiscovery,
+  type ExcludedStrategy,
   type StrategyOption,
 } from './backtest';
 import { normalizeVerdict, type ValidationVerdict } from './validation';
@@ -61,6 +63,10 @@ export interface BacktestSnapshot {
   phase: BacktestPhase;
   /** Candidate strategies when a file defines more than one (phase 'ambiguous'). */
   options: StrategyOption[];
+  /** Strategies the engine discovered but dropped, with reasons — additive, so
+   *  empty on an older engine that never sends the key. Lets the 'unmatched'
+   *  rescue card explain why the open file isn't backtestable. */
+  excluded: ExcludedStrategy[];
   jobId: number | null;
   /** Human-readable failure detail, or the "engine outdated" hint. */
   detail: string | null;
@@ -78,6 +84,7 @@ const IDLE: BacktestSnapshot = {
   cls: null,
   phase: 'idle',
   options: [],
+  excluded: [],
   jobId: null,
   detail: null,
   outdated: false,
@@ -101,14 +108,21 @@ function setValidation(patch: BacktestSnapshot['validation']): void {
 }
 
 async function loadOptions(): Promise<
-  { ok: true; options: StrategyOption[] } | { ok: false; outdated: boolean }
+  { ok: true; options: StrategyOption[]; excluded: ExcludedStrategy[] } | { ok: false; outdated: boolean }
 > {
-  const result = await getJsonDetailed<{ strategies?: Array<Record<string, unknown>> }>(
-    '/ui/api/backtest/strategies?deployable=1'
-  );
+  const result = await getJsonDetailed<{
+    strategies?: Array<Record<string, unknown>>;
+    excluded?: unknown;
+  }>('/ui/api/backtest/strategies?deployable=1');
   if (!result.ok) return { ok: false, outdated: classifyLoadFailure(result.status) === 'outdated' };
   const rows = Array.isArray(result.body.strategies) ? result.body.strategies : [];
-  return { ok: true, options: strategyOptionsFromDiscovery(rows) };
+  // `excluded` is additive under ?deployable=1 — excludedFromDiscovery tolerates
+  // its absence, so an older engine simply yields an empty list.
+  return {
+    ok: true,
+    options: strategyOptionsFromDiscovery(rows),
+    excluded: excludedFromDiscovery(result.body.excluded),
+  };
 }
 
 function poll(jobId: number, gen: number): void {
@@ -198,7 +212,7 @@ export const backtestStore = {
   /** Run the strategy defined in `filePath`. Resolves the file to a discovery id first. */
   async run(filePath: string): Promise<void> {
     const gen = ++generation;
-    set({ file: filePath, phase: 'resolving', detail: null, options: [], jobId: null, validation: { phase: 'idle' } });
+    set({ file: filePath, phase: 'resolving', detail: null, options: [], excluded: [], jobId: null, validation: { phase: 'idle' } });
     const loaded = await loadOptions();
     if (gen !== generation) return;
     if (!loaded.ok) {
@@ -211,6 +225,9 @@ export const backtestStore = {
       });
       return;
     }
+    // Keep the exclusions for the panel: an unmatched file can then show the
+    // engine's own reason instead of a generic dead-end.
+    set({ excluded: loaded.excluded });
     const resolution = resolveStrategyFromFile(filePath, loaded.options);
     if (resolution.kind === 'none') {
       set({ phase: 'unmatched' });

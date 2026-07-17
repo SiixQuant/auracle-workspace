@@ -106,6 +106,92 @@ export function resolveStrategyFromFile(
   return { kind: 'many', options: winners };
 }
 
+/** A strategy the engine found but declined to run, with its reason. */
+export interface ExcludedStrategy {
+  /** The file or dotted-module path the engine excluded. */
+  path: string;
+  /** Why it was left out — shown to the user verbatim. */
+  reason: string;
+}
+
+/** First of the candidates that is a non-empty string, else null. */
+function firstString(...candidates: unknown[]): string | null {
+  for (const c of candidates) if (typeof c === 'string' && c.length > 0) return c;
+  return null;
+}
+
+/**
+ * Shape a discovery response's `excluded` array into {path, reason} rows,
+ * tolerating field-name variants (path/rel_path/file, reason/detail/why) and
+ * an absent or non-array value (older engines never send the key). A row needs
+ * both a path and a reason to be useful, so partial rows are dropped.
+ */
+export function excludedFromDiscovery(raw: unknown): ExcludedStrategy[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ExcludedStrategy[] = [];
+  for (const row of raw) {
+    if (!row || typeof row !== 'object') continue;
+    const r = row as Record<string, unknown>;
+    const path = firstString(r.path, r.rel_path, r.file);
+    const reason = firstString(r.reason, r.detail, r.why);
+    if (path && reason) out.push({ path, reason });
+  }
+  return out;
+}
+
+/**
+ * The exclusion reason for the open file, or null if it wasn't excluded.
+ *
+ * Same directory-aware match as {@link resolveStrategyFromFile}: rank each
+ * excluded entry by how many TRAILING path segments it shares with the open
+ * file and take the closest, so a `Potential/breakout.py` exclusion isn't
+ * confused with a `Sandbox/breakout.py` one. The excluded path may be a file
+ * path or a dotted module, so its segments split on either separator.
+ */
+export function excludedReasonForFile(
+  filePath: string,
+  excluded: ExcludedStrategy[]
+): string | null {
+  const segs = pathSegments(filePath);
+  const stem = segs[segs.length - 1] ?? '';
+  if (!stem || excluded.length === 0) return null;
+  let best: { reason: string; score: number } | null = null;
+  for (const ex of excluded) {
+    const exSegs = ex.path
+      .replace(/\.py$/i, '')
+      .split(/[./\\]/)
+      .filter((s) => s.length > 0);
+    const score = commonSuffixLength(segs, exSegs);
+    if (score >= 1 && (!best || score > best.score)) best = { reason: ex.reason, score };
+  }
+  return best ? best.reason : null;
+}
+
+/**
+ * The basenames (last path segment, `.py` stripped) the engine already knows —
+ * every discovered strategy plus every excluded file. The rescue card uses this
+ * to pick a scaffold slot whose file does not yet exist, so a "Start from the
+ * scaffold" can never overwrite a user's file even though the engine's
+ * strategy-source save is itself an overwrite.
+ */
+export function knownStrategyBasenames(
+  options: StrategyOption[],
+  excluded: ExcludedStrategy[]
+): Set<string> {
+  const out = new Set<string>();
+  const add = (raw: string) => {
+    const segs = raw
+      .replace(/\.py$/i, '')
+      .split(/[./\\]/)
+      .filter((s) => s.length > 0);
+    const last = segs[segs.length - 1];
+    if (last) out.add(last);
+  };
+  for (const o of options) add(moduleOf(o.path));
+  for (const e of excluded) add(e.path);
+  return out;
+}
+
 /** Identity of a backtest run, for the results link + AI hand-off. */
 export interface BacktestRunInfo {
   strategyPath: string;

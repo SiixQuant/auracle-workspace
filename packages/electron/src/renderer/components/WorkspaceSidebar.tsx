@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback, useSyncExternalStore } from 'react';
-import { useAtomValue } from 'jotai';
+import { useAtomValue, useSetAtom } from 'jotai';
 import { FlatFileTree } from './FlatFileTree';
 import type { RendererFileTreeItem } from '../store';
 import { InputModal } from './InputModal';
@@ -15,6 +15,8 @@ import { KeyboardShortcuts } from '../../shared/KeyboardShortcuts';
 import { sanitizeStrategyModuleName } from '../../shared/strategyModuleName';
 import { HelpTooltip } from '../help';
 import { store, gitStatusMapAtom, revealRequestAtom, rawFileTreeAtom, fileTreeLoadedAtom, type FileGitStatus as AtomFileGitStatus } from '../store';
+import { developerModeAtom, setDeveloperFeatureSettingsAtom } from '../store/atoms/appSettings';
+import { applyModeVisibility, countTreeFiles, isSimpleAllowlistedFile, normalizeVisibilityPath } from '../utils/modeVisibility';
 import { sessionFileEditsAtom } from '../store/atoms/sessionFiles';
 import { refreshFileTree } from '../store/listeners/fileTreeListeners';
 import { useTabsActions } from '../contexts/TabsContext';
@@ -149,6 +151,11 @@ export function WorkspaceSidebar({
   // File tree state - read from centralized atom (populated by fileTreeListeners.ts)
   const fileTree = useAtomValue(rawFileTreeAtom);
   const fileTreeLoaded = useAtomValue(fileTreeLoadedAtom);
+  // Global Simple/Developer mode (the existing developer-mode system). Simple
+  // mode (developerMode === false) applies the file-tree allowlist as an
+  // independent axis on top of the user-selectable filter.
+  const developerMode = useAtomValue(developerModeAtom);
+  const setDeveloperFeatureSettings = useSetAtom(setDeveloperFeatureSettingsAtom);
   const [isFileModalOpen, setIsFileModalOpen] = useState(false);
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
   const [isDragOverRoot, setIsDragOverRoot] = useState(false);
@@ -160,6 +167,11 @@ export function WorkspaceSidebar({
     onSelectedFolderChange?.(value);
   }, [onSelectedFolderChange]);
   const [fileTreeFilter, setFileTreeFilter] = useState<FileTreeFilter>('all');
+  // Session-only allow set: paths temporarily revealed past the Simple-mode
+  // allowlist by a reveal-in-tree action. Component state only -- never
+  // persisted, cleared on unmount. `revealNotice` names the last such file.
+  const [revealedPaths, setRevealedPaths] = useState<Set<string>>(() => new Set());
+  const [revealNotice, setRevealNotice] = useState<string | null>(null);
   const [showFileIcons, setShowFileIcons] = useState(true);
   const [showGitStatus, setShowGitStatus] = useState(true);
   const [enableAutoScroll, setEnableAutoScroll] = useState(true);
@@ -570,6 +582,12 @@ export function WorkspaceSidebar({
     setFileTreeFilter(filter);
   };
 
+  // Flip to Developer mode via the same setter Settings/onboarding use, so the
+  // change persists (developer-mode:set) and the tree re-filters live.
+  const handleSwitchToDeveloperMode = useCallback(() => {
+    setDeveloperFeatureSettings({ developerMode: true });
+  }, [setDeveloperFeatureSettings]);
+
   const loadClaudeSessionFiles = useCallback(async (sessionId: string | null) => {
     if (!sessionId) {
       setSessionFileFilters({ read: [], written: [] });
@@ -624,15 +642,44 @@ export function WorkspaceSidebar({
   // Clear file tree filter when a reveal request comes in (so the target file is visible)
   const fileTreeFilterRef = useRef(fileTreeFilter);
   fileTreeFilterRef.current = fileTreeFilter;
+  // Mirror developerMode into a ref so the once-subscribed reveal handler reads
+  // the current value without re-subscribing.
+  const developerModeRef = useRef(developerMode);
+  developerModeRef.current = developerMode;
   useEffect(() => {
     const unsub = store.sub(revealRequestAtom, () => {
       const req = store.get(revealRequestAtom);
-      if (req && fileTreeFilterRef.current !== 'all') {
+      if (!req) return;
+      if (fileTreeFilterRef.current !== 'all') {
         setFileTreeFilter('all');
+      }
+      // Simple-mode escape hatch: a reveal may target a path the allowlist
+      // hides. Add it to the session allow set and surface a brief notice so a
+      // reveal is never a silent no-op. Open/allowlisted targets need neither.
+      if (!developerModeRef.current) {
+        const fileName = req.path.slice(req.path.lastIndexOf('/') + 1);
+        const wouldBeHidden = req.type === 'folder' || !isSimpleAllowlistedFile(fileName);
+        if (wouldBeHidden) {
+          const normalized = normalizeVisibilityPath(req.path);
+          setRevealedPaths(prev => {
+            if (prev.has(normalized)) return prev;
+            const next = new Set(prev);
+            next.add(normalized);
+            return next;
+          });
+          setRevealNotice(fileName);
+        }
       }
     });
     return unsub;
   }, []);
+
+  // Auto-dismiss the reveal notice after a short window.
+  useEffect(() => {
+    if (!revealNotice) return;
+    const timeoutId = setTimeout(() => setRevealNotice(null), 6000);
+    return () => clearTimeout(timeoutId);
+  }, [revealNotice]);
 
   // Check if workspace is a git repository
   useEffect(() => {
@@ -985,6 +1032,34 @@ export function WorkspaceSidebar({
     [fileTree, fileTreeFilter, filterFileTree]
   );
 
+  // Files always visible in Simple mode regardless of the allowlist: every open
+  // editor tab, the current file, and any session-revealed path.
+  const openPaths = useMemo(() => {
+    const paths = new Set<string>();
+    for (const tab of tabsStore.tabs.values()) {
+      if (tab.filePath) paths.add(normalizeVisibilityPath(tab.filePath));
+    }
+    if (currentFilePath) paths.add(normalizeVisibilityPath(currentFilePath));
+    for (const revealed of revealedPaths) paths.add(revealed);
+    return paths;
+  }, [tabsStore.tabs, currentFilePath, revealedPaths]);
+
+  // Simple/Developer mode composed as an INDEPENDENT axis on top of the
+  // user-selectable filter (never a FileTreeFilter value). Developer mode is
+  // identity; Simple mode applies the allowlist. View-only: this changes only
+  // what the tree renders, never what the engine discovers or runs.
+  const modeFilteredTree = useMemo(
+    () => applyModeVisibility(filteredFileTree, { developerMode, openPaths }),
+    [filteredFileTree, developerMode, openPaths]
+  );
+
+  // Count of files the mode hid = files surviving the user filter minus files
+  // surviving the mode axis. Drives the footer so hiding is never silent.
+  const hiddenFileCount = useMemo(
+    () => (developerMode ? 0 : countTreeFiles(filteredFileTree) - countTreeFiles(modeFilteredTree)),
+    [developerMode, filteredFileTree, modeFilteredTree]
+  );
+
   const isAISessionFilter = CLAUDE_SESSION_FILTERS.has(fileTreeFilter);
   const hasActiveClaudeSession = Boolean(currentAISessionId);
   const activeClaudeFilterCount = fileTreeFilter === 'ai-read'
@@ -1251,6 +1326,17 @@ export function WorkspaceSidebar({
                 {aiFilterHintText}
               </div>
             )}
+            {!developerMode && revealNotice && (
+              <div
+                data-testid="reveal-notice"
+                className="reveal-notice flex items-start gap-1.5 py-2 px-3 mb-1 text-xs text-[var(--nim-text-muted)] leading-relaxed border-b border-[var(--nim-border)]"
+              >
+                <span className="material-symbols-outlined text-[14px] leading-none mt-px text-[var(--nim-text-faint)]">info</span>
+                <span>
+                  Showing <span className="reveal-notice-file font-medium text-[var(--nim-text)]">{revealNotice}</span> temporarily. It is a developer file hidden in Simple mode.
+                </span>
+              </div>
+            )}
             {isFilteredTreeEmpty && fileTreeFilter === 'all' && !fileTreeLoaded ? (
               <div className="flex items-center gap-2 px-4 py-3 text-[13px] text-[var(--nim-text-muted)]">
                 <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
@@ -1272,7 +1358,7 @@ export function WorkspaceSidebar({
               </div>
             ) : (
               <FlatFileTree
-                items={filteredFileTree}
+                items={modeFilteredTree}
                 currentFilePath={currentFilePath}
                 onFileSelect={handleFileSelect}
                 showIcons={showFileIcons}
@@ -1292,6 +1378,25 @@ export function WorkspaceSidebar({
               </div>
             )}
           </div>
+          {!developerMode && hiddenFileCount > 0 && (
+            <div
+              data-testid="hidden-files-footer"
+              className="hidden-files-footer shrink-0 flex items-center flex-wrap gap-x-1 gap-y-0.5 py-1.5 px-3 border-t border-[var(--nim-border)] bg-[var(--nim-bg-secondary)] text-xs text-[var(--nim-text-muted)]"
+            >
+              <span className="material-symbols-outlined text-[14px] leading-none text-[var(--nim-text-faint)]">visibility_off</span>
+              <span className="hidden-files-footer-count">
+                {hiddenFileCount} {hiddenFileCount === 1 ? 'file' : 'files'} hidden -
+              </span>
+              <button
+                type="button"
+                data-testid="hidden-files-footer-action"
+                className="hidden-files-footer-action bg-transparent border-none p-0 cursor-pointer text-[var(--nim-primary)] hover:underline"
+                onClick={handleSwitchToDeveloperMode}
+              >
+                switch to Developer mode to show
+              </button>
+            </div>
+          )}
           {showFilterMenu && (
             <FileTreeFilterMenu
               x={filterMenuPosition.x}

@@ -229,10 +229,10 @@ export function AdvancedPanel() {
                   <span className="material-symbols-outlined text-nim-primary text-[32px]">
                     edit_note
                   </span>
-                  <span className="text-base font-semibold text-nim">Standard Mode</span>
+                  <span className="text-base font-semibold text-nim">Simple</span>
                 </div>
                 <p className="m-0 text-[13px] leading-snug text-nim-muted">
-                  Simplified interface focused on writing, editing, and AI assistance
+                  Write and test strategies. Your files view shows strategies, notes, and tearsheets.
                 </p>
               </div>
             </label>
@@ -257,10 +257,10 @@ export function AdvancedPanel() {
                   <span className="material-symbols-outlined text-nim-primary text-[32px]">
                     terminal
                   </span>
-                  <span className="text-base font-semibold text-nim">Developer Mode</span>
+                  <span className="text-base font-semibold text-nim">Developer</span>
                 </div>
                 <p className="m-0 text-[13px] leading-snug text-nim-muted">
-                  Full development environment with git worktrees, terminal access, development specific features
+                  Full filesystem, terminal, and git.
                 </p>
               </div>
             </label>

@@ -9,6 +9,8 @@ import { newBrowserTabRequestAtom, newMockupRequestAtom, toggleAIChatPanelReques
 import { useTabNavigation } from '../../hooks/useTabNavigation';
 import { handleWorkspaceFileSelect as handleWorkspaceFileSelectUtil } from '../../utils/workspaceFileOperations';
 import { createInitialFileContent, createMockupContent } from '../../utils/fileUtils';
+import { createStrategyFileNoOverwrite } from '../../utils/createStrategyFile';
+import { sanitizeStrategyModuleName } from '../../../shared/strategyModuleName';
 import { getFileName } from '../../utils/pathUtils';
 import { isCollabUri } from '../../utils/collabUri';
 import { aiToolService } from '../../services/AIToolService';

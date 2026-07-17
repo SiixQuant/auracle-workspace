@@ -9,13 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-<!-- New features go here -->
+- New Strategy starts from a ready-to-run template, and an unrecognized file now offers to start from it instead of dead-ending.
 
 ### Changed
 <!-- Changes to existing functionality go here -->
 
 ### Fixed
-<!-- Bug fixes go here -->
+- Naming a new strategy no longer produces an unrunnable file or silently overwrites an existing one.
 
 ### Removed
 <!-- Removed features go here -->

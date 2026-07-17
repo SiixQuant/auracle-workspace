@@ -302,6 +302,7 @@ export function Button({
   busy = false,
   disabled = false,
   title,
+  testId,
   onClick,
   children,
 }: {
@@ -310,6 +311,8 @@ export function Button({
   busy?: boolean;
   disabled?: boolean;
   title?: string;
+  /** Stable kebab-case hook for tests, set on the underlying <button>. */
+  testId?: string;
   onClick?: () => void;
   children: ReactNode;
 }): JSX.Element {
@@ -326,6 +329,7 @@ export function Button({
       }}
       disabled={off}
       title={title}
+      data-testid={testId}
       onClick={onClick}
     >
       {busy ? <Spinner light={variant === 'primary'} /> : null}

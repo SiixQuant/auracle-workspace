@@ -8,9 +8,11 @@ import { PlansPanel } from './PlansPanel/PlansPanel';
 import { FileTreeFilterMenu, FileTreeFilter } from './FileTreeFilterMenu';
 import { NewFileMenu, NewFileType, ExtensionFileType, contributionToExtensionFileType } from './NewFileMenu';
 import { createInitialFileContent, createMockupContent } from '../utils/fileUtils';
+import { createStrategyFileNoOverwrite } from '../utils/createStrategyFile';
 import { getFileName } from '../utils/pathUtils';
 import { getExtensionLoader } from '@nimbalyst/runtime';
 import { KeyboardShortcuts } from '../../shared/KeyboardShortcuts';
+import { sanitizeStrategyModuleName } from '../../shared/strategyModuleName';
 import { HelpTooltip } from '../help';
 import { store, gitStatusMapAtom, revealRequestAtom, rawFileTreeAtom, fileTreeLoadedAtom, type FileGitStatus as AtomFileGitStatus } from '../store';
 import { sessionFileEditsAtom } from '../store/atoms/sessionFiles';
@@ -362,9 +364,12 @@ export function WorkspaceSidebar({
     const fileType = pendingFileType;
     setPendingFileType(null);
 
-    // Determine full filename and content based on type
+    // Determine full filename and content based on type. Strategy (.py) files
+    // are routed through createStrategyFileNoOverwrite below because their name
+    // has to be a valid, unique Python module name.
     let fullFileName: string;
     let content: string;
+    let strategyBase: string | null = null;
 
     if (fileType === 'markdown') {
       // Add .md extension if not present
@@ -379,8 +384,16 @@ export function WorkspaceSidebar({
       const extName = fileType.slice(4); // Remove 'ext:' prefix
       const extType = extensionFileTypes.find(e => e.extension === extName);
       if (extType) {
-        fullFileName = fileName.endsWith(extName) ? fileName : `${fileName}${extName}`;
         content = extType.defaultContent ?? '';
+        if (extName === '.py') {
+          // Sanitize the typed base (minus any .py the user already typed) into
+          // a valid module name before appending the extension.
+          const typedBase = fileName.endsWith(extName) ? fileName.slice(0, -extName.length) : fileName;
+          strategyBase = sanitizeStrategyModuleName(typedBase);
+          fullFileName = `${strategyBase}${extName}`;
+        } else {
+          fullFileName = fileName.endsWith(extName) ? fileName : `${fileName}${extName}`;
+        }
       } else {
         // Fallback
         fullFileName = fileName;
@@ -394,15 +407,29 @@ export function WorkspaceSidebar({
 
     try {
       const basePath = targetFolder || workspacePath;
-      const filePath = `${basePath}/${fullFileName}`;
+      const createFile = (window as any).electronAPI?.createFile;
 
-      const result = await (window as any).electronAPI?.createFile?.(filePath, content);
-      if (result?.success) {
-        // Refresh file tree and open the new file
-        handleRefreshFileTree();
-        onFileSelect(filePath);
+      if (strategyBase !== null) {
+        // Auto-suffix on collision rather than overwriting an existing edge.
+        const result = await createStrategyFileNoOverwrite(basePath, strategyBase, '.py', content, createFile);
+        if (result.success && result.filePath) {
+          handleRefreshFileTree();
+          onFileSelect(result.filePath);
+        } else {
+          alert('Failed to create file: ' + (result.error || 'Unknown error'));
+        }
       } else {
-        alert('Failed to create file: ' + (result?.error || 'Unknown error'));
+        const filePath = `${basePath}/${fullFileName}`;
+        const result = await createFile?.(filePath, content);
+        if (result?.success) {
+          // Refresh file tree and open the new file
+          handleRefreshFileTree();
+          onFileSelect(filePath);
+        } else if (result?.errorCode === 'FILE_EXISTS') {
+          alert('A file with that name already exists');
+        } else {
+          alert('Failed to create file: ' + (result?.error || 'Unknown error'));
+        }
       }
     } catch (error) {
       console.error('Failed to create file:', error);
@@ -452,9 +479,12 @@ export function WorkspaceSidebar({
     try {
       const directory = newFileDialogDirectory || workspacePath;
 
-      // Determine full filename and content based on type
+      // Determine full filename and content based on type. Strategy (.py) files
+      // are routed through createStrategyFileNoOverwrite below because their
+      // name has to be a valid, unique Python module name.
       let fullFileName: string;
       let content: string;
+      let strategyBase: string | null = null;
 
       if (fileType === 'markdown') {
         fullFileName = fileName.endsWith('.md') || fileName.endsWith('.markdown') ? fileName : `${fileName}.md`;
@@ -466,8 +496,14 @@ export function WorkspaceSidebar({
         const extName = fileType.slice(4);
         const extType = extensionFileTypes.find(e => e.extension === extName);
         if (extType) {
-          fullFileName = fileName.endsWith(extName) ? fileName : `${fileName}${extName}`;
           content = extType.defaultContent ?? '';
+          if (extName === '.py') {
+            const typedBase = fileName.endsWith(extName) ? fileName.slice(0, -extName.length) : fileName;
+            strategyBase = sanitizeStrategyModuleName(typedBase);
+            fullFileName = `${strategyBase}${extName}`;
+          } else {
+            fullFileName = fileName.endsWith(extName) ? fileName : `${fileName}${extName}`;
+          }
         } else {
           fullFileName = fileName;
           content = '';
@@ -477,14 +513,27 @@ export function WorkspaceSidebar({
         content = createInitialFileContent(fullFileName);
       }
 
-      const filePath = `${directory}/${fullFileName}`;
-      const result = await (window as any).electronAPI?.createFile?.(filePath, content);
+      const createFile = (window as any).electronAPI?.createFile;
 
-      if (result?.success) {
-        handleRefreshFileTree();
-        onFileSelect(filePath);
+      if (strategyBase !== null) {
+        const result = await createStrategyFileNoOverwrite(directory, strategyBase, '.py', content, createFile);
+        if (result.success && result.filePath) {
+          handleRefreshFileTree();
+          onFileSelect(result.filePath);
+        } else {
+          alert('Failed to create file: ' + (result.error || 'Unknown error'));
+        }
       } else {
-        alert('Failed to create file: ' + (result?.error || 'Unknown error'));
+        const filePath = `${directory}/${fullFileName}`;
+        const result = await createFile?.(filePath, content);
+        if (result?.success) {
+          handleRefreshFileTree();
+          onFileSelect(filePath);
+        } else if (result?.errorCode === 'FILE_EXISTS') {
+          alert('A file with that name already exists');
+        } else {
+          alert('Failed to create file: ' + (result?.error || 'Unknown error'));
+        }
       }
     } catch (error) {
       console.error('Failed to create file:', error);

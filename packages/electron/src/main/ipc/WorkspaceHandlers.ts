@@ -30,6 +30,7 @@ import {
 } from '../utils/store';
 import { loadFileIntoWindow } from '../file/FileOperations';
 import { safeHandle, safeOn } from '../utils/ipcRegistry';
+import { writeNewFile } from './createFileWrite';
 
 /**
  * Deep merge utility for workspace state updates.
@@ -265,22 +266,23 @@ export function registerWorkspaceHandlers() {
         return await getFolderContents(folderPath);
     });
 
-    // Create new file
+    // Create new file. Refuses to overwrite an existing file (exclusive wx
+    // write) so a fresh strategy can never clobber an existing edge; the
+    // renderer distinguishes the FILE_EXISTS result from a generic failure.
     safeHandle('create-file', async (event, filePath: string, content: string = '') => {
-        try {
-            await writeFile(filePath, content, 'utf-8');
+        const result = await writeNewFile(filePath, content, writeFile);
 
+        if (result.success) {
             // Track file creation from menu
             analytics.sendEvent('file_created', {
                 creationType: 'new_file_menu',
                 fileType: getFileType(filePath)
             });
-
-            return { success: true, filePath };
-        } catch (error: any) {
-            console.error('Error creating file:', error);
-            return { success: false, error: error.message };
+        } else if (result.errorCode !== 'FILE_EXISTS') {
+            console.error('Error creating file:', result.error);
         }
+
+        return result;
     });
 
     // Create new folder

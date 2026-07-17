@@ -244,10 +244,10 @@ export const UnifiedOnboarding: React.FC<UnifiedOnboardingProps> = ({
                     <span className="material-symbols-outlined mode-option-icon">
                       edit_note
                     </span>
-                    <span className="mode-option-title">Standard Mode</span>
+                    <span className="mode-option-title">Simple</span>
                   </div>
                   <p className="mode-option-description">
-                    Simplified interface focused on writing, editing, and AI assistance
+                    Write and test strategies. Your files view shows strategies, notes, and tearsheets.
                   </p>
                 </div>
               </label>
@@ -267,10 +267,10 @@ export const UnifiedOnboarding: React.FC<UnifiedOnboardingProps> = ({
                     <span className="material-symbols-outlined mode-option-icon">
                       terminal
                     </span>
-                    <span className="mode-option-title">Developer Mode</span>
+                    <span className="mode-option-title">Developer</span>
                   </div>
                   <p className="mode-option-description">
-                    Full development environment with git worktrees, terminal access, development specific features
+                    Full filesystem, terminal, and git.
                   </p>
                 </div>
               </label>

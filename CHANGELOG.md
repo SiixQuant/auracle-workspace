@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - New Strategy starts from a ready-to-run template, and an unrecognized file now offers to start from it instead of dead-ending.
+- Simple mode keeps the files view to your strategies, notes, and tearsheets; switch to Developer mode any time for the full filesystem.
 
 ### Changed
 <!-- Changes to existing functionality go here -->

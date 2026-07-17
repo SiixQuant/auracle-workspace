@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+<!-- New features go here -->
+
+### Changed
+<!-- Changes to existing functionality go here -->
+
+### Fixed
+<!-- Bug fixes go here -->
+
+### Removed
+<!-- Removed features go here -->
+
+## [1.4.0] - 2026-07-17
+
+
+### Added
 - New Strategy starts from a ready-to-run template, and an unrecognized file now offers to start from it instead of dead-ending.
 - Simple mode keeps the files view to your strategies, notes, and tearsheets; switch to Developer mode any time for the full filesystem.
 - On a fresh install the IDE opens your strategy workspace automatically instead of asking you to pick one.

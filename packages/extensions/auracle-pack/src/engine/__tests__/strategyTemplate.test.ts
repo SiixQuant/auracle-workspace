@@ -1,6 +1,6 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
+import manifestJson from '../../../manifest.json';
 import {
   STRATEGY_SCAFFOLD,
   classifyScaffoldSave,
@@ -33,9 +33,11 @@ describe('STRATEGY_SCAFFOLD', () => {
  * other. Reads the real manifest.json, not a fixture.
  */
 describe('manifest .py scaffold does not drift from STRATEGY_SCAFFOLD', () => {
-  const manifest = JSON.parse(
-    readFileSync(new URL('../../../manifest.json', import.meta.url), 'utf8')
-  ) as { contributions?: { newFileMenu?: Array<{ extension?: string; defaultContent?: string }> } };
+  // Import the manifest so the bundler resolves the path -- reading it at
+  // runtime via import.meta.url breaks under CI's test runner (non-file URL).
+  const manifest = manifestJson as {
+    contributions?: { newFileMenu?: Array<{ extension?: string; defaultContent?: string }> };
+  };
   const entry = (manifest.contributions?.newFileMenu ?? []).find((e) => e.extension === '.py');
 
   it('ships a .py newFileMenu entry', () => {

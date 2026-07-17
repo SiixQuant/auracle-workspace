@@ -2,8 +2,10 @@ import { BrowserWindow, shell, nativeImage, app, powerMonitor } from 'electron';
 import { safeHandle, safeOn } from '../utils/ipcRegistry';
 import { windowStates, windows, getWindowId } from '../window/WindowManager';
 import { basename, join } from 'path';
-import { writeFileSync, existsSync } from 'fs';
+import { writeFileSync, existsSync, statSync } from 'fs';
 import { tmpdir } from 'os';
+import { resolveInitialWorkspace } from '../utils/resolveInitialWorkspace';
+import { readProvisionedWorkspacePath } from '../utils/provisionedWorkspace';
 import { reportDesktopActivity, setWindowFocused, setScreenLocked, setIdleThresholdMs, attemptReconnect } from '../services/SyncManager';
 import { startNetworkAvailability, onNetworkAvailable, notifyNetworkAvailable } from '../services/NetworkAvailability';
 import { AnalyticsService } from '../services/analytics/AnalyticsService';
@@ -12,6 +14,20 @@ import { getPackageRoot } from '../utils/appPaths';
 /** Timestamp of last app_foregrounded event, used to throttle to once per 30 minutes */
 let lastForegroundedEventAt = 0;
 const FOREGROUND_THROTTLE_MS = 30 * 60 * 1000; // 30 minutes
+
+/**
+ * Real directory-existence check injected into resolveInitialWorkspace. Guards
+ * statSync against a TOCTOU race so a provisioning misconfiguration can never
+ * throw out of get-initial-state -- worst case we fall back to the welcome
+ * screen, which is the pre-existing behavior.
+ */
+function workspaceDirExists(candidatePath: string): boolean {
+    try {
+        return existsSync(candidatePath) && statSync(candidatePath).isDirectory();
+    } catch {
+        return false;
+    }
+}
 
 export function registerWindowHandlers() {
     // Get initial window state
@@ -38,6 +54,27 @@ export function registerWindowHandlers() {
                 workspaceName: basename(state.workspacePath),
                 activeWorkspacePath,
                 openProjectPaths,
+            };
+        }
+
+        // No saved workspace for this window. On a fresh install the launcher
+        // may have provisioned the canonical Workspace path in
+        // ~/.config/auracle/auracle.json; open it directly instead of the
+        // "Open a workspace to get started" dead end. A saved workspace (handled
+        // above) always wins, and a missing or invalid provisioned path falls
+        // back to document mode -- today's behavior.
+        const resolvedWorkspacePath = resolveInitialWorkspace({
+            savedWorkspacePath: null,
+            provisionedWorkspacePath: readProvisionedWorkspacePath(),
+            workspaceDirExists,
+        });
+        if (resolvedWorkspacePath) {
+            return {
+                mode: 'workspace',
+                workspacePath: resolvedWorkspacePath,
+                workspaceName: basename(resolvedWorkspacePath),
+                activeWorkspacePath: resolvedWorkspacePath,
+                openProjectPaths: [resolvedWorkspacePath],
             };
         }
 

@@ -20,6 +20,13 @@ enum KeychainManager {
         case analyticsId = "analytics_id"
         case pairingPersonalOrgId = "pairing_personal_org_id"
         case pairingPersonalUserId = "pairing_personal_user_id"
+        // Clerk (Auracle iOS spine, M6) — the engine-direct bearer + refresh,
+        // plus the issuer/client-id the pairing claim hands over for sign-in.
+        case clerkAccessToken = "clerk_access_token"
+        case clerkRefreshToken = "clerk_refresh_token"
+        case clerkEmail = "clerk_email"
+        case clerkIssuer = "clerk_issuer"
+        case clerkClientId = "clerk_client_id"
     }
 
     // MARK: - Encryption Key
@@ -154,6 +161,49 @@ enum KeychainManager {
         retrieve(key: .pairingPersonalUserId)
     }
 
+    // MARK: - Clerk Session (Auracle iOS spine, M6)
+
+    /// Store the Clerk tokens the engine-direct client uses as its bearer.
+    /// Separate from the Stytch keys so the two auth eras don't collide
+    /// during cutover.
+    static func storeClerkSession(accessToken: String, refreshToken: String?, email: String?) throws {
+        try store(key: .clerkAccessToken, value: accessToken)
+        if let refreshToken { try store(key: .clerkRefreshToken, value: refreshToken) }
+        if let email { try store(key: .clerkEmail, value: email) }
+    }
+
+    static func getClerkAccessToken() -> String? {
+        retrieve(key: .clerkAccessToken)
+    }
+
+    static func getClerkRefreshToken() -> String? {
+        retrieve(key: .clerkRefreshToken)
+    }
+
+    static func getClerkEmail() -> String? {
+        retrieve(key: .clerkEmail)
+    }
+
+    static func hasClerkSession() -> Bool {
+        getClerkAccessToken() != nil
+    }
+
+    static func deleteClerkSession() {
+        delete(key: .clerkAccessToken)
+        delete(key: .clerkRefreshToken)
+        delete(key: .clerkEmail)
+    }
+
+    /// The Clerk issuer + public client id the pairing claim handed over, so
+    /// sign-in targets the same Clerk instance the engine trusts.
+    static func storeClerkConfig(issuer: String?, clientId: String?) throws {
+        if let issuer { try store(key: .clerkIssuer, value: issuer) }
+        if let clientId { try store(key: .clerkClientId, value: clientId) }
+    }
+
+    static func getClerkIssuer() -> String? { retrieve(key: .clerkIssuer) }
+    static func getClerkClientId() -> String? { retrieve(key: .clerkClientId) }
+
     // MARK: - Cleanup
 
     static func deleteAll() {
@@ -161,6 +211,9 @@ enum KeychainManager {
         delete(key: .serverUrl)
         delete(key: .userId)
         deleteAuthSession()
+        deleteClerkSession()
+        delete(key: .clerkIssuer)
+        delete(key: .clerkClientId)
         deleteOpenAIApiKey()
         deleteAnalyticsId()
         delete(key: .pairingPersonalOrgId)

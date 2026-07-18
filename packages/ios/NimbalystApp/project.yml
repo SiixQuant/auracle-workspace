@@ -8,7 +8,9 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.9"
-    DEVELOPMENT_TEAM: "X8S24QHAT9"
+    # No DEVELOPMENT_TEAM: simulator + CI builds need none, and device runs
+    # use the owner's free Apple ID "Personal Team" via automatic signing
+    # (Auracle iOS spine, M7 — paid team only at App Store ship time).
 packages:
   NimbalystNative:
     path: ../NimbalystNative

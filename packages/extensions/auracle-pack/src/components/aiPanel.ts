@@ -12,12 +12,20 @@
  */
 import { useEffect } from 'react';
 import { ensureFocusAmbient, noteFocusAmbientWrite } from '../engine/focusStore';
+import { registerPanelEventSink } from '../engine/panelEvents';
 import type { KeyPresence } from '../engine/research';
 
 /** The slice of `PanelAIContext` a panel actually drives. */
 export interface PanelAiSlice {
   setContext(context: Record<string, unknown>): void;
   clearContext(): void;
+  /**
+   * Emit a proactive panel event to the host (a run finished, a deploy failed,
+   * a validation completed). Optional and feature-detected: an older host that
+   * predates the proactive lane simply has no `notifyChange`, so emitting is a
+   * no-op. The host owns every policy decision; the pack only reports facts.
+   */
+  notifyChange?(event: string, data?: unknown): void;
 }
 
 /**
@@ -63,6 +71,10 @@ export function useAiPanelContext(
     const ai = host?.ai;
     if (!ai) return;
     ensureFocusAmbient(ai);
+    // Capture this AI sink so module-level stores (backtestStore) can emit
+    // proactive events even though they hold no host handle. Same single-sink
+    // model as the focus→ambient bridge above.
+    registerPanelEventSink(ai);
     if (context) {
       ai.setContext(context);
       noteFocusAmbientWrite();

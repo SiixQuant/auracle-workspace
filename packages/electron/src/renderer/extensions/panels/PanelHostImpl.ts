@@ -7,6 +7,7 @@
 
 import type { PanelHost, PanelAIContext, ExtensionStorage, ExtensionFileStorage, ExtensionDataAccess, ExecOptions, ExecResult } from '@nimbalyst/runtime';
 import { ExtensionFileStorageImpl } from './ExtensionFileStorageImpl';
+import { isPanelChangeEnvelope } from '../../../shared/panelChangeEnvelope';
 
 // ============================================================================
 // Types
@@ -35,6 +36,10 @@ class PanelAIContextImpl implements PanelAIContext {
   private context: Record<string, unknown> = {};
   private listeners = new Set<(context: Record<string, unknown>) => void>();
 
+  /** The workspace this panel belongs to, so a routed event reaches the right
+   *  agent session in the main process. */
+  constructor(private readonly workspacePath: string) {}
+
   setContext(context: Record<string, unknown>): void {
     this.context = { ...this.context, ...context };
     this.notifyListeners();
@@ -50,8 +55,21 @@ class PanelAIContextImpl implements PanelAIContext {
   }
 
   notifyChange(event: string, data?: unknown): void {
-    // Could be used for proactive AI suggestions in the future
-    console.log(`[PanelAIContext] Event: ${event}`, data);
+    // Route only well-formed Auracle event envelopes to the main process, where
+    // the governor decides whether to auto-drive the agent (opt-in, paid gate,
+    // debounce, dedup, backoff). A free-form notifyChange from any other
+    // extension carries no envelope and stays a local no-op — no IPC, no agent.
+    // Fire-and-forget: the pack must never block or learn the host's decision.
+    if (!isPanelChangeEnvelope(data)) return;
+    void window.electronAPI
+      .invoke('extensions:panel-notify', {
+        workspacePath: this.workspacePath,
+        event,
+        envelope: data,
+      })
+      .catch(() => {
+        // Delivery is best-effort; the host owns governance and logging.
+      });
   }
 
   onContextChanged(callback: (context: Record<string, unknown>) => void): () => void {
@@ -133,7 +151,7 @@ class PanelHostImpl implements PanelHost {
 
     // Create AI context if supported
     if (options.aiSupported) {
-      this.ai = new PanelAIContextImpl();
+      this.ai = new PanelAIContextImpl(options.workspacePath);
     }
   }
 

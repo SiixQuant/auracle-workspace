@@ -12,6 +12,7 @@ import { autoCommitEnabledAtom, setAutoCommitEnabledAtom } from '../../store/ato
 import { ALPHA_FEATURES, type AlphaFeatureTag } from '../../../shared/alphaFeatures';
 import { AlphaBadge, SETTINGS_ALPHA_TOOLTIP } from '../common/AlphaBadge';
 import { SettingsToggle } from '../GlobalSettings/SettingsToggle';
+import { useSetting, useSetSetting } from '../../hooks/useSetting';
 
 const AGENT_FEATURE_TAGS: AlphaFeatureTag[] = [
   'super-loops',
@@ -39,6 +40,9 @@ export function AgentFeaturesPanel() {
 
   const autoCommitEnabled = useAtomValue(autoCommitEnabledAtom);
   const setAutoCommitEnabled = useSetAtom(setAutoCommitEnabledAtom);
+
+  const proactiveNotifications = useSetting('ai.proactiveNotifications');
+  const setProactiveNotifications = useSetSetting('ai.proactiveNotifications');
 
   const [aiDebugSettings] = useAtom(aiDebugSettingsAtom);
   const [, updateAIDebugSettings] = useAtom(setAIDebugSettingsAtom);
@@ -164,6 +168,17 @@ export function AgentFeaturesPanel() {
           }}
           name="Auto-approve Commits"
           description="Automatically approve when Claude proposes git commits."
+        />
+
+        <SettingsToggle
+          checked={proactiveNotifications === true}
+          onChange={(checked) => {
+            void setProactiveNotifications(checked);
+            posthog?.capture('proactive_notifications_toggled', { enabled: checked });
+          }}
+          name="Proactive agent notifications"
+          description="Let the agent react on its own when a backtest finishes, a deploy fails, or a validation completes. Off by default; only drives an open session (paid plans)."
+          testId="proactive-notifications-toggle"
         />
 
         <div className="agent-preferred-language flex items-start justify-between gap-4 py-3">

@@ -579,11 +579,31 @@ export interface PanelAIContext {
   /**
    * Notify that panel state changed.
    *
-   * This can be used to trigger proactive AI suggestions or
-   * update any subscribers to panel state.
+   * This can be used to trigger proactive AI suggestions or update any
+   * subscribers to panel state. The host decides what, if anything, to do
+   * with the notification — a panel emitting an event is cheap and makes no
+   * assumption that anything is listening.
    *
-   * @param event Event name (e.g., "queryExecuted", "connectionChanged")
-   * @param data Optional event data
+   * For host-governed proactive events, pass a {@link PanelChangeEnvelope} as
+   * `data` and the envelope's `type` as `event`. The host recognises the
+   * envelope shape, applies its own policy (opt-in, debounce, dedup, backoff,
+   * paid gate), and ignores any envelope `v` it does not understand — so
+   * adding a v2 event never breaks an older host. Non-envelope calls (e.g.
+   * `notifyChange("queryExecuted", …)`) remain a harmless no-op on hosts that
+   * only route envelopes.
+   *
+   * The v1 event set (`v: 1`) the Auracle host routes:
+   *   - `backtest.finished`   — a run the user started completed (success or
+   *                             failure); `subject` is the run/strategy id.
+   *   - `deploy.failed`       — a deployment entered a failed/errored state;
+   *                             `subject` is the deployment id.
+   *   - `validation.completed`— a validation pass finished; `subject` is the
+   *                             strategy id.
+   *
+   * @param event Event name — the envelope `type` for routed events, or any
+   *   free-form string (e.g., "queryExecuted") for panel-local notifications.
+   * @param data Optional event data — a {@link PanelChangeEnvelope} for routed
+   *   events.
    */
   notifyChange(event: string, data?: unknown): void;
 
@@ -596,6 +616,28 @@ export interface PanelAIContext {
    * @returns Unsubscribe function
    */
   onContextChanged(callback: (context: Record<string, unknown>) => void): () => void;
+}
+
+/**
+ * Versioned envelope for a routed {@link PanelAIContext.notifyChange} event.
+ *
+ * Every field is deliberately minimal so the shape is stable across versions:
+ * a host reads `v` first and may reject or adapt an envelope it does not
+ * understand, then routes on `type` and governs on `subject`. New event types
+ * or payload fields ship without changing this shape, so a v1 host and a v2
+ * pack never break each other.
+ */
+export interface PanelChangeEnvelope<T = unknown> {
+  /** Envelope schema version. `1` today. Bumped only when this shape changes,
+   *  never for a new event `type`. */
+  v: number;
+  /** Dotted event type, e.g. `"backtest.finished"`. */
+  type: string;
+  /** Stable id of the thing the event is about — a run id, deployment id, or
+   *  strategy id. The host debounces per subject and dedups per type+subject. */
+  subject: string;
+  /** Event-specific detail. Optional so an event can be a pure signal. */
+  payload?: T;
 }
 
 // ============================================================================

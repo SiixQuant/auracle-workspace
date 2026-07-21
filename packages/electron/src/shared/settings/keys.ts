@@ -198,6 +198,15 @@ export const SETTINGS_REGISTRY = {
     { store: 'ai-settings', path: 'autoCommitEnabled' },
     false,
   ),
+  // Opt-in: let the agent react on its own to panel events (a backtest
+  // finished, a deploy failed, a validation completed). Default OFF — the host
+  // only auto-drives a session when this is on, the plan is paid, and the
+  // debounce/dedup/backoff governor allows it.
+  'ai.proactiveNotifications': setting(
+    z.boolean(),
+    { store: 'ai-settings', path: 'proactiveNotifications' },
+    false,
+  ),
   'ai.trackerAutomation': setting(
     z.object({
       enabled: z.boolean(),

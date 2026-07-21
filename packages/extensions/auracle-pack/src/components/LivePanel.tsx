@@ -39,6 +39,7 @@ import {
   deploymentContext,
   deploymentEquityPoints,
   deploymentPrompt,
+  deploymentsNewlyErrored,
   formatReturn,
   isActive,
   isDestructive,
@@ -54,6 +55,7 @@ import {
   verbEndpoint,
 } from '../engine/live';
 import { refreshEntitlements, quotaNudge, type QuotaNudge } from '../engine/entitlements';
+import { emitCapturedPanelEvent, deployFailedEvent } from '../engine/panelEvents';
 import { parseEngineError, type EngineError } from '../engine/paywall';
 import { UpgradeGate } from './UpgradeGate';
 import { useAiPanelContext, handOffToAgent, type AgentNote } from './aiPanel';
@@ -1169,9 +1171,33 @@ export function LiveAlgorithmsPanel({ host }: PanelHostProps): JSX.Element {
     host?.openFile?.(src.path);
   };
 
+  // Deployments already reported as failed, so a `deploy.failed` event fires
+  // once per deployment ENTERING the errored state — not every poll. Seeded
+  // from the first poll (below) so a deployment that failed before the panel
+  // opened is a pre-existing fact, not a fresh failure to announce.
+  const reportedErroredRef = useRef<Set<number>>(new Set());
+  const erroredBaselineRef = useRef(false);
+
   const load = useCallback(async () => {
     const rows = await getJson<Deployment[]>('/deployments');
     if (rows) {
+      if (!erroredBaselineRef.current) {
+        for (const row of rows) {
+          if (row.state === 'errored') reportedErroredRef.current.add(row.id);
+        }
+        erroredBaselineRef.current = true;
+      } else {
+        for (const row of deploymentsNewlyErrored(rows, reportedErroredRef.current)) {
+          reportedErroredRef.current.add(row.id);
+          emitCapturedPanelEvent(
+            deployFailedEvent({
+              subject: String(row.id),
+              strategy: row.strategy_cls ?? row.strategy_path ?? null,
+              state: row.state,
+            })
+          );
+        }
+      }
       setModel((prev) => setRows(prev, rows));
       setPhase('ready');
     } else {

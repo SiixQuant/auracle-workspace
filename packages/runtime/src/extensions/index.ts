@@ -46,6 +46,7 @@ export type {
   PanelGutterButtonProps,
   PanelHost,
   PanelAIContext,
+  PanelChangeEnvelope,
   PanelExport,
   SettingsPanelProps,
   ExtensionStorage,

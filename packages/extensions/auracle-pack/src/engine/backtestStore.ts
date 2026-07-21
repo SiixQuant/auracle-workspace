@@ -25,6 +25,12 @@ import {
   type StrategyOption,
 } from './backtest';
 import { normalizeVerdict, type ValidationVerdict } from './validation';
+import {
+  emitCapturedPanelEvent,
+  backtestFinishedEvent,
+  validationCompletedEvent,
+  type BacktestOutcome,
+} from './panelEvents';
 
 export type BacktestPhase =
   | 'idle'
@@ -117,6 +123,26 @@ function setValidation(patch: BacktestSnapshot['validation']): void {
   set({ validation: patch });
 }
 
+/**
+ * Emit a `backtest.finished` proactive event for the run that just settled.
+ * Called only from the LIVE run path (poll / startBacktest terminal
+ * transitions) — never from `loadJob`, which shows an already-finished stored
+ * run rather than one completing now. Reads the current state so the event
+ * carries the run identity, its strategy, outcome, and headline stats.
+ */
+function emitBacktestFinished(outcome: BacktestOutcome): void {
+  const subject = state.jobId !== null ? String(state.jobId) : state.strategyPath ?? state.file ?? 'backtest';
+  emitCapturedPanelEvent(
+    backtestFinishedEvent({
+      subject,
+      strategy: state.cls ?? state.strategyPath ?? state.file,
+      outcome,
+      stats: outcome === 'succeeded' ? state.result?.stats : undefined,
+      detail: outcome === 'failed' ? state.detail : undefined,
+    })
+  );
+}
+
 async function loadOptions(): Promise<
   { ok: true; options: StrategyOption[]; excluded: ExcludedStrategy[] } | { ok: false; outdated: boolean }
 > {
@@ -143,11 +169,16 @@ function poll(jobId: number, gen: number): void {
     if (!result.ok) {
       // A dropped status read mid-run: surface it rather than spinning forever.
       set({ phase: 'failed', detail: "The engine stopped responding while the backtest was running." });
+      emitBacktestFinished('failed');
       return;
     }
     if (result.status === 'succeeded') {
       set({ phase: 'succeeded' });
-      void fetchResult(jobId, gen);
+      // Pull the result first so the finished event can carry headline stats;
+      // still guarded by generation so a superseded run never emits.
+      await fetchResult(jobId, gen);
+      if (gen !== generation) return;
+      emitBacktestFinished('succeeded');
       return;
     }
     if (result.status === 'failed') {
@@ -155,6 +186,7 @@ function poll(jobId: number, gen: number): void {
         phase: 'failed',
         detail: "The backtest run failed. Open the full results for the engine's error detail.",
       });
+      emitBacktestFinished('failed');
       return;
     }
     // pending / running / unknown — keep waiting.
@@ -216,6 +248,7 @@ async function startBacktest(option: StrategyOption, gen: number): Promise<void>
       phase: 'failed',
       detail: queued.error ?? 'The engine refused the backtest. Make sure the stack is running.',
     });
+    emitBacktestFinished('failed');
     return;
   }
   set({ jobId: queued.jobId, phase: 'running' });
@@ -363,7 +396,9 @@ export const backtestStore = {
       setValidation({ phase: 'failed' });
       return;
     }
-    setValidation({ phase: 'done', verdict: normalizeVerdict(result.body) });
+    const verdict = normalizeVerdict(result.body);
+    setValidation({ phase: 'done', verdict });
+    emitCapturedPanelEvent(validationCompletedEvent(verdict));
   },
 
   reset(): void {

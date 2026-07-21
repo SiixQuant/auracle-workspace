@@ -66,19 +66,31 @@ export const RunStrategyHeader: React.FC<DocumentHeaderComponentProps> = ({
 
   const strategyName = fileName?.replace(/\.py$/i, '') || 'Strategy';
 
-  const btnGeometry: React.CSSProperties = {
+  // Geometry mirrors panelkit's Button so these two read as the same control
+  // family as every other button in the product. `boxSizing: border-box` makes
+  // the declared height exact with the 1px border included, so the filled and
+  // the outlined button are pixel-identical in height. Side padding is
+  // deliberately asymmetric between variants (panelkit does the same): a solid
+  // fill needs slightly more horizontal room than an outline to look equally
+  // weighted, which is what keeps the pair visually even.
+  const btnBase: React.CSSProperties = {
     display: 'inline-flex',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
-    height: 26,
-    padding: '0 12px',
+    height: 28,
+    boxSizing: 'border-box',
     borderRadius: 7,
-    fontSize: 12,
-    fontWeight: 600,
+    fontSize: 12.5,
+    lineHeight: 1,
     cursor: 'pointer',
     fontFamily: 'inherit',
     whiteSpace: 'nowrap',
   };
+
+  // Leading icons get a fixed, line-height-1 box so a tall glyph can neither
+  // inflate the button nor bias its optical left padding.
+  const btnIcon: React.CSSProperties = { fontSize: 15, lineHeight: 1, flex: 'none' };
 
   return (
     <div
@@ -143,12 +155,14 @@ export const RunStrategyHeader: React.FC<DocumentHeaderComponentProps> = ({
         onClick={onRun}
         title="Backtest the strategy in this file"
         style={{
-          ...btnGeometry,
+          ...btnBase,
+          padding: '0 14px',
+          fontWeight: 600,
           border: '1px solid transparent',
           opacity: pinged === 'run' ? 0.85 : 1,
         }}
       >
-        <span className="material-symbols-outlined" aria-hidden style={{ fontSize: 15 }}>
+        <span className="material-symbols-outlined" aria-hidden style={btnIcon}>
           play_arrow
         </span>
         Run backtest
@@ -159,7 +173,9 @@ export const RunStrategyHeader: React.FC<DocumentHeaderComponentProps> = ({
         onClick={onDeploy}
         title="Deploy the strategy in this file to paper or live"
         style={{
-          ...btnGeometry,
+          ...btnBase,
+          padding: '0 12px',
+          fontWeight: 500,
           border: `1px solid ${tone.borderStrong}`,
           background: 'transparent',
           color: tone.text,
@@ -169,7 +185,7 @@ export const RunStrategyHeader: React.FC<DocumentHeaderComponentProps> = ({
         <span
           className="material-symbols-outlined"
           aria-hidden
-          style={{ fontSize: 15, color: tone.accentText }}
+          style={{ ...btnIcon, color: tone.accentText }}
         >
           rocket_launch
         </span>

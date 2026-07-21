@@ -13,6 +13,8 @@ import {
   backtestJobStatus,
   backtestJobResult,
   getJsonDetailed,
+  resolveRunSource,
+  type BacktestResultBody,
 } from './client';
 import { classifyLoadFailure } from './research';
 import {
@@ -52,6 +54,9 @@ export interface BacktestResultData {
   asOf: string;
   nBars: number;
   trades: number;
+  /** The non-local source a persisted run declares (e.g. "quantconnect"), or
+   *  undefined for a local backtest. Drives the viewer's provenance label. */
+  source?: string;
 }
 
 export interface BacktestSnapshot {
@@ -75,6 +80,10 @@ export interface BacktestSnapshot {
   /** The equity curve + stats, once fetched after a succeeded run. Null when
    *  the engine predates the result route or the payload isn't chartable. */
   result: BacktestResultData | null;
+  /** Where the shown run came from: `live` when the user just ran a file,
+   *  `loaded` when it was fetched by job id (a stored run followed from focus).
+   *  The two render identically; only the viewer's framing differs. */
+  origin: 'live' | 'loaded';
   validation: { phase: ValidationPhase; detail?: string; verdict?: ValidationVerdict };
 }
 
@@ -89,6 +98,7 @@ const IDLE: BacktestSnapshot = {
   detail: null,
   outdated: false,
   result: null,
+  origin: 'live',
   validation: { phase: 'idle' },
 };
 
@@ -153,6 +163,21 @@ function poll(jobId: number, gen: number): void {
   }, 1500);
 }
 
+/** Shape an engine result body into the panel's chartable form. One place so
+ *  a live run (fetchResult) and a by-id load (loadJob) yield the same data. */
+function normalizeResult(body: BacktestResultBody): BacktestResultData {
+  return {
+    equity: body.chart?.points ?? [],
+    drawdown: body.drawdown?.points ?? [],
+    labels: body.chart?.labels ?? [],
+    stats: body.stats ?? {},
+    asOf: body.as_of ?? '',
+    nBars: body.n_bars ?? 0,
+    trades: body.trades ?? 0,
+    source: resolveRunSource(body),
+  };
+}
+
 /**
  * After a run succeeds, pull its equity curve + stats so the panel can chart
  * it. Silent no-op on an older engine (404) or a non-chartable payload — the
@@ -163,17 +188,7 @@ async function fetchResult(jobId: number, gen: number): Promise<void> {
   const res = await backtestJobResult(jobId);
   if (gen !== generation) return;
   if (!res.ok || !res.body.chartable || !res.body.chart) return;
-  set({
-    result: {
-      equity: res.body.chart.points ?? [],
-      drawdown: res.body.drawdown?.points ?? [],
-      labels: res.body.chart.labels ?? [],
-      stats: res.body.stats ?? {},
-      asOf: res.body.as_of ?? '',
-      nBars: res.body.n_bars ?? 0,
-      trades: res.body.trades ?? 0,
-    },
-  });
+  set({ result: normalizeResult(res.body) });
 }
 
 async function startBacktest(option: StrategyOption, gen: number): Promise<void> {
@@ -184,6 +199,7 @@ async function startBacktest(option: StrategyOption, gen: number): Promise<void>
     jobId: null,
     detail: null,
     result: null,
+    origin: 'live',
     validation: { phase: 'idle' },
   });
   const queued = await engineRunBacktest(option.path);
@@ -246,8 +262,55 @@ export const backtestStore = {
     await startBacktest(option, gen);
   },
 
-  /** Re-run the currently resolved strategy. */
+  /**
+   * Load a completed run by job id and show it through the SAME succeeded view
+   * as a fresh local run — the load-by-id seam behind the Metrics Viewer. Used
+   * to follow the focused run (a stored one, or a persisted external run such
+   * as a QC import) when the panel opens. `origin` marks it `loaded` so the
+   * viewer can frame it as a saved run without changing how the metrics render.
+   */
+  async loadJob(jobId: number): Promise<void> {
+    const gen = ++generation;
+    set({
+      file: null,
+      strategyPath: null,
+      cls: null,
+      phase: 'resolving',
+      options: [],
+      excluded: [],
+      jobId,
+      detail: null,
+      result: null,
+      origin: 'loaded',
+      validation: { phase: 'idle' },
+    });
+    const res = await backtestJobResult(jobId);
+    if (gen !== generation) return;
+    if (!res.ok) {
+      set({
+        phase: 'failed',
+        detail:
+          res.status === 404
+            ? "That run isn't on this engine — it may belong to another user or have been cleared."
+            : 'The run could not be loaded. Make sure the Auracle stack is running, then try again.',
+      });
+      return;
+    }
+    // A non-chartable payload still counts as loaded: the succeeded view shows
+    // the honest "recorded, no chartable series" note rather than a fake curve.
+    set({
+      phase: 'succeeded',
+      strategyPath: res.body.strategy_path || null,
+      result: res.body.chartable && res.body.chart ? normalizeResult(res.body) : null,
+    });
+  },
+
+  /** Re-run the currently resolved strategy, or reload a run shown by id. */
   async retry(): Promise<void> {
+    if (state.origin === 'loaded' && state.jobId !== null) {
+      await this.loadJob(state.jobId);
+      return;
+    }
     if (!state.strategyPath || !state.cls) return;
     const gen = ++generation;
     await startBacktest({ path: state.strategyPath, cls: state.cls, label: state.cls }, gen);

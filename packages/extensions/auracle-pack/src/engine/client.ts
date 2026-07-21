@@ -124,6 +124,38 @@ export interface BacktestResultBody {
   chart?: { labels: string[]; points: number[] };
   drawdown?: { labels: string[]; points: number[] };
   trades?: number;
+  /** Where the run came from when it is not a local backtest — a persisted
+   *  external run declares its origin so the viewer can label it. Read both
+   *  the explicit `source` and the persisted result `kind` (a QC-imported run
+   *  carries kind "qc_import"); a local run declares neither. */
+  source?: string;
+  kind?: string;
+}
+
+/**
+ * The non-local source a result payload declares, or undefined for a local
+ * backtest. Prefers an explicit `source`; otherwise derives it from the
+ * persisted result `kind` ("qc_import" → "quantconnect"). Local markers
+ * ("local"/"backtest"/"engine") resolve to undefined so a plain run stays
+ * unlabelled.
+ */
+export function resolveRunSource(body: {
+  source?: unknown;
+  kind?: unknown;
+}): string | undefined {
+  const raw =
+    typeof body.source === 'string' && body.source
+      ? body.source
+      : body.kind === 'qc_import'
+        ? 'quantconnect'
+        : typeof body.kind === 'string' && body.kind && body.kind !== 'backtest'
+          ? body.kind
+          : undefined;
+  if (!raw) return undefined;
+  const key = raw.trim().toLowerCase();
+  return key === '' || key === 'local' || key === 'engine' || key === 'backtest'
+    ? undefined
+    : raw;
 }
 
 /**

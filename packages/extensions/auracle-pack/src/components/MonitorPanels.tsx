@@ -15,10 +15,13 @@ import {
   Incident,
   StageTruth,
   blotterContext,
+  incidentJobId,
+  incidentJobPrompt,
+  incidentDismissTarget,
   incidentsContext,
   runwayContext,
 } from '../engine/monitors';
-import { useAiPanelContext } from './aiPanel';
+import { useAiPanelContext, handOffToAgent, type AgentNote } from './aiPanel';
 import {
   Button,
   CenterState,
@@ -220,7 +223,17 @@ export function IncidentsPanel({ host }: PanelHostProps): JSX.Element {
     '/ui/api/incidents',
     30_000
   );
+  const [note, setNote] = useState<AgentNote>(null);
   useAiPanelContext(host, data ? incidentsContext(data.incidents ?? []) : null);
+
+  // Open the incident's job in the agent. An incident identifies a JOB (its
+  // `open_job` action), never a deployment, so the honest jump is the run — the
+  // agent reads it through the engine. There is no `job` focus kind to publish,
+  // so this deliberately does not touch the focus store rather than mislabel the
+  // run.
+  const openRun = async (incident: Incident, jobId: number) => {
+    setNote(await handOffToAgent(host, incidentJobPrompt(incident, jobId), `Investigate job ${jobId}`));
+  };
 
   const description = 'Anything that needs your attention across the running system.';
   if (data === undefined || data === null) {
@@ -247,13 +260,16 @@ export function IncidentsPanel({ host }: PanelHostProps): JSX.Element {
         />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {note ? <InlineNote kind={note.kind}>{note.text}</InlineNote> : null}
           {incidents.map((incident, index) => {
             const sev = SEVERITY[incident.severity ?? 'info'] ?? SEVERITY.info;
             // Critical / warning tint the whole card; info stays a plain surface.
             const tinted = incident.severity === 'critical' || incident.severity === 'warning';
+            const jobId = incidentJobId(incident);
+            const dismiss = incidentDismissTarget(incident);
             return (
               <div
-                key={`${incident.dismiss_kind}:${incident.dismiss_id ?? index}`}
+                key={incident.id ?? `${incident.kind ?? 'incident'}:${index}`}
                 className="apk-enter"
                 style={{
                   display: 'flex',
@@ -275,13 +291,22 @@ export function IncidentsPanel({ host }: PanelHostProps): JSX.Element {
                   ) : null}
                 </span>
                 <span style={{ flex: 1 }} />
-                {incident.dismiss_kind && incident.dismiss_id !== undefined ? (
+                {jobId !== null ? (
+                  <Button
+                    variant="quiet"
+                    testId="incident-open-run"
+                    onClick={() => void openRun(incident, jobId)}
+                  >
+                    Open the run
+                  </Button>
+                ) : null}
+                {dismiss ? (
                   <Button
                     variant="quiet"
                     onClick={() =>
                       void postJson('/ui/api/alerts/dismiss', {
-                        kind: incident.dismiss_kind,
-                        id: incident.dismiss_id,
+                        kind: dismiss.kind,
+                        id: dismiss.id,
                       }).then(reload)
                     }
                   >

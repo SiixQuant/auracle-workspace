@@ -151,7 +151,7 @@ export function displayName(path: string): string {
 }
 
 export const NODE_W = 220;
-export const NODE_H = 132;
+export const NODE_H = 150;
 const COL_GAP = 48;
 const ROW_GAP = 40;
 export const MARGIN = 24;

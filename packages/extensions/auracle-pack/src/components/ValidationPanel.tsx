@@ -33,6 +33,7 @@ import {
 } from './panelkit';
 import { PanelHostLike, useAiPanelContext, handOffToAgent, type AgentNote } from './aiPanel';
 import { focusStore } from '../engine/focusStore';
+import { strategySourceFromDotted } from '../engine/spineNav';
 import { qty } from '../engine/format';
 
 interface DeployableStrategy {
@@ -252,6 +253,18 @@ export function ValidationPanel({ host }: { host?: PanelHostLike }): JSX.Element
     setNote(await handOffToAgent(host, validationPrompt(verdict), `Validate: ${cls}`));
   };
 
+  // Open the validated strategy's source file. Validation reports the id as
+  // `module.Class`, so the transform strips the class before mapping to the
+  // workspace file; a desk-grafted or non-workspace strategy has no editable
+  // file here, so the button degrades to disabled-with-reason rather than
+  // opening a path the editor can't resolve.
+  const openSource = (verdict: ValidationVerdict) => {
+    const src = strategySourceFromDotted(verdict.strategy_path, { hasClassSuffix: true });
+    if (!src || !src.openable) return;
+    focusStore.publish({ strategy: { filePath: src.path, dottedPath: verdict.strategy_path } });
+    host?.openFile?.(src.path);
+  };
+
   const loadStrategies = useCallback(async () => {
     const result = await getJsonDetailed<{ strategies?: Array<Record<string, unknown>> }>(
       '/ui/api/backtest/strategies?deployable=1'
@@ -411,6 +424,21 @@ export function ValidationPanel({ host }: { host?: PanelHostLike }): JSX.Element
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 12, color: tone.text3 }}>{railHeadline(run.verdict.signals)}</span>
             <ToolbarSpring />
+            {(() => {
+              const src = strategySourceFromDotted(run.verdict.strategy_path, { hasClassSuffix: true });
+              if (!src) return null;
+              return (
+                <Button
+                  variant="ghost"
+                  testId="validation-open-source"
+                  disabled={!src.openable}
+                  title={src.openable ? `Open ${src.path}` : src.reason}
+                  onClick={() => openSource(run.verdict)}
+                >
+                  Open source
+                </Button>
+              );
+            })()}
             <Button variant="primary" onClick={() => void askAgent(run.verdict)}>
               ⚡ Ask the agent
             </Button>

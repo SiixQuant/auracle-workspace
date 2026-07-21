@@ -11,6 +11,7 @@ import { authState, connectCheck, getJson, onConnectGeneration, postJson } from 
 import { Connector, isConnected, normalizeConnector } from '../engine/model';
 import { deployStore } from '../engine/deployStore';
 import { focusStore } from '../engine/focusStore';
+import { strategySourceFromDotted } from '../engine/spineNav';
 import {
   blockedReasonText,
   deployWizardMode,
@@ -1156,6 +1157,18 @@ export function LiveAlgorithmsPanel({ host }: PanelHostProps): JSX.Element {
     );
   };
 
+  // Open the deployed strategy's source file. A deployment reports the module
+  // alone (its class rides `strategy_cls`), so the transform keeps every module
+  // segment; a desk-grafted deployment has no editable file here and degrades
+  // to disabled-with-reason rather than opening an unresolvable path.
+  const openDeploymentSource = (d: Deployment) => {
+    const src = strategySourceFromDotted(d.strategy_path, { hasClassSuffix: false });
+    if (!src || !src.openable) return;
+    const dotted = d.strategy_cls ? `${d.strategy_path}.${d.strategy_cls}` : d.strategy_path;
+    focusStore.publish({ strategy: { filePath: src.path, dottedPath: dotted } });
+    host?.openFile?.(src.path);
+  };
+
   const load = useCallback(async () => {
     const rows = await getJson<Deployment[]>('/deployments');
     if (rows) {
@@ -1340,6 +1353,23 @@ export function LiveAlgorithmsPanel({ host }: PanelHostProps): JSX.Element {
                 </span>
                 <span style={{ fontSize: 12, color: tone.text3 }}>Order ledger</span>
                 <ToolbarSpring />
+                {(() => {
+                  const src = strategySourceFromDotted(selectedRow.strategy_path, {
+                    hasClassSuffix: false,
+                  });
+                  if (!src) return null;
+                  return (
+                    <Button
+                      variant="ghost"
+                      testId="deployment-open-source"
+                      disabled={!src.openable}
+                      title={src.openable ? `Open ${src.path}` : src.reason}
+                      onClick={() => openDeploymentSource(selectedRow)}
+                    >
+                      Open source
+                    </Button>
+                  );
+                })()}
                 <Button variant="ghost" onClick={() => void investigate(selectedRow)}>
                   ⚡ Investigate
                 </Button>

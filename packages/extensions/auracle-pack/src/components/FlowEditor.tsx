@@ -23,6 +23,7 @@ import {
   setSummary,
 } from '../engine/flow';
 import { runFlowBacktest } from '../engine/flowRun';
+import { handOffNode } from './spineActions';
 import { EquityChart, tone } from './panelkit';
 
 const styles = {
@@ -274,6 +275,30 @@ export function AuracleFlowEditor({ host }: EditorHostProps): JSX.Element {
               </button>
               <button type="button" style={styles.button()} onClick={() => void runDiagnostics(node.id)}>
                 OOS
+              </button>
+            </div>
+            {/* Hand-offs to the full surfaces, mirroring the editor header:
+                open this strategy's metrics in the Backtest panel, or deploy it. */}
+            <div style={{ display: 'flex', gap: 6 }} onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                style={styles.button()}
+                disabled={!node.path}
+                title="Open this strategy's full metrics and overfit check in the Backtest panel"
+                data-testid="flow-metrics"
+                onClick={() => handOffNode(node, 'backtest')}
+              >
+                Metrics
+              </button>
+              <button
+                type="button"
+                style={styles.button()}
+                disabled={!node.path}
+                title="Deploy this strategy to paper or live"
+                data-testid="flow-deploy"
+                onClick={() => handOffNode(node, 'deploy')}
+              >
+                Deploy
               </button>
             </div>
           </div>

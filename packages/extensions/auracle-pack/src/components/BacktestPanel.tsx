@@ -49,6 +49,7 @@ import {
 import { EquityChartShad } from './charts/EquityChartShad';
 import { PanelHostLike, useAiPanelContext, handOffToAgent, type AgentNote } from './aiPanel';
 import { focusStore } from '../engine/focusStore';
+import { deployFile } from './spineActions';
 
 const TIER_COLOR: Record<string, string> = { green: tone.ok, red: tone.danger, unknown: tone.text3 };
 
@@ -517,6 +518,18 @@ export function BacktestPanel({ host }: { host?: PanelHostLike }): JSX.Element {
                   onClick={() => void backtestStore.validate()}
                 >
                   {snap.validation.phase === 'done' ? 'Re-check overfit' : 'Validate'}
+                </Button>
+                {/* One-click deploy from the results: hand the same file to the
+                    Live Desk wizard, exactly as the editor header does. */}
+                <Button
+                  variant="ghost"
+                  testId="backtest-deploy"
+                  disabled={!snap.file}
+                  onClick={() => {
+                    if (snap.file) deployFile(snap.file, snap.strategyPath ?? undefined);
+                  }}
+                >
+                  Deploy
                 </Button>
                 <OverflowMenu items={[{ label: 'Ask the agent', onClick: () => void askAgent() }]} />
               </>

@@ -52,6 +52,9 @@ import {
   validateWizard,
   verbEndpoint,
 } from '../engine/live';
+import { refreshEntitlements, quotaNudge, type QuotaNudge } from '../engine/entitlements';
+import { parseEngineError, type EngineError } from '../engine/paywall';
+import { UpgradeGate } from './UpgradeGate';
 import { useAiPanelContext, handOffToAgent, type AgentNote } from './aiPanel';
 import { money, price, qty, percent } from '../engine/format';
 import {
@@ -117,7 +120,8 @@ const styles = {
     cursor: 'pointer',
     border: `1px solid ${danger ? DANGER : tone.borderStrong}`,
     background: primary ? ACCENT : 'transparent',
-    color: primary ? '#fff' : danger ? DANGER : tone.text,
+    // Ink on the white accent fill is BLACK — a white ink would vanish.
+    color: primary ? tone.accentInk : danger ? DANGER : tone.text,
   }),
   table: { width: '100%', borderCollapse: 'collapse' as const, fontSize: 13 },
   th: {
@@ -206,7 +210,8 @@ const styles = {
     border: '1px solid transparent',
     whiteSpace: 'nowrap' as const,
     background: active ? (kind === 'caution' ? 'rgba(212,160,23,0.16)' : ACCENT) : 'transparent',
-    color: active ? (kind === 'caution' ? CAUTION : '#fff') : tone.text2,
+    // On the white accent fill the active label is BLACK ink; caution keeps its hue.
+    color: active ? (kind === 'caution' ? CAUTION : tone.accentInk) : tone.text2,
     boxShadow: active && kind === 'caution' ? `inset 0 0 0 1px ${CAUTION}` : 'none',
   }),
 
@@ -286,7 +291,9 @@ const styles = {
     width: 16,
     height: 16,
     borderRadius: '50%',
-    background: '#fff',
+    // Contrast against its own track: black on the white "on" fill, light on
+    // the dark "off" fill — a fixed white knob vanished on the white track.
+    background: on ? tone.accentInk : tone.text,
     transition: 'left 120ms ease',
   }),
 
@@ -332,7 +339,8 @@ const styles = {
     cursor: enabled ? 'pointer' : 'not-allowed',
     border: '1px solid transparent',
     background: enabled ? ACCENT : tone.sunken,
-    color: enabled ? '#fff' : tone.text3,
+    // Black ink on the enabled white fill; the disabled fill is dark, so text3.
+    color: enabled ? tone.accentInk : tone.text3,
     opacity: enabled ? 1 : 0.85,
   }),
   ghostBtn: {
@@ -634,8 +642,9 @@ function DeployForm({
   const [exclusions, setExclusions] = useState<DeployExclusion[]>([]);
   const [paid, setPaid] = useState(false);
   const [liveAllowed, setLiveAllowed] = useState(false);
+  const [deployNudge, setDeployNudge] = useState<QuotaNudge | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [serverError, setServerError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<EngineError | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -647,14 +656,27 @@ function DeployForm({
       setDataProviders(all.filter((connector) => connector.kind === 'data_provider'));
 
       const auth = await authState();
-      setPaid(isPaidTier(auth.tier));
 
-      // Live mode is gated on the ENGINE's answer (connect-check reports the
-      // install's live entitlement); the account tier is only the fallback
-      // for engines that predate the field. Coerce a stuck 'live' selection
-      // back to paper so a click raced against this probe can't survive.
-      const check = await connectCheck();
-      const allowed = typeof check?.live_allowed === 'boolean' ? check.live_allowed : isPaidTier(auth.tier);
+      // Prefer the entitlements snapshot — its `live_allowed` is the REAL
+      // order-path gate (paid tier AND runtime allows AND the active broker can
+      // trade live), and its usage powers a proactive deployment nudge. Fall
+      // back to connect-check's runtime-only field, then the account tier, for
+      // engines that predate the snapshot. This ENHANCES the shipped pre-gate;
+      // the disable + coerce-to-paper behaviour below is unchanged.
+      const ent = await refreshEntitlements();
+      const check = ent ? null : await connectCheck();
+
+      setPaid(isPaidTier(ent?.tier ?? auth.tier));
+      setDeployNudge(
+        ent ? quotaNudge(ent.usage.active_live_deployments, 'live deployment') : null
+      );
+
+      const allowed =
+        typeof ent?.live_allowed === 'boolean'
+          ? ent.live_allowed
+          : typeof check?.live_allowed === 'boolean'
+            ? check.live_allowed
+            : isPaidTier(auth.tier);
       setLiveAllowed(allowed);
       if (!allowed) {
         setWizard((prev) => (prev.mode === 'live' ? { ...prev, mode: 'paper' } : prev));
@@ -690,17 +712,21 @@ function DeployForm({
 
   const submit = async () => {
     setSubmitting(true);
-    setServerError(null);
+    setSubmitError(null);
     const response = await postJson('/deploy/live', toRequest(wizard));
     setSubmitting(false);
     if (response.ok) {
       onDone();
     } else {
-      const body = (response.body ?? {}) as { detail?: unknown };
-      setServerError(
-        typeof body.detail === 'string'
-          ? body.detail
-          : `Deploy rejected (${response.status || 'engine unreachable'}).`
+      // One classifier for every failure: a tier gate renders the upgrade card
+      // with plan context, a blocked license its own state, and anything else
+      // (preflight issues, engine down) a plain reason — never a bare status.
+      setSubmitError(
+        parseEngineError(
+          response.status,
+          response.body,
+          `Deploy rejected (${response.status || 'engine unreachable'}).`
+        )
       );
     }
   };
@@ -920,7 +946,19 @@ function DeployForm({
         </div>
       </div>
 
-      {serverError ? <div style={styles.serverError}>{serverError}</div> : null}
+      {deployNudge ? (
+        <div style={styles.caution} data-testid="deploy-quota-nudge">
+          <span aria-hidden>▲</span> {deployNudge.message}
+        </div>
+      ) : null}
+
+      {submitError ? (
+        submitError.kind === 'generic' ? (
+          <div style={styles.serverError}>{submitError.message}</div>
+        ) : (
+          <UpgradeGate info={submitError} />
+        )
+      ) : null}
 
       <hr style={styles.divider} />
 

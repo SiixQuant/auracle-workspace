@@ -42,7 +42,9 @@ describe('isPaidTier', () => {
       expect(isPaidTier(tier)).toBe(false);
     }
     expect(isPaidTier('enterprise')).toBe(true);
-    expect(isPaidTier(' TEAM ')).toBe(true);
+    // 'team' is a phantom — the engine has no such tier, so it must NOT unlock.
+    expect(isPaidTier('team')).toBe(false);
+    expect(isPaidTier(' TEAM ')).toBe(false);
   });
 });
 

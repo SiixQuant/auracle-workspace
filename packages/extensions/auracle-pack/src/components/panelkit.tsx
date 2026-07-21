@@ -339,6 +339,9 @@ export function Button({
 }
 
 function Spinner({ light }: { light?: boolean }): JSX.Element {
+  // `light` = riding on a primary button. That fill is now WHITE, so the busy
+  // ring is inked in BLACK (accentInk) over a faint black track — a white ring
+  // would be invisible on the white button.
   return (
     <span
       aria-hidden
@@ -347,8 +350,8 @@ function Spinner({ light }: { light?: boolean }): JSX.Element {
         width: 10,
         height: 10,
         borderRadius: '50%',
-        border: `1.5px solid ${light ? 'rgba(255,255,255,0.35)' : tone.border}`,
-        borderTopColor: light ? '#fff' : tone.text2,
+        border: `1.5px solid ${light ? tint(tone.accentInk, 30) : tone.border}`,
+        borderTopColor: light ? tone.accentInk : tone.text2,
         display: 'inline-block',
       }}
     />

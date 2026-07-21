@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Strategy and run focus now flows between the Backtest, Live Desk, Validation, and Research panels and the editor Run header, and the AI chat follows the focused strategy without overwriting an active panel's own context.
 - The Backtest panel now opens any completed run by its job id and follows the run focused elsewhere, so a saved run (including one imported from QuantConnect, which is labelled with its source) shows the same metrics and charts as one you just ran; press Escape to release it.
 - Running a strategy on the Flow canvas now draws its equity curve, and live deployments show how long they have been up (with a restart count when they have been restarted).
+- When an action needs a higher plan, the panel now shows which plan you are on and which one it needs (with a link to upgrade) instead of a bare error, and Live Algorithms warns as you approach your plan's deployment limit.
 <!-- New features go here -->
 - When the Auracle Agent has no model connected, a research finding's Transmog action now shows a connect-a-key explanation instead of failing on click.
 

@@ -60,7 +60,8 @@ const styles = {
     cursor: 'pointer',
     border: `1px solid ${tone.borderStrong}`,
     background: primary ? tone.accent : 'transparent',
-    color: primary ? '#fff' : tone.text,
+    // Black ink on the white accent fill — a white label would be unreadable.
+    color: primary ? tone.accentInk : tone.text,
   }),
   drawer: {
     position: 'fixed' as const,

@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+<!-- New features go here -->
+
+### Changed
+<!-- Changes to existing functionality go here -->
+
+### Fixed
+<!-- Bug fixes go here -->
+
+### Removed
+<!-- Removed features go here -->
+
+## [1.5.0] - 2026-07-21
+
+
+### Added
 - Strategy and run focus now flows between the Backtest, Live Desk, Validation, and Research panels and the editor Run header, and the AI chat follows the focused strategy without overwriting an active panel's own context.
 - The Backtest panel now opens any completed run by its job id and follows the run focused elsewhere, so a saved run (including one imported from QuantConnect, which is labelled with its source) shows the same metrics and charts as one you just ran; press Escape to release it.
 - The QuantConnect library can now open a completed cloud backtest straight into the Metrics Viewer, where it shows its real QuantConnect numbers labelled with their source and drops the local-only overfit and re-run actions.
@@ -16,16 +31,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - When an action needs a higher plan, the panel now shows which plan you are on and which one it needs (with a link to upgrade) instead of a bare error, and Live Algorithms warns as you approach your plan's deployment limit.
 - You can now jump straight from a validation result or a live deployment to the strategy's source file, deploy a finished backtest in one click, hand a Flow strategy to the Backtest or Deploy surface, and open a monitoring incident's run.
 - The Backtest panel now shows a factor-attribution battery for a completed run, breaking its returns into market, size, value and momentum exposure plus the alpha the factors do not explain, each with a plain-English reading; it covers saved QuantConnect imports as well as local runs, and says why it is unavailable when a run's window is too short to measure.
-<!-- New features go here -->
 - You can now let the Auracle Agent react on its own when a backtest finishes, a deployment fails, or a validation completes; it is off by default, opt-in from Agent Features, and only nudges an agent session you already have open on a paid plan.
 - When the Auracle Agent has no model connected, a research finding's Transmog action now shows a connect-a-key explanation instead of failing on click.
 
 ### Changed
-<!-- Changes to existing functionality go here -->
 - The Research panel now reads as a calm ranked list, shows each scored finding's six-factor tradability breakdown with its scoring origin, and lets you expand a finding's abstract in place.
 
 ### Fixed
-<!-- Bug fixes go here -->
+- Dismissing a monitoring incident works again.
+- Primary buttons and their busy spinner are legible again after the accent change.
 
 ### Removed
 <!-- Removed features go here -->

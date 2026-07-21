@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { money, percent, price, qty } from '../format';
+import { duration, money, percent, price, qty } from '../format';
 
 describe('money', () => {
   it('formats whole dollars with separators', () => {
@@ -52,5 +52,27 @@ describe('percent', () => {
   it('renders an em dash for missing values', () => {
     expect(percent(null)).toBe('—');
     expect(percent(NaN)).toBe('—');
+  });
+});
+
+describe('duration', () => {
+  const S = 1000;
+  const M = 60 * S;
+  const H = 60 * M;
+  const D = 24 * H;
+  it('shows the two largest non-zero units', () => {
+    expect(duration(3 * D + 4 * H + 30 * M)).toBe('3d 4h');
+    expect(duration(5 * H + 12 * M)).toBe('5h 12m');
+    expect(duration(45 * M + 20 * S)).toBe('45m');
+    expect(duration(30 * S)).toBe('30s');
+  });
+  it('drops a trailing zero unit', () => {
+    expect(duration(3 * D)).toBe('3d');
+    expect(duration(2 * H)).toBe('2h');
+  });
+  it('renders an em dash for non-finite or negative spans', () => {
+    expect(duration(-1)).toBe('—');
+    expect(duration(NaN)).toBe('—');
+    expect(duration(null)).toBe('—');
   });
 });

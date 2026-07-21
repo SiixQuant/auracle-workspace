@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Strategy and run focus now flows between the Backtest, Live Desk, Validation, and Research panels and the editor Run header, and the AI chat follows the focused strategy without overwriting an active panel's own context.
+- Running a strategy on the Flow canvas now draws its equity curve, and live deployments show how long they have been up (with a restart count when they have been restarted).
 <!-- New features go here -->
 
 ### Changed

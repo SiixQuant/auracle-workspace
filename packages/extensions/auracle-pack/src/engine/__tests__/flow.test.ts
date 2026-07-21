@@ -14,6 +14,7 @@ import {
   moveNode,
   setSummary,
   summaryFromEngine,
+  summaryFromJobResult,
 } from '../flow';
 
 function item(path: string, bundled: boolean): StrategyListItem {
@@ -109,5 +110,40 @@ describe('flow canvas core (ported native tests)', () => {
     expect(parsed.sharpe).toBe(1.2);
     expect(parsed.net_profit).toBeNull();
     expect(parsed.max_drawdown).toBeNull();
+  });
+});
+
+describe('summaryFromJobResult', () => {
+  it('zips a chartable job result into equity points + scalars', () => {
+    const parsed = summaryFromJobResult('s', {
+      chartable: true,
+      chart: { labels: ['2020-01', '2020-02'], points: [1, 1.3] },
+      stats: { sharpe: 1.1, total_return: 0.3, max_drawdown: -0.12 },
+      trades: 17,
+    });
+    expect(parsed.equity).toEqual([
+      { t: '2020-01', v: 1 },
+      { t: '2020-02', v: 1.3 },
+    ]);
+    expect(parsed.sharpe).toBe(1.1);
+    expect(parsed.num_trades).toBe(17);
+  });
+
+  it('drops non-finite points and falls back to the index for missing labels', () => {
+    const parsed = summaryFromJobResult('s', {
+      chartable: true,
+      chart: { labels: ['a'], points: [1, Number.NaN, 1.2] },
+      stats: {},
+    });
+    expect(parsed.equity).toEqual([
+      { t: 'a', v: 1 },
+      { t: '2', v: 1.2 },
+    ]);
+  });
+
+  it('draws no curve when the result is not chartable', () => {
+    const parsed = summaryFromJobResult('s', { chartable: false, stats: { sharpe: 0.8 } });
+    expect(parsed.equity).toEqual([]);
+    expect(parsed.sharpe).toBe(0.8);
   });
 });

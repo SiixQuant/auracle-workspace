@@ -7,6 +7,7 @@
  * what the engine actually serves (`/ui/api/deployments/...` returns 404 —
  * verified against a running engine).
  */
+import { duration } from './format';
 
 export interface Position {
   symbol: string;
@@ -27,6 +28,11 @@ export interface Deployment {
   equity?: number | null;
   return_pct?: number | null;
   positions: Position[];
+  /** ISO stamp of first entry to RUNNING; never reset, so it survives restarts. */
+  started_at?: string | null;
+  created_at?: string | null;
+  /** Times the deployment has been restarted since it first started. */
+  restart_count?: number | null;
 }
 
 /** One order row in a deployment's ledger. */
@@ -262,6 +268,36 @@ export function stateLabel(state: string): string {
 /** True while the deployment counts as live. Mirrors lifecycle.ACTIVE_STATES. */
 export function isActive(state: string): boolean {
   return ['preflight', 'provisioning', 'starting', 'running', 'restarting'].includes(state);
+}
+
+export interface Uptime {
+  /** Compact elapsed since `started_at`, e.g. `3d 4h`. */
+  text: string;
+  /** Restarts the row reports (0 when absent). `started_at` is never reset, so
+   *  a restarted deployment discloses this instead of the caller implying the
+   *  run has been continuous the whole span. */
+  restarts: number;
+}
+
+/**
+ * How long a deployment has been up, derived client-side from `started_at`.
+ * Returns null unless the deployment is in a running/starting/restarting state
+ * AND carries a parseable start stamp — a stopped, errored, or never-started
+ * row shows nothing rather than a stale or fabricated counter. `started_at` is
+ * stamped on first RUNNING and never reset across restarts, so the restart
+ * count rides along and the elapsed span is never sold as unbroken.
+ */
+export function uptime(row: Deployment, now: number = Date.now()): Uptime | null {
+  if (row.state !== 'running' && row.state !== 'starting' && row.state !== 'restarting') {
+    return null;
+  }
+  const started = row.started_at ? Date.parse(row.started_at) : NaN;
+  if (!Number.isFinite(started)) return null;
+  const elapsed = now - started;
+  if (elapsed < 0) return null;
+  const restarts =
+    typeof row.restart_count === 'number' && row.restart_count > 0 ? row.restart_count : 0;
+  return { text: duration(elapsed), restarts };
 }
 
 export interface LiveAlgorithms {

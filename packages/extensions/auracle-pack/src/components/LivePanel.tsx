@@ -48,6 +48,7 @@ import {
   splitStrategyPath,
   stateLabel,
   toRequest,
+  uptime,
   validateWizard,
   verbEndpoint,
 } from '../engine/live';
@@ -1335,6 +1336,7 @@ function FragmentRow({
 }) {
   const actions = availableActions(row.state);
   const confirming = pendingConfirm?.id === row.id ? pendingConfirm.action : null;
+  const up = uptime(row);
   return (
     <tr className="apk-row" onClick={onToggle} style={{ cursor: 'pointer' }}>
       <td style={{ ...dash.td, paddingRight: 0 }}>
@@ -1360,6 +1362,12 @@ function FragmentRow({
           </span>
           <span style={{ fontSize: 11.5, color: tone.text3 }}>
             {row.broker || '—'} · {row.mode}
+            {up ? (
+              <span data-testid="deployment-uptime">
+                {` · up ${up.text}`}
+                {up.restarts > 0 ? ` · ${up.restarts} restart${up.restarts === 1 ? '' : 's'}` : ''}
+              </span>
+            ) : null}
           </span>
         </div>
       </td>

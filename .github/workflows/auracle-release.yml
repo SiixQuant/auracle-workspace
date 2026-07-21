@@ -8,6 +8,29 @@ name: Auracle IDE release (macOS)
 # promotion of an artifact that already passed the staged install check,
 # never a first test. Publishing needs the RELEASES_TOKEN secret (a PAT
 # with repo scope on the target repo).
+#
+# Signing gate: signing + notarization activate automatically once the
+# Apple secrets below exist. A production target HARD-FAILS unless the
+# built app and dmg pass Gatekeeper assessment (spctl) and staple
+# validation — an unsigned or unverified production release is impossible,
+# not silent. A staging target may still ship unsigned (a notice is
+# logged) so the install/update path can be rehearsed without credentials.
+#
+# Credential rotation (owner) — set or replace under Settings > Secrets and
+# variables > Actions, or `gh secret set <NAME> -R SiixQuant/auracle-workspace`:
+#   MACOS_CERTIFICATE            base64 of the Developer ID Application .p12
+#                                (`base64 -i cert.p12 | pbcopy`); re-export from
+#                                Keychain Access and re-encode when it is renewed.
+#   MACOS_CERTIFICATE_PWD        the .p12 export password.
+#   CSC_NAME                     "Developer ID Application: <Name> (<TEAMID>)".
+#   APPLE_ID                     Apple ID email used for notarization.
+#   APPLE_APP_SPECIFIC_PASSWORD  app-specific password from appleid.apple.com;
+#                                revoke + regenerate there, then update the secret.
+#   APPLE_TEAM_ID                Developer team id (defaults to 3GYP4YJ3DH).
+#   RELEASES_TOKEN               PAT with repo scope on the target releases repo.
+# Removing MACOS_CERTIFICATE or APPLE_ID reverts to the unsigned path, which is
+# permitted for staging only. Full setup: .github/SETUP_SECRETS.md and
+# packages/electron/BUILD_SIGNING.md.
 
 on:
   workflow_dispatch:
@@ -88,11 +111,105 @@ jobs:
           npx electron-builder --mac --arm64 --publish never
         continue-on-error: false
 
+      - name: Notarize and staple the dmg (signed path only)
+        # electron-builder's afterSign hook already notarizes and staples the
+        # .app inside the dmg (via @electron/notarize), so the app launches
+        # offline once copied out. The *published* artifact is the dmg itself,
+        # though, and a dmg carries its own notarization ticket only if the dmg
+        # is submitted and stapled here — do that so `spctl --assess` and
+        # `stapler validate` pass on the shipped file and the checksum below
+        # covers the stapled bytes. No-op (notice only) on the unsigned path;
+        # the verify step is the single gate, so failures here only warn.
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -uo pipefail
+          DMG=$(ls packages/electron/release/*-arm64.dmg | head -1)
+          test -n "$DMG"
+          if [ -z "${APPLE_ID:-}" ] || [ -z "${APPLE_APP_SPECIFIC_PASSWORD:-}" ]; then
+            echo "::notice::Apple notarization secrets absent — leaving the dmg unstapled (unsigned build). The verify step decides whether that is allowed for this target."
+            exit 0
+          fi
+          # The team id is not secret (it ships in every signed binary); default
+          # to the repo's known id when the secret is unset, matching notarize.js.
+          TEAM_ID="${APPLE_TEAM_ID:-3GYP4YJ3DH}"
+          echo "Submitting $DMG to Apple notarytool (team $TEAM_ID)..."
+          if ! xcrun notarytool submit "$DMG" \
+                --apple-id "$APPLE_ID" \
+                --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+                --team-id "$TEAM_ID" \
+                --wait; then
+            echo "::warning::notarytool submission failed — the dmg stays unstapled; the verify step will gate on it."
+            exit 0
+          fi
+          if ! xcrun stapler staple "$DMG"; then
+            echo "::warning::stapler failed — the dmg stays unstapled; the verify step will gate on it."
+            exit 0
+          fi
+          echo "::notice::dmg notarized and stapled: $DMG"
+
+      - name: Verify signing, notarization, and stapling
+        # The gate. A production target can never publish an unsigned or
+        # unverified artifact again; a staging target still ships unsigned for
+        # install rehearsals. This runs before the checksum step so the sha256
+        # is taken over the stapled dmg.
+        env:
+          TARGET: ${{ inputs.target }}
+          # 'true' only when both a signing certificate and a notarization
+          # identity are configured — either alone cannot produce a shippable
+          # (signed + notarized) artifact.
+          HAS_SIGNING_SECRETS: ${{ (secrets.MACOS_CERTIFICATE != '' && secrets.APPLE_ID != '') && 'true' || 'false' }}
+        run: |
+          set -uo pipefail
+          CHECKLIST="Provision the Apple Developer ID credentials tracked in SiixQuant/auracle-workspace#93 (Developer ID Application certificate + its export password, plus Apple ID + app-specific password + team id) as the repo secrets MACOS_CERTIFICATE, MACOS_CERTIFICATE_PWD, CSC_NAME, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID, then re-run."
+          DMG=$(ls packages/electron/release/*-arm64.dmg | head -1)
+          APP=$(ls -d packages/electron/release/mac*/*.app 2>/dev/null | head -1 || true)
+
+          if [ "$HAS_SIGNING_SECRETS" != "true" ]; then
+            if [ "$TARGET" = "production" ]; then
+              echo "::error::Refusing to publish an unsigned production build. $CHECKLIST"
+              exit 1
+            fi
+            echo "::notice::Signing secrets absent — staging build ships unsigned (permitted). Skipping Gatekeeper and staple checks."
+            exit 0
+          fi
+
+          echo "Verifying signed artifact for target=$TARGET"
+          echo "  app: ${APP:-<not found>}"
+          echo "  dmg: $DMG"
+          rc=0
+          if [ -n "$APP" ]; then
+            # codesign --verify is informational: spctl below is the authoritative
+            # signature+notarization check, so a codesign quirk cannot false-block.
+            codesign --verify --deep --strict --verbose=2 "$APP" || echo "::warning::codesign --verify reported an issue on the app (see log); spctl is authoritative."
+            spctl --assess --type exec --verbose=4 "$APP" || { echo "::error::Gatekeeper (spctl) rejected the app"; rc=1; }
+            stapler validate "$APP" || { echo "::error::staple validation failed on the app"; rc=1; }
+          else
+            echo "::error::Built .app not found under packages/electron/release/mac*/"
+            rc=1
+          fi
+          spctl --assess --type open --context context:primary-signature --verbose=4 "$DMG" || { echo "::error::Gatekeeper (spctl) rejected the dmg"; rc=1; }
+          stapler validate "$DMG" || { echo "::error::staple validation failed on the dmg (dmg not notarized/stapled)"; rc=1; }
+
+          if [ "$rc" -ne 0 ]; then
+            if [ "$TARGET" = "production" ]; then
+              echo "::error::Signing/notarization verification FAILED — blocking the production publish. $CHECKLIST"
+              exit 1
+            fi
+            echo "::warning::Verification failed on a staging build — not blocking (staging may ship unsigned)."
+            exit 0
+          fi
+          echo "::notice::Signed, notarized, and stapled — verification passed for $TARGET."
+
       - name: Collect artifact + generate checksum sidecar
         id: artifact
         # electron-builder writes to release/ (not dist/), and alongside the
         # arch-named dmg it leaves a backwards-compat "Auracle IDE-macOS.dmg"
         # copy — releases ship only the arm64-named one, like v1.0.x did.
+        # Runs AFTER the notarize/staple step so the sha256 covers the stapled
+        # dmg bytes (the launcher verifies the published checksum on update).
         run: |
           DMG=$(ls packages/electron/release/*-arm64.dmg | head -1)
           test -n "$DMG"

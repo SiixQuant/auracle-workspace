@@ -8,6 +8,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { authPersist, authRequest, authSignout, authStart, authState } from '../engine/client';
+import { displayTierName } from '../engine/entitlements';
+import { isPaidTier } from '../engine/live';
 import { Button, Pill, ensurePanelKitStyles, tint, tone } from './panelkit';
 
 const POLL_INTERVAL_MS = 3_000;
@@ -177,7 +179,9 @@ export function AccountSection(): JSX.Element {
 
   if (state.kind === 'signed-in') {
     const initial = (state.email || '?').trim().charAt(0).toUpperCase() || '?';
-    const isPro = /pro|institutional|enterprise|team/i.test(state.tier);
+    // One paid-tier decision, shared with the deploy pre-gates (live.ts) so the
+    // engine and IDE agree on which plans are paid — no phantom "team" tier.
+    const isPro = isPaidTier(state.tier);
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <span aria-hidden style={styles.avatar}>
@@ -188,7 +192,9 @@ export function AccountSection(): JSX.Element {
             {state.email || 'Signed in'}
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: tone.text3 }}>
-            {state.tier ? <Pill kind={isPro ? 'accent' : 'muted'}>{state.tier}</Pill> : null}
+            {state.tier ? (
+              <Pill kind={isPro ? 'accent' : 'muted'}>{displayTierName(state.tier)}</Pill>
+            ) : null}
             {state.offline ? 'cached — identity service unreachable' : 'Signed in'}
           </span>
         </div>

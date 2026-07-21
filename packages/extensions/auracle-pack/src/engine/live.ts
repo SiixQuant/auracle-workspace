@@ -94,10 +94,11 @@ export const COMPUTE_LABELS: Record<Compute, string> = {
 export function isPaidTier(tier: string | null | undefined): boolean {
   // Allow-list, not deny-list: the engine ranks any UNRECOGNIZED tier as
   // community (fail-closed), so treating "not community" as paid here would
-  // pre-approve tiers the engine will refuse at deploy time. Covers both
-  // vocabularies (engine license tiers + account plans).
+  // pre-approve tiers the engine will refuse at deploy time. The engine's only
+  // paid ranks are pro / institutional (same level) and enterprise — there is
+  // no "team" tier, so it is deliberately absent rather than mapped to paid.
   const t = (tier ?? '').toLowerCase().trim();
-  return t === 'pro' || t === 'institutional' || t === 'enterprise' || t === 'team';
+  return t === 'pro' || t === 'institutional' || t === 'enterprise';
 }
 
 /** A cloud compute target the current tier cannot run. */

@@ -53,6 +53,8 @@ import {
   tone,
 } from './panelkit';
 import { PanelHostLike, agentKeyPresence, useAiPanelContext } from './aiPanel';
+import { parseEngineError, type EngineError } from '../engine/paywall';
+import { UpgradeGate } from './UpgradeGate';
 import { focusStore } from '../engine/focusStore';
 
 /** The engine ranks and gates internally; the panel shows the best 20. */
@@ -274,6 +276,7 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
   const [load, setLoad] = useState<LoadState>({ phase: 'loading' });
   const [scan, setScan] = useState<ScanStatus | null>(null);
   const [scanNote, setScanNote] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  const [scanGate, setScanGate] = useState<EngineError | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [signedIn, setSignedIn] = useState(false);
   const [keyPresence, setKeyPresence] = useState<KeyPresence>('unknown');
@@ -347,6 +350,7 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
 
   const kickScan = async () => {
     setScanNote(null);
+    setScanGate(null);
     const response = await postJson('/ui/api/research/scan');
     if (response.ok) {
       setScan({
@@ -365,7 +369,14 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
       startPolling();
       return;
     }
-    setScanNote({ kind: 'err', text: scanStartError(response.status) });
+    // The scan drives the LLM conveyor, so a tier gate or blocked license
+    // surfaces as the shared upgrade card; any other failure stays inline.
+    const err = parseEngineError(response.status, response.body, scanStartError(response.status));
+    if (err.kind === 'generic') {
+      setScanNote({ kind: 'err', text: err.message });
+    } else {
+      setScanGate(err);
+    }
   };
 
   const act = async (finding: ResearchFinding, verb: 'watch' | 'dismiss') => {
@@ -531,6 +542,11 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
         </>
       }
     >
+      {scanGate ? (
+        <div style={{ marginBottom: 4 }}>
+          <UpgradeGate info={scanGate} />
+        </div>
+      ) : null}
       {load.phase === 'loading' ? (
         <SkeletonRows rows={4} />
       ) : load.phase === 'failed' && load.why === 'outdated' ? (

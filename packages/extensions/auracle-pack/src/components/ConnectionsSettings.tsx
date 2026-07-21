@@ -25,6 +25,9 @@ import {
   normalizeConnector,
   sectionSummary,
 } from '../engine/model';
+import { parseEngineError, paywallFromReason, type EngineError } from '../engine/paywall';
+import { refreshEntitlements } from '../engine/entitlements';
+import { UpgradeGate } from './UpgradeGate';
 import { Button, InlineNote, Pill, Select, ensurePanelKitStyles, tint, tone } from './panelkit';
 
 const KEYLESS_IDS = new Set(['yfinance', 'simulator']);
@@ -207,11 +210,18 @@ function ConnectorDetail({
   const [values, setValues] = useState<Record<string, string>>({});
   const [capability, setCapability] = useState<string>('');
   const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const [gate, setGate] = useState<EngineError | null>(null);
+  const [tier, setTier] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
+      // The current tier gives the gate its "you're on X" context; absent on an
+      // engine that predates the snapshot, in which case the reason stands alone.
+      const ent = await refreshEntitlements();
+      if (cancelled) return;
+      setTier(ent?.tier ?? null);
       const body = await getJson<Record<string, unknown>>(`/ui/api/connections/${connector.id}`);
       if (cancelled) return;
       const raw = (body?.connection ?? body) as (Partial<Connector> & { id: string }) | null;
@@ -240,6 +250,7 @@ function ConnectorDetail({
   const runTest = async () => {
     setBusy('test');
     setTestResult(null);
+    setGate(null);
     const response = await postJson(`/ui/api/connections/${shown.id}/test`, enteredFields);
     const body = (response.body ?? {}) as { ok?: boolean; message?: string };
     setTestResult({
@@ -253,6 +264,7 @@ function ConnectorDetail({
 
   const runSave = async () => {
     setBusy('save');
+    setGate(null);
     const response = await postJson(`/ui/api/connections/${shown.id}/save`, enteredFields);
     setBusy(null);
     if (response.ok) {
@@ -260,11 +272,19 @@ function ConnectorDetail({
       bumpConnectGeneration();
       onChanged();
     } else {
-      const body = (response.body ?? {}) as { detail?: string; message?: string };
-      setTestResult({
-        ok: false,
-        message: body.message ?? body.detail ?? `Save failed (${response.status || 'engine unreachable'}).`,
-      });
+      // A tier gate on save renders the upgrade card with plan context; every
+      // other failure stays the inline reason it already was.
+      const err = parseEngineError(
+        response.status,
+        response.body,
+        `Save failed (${response.status || 'engine unreachable'}).`
+      );
+      if (err.kind === 'generic') {
+        setTestResult({ ok: false, message: err.message });
+      } else {
+        setTestResult(null);
+        setGate(err);
+      }
     }
   };
 
@@ -301,9 +321,12 @@ function ConnectorDetail({
       </div>
 
       {shown.gated ? (
-        <div style={styles.gatedBox}>
-          {shown.gated_reason || 'Your current plan does not include this connector.'}
-        </div>
+        <UpgradeGate
+          info={paywallFromReason(
+            shown.gated_reason || 'Your current plan does not include this connector.',
+            tier
+          )}
+        />
       ) : (
         <div style={styles.card}>
           {(detail?.fields ?? []).map((field: FieldMeta) => (
@@ -360,7 +383,9 @@ function ConnectorDetail({
               </Button>
             ) : null}
           </div>
-          {testResult ? (
+          {gate ? (
+            <UpgradeGate info={gate} />
+          ) : testResult ? (
             <InlineNote kind={testResult.ok ? 'ok' : 'err'}>{testResult.message}</InlineNote>
           ) : null}
         </div>

@@ -68,6 +68,44 @@ export function summaryFromEngine(strategy: string, value: unknown): BacktestSum
   };
 }
 
+/** Zip an engine chart's `{ labels, points }` into equity points, keeping only
+ *  finite values and falling back to the index when a label is missing. Returns
+ *  [] unless the engine marked the result chartable, so a non-chartable run
+ *  draws no curve rather than a fabricated one. */
+function equityFromChart(chartable: unknown, chart: unknown): EquityPoint[] {
+  if (chartable !== true || !chart || typeof chart !== 'object') return [];
+  const points = (chart as { points?: unknown }).points;
+  const labels = (chart as { labels?: unknown }).labels;
+  if (!Array.isArray(points)) return [];
+  const labelAt = Array.isArray(labels) ? labels : [];
+  const out: EquityPoint[] = [];
+  for (let i = 0; i < points.length; i += 1) {
+    const v = points[i];
+    if (typeof v !== 'number' || !Number.isFinite(v)) continue;
+    out.push({ t: typeof labelAt[i] === 'string' ? (labelAt[i] as string) : String(i), v });
+  }
+  return out;
+}
+
+/**
+ * Parse the engine's ASYNC backtest job result (`/ui/api/backtest/job/{id}/result`)
+ * into a summary. Unlike {@link summaryFromEngine} — which reads the synchronous
+ * `/backtest` response that has no equity — this carries a `chart` series, so the
+ * canvas can draw a real equity curve. Scalar stats come from the same `.stats`
+ * shape; the trade count reads the payload's top-level `trades`.
+ */
+export function summaryFromJobResult(strategy: string, value: unknown): BacktestSummary {
+  const base = summaryFromEngine(strategy, value);
+  const body = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+  const trades =
+    typeof body.trades === 'number' && Number.isFinite(body.trades) ? body.trades : base.num_trades;
+  return {
+    ...base,
+    num_trades: trades,
+    equity: equityFromChart(body.chartable, body.chart),
+  };
+}
+
 export interface Pos {
   x: number;
   y: number;

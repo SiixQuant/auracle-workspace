@@ -18,6 +18,7 @@ import {
   splitStrategyPath,
   stateLabel,
   toRequest,
+  uptime,
   validateWizard,
   verbEndpoint,
 } from '../live';
@@ -218,5 +219,37 @@ describe('deploymentPrompt (hand-off)', () => {
     expect(prompt).toContain('Return: -8.00%');
     expect(prompt).toContain('- SPY: 10 @ 500');
     expect(prompt).toContain('Investigate this deployment');
+  });
+});
+
+describe('uptime', () => {
+  const now = Date.parse('2026-07-20T12:00:00Z');
+
+  it('reports elapsed since started_at while running', () => {
+    const up = uptime(deployment({ state: 'running', started_at: '2026-07-17T08:00:00Z' }), now);
+    expect(up).toEqual({ text: '3d 4h', restarts: 0 });
+  });
+
+  it('covers the starting and restarting states', () => {
+    expect(uptime(deployment({ state: 'starting', started_at: '2026-07-20T11:00:00Z' }), now)?.text).toBe('1h');
+    expect(uptime(deployment({ state: 'restarting', started_at: '2026-07-20T11:59:30Z' }), now)?.text).toBe('30s');
+  });
+
+  it('is absent for a stopped deployment even with a start stamp', () => {
+    expect(uptime(deployment({ state: 'stopped', started_at: '2026-07-17T08:00:00Z' }), now)).toBeNull();
+    expect(uptime(deployment({ state: 'errored', started_at: '2026-07-17T08:00:00Z' }), now)).toBeNull();
+  });
+
+  it('is absent when no start stamp is present', () => {
+    expect(uptime(deployment({ state: 'running', started_at: null }), now)).toBeNull();
+    expect(uptime(deployment({ state: 'running' }), now)).toBeNull();
+  });
+
+  it('discloses restarts so it never claims continuous uptime', () => {
+    const up = uptime(
+      deployment({ state: 'running', started_at: '2026-07-17T08:00:00Z', restart_count: 2 }),
+      now
+    );
+    expect(up).toEqual({ text: '3d 4h', restarts: 2 });
   });
 });

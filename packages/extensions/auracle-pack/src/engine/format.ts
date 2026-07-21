@@ -53,3 +53,22 @@ export function percent(n: number | null | undefined, digits = 2): string {
   const sign = n >= 0 ? '+' : '-';
   return `${sign}${Math.abs(n).toFixed(digits)}%`;
 }
+
+/**
+ * A span of milliseconds as a compact elapsed string: `3d 4h`, `5h 12m`,
+ * `45m`, `30s`. At most the two largest non-zero units, so an uptime cell
+ * stays short. Non-finite or negative input renders the em dash rather than a
+ * nonsensical negative or "NaN" span.
+ */
+export function duration(ms: number | null | undefined): string {
+  if (!finite(ms) || ms < 0) return EM_DASH;
+  const totalSec = Math.floor(ms / 1000);
+  const d = Math.floor(totalSec / 86400);
+  const h = Math.floor((totalSec % 86400) / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (d > 0) return h > 0 ? `${d}d ${h}h` : `${d}d`;
+  if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  if (m > 0) return `${m}m`;
+  return `${s}s`;
+}

@@ -21,9 +21,9 @@ import {
   improved,
   moveNode,
   setSummary,
-  summaryFromEngine,
 } from '../engine/flow';
-import { tone } from './panelkit';
+import { runFlowBacktest } from '../engine/flowRun';
+import { EquityChart, tone } from './panelkit';
 
 const styles = {
   root: {
@@ -96,7 +96,11 @@ export function AuracleFlowEditor({ host }: EditorHostProps): JSX.Element {
       const parsed = JSON.parse(raw) as FlowView;
       return { nodes: parsed.nodes ?? [], edges: parsed.edges ?? [] };
     },
-    serialize: (view) => JSON.stringify(view, null, 2),
+    // Drop each summary's equity curve before writing: it is large and
+    // re-derivable by re-running, so it stays in memory rather than bloating
+    // the git-tracked *.flow.json. Scalar metrics still persist.
+    serialize: (view) =>
+      JSON.stringify(view, (key, value) => (key === 'equity' ? undefined : value), 2),
     applyContent: (view) => {
       viewRef.current = view;
       draftSeq.current =
@@ -134,10 +138,10 @@ export function AuracleFlowEditor({ host }: EditorHostProps): JSX.Element {
     const node = viewRef.current.nodes.find((n) => n.id === id);
     if (!node?.path || running) return;
     setRunning(id);
-    const response = await postJson('/backtest', { strategy_path: node.path });
+    const result = await runFlowBacktest(node.path);
     setRunning(null);
-    if (response.ok) {
-      setSummary(viewRef.current, id, summaryFromEngine(node.path, response.body));
+    if (result.ok) {
+      setSummary(viewRef.current, id, result.summary);
       markDirty();
       rerender();
     }
@@ -306,6 +310,16 @@ export function AuracleFlowEditor({ host }: EditorHostProps): JSX.Element {
           })}
           <div style={{ ...styles.small, marginTop: 8 }}>
             Deltas appear only for metrics both runs reported.
+          </div>
+        </div>
+      ) : null}
+
+      {!diagnostics && a?.summary && !b && (a.summary.equity?.length ?? 0) >= 2 ? (
+        <div style={styles.drawer} data-testid="flow-equity-drawer">
+          <div style={{ fontWeight: 600, marginBottom: 10 }}>{a.name}</div>
+          <EquityChart points={a.summary.equity.map((point) => point.v)} label="Equity" />
+          <div style={{ ...styles.small, marginTop: 8 }}>
+            {`Sharpe ${metric(a.summary.sharpe)} · Ret ${metric(a.summary.total_return)} · DD ${metric(a.summary.max_drawdown)}`}
           </div>
         </div>
       ) : null}

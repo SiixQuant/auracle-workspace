@@ -8,6 +8,30 @@
  * nothing" from "broke" — the server's words, not invented ones.
  */
 
+/**
+ * The engine's tradability breakdown: six numeric factors (0–100), in the
+ * order the scorer weights them, each with a display label. The engine's
+ * `factors` payload also carries a non-numeric `data_note` string — only
+ * these six keys are ever surfaced, and only as bars, so the note can never
+ * be mistaken for a score. Both the LLM and heuristic scoring paths fill all
+ * six; heuristic rows use conservative floors, so their bars carry less
+ * signal than LLM-scored rows (the row's origin label and confidence say so).
+ */
+export const FACTOR_KEYS = [
+  { key: 'implementability', label: 'Implementability' },
+  { key: 'data_availability', label: 'Data availability' },
+  { key: 'expected_edge', label: 'Expected edge' },
+  { key: 'regime_robustness', label: 'Regime robustness' },
+  { key: 'backtestability', label: 'Backtestability' },
+  { key: 'novelty', label: 'Novelty' },
+] as const;
+
+export type FactorKey = (typeof FACTOR_KEYS)[number]['key'];
+
+/** The six-factor scores as parsed off the wire — a key is present only when
+ *  the engine sent a finite number for it, so older unscored rows are `{}`. */
+export type FactorScores = Partial<Record<FactorKey, number>>;
+
 export interface ResearchFinding {
   id: number;
   paper_id: string;
@@ -24,6 +48,7 @@ export interface ResearchFinding {
   composite: number;
   band: string;
   confidence: string;
+  factors: FactorScores;
   categories: string[];
   primary_category: string | null;
   published_at: string | null;
@@ -68,6 +93,7 @@ export function normalizeFinding(raw: Record<string, unknown>): ResearchFinding 
   const list = (v: unknown): string[] =>
     Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
   return {
+    factors: parseFactors(raw.factors),
     id: num(raw.id, 0),
     paper_id: str(raw.paper_id) ?? '',
     source: str(raw.source) ?? 'arxiv',
@@ -95,11 +121,46 @@ export function normalizeFinding(raw: Record<string, unknown>): ResearchFinding 
   };
 }
 
+/**
+ * Whitelist the six numeric factor keys off a raw `factors` payload, dropping
+ * the `data_note` string (and anything non-finite). Never client-invents a
+ * score: a key is present only when the engine sent a real number for it, so
+ * an unscored legacy row (`factors: {}` or absent) parses to `{}` and renders
+ * with no bars.
+ */
+function parseFactors(v: unknown): FactorScores {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return {};
+  const src = v as Record<string, unknown>;
+  const out: FactorScores = {};
+  for (const { key } of FACTOR_KEYS) {
+    const n = src[key];
+    if (typeof n === 'number' && Number.isFinite(n)) out[key] = n;
+  }
+  return out;
+}
+
+/** The present factors in weighted order, ready to render as bars. Empty when
+ *  the row carries no numeric factors, so the caller draws nothing (no gap). */
+export function factorBars(
+  factors: FactorScores
+): Array<{ key: FactorKey; label: string; value: number }> {
+  return FACTOR_KEYS.flatMap(({ key, label }) => {
+    const value = factors[key];
+    return typeof value === 'number' ? [{ key, label, value }] : [];
+  });
+}
+
 /** Who produced the score — never let a keyword match read as judgment. */
 export function scoreOrigin(model: string): 'heuristic' | 'agent' | 'llm' {
   if (model === 'heuristic') return 'heuristic';
   if (model.startsWith('agent')) return 'agent';
   return 'llm';
+}
+
+/** Display form of the score origin, for labeling the factor breakdown. */
+export function scoreOriginLabel(model: string): string {
+  const origin = scoreOrigin(model);
+  return origin === 'llm' ? 'LLM' : origin === 'agent' ? 'Agent' : 'Heuristic';
 }
 
 export function sourceLabel(source: string): string {

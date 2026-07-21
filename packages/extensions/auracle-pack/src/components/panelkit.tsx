@@ -541,6 +541,74 @@ export function Pill({
   );
 }
 
+/* ── factor meter ───────────────────────────────────────────────────── */
+
+/**
+ * A compact 0–max magnitude meter — a fixed-width label, a hairline track, and
+ * a quiet fill. Built for the research six-factor readout, rendered as small
+ * multiples. The fill is NEUTRAL on purpose: a factor is a magnitude, not a
+ * health state, so it borrows neither the semantic ramp nor the reserved
+ * accent — a row of white bars would read as decoration. No motion, no
+ * interactivity; the track and fill sit still.
+ */
+export function FactorBar({
+  label,
+  value,
+  max = 100,
+  testId,
+}: {
+  label: string;
+  value: number;
+  max?: number;
+  testId?: string;
+}): JSX.Element {
+  const pct = Math.max(0, Math.min(1, value / max)) * 100;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} data-testid={testId}>
+      <span
+        style={{
+          flex: '0 0 108px',
+          fontSize: 10.5,
+          color: tone.text3,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >
+        {label}
+      </span>
+      <span
+        style={{
+          position: 'relative',
+          flex: 1,
+          height: 4,
+          borderRadius: 999,
+          background: 'color-mix(in srgb, #e6edf3 8%, transparent)',
+          overflow: 'hidden',
+        }}
+      >
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute',
+            insetInlineStart: 0,
+            top: 0,
+            bottom: 0,
+            width: `${pct}%`,
+            borderRadius: 999,
+            background: 'color-mix(in srgb, #e6edf3 42%, transparent)',
+          }}
+        />
+      </span>
+      <span
+        style={{ flex: '0 0 24px', textAlign: 'right', fontSize: 10.5, color: tone.text2, ...numeric }}
+      >
+        {Math.round(value)}
+      </span>
+    </div>
+  );
+}
+
 /* ── metrics (summary heroes) ───────────────────────────────────────── */
 
 export interface MetricProps {

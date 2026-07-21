@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 <!-- Changes to existing functionality go here -->
+- The Research panel now reads as a calm ranked list, shows each scored finding's six-factor tradability breakdown with its scoring origin, and lets you expand a finding's abstract in place.
 
 ### Fixed
 <!-- Bug fixes go here -->

@@ -4,11 +4,13 @@ import {
   DEEP_RANK_PROMPT,
   TRANSMOG_NO_KEY_REASON,
   TRANSMOG_SIGNED_OUT_REASON,
+  factorBars,
   transmogAction,
   transmogPrompt,
   normalizeFinding,
   scanSummaryText,
   scoreOrigin,
+  scoreOriginLabel,
   sourceLabel,
   fmtWhen,
   fmtDate,
@@ -58,6 +60,78 @@ describe('scoreOrigin', () => {
     expect(scoreOrigin('heuristic')).toBe('heuristic');
     expect(scoreOrigin('agent:claude')).toBe('agent');
     expect(scoreOrigin('ollama:llama3')).toBe('llm');
+  });
+});
+
+describe('scoreOriginLabel', () => {
+  it('gives a display label for each origin', () => {
+    expect(scoreOriginLabel('heuristic')).toBe('Heuristic');
+    expect(scoreOriginLabel('agent-refined')).toBe('Agent');
+    expect(scoreOriginLabel('gpt-4o')).toBe('LLM');
+  });
+});
+
+describe('six-factor parsing', () => {
+  const factors = {
+    implementability: 80,
+    data_availability: 65,
+    expected_edge: 55,
+    regime_robustness: 30,
+    backtestability: 70,
+    novelty: 40,
+    data_note: 'daily bars suffice',
+  };
+
+  it('whitelists the six numeric keys and drops the data_note string', () => {
+    const f = normalizeFinding({ id: 1, title: 'T', factors });
+    expect(f.factors).toEqual({
+      implementability: 80,
+      data_availability: 65,
+      expected_edge: 55,
+      regime_robustness: 30,
+      backtestability: 70,
+      novelty: 40,
+    });
+    expect('data_note' in f.factors).toBe(false);
+  });
+
+  it('keeps heuristic conservative floors verbatim — no client re-scoring', () => {
+    // A heuristic row legitimately carries factors (with flat floors); they are
+    // stored, not hidden. regime_robustness stays 30, not lifted.
+    const f = normalizeFinding({ id: 2, title: 'H', model: 'heuristic', factors });
+    expect(f.factors.regime_robustness).toBe(30);
+  });
+
+  it('treats an unscored legacy row as no factors', () => {
+    expect(normalizeFinding({ id: 3, title: 'L' }).factors).toEqual({});
+    expect(normalizeFinding({ id: 4, title: 'L', factors: {} }).factors).toEqual({});
+    expect(normalizeFinding({ id: 5, title: 'L', factors: null }).factors).toEqual({});
+    expect(normalizeFinding({ id: 6, title: 'L', factors: 'bad' }).factors).toEqual({});
+  });
+
+  it('ignores non-numeric or unknown factor keys', () => {
+    const f = normalizeFinding({
+      id: 7,
+      title: 'T',
+      factors: { implementability: 90, expected_edge: 'high', mystery: 50 },
+    });
+    expect(f.factors).toEqual({ implementability: 90 });
+  });
+});
+
+describe('factorBars', () => {
+  it('emits the present factors in weighted order, ready to render', () => {
+    const bars = factorBars({
+      novelty: 40,
+      implementability: 80,
+      expected_edge: 55,
+    });
+    expect(bars.map((b) => b.key)).toEqual(['implementability', 'expected_edge', 'novelty']);
+    expect(bars[0]).toEqual({ key: 'implementability', label: 'Implementability', value: 80 });
+  });
+
+  it('draws nothing when there are no numeric factors', () => {
+    expect(factorBars({})).toEqual([]);
   });
 });
 

@@ -20,6 +20,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [1.4.1] - 2026-07-20
+
+
+### Added
+<!-- New features go here -->
+
+### Changed
+<!-- Changes to existing functionality go here -->
+
+### Fixed
+- The Run backtest and Deploy buttons above the editor now share one consistent height, border, and spacing.
+
+### Removed
+<!-- Removed features go here -->
+
 ## [1.4.0] - 2026-07-17
 
 

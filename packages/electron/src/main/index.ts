@@ -142,6 +142,7 @@ import { geminiUsageService } from './services/GeminiUsageService';
 import { codexAuthService } from './services/CodexAuthService';
 import { registerExtensionHandlers, getClaudePluginPaths, initializeExtensionFileTypes } from './ipc/ExtensionHandlers';
 import { registerAuraclePanelAgentHandlers } from './ipc/AuraclePanelAgentHandlers';
+import { registerAuraclePanelNotifyHandlers, attachProactiveNotificationAIService } from './ipc/AuraclePanelNotifyHandlers';
 import { registerExtensionPermissionHandlers } from './ipc/ExtensionPermissionHandlers';
 import { registerTrackerImporterHandlers } from './ipc/TrackerImporterHandlers';
 import { installExtensionAgentBridge } from './extensions/extensionAgentBridge';
@@ -2028,6 +2029,7 @@ app.whenReady().then(async () => {
     registerDataModelHandlers();
     registerExtensionHandlers();
     registerAuraclePanelAgentHandlers();
+    registerAuraclePanelNotifyHandlers();
     registerExtensionPermissionHandlers();
     registerTrackerImporterHandlers();
     registerExtensionMarketplaceHandlers();
@@ -2238,6 +2240,11 @@ app.whenReady().then(async () => {
     } catch (error) {
         logger.mcp.error('Failed to start meta-agent MCP server:', error);
     }
+
+    // Wire the proactive panel-notification lane to the agent service. Governed
+    // host-side (opt-in, paid gate, debounce/dedup/backoff); a no-op until the
+    // user opts in. Independent of meta-agent startup above.
+    if (aiService) attachProactiveNotificationAIService(aiService);
 
     // Start session wakeup scheduler (persistent scheduled re-invocations)
     try {

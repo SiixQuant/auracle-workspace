@@ -271,6 +271,23 @@ export function isActive(state: string): boolean {
   return ['preflight', 'provisioning', 'starting', 'running', 'restarting'].includes(state);
 }
 
+/** The failed/errored lifecycle state a deployment lands in. */
+export const DEPLOY_FAILED_STATE = 'errored';
+
+/**
+ * Deployments in `rows` that are in the failed state and are NOT already in
+ * `reported` — the ones that just ENTERED the failed state since the caller
+ * last looked. Pure so the transition detection is unit-tested. The caller owns
+ * the `reported` set and seeds it from the first poll, so a deployment that had
+ * already failed before the panel opened is never announced as a fresh failure.
+ */
+export function deploymentsNewlyErrored(
+  rows: Deployment[],
+  reported: ReadonlySet<number>
+): Deployment[] {
+  return rows.filter((row) => row.state === DEPLOY_FAILED_STATE && !reported.has(row.id));
+}
+
 export interface Uptime {
   /** Compact elapsed since `started_at`, e.g. `3d 4h`. */
   text: string;

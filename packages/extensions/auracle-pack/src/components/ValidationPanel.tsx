@@ -35,6 +35,7 @@ import {
 } from './panelkit';
 import { PanelHostLike, useAiPanelContext, handOffToAgent, type AgentNote } from './aiPanel';
 import { focusStore } from '../engine/focusStore';
+import { emitPanelEvent, validationCompletedEvent } from '../engine/panelEvents';
 import { strategySourceFromDotted } from '../engine/spineNav';
 import { qty } from '../engine/format';
 
@@ -244,7 +245,9 @@ export function ValidationPanel({ host }: { host?: PanelHostLike }): JSX.Element
       setRun({ phase: 'failed', why: classifyLoadFailure(result.status) });
       return;
     }
-    setRun({ phase: 'done', verdict: normalizeVerdict(result.body) });
+    const verdict = normalizeVerdict(result.body);
+    setRun({ phase: 'done', verdict });
+    emitPanelEvent(host?.ai, validationCompletedEvent(verdict));
   };
 
   const onPick = (path: string) => {

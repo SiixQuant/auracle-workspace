@@ -27,7 +27,7 @@ interface EngineConfig {
   apiKey: string;
 }
 
-interface EngineResponse {
+export interface EngineResponse {
   ok: boolean;
   status: number;
   /** Parsed JSON body when the response was JSON, otherwise raw text. */
@@ -106,7 +106,13 @@ async function toEngineResponse(response: Response): Promise<EngineResponse> {
   return { ok: response.ok, status: response.status, body };
 }
 
-async function engineRequest(
+/**
+ * Make an authenticated request to the local Auracle engine's /ui surface,
+ * reusing the same cookie + CSRF handling as the renderer bridge. Exported so
+ * other main-process services (e.g. the proactive-notification paid gate) can
+ * read engine state with the identical auth instead of re-implementing it.
+ */
+export async function auracleEngineRequest(
   method: string,
   requestPath: string,
   body?: unknown
@@ -326,7 +332,7 @@ export function registerAuracleEngineHandlers(): void {
         return { ok: false, status: 0, body: 'invalid path' };
       }
       try {
-        return await engineRequest(method, requestPath, body);
+        return await auracleEngineRequest(method, requestPath, body);
       } catch (error) {
         // Engine down/unreachable is a normal state the UI renders honestly.
         logger.main?.debug?.(

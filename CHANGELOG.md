@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - You can now jump straight from a validation result or a live deployment to the strategy's source file, deploy a finished backtest in one click, hand a Flow strategy to the Backtest or Deploy surface, and open a monitoring incident's run.
 - The Backtest panel now shows a factor-attribution battery for a completed run, breaking its returns into market, size, value and momentum exposure plus the alpha the factors do not explain, each with a plain-English reading; it covers saved QuantConnect imports as well as local runs, and says why it is unavailable when a run's window is too short to measure.
 <!-- New features go here -->
+- You can now let the Auracle Agent react on its own when a backtest finishes, a deployment fails, or a validation completes; it is off by default, opt-in from Agent Features, and only nudges an agent session you already have open on a paid plan.
 - When the Auracle Agent has no model connected, a research finding's Transmog action now shows a connect-a-key explanation instead of failing on click.
 
 ### Changed

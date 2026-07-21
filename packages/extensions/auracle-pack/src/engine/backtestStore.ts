@@ -164,8 +164,15 @@ function poll(jobId: number, gen: number): void {
 }
 
 /** Shape an engine result body into the panel's chartable form. One place so
- *  a live run (fetchResult) and a by-id load (loadJob) yield the same data. */
-function normalizeResult(body: BacktestResultBody): BacktestResultData {
+ *  a live run (fetchResult) and a by-id load (loadJob) yield the same data.
+ *
+ *  `sourceHint` names a non-local provenance the CALLER already knows (the QC
+ *  library persists a run it knows is external). The standard result route
+ *  serves a persisted run source-blind — it does not echo the stored `kind`/
+ *  `source` — so the body alone can't declare it; the hint fills that in.
+ *  A source the body DOES declare still wins, so a future source-aware engine
+ *  stays authoritative. */
+function normalizeResult(body: BacktestResultBody, sourceHint?: string): BacktestResultData {
   return {
     equity: body.chart?.points ?? [],
     drawdown: body.drawdown?.points ?? [],
@@ -174,7 +181,7 @@ function normalizeResult(body: BacktestResultBody): BacktestResultData {
     asOf: body.as_of ?? '',
     nBars: body.n_bars ?? 0,
     trades: body.trades ?? 0,
-    source: resolveRunSource(body),
+    source: resolveRunSource(body) ?? sourceHint,
   };
 }
 
@@ -268,8 +275,14 @@ export const backtestStore = {
    * to follow the focused run (a stored one, or a persisted external run such
    * as a QC import) when the panel opens. `origin` marks it `loaded` so the
    * viewer can frame it as a saved run without changing how the metrics render.
+   *
+   * `opts.source` names a non-local provenance the caller already knows (the QC
+   * library, opening a run it just persisted, passes "quantconnect"). It labels
+   * the run and hides local-only verbs for an external run even though the
+   * result route serves the run source-blind; a source the engine DOES declare
+   * still wins.
    */
-  async loadJob(jobId: number): Promise<void> {
+  async loadJob(jobId: number, opts?: { source?: string }): Promise<void> {
     const gen = ++generation;
     set({
       file: null,
@@ -301,14 +314,17 @@ export const backtestStore = {
     set({
       phase: 'succeeded',
       strategyPath: res.body.strategy_path || null,
-      result: res.body.chartable && res.body.chart ? normalizeResult(res.body) : null,
+      result:
+        res.body.chartable && res.body.chart ? normalizeResult(res.body, opts?.source) : null,
     });
   },
 
   /** Re-run the currently resolved strategy, or reload a run shown by id. */
   async retry(): Promise<void> {
     if (state.origin === 'loaded' && state.jobId !== null) {
-      await this.loadJob(state.jobId);
+      // Preserve a known external provenance across the reload — the result
+      // route won't re-declare it, so a bare reload would drop the label.
+      await this.loadJob(state.jobId, state.result?.source ? { source: state.result.source } : undefined);
       return;
     }
     if (!state.strategyPath || !state.cls) return;

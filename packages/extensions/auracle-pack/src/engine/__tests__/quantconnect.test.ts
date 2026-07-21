@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest';
 
 import {
   QcProject,
+  classifyPersist,
   compilePhase,
   headlineStats,
   normalizeProject,
   qcContext,
+  qcPersistPath,
   qcPrompt,
 } from '../quantconnect';
+import roundTrip from '../../components/__tests__/fixtures/qcPersistRoundTrip.json';
 
 describe('normalizeProject', () => {
   it('coerces id shapes and defaults the name', () => {
@@ -94,5 +97,52 @@ describe('qcPrompt (hand-off)', () => {
     const prompt = qcPrompt(project, { coverage: 0.5, scaffold: 'class Alpha: pass' }, null);
     expect(prompt).toContain('```python');
     expect(prompt).toContain('class Alpha: pass');
+  });
+});
+
+describe('qcPersistPath', () => {
+  it('builds the persist route and encodes the backtest id', () => {
+    expect(qcPersistPath(9, 'bt-9')).toBe('/ui/api/quantconnect/projects/9/backtest/bt-9/persist');
+    expect(qcPersistPath(3, 'a b/c')).toBe(
+      '/ui/api/quantconnect/projects/3/backtest/a%20b%2Fc/persist'
+    );
+  });
+});
+
+describe('classifyPersist', () => {
+  it('reads the recorded 200 as an opened run carrying the job id', () => {
+    const out = classifyPersist(200, roundTrip.persistOpened);
+    expect(out).toEqual({ kind: 'opened', jobId: 4242 });
+  });
+
+  it('treats 409 as a disconnected account, with a reconnect reason', () => {
+    const out = classifyPersist(409, roundTrip.persistDisconnected);
+    expect(out.kind).toBe('disconnected');
+    expect(out.kind === 'disconnected' && out.message).toMatch(/reconnect quantconnect/i);
+  });
+
+  it('treats 422 as still building, surfacing the engine reason', () => {
+    const out = classifyPersist(422, roundTrip.persistBuilding);
+    expect(out.kind).toBe('building');
+    expect(out.kind === 'building' && out.message).toBe(
+      'Backtest has no chartable equity series yet.'
+    );
+  });
+
+  it('falls back to a plain building reason when 422 carries no error line', () => {
+    const out = classifyPersist(422, { persisted: false });
+    expect(out.kind).toBe('building');
+    expect(out.kind === 'building' && out.message).toMatch(/still finishing/i);
+  });
+
+  it('never opens on a 200 that did not persist (no job id)', () => {
+    expect(classifyPersist(200, { persisted: false, job_id: null }).kind).toBe('error');
+    expect(classifyPersist(200, { persisted: true, job_id: null }).kind).toBe('error');
+  });
+
+  it('classifies a dead transport (status 0) as an unreachable error', () => {
+    const out = classifyPersist(0, null);
+    expect(out.kind).toBe('error');
+    expect(out.kind === 'error' && out.message).toMatch(/engine unreachable/i);
   });
 });

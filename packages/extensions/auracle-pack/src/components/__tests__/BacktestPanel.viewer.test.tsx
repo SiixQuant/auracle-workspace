@@ -134,4 +134,35 @@ describe('Metrics Viewer — follow, load-by-id, publish, release', () => {
     // The in-flight run is not interrupted by a follow-load.
     expect(vi.mocked(backtestJobResult)).not.toHaveBeenCalled();
   });
+
+  it('hides every local-only verb for an external run, framed honestly', async () => {
+    vi.mocked(backtestJobResult).mockResolvedValue(result(qcRun) as never);
+    focusStore.publish({ run: { kind: 'backtest', id: '77' } });
+
+    render(<BacktestPanel />);
+    expect(await screen.findByTestId('metrics-viewer')).toBeTruthy();
+
+    // The source is still labelled...
+    expect(screen.getByTestId('run-source').textContent).toContain('QuantConnect');
+    // ...but no local-only verb is offered: not the overfit Validate, not a
+    // local re-run / Deploy.
+    expect(screen.queryByText('Validate')).toBeNull();
+    expect(screen.queryByText('Re-check overfit')).toBeNull();
+    expect(screen.queryByTestId('backtest-deploy')).toBeNull();
+    // And it is never framed as a local in-sample backtest.
+    expect(screen.getAllByText(/External result/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/In-Sample/i)).toBeNull();
+  });
+
+  it('keeps the local-only verbs for a local loaded run', async () => {
+    // localRun (the default mock) declares no source — a local run.
+    focusStore.publish({ run: { kind: 'backtest', id: '42' } });
+
+    render(<BacktestPanel />);
+    expect(await screen.findByTestId('metrics-viewer')).toBeTruthy();
+
+    expect(screen.queryByTestId('run-source')).toBeNull();
+    expect(screen.getByText('Validate')).toBeTruthy();
+    expect(screen.getByTestId('backtest-deploy')).toBeTruthy();
+  });
 });

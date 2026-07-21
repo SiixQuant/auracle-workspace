@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../engine/backtestStore', () => ({ backtestStore: { choose: vi.fn() } }));
+vi.mock('../../engine/backtestStore', () => ({ backtestStore: { choose: vi.fn(), loadJob: vi.fn() } }));
 vi.mock('../../engine/deployStore', () => ({ deployStore: { deploy: vi.fn(), choose: vi.fn() } }));
 vi.mock('../hub', () => ({ openHubTab: vi.fn() }));
 vi.mock('../panelVisibility', () => ({
@@ -13,7 +13,7 @@ import { deployStore } from '../../engine/deployStore';
 import { focusStore } from '../../engine/focusStore';
 import { openHubTab } from '../hub';
 import { isBacktestPanelOpen, isLivePanelOpen } from '../panelVisibility';
-import { backtestOption, deployFile, deployOption, handOffNode } from '../spineActions';
+import { backtestOption, deployFile, deployOption, handOffNode, openRunInViewer } from '../spineActions';
 
 const OPTION = { path: 'strategies.momentum.Mom', cls: 'Mom', label: 'Mom' };
 
@@ -132,5 +132,36 @@ describe('handOffNode — Flow "Metrics" / "Deploy"', () => {
     handOffNode({ path: null, name: 'draft' }, 'backtest');
     expect(backtestStore.choose).not.toHaveBeenCalled();
     expect(focusStore.getSnapshot().strategy).toBeUndefined();
+  });
+});
+
+describe('openRunInViewer — QC library "Open in Metrics Viewer" (the one outbound edge)', () => {
+  it('loads the persisted run by id (with its source) and fronts the Backtest panel', () => {
+    openRunInViewer(4242, 'quantconnect');
+
+    expect(backtestStore.loadJob).toHaveBeenCalledWith(4242, { source: 'quantconnect' });
+    expect(toggledPanelIds()).toEqual(['com.auracle.pack.backtest']);
+  });
+
+  it('publishes NO Spine focus — the QC library stays off the Spine', () => {
+    openRunInViewer(4242, 'quantconnect');
+
+    // The single outbound edge drives the viewer store directly; it must not
+    // publish strategy or run focus the way the strategy hand-offs do.
+    expect(focusStore.getSnapshot().strategy).toBeUndefined();
+    expect(focusStore.getSnapshot().run).toBeUndefined();
+  });
+
+  it('does not re-toggle the Backtest panel when it is already open', () => {
+    vi.mocked(isBacktestPanelOpen).mockReturnValue(true);
+    openRunInViewer(4242, 'quantconnect');
+
+    expect(backtestStore.loadJob).toHaveBeenCalledWith(4242, { source: 'quantconnect' });
+    expect(toggledPanelIds()).toEqual([]);
+  });
+
+  it('omits the source hint when none is given', () => {
+    openRunInViewer(7);
+    expect(backtestStore.loadJob).toHaveBeenCalledWith(7, undefined);
   });
 });

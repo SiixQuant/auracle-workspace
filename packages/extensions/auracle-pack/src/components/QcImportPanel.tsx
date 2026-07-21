@@ -15,13 +15,16 @@ import {
   QcChartBody,
   QcProject,
   StatLine,
+  classifyPersist,
   compilePhase,
   headlineStats,
   normalizeProject,
   qcContext,
   qcEquityPoints,
+  qcPersistPath,
   qcPrompt,
 } from '../engine/quantconnect';
+import { openRunInViewer } from './spineActions';
 import {
   Button,
   CenterState,
@@ -60,7 +63,7 @@ type BacktestState =
   | { phase: 'compiling' }
   | { phase: 'running' }
   | { phase: 'error'; message: string }
-  | { phase: 'done'; stats: StatLine[]; empty: boolean; equity: number[] };
+  | { phase: 'done'; stats: StatLine[]; empty: boolean; equity: number[]; backtestId: string };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '_') || 'imported';
@@ -69,18 +72,74 @@ const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '_') ||
  * A completed QC cloud backtest: its Strategy-Equity curve (when the engine
  * returned one) above the headline statistics. Every figure is a real QC
  * value — the curve renders only when there are points, never a placeholder.
+ *
+ * Its one outbound edge is "Open in Metrics Viewer": persist this completed
+ * cloud backtest as a local-shaped run (the engine POST), then open it in the
+ * Backtest panel as an EXTERNAL run — real QC numbers, labelled with their
+ * source, no local re-run. The persist is gated to a chartable run (< 2 equity
+ * points can't persist, so the affordance is disabled with a reason rather than
+ * dead-clicking into a 422); a disconnected account (409) or a still-building
+ * backtest (422 race) renders its reason in place. This panel stays OFF the
+ * Spine — the edge publishes no focus.
  */
 export function QcBacktestResult({
+  projectId,
+  backtestId,
   stats,
   equity,
   empty,
 }: {
+  projectId: number;
+  backtestId: string;
   stats: StatLine[];
   equity: number[];
   empty: boolean;
 }): JSX.Element {
+  const [opening, setOpening] = useState(false);
+  const [openNote, setOpenNote] = useState<{ kind: 'err' | 'muted'; text: string } | null>(null);
+  // The equity route needs >= 2 points to chart; persisting fewer would 422.
+  // Pre-gate the affordance so the "still building" case is disabled-with-reason.
+  const chartable = equity.length >= 2;
+
+  const openInViewer = async () => {
+    setOpening(true);
+    setOpenNote(null);
+    const response = await postJson(qcPersistPath(projectId, backtestId));
+    const outcome = classifyPersist(response.status, response.body);
+    setOpening(false);
+    if (outcome.kind === 'opened') {
+      // Hand the persisted run to the viewer as an external run. No focus is
+      // published here — the QC library is the one outbound edge, not a follower.
+      openRunInViewer(outcome.jobId, 'quantconnect');
+      return;
+    }
+    setOpenNote({ kind: outcome.kind === 'building' ? 'muted' : 'err', text: outcome.message });
+  };
+
   return (
     <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <Button
+          variant="primary"
+          busy={opening}
+          disabled={!chartable}
+          testId="qc-open-in-viewer"
+          title={
+            chartable
+              ? undefined
+              : 'No chartable equity series yet — QuantConnect is still building this backtest.'
+          }
+          onClick={() => void openInViewer()}
+        >
+          Open in Metrics Viewer
+        </Button>
+        {!chartable ? (
+          <span style={{ fontSize: 11, color: tone.text3 }}>
+            No equity curve to open yet — the run is still building on QuantConnect.
+          </span>
+        ) : null}
+        {openNote ? <InlineNote kind={openNote.kind}>{openNote.text}</InlineNote> : null}
+      </div>
       <EquityChartShad
         points={equity}
         title="Equity curve"
@@ -248,6 +307,8 @@ function ProjectCard({
             <InlineNote kind="err">{backtestState.message}</InlineNote>
           ) : (
             <QcBacktestResult
+              projectId={project.projectId}
+              backtestId={backtestState.backtestId}
               stats={backtestState.stats}
               equity={backtestState.equity}
               empty={backtestState.empty}
@@ -433,7 +494,7 @@ export function QcImportPanel({ host }: PanelHostProps): JSX.Element {
         const chart = await getJsonDetailed<QcChartBody>(`${base}/backtest/${backtestId}/chart`);
         if (!alive()) return;
         const equity = chart.ok ? qcEquityPoints(chart.body) : [];
-        setBacktestState({ phase: 'done', stats, empty: stats.length === 0, equity });
+        setBacktestState({ phase: 'done', stats, empty: stats.length === 0, equity, backtestId });
         return;
       }
       if (i === 99) {

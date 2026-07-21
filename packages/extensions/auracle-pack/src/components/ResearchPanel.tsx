@@ -7,18 +7,42 @@
  * per-finding watch/dismiss and the Transmog hand-off: "Transmog" hands
  * the finding to the /auracle:transmog agent command (prefilled,
  * review-first — nothing auto-runs), which develops a full strategy from
- * the research; the card then flips to Drafted with an open-the-file
+ * the research; the row then flips to Drafted with an open-the-file
  * affordance once the engine records the finding→strategy link.
  *
  * The corpus and its filters are internal: this is a strategy-development
  * engine, so the interests are fixed engine-side (finance + the sciences
  * that get weaponised into trading) and the panel simply shows the top 20
- * by tradability. Honesty rules: every number on a card is engine-computed
+ * by tradability. Honesty rules: every number on a row is engine-computed
  * and arrives pre-ranked (no client re-scoring), the score's origin is
  * labeled, scan outcomes distinguish "found nothing" from "broke", an
  * engine that predates the research surface is reported as outdated (not
  * unreachable), and the Transmog control is disabled with the reason while
  * the agent is signed out.
+ *
+ * ## Surface: a calm hairline list (narrowed Hermes)
+ * Findings are a single column separated by hairlines, not bordered cards —
+ * the list reads as one ranked ledger rather than a wall of framed tiles.
+ * The one reserved accent is white (brand only); factor magnitudes and status
+ * keep their own quiet neutral / semantic ink. Motion is limited to the
+ * existing reduced-motion-guarded `apk-enter` fade; no new keyframes.
+ *
+ * ## Density decisions (what earns a row)
+ * - **Hypothesis** — the engine's sharpened one-line thesis stays PRIMARY and
+ *   always visible; it is the whole point of the ranking.
+ * - **Six-factor bars** — the engine's tradability breakdown, shown for every
+ *   scored row (LLM and heuristic alike) with its origin labeled. Only the six
+ *   numeric factor keys render; the payload's `data_note` string is never a
+ *   bar. Rows with no numeric factors (older refined rows) draw nothing.
+ * - **Abstract** — long, so it hides behind a per-row expand toggle; it only
+ *   earns space when the reader asks for it (Escape, scoped to panel focus,
+ *   collapses it back).
+ * - **arXiv categories** — a different taxonomy from the technique + asset
+ *   meta already on the row, so they do NOT get a standing row; they appear
+ *   only inside the expanded abstract, where "study this paper" context makes
+ *   the source taxonomy genuinely useful.
+ * - **data_note** — deliberately not surfaced: it is a scoring aside, and a
+ *   sentence per row would undo the calm the hairline list buys.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { authState, getJsonDetailed, postJson } from '../engine/client';
@@ -32,6 +56,7 @@ import {
   ScanStatus,
   TransmogAction,
   classifyLoadFailure,
+  factorBars,
   fmtDate,
   fmtWhen,
   normalizeFinding,
@@ -39,6 +64,7 @@ import {
   scanStartError,
   scanSummaryText,
   scoreOrigin,
+  scoreOriginLabel,
   sourceLabel,
   transmogAction,
   transmogPrompt,
@@ -46,8 +72,10 @@ import {
 import {
   Button,
   CenterState,
+  FactorBar,
   InlineNote,
   PanelShell,
+  Pill,
   SkeletonRows,
   ToolbarSpring,
   tone,
@@ -68,18 +96,33 @@ const BAND_COLOR: Record<string, string> = {
   watchlist: tone.caution,
 };
 
-function FindingCard({
+/** The drafted/backtested/watchlist status pill — one honest state word. */
+function StatusPill({ status }: { status: string }): JSX.Element | null {
+  if (status === 'watchlist') return <Pill kind="caution" dot>Watching</Pill>;
+  if (status === 'drafted') return <Pill kind="muted">Drafted</Pill>;
+  if (status === 'backtested') return <Pill kind="muted">Backtested</Pill>;
+  return null;
+}
+
+function FindingRow({
   finding,
+  first,
   busy,
   action,
+  expanded,
+  onToggleExpand,
   onWatch,
   onDismiss,
   onTransmog,
   onOpen,
 }: {
   finding: ResearchFinding;
+  /** First row draws no divider; every later row is separated by a hairline. */
+  first: boolean;
   busy: boolean;
   action: TransmogAction;
+  expanded: boolean;
+  onToggleExpand: () => void;
   onWatch: () => void;
   onDismiss: () => void;
   onTransmog: () => void;
@@ -112,16 +155,18 @@ function FindingCard({
     meta.push(<span key="assets">{finding.asset_classes.join(' · ')}</span>);
   }
 
+  const bars = factorBars(finding.factors);
+  const abstractId = `abstract-${finding.id}`;
+
   return (
     <article
-      className="apk-card"
+      className="apk-row"
       style={{
         display: 'flex',
-        gap: 14,
-        padding: '13px 15px',
-        borderRadius: 9,
-        border: `1px solid ${tone.border}`,
-        background: tone.surface,
+        gap: 16,
+        padding: '14px 6px',
+        borderTop: first ? 'none' : `1px solid ${tone.border}`,
+        borderRadius: 6,
       }}
     >
       <div
@@ -181,6 +226,43 @@ function FindingCard({
             {finding.hypothesis}
           </p>
         ) : null}
+
+        {bars.length ? (
+          <div
+            data-testid={`factors-${finding.id}`}
+            style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 2 }}
+          >
+            <span
+              style={{
+                fontSize: 9.5,
+                fontWeight: 700,
+                letterSpacing: 0.5,
+                textTransform: 'uppercase',
+                color: tone.text3,
+              }}
+            >
+              Six-factor score · {scoreOriginLabel(finding.model)}
+            </span>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+                gap: '4px 20px',
+                maxWidth: '75ch',
+              }}
+            >
+              {bars.map((bar) => (
+                <FactorBar
+                  key={bar.key}
+                  label={bar.label}
+                  value={bar.value}
+                  testId={`factor-${finding.id}-${bar.key}`}
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, color: tone.text3 }}>
           <span>
             scored: {scoreOrigin(finding.model)} · confidence {finding.confidence}
@@ -195,7 +277,45 @@ function FindingCard({
               PDF ↗
             </a>
           ) : null}
+          {finding.abstract ? (
+            <button
+              type="button"
+              data-testid={`abstract-toggle-${finding.id}`}
+              aria-expanded={expanded}
+              aria-controls={abstractId}
+              onClick={onToggleExpand}
+              style={{
+                border: 'none',
+                background: 'none',
+                padding: 0,
+                margin: 0,
+                cursor: 'pointer',
+                color: tone.text3,
+                font: 'inherit',
+              }}
+            >
+              {expanded ? 'Hide abstract ▴' : 'Abstract ▾'}
+            </button>
+          ) : null}
         </div>
+
+        {expanded && finding.abstract ? (
+          <div
+            id={abstractId}
+            data-testid={abstractId}
+            className="apk-enter"
+            style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 2, maxWidth: '75ch' }}
+          >
+            <p style={{ margin: 0, fontSize: 12, lineHeight: 1.55, color: tone.text2 }}>
+              {finding.abstract}
+            </p>
+            {finding.categories.length ? (
+              <div style={{ fontSize: 10.5, color: tone.text3 }}>
+                arXiv: {finding.categories.join(' · ')}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <div
@@ -207,13 +327,7 @@ function FindingCard({
           whiteSpace: 'nowrap',
         }}
       >
-        {finding.status === 'watchlist' ? (
-          <span style={{ fontSize: 11.5, color: tone.caution }}>★ Watching</span>
-        ) : finding.status === 'drafted' ? (
-          <span style={{ fontSize: 11, color: tone.text3 }}>Drafted</span>
-        ) : finding.status === 'backtested' ? (
-          <span style={{ fontSize: 11, color: tone.text3 }}>Backtested</span>
-        ) : null}
+        <StatusPill status={finding.status} />
         {action.kind === 'open' ? (
           <Button variant="quiet" onClick={onOpen}>
             Open strategy
@@ -277,6 +391,8 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
   const [busyId, setBusyId] = useState<number | null>(null);
   const [signedIn, setSignedIn] = useState(false);
   const [keyPresence, setKeyPresence] = useState<KeyPresence>('unknown');
+  // The one row whose abstract is expanded (density: abstracts hide by default).
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const draftPollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -564,16 +680,34 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
           }
         />
       ) : (
-        <div className="apk-enter" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ fontSize: 11.5, color: tone.text3 }}>
+        <div
+          className="apk-enter"
+          // Escape collapses an open abstract, but only while focus is inside
+          // the list — the keydown is scoped to this container, so it never
+          // swallows Escape for the rest of the IDE. Handled only when there is
+          // something to close, so an idle list leaves Escape alone.
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' && expandedId !== null) {
+              e.stopPropagation();
+              setExpandedId(null);
+            }
+          }}
+          style={{ display: 'flex', flexDirection: 'column' }}
+        >
+          <div style={{ fontSize: 11.5, color: tone.text3, marginBottom: 6 }}>
             Top {load.feed.findings.length} · ranked by tradability
           </div>
-          {load.feed.findings.map((finding) => (
-            <FindingCard
+          {load.feed.findings.map((finding, i) => (
+            <FindingRow
               key={finding.id}
               finding={finding}
+              first={i === 0}
               busy={busyId === finding.id}
               action={transmogAction(finding, signedIn, keyPresence)}
+              expanded={expandedId === finding.id}
+              onToggleExpand={() =>
+                setExpandedId((cur) => (cur === finding.id ? null : finding.id))
+              }
               onWatch={() => void act(finding, 'watch')}
               onDismiss={() => void act(finding, 'dismiss')}
               onTransmog={() => void startTransmog(finding)}

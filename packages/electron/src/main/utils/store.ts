@@ -11,6 +11,7 @@ import { AlphaFeatureTag, getDefaultAlphaFeatures, ALPHA_FEATURES } from '../../
 import { DeveloperFeatureTag, getDefaultDeveloperFeatures, DEVELOPER_FEATURES } from '../../shared/developerFeatures';
 import { BetaFeatureTag, getDefaultBetaFeatures, enableAllBetaFeatures as enableAllBetaFeaturesUtil, BETA_FEATURES } from '../../shared/betaFeatures';
 import { normalizeCodexProviderConfig, omitModelsField } from '@nimbalyst/runtime/ai/server/utils/modelConfigUtils';
+import { isExtensionAgentProvider } from '../services/ai/providerResolution';
 
 // Theme can be a built-in theme or an extension theme ID (format: "extensionId:themeId")
 export type AppTheme = 'dark' | 'light' | 'system' | 'auto' | 'crystal-dark' | string;
@@ -1117,6 +1118,60 @@ export function getProviderApiKeyFromSettings(
   const apiKeys = getAiSettingsStore().get('apiKeys') as Record<string, string> | undefined;
   const key = apiKeys?.[providerId];
   return typeof key === 'string' && key.length > 0 ? key : null;
+}
+
+/**
+ * Whether the Auracle Agent has a usable credential for its effective default
+ * provider — a per-workspace `defaultProvider` override wins over the global
+ * default (itself 'claude-code'). Mirrors `AIService.getApiKeyForProvider`'s
+ * readiness matrix so providers that defer auth and need no stored key still
+ * read as configured:
+ *   - claude-code on login/SSO (the default), extension-agent providers, and
+ *     lmstudio      -> configured (no key required)
+ *   - claude-code on api-key auth, and every key-based provider (claude reads
+ *     the 'anthropic' key) -> configured only when a key is present
+ *
+ * Backs the panel -> agent connect-a-key gate (`extensions:agent-key-state`).
+ * Kept fail-safe against false negatives (a spurious "no key" would gate a
+ * working agent), so the raw provider-id override key is honored too.
+ */
+export function agentHasUsableCredential(workspacePath?: string): boolean {
+  const store = getAiSettingsStore();
+  const globalDefault = (store.get('defaultProvider') as string) || 'claude-code';
+  const overrideDefault = workspacePath
+    ? getAIProviderOverrides(workspacePath)?.defaultProvider
+    : undefined;
+  const provider = overrideDefault && overrideDefault.length > 0 ? overrideDefault : globalDefault;
+
+  // Extension-agent providers defer auth to the extension itself (e.g. Gemini's
+  // ~/.gemini OAuth); lmstudio is local and unauthenticated. Neither needs a
+  // host-stored key. See providerResolution.ts.
+  if (isExtensionAgentProvider(provider) || provider === 'lmstudio') {
+    return true;
+  }
+
+  // Claude Code authenticates by login/SSO unless API-key auth is explicitly
+  // selected, in which case it needs a stored key like any other provider.
+  if (provider === 'claude-code') {
+    const providerSettings = store.get('providerSettings') as
+      | Record<string, { authMethod?: string }>
+      | undefined;
+    const authMethod = providerSettings?.['claude-code']?.authMethod ?? 'login';
+    if (authMethod !== 'api-key') return true;
+  }
+
+  // A project-specific key on the raw provider id wins (as in AIService).
+  if (workspacePath) {
+    const overrideKey = getAIProviderOverrides(workspacePath)?.providers?.[provider]?.apiKey;
+    if (typeof overrideKey === 'string' && overrideKey.length > 0) return true;
+  }
+
+  // Global key: the chat 'claude' provider stores under 'anthropic'.
+  const globalKeyId =
+    provider === 'claude' ? 'anthropic' : provider === 'claude-code' ? 'claude-code' : provider;
+  const apiKeys = store.get('apiKeys') as Record<string, string> | undefined;
+  const globalKey = apiKeys?.[globalKeyId];
+  return typeof globalKey === 'string' && globalKey.length > 0;
 }
 
 export function saveAIProviderOverrides(workspacePath: string, overrides: AIProviderOverrides | undefined): void {

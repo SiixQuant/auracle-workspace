@@ -17,6 +17,7 @@ import { BrowserWindow } from 'electron';
 import { AISessionsRepository } from '@nimbalyst/runtime';
 import { safeHandle } from '../utils/ipcRegistry';
 import { MetaAgentService } from '../services/MetaAgentService';
+import { agentHasUsableCredential } from '../utils/store';
 
 interface LaunchPayload {
   workspacePath?: string;
@@ -24,7 +25,27 @@ interface LaunchPayload {
   title?: string;
 }
 
+interface KeyStatePayload {
+  workspacePath?: string;
+}
+
 export function registerAuraclePanelAgentHandlers(): void {
+  // Whether the Auracle Agent has a model connected for this workspace. Lets a
+  // panel show a connect-a-key gate instead of handing off a prompt the agent
+  // has no LLM to run. Resolution is read-only and defaults to configured on
+  // any doubt, so this can only gate an agent that is genuinely unconfigured.
+  safeHandle(
+    'extensions:agent-key-state',
+    async (_event, payload: KeyStatePayload): Promise<{ configured: boolean }> => {
+      const workspacePath = (payload?.workspacePath ?? '').trim() || undefined;
+      try {
+        return { configured: agentHasUsableCredential(workspacePath) };
+      } catch {
+        return { configured: true };
+      }
+    }
+  );
+
   safeHandle(
     'extensions:launch-agent-session',
     async (event, payload: LaunchPayload): Promise<{ ok: boolean; sessionId?: string; error?: string }> => {

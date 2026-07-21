@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   DEEP_RANK_PROMPT,
+  TRANSMOG_NO_KEY_REASON,
   TRANSMOG_SIGNED_OUT_REASON,
   transmogAction,
   transmogPrompt,
@@ -157,8 +158,45 @@ describe('transmogAction', () => {
     });
   });
 
+  it('signed-in with no agent model shows the connect-a-key gate', () => {
+    expect(transmogAction(f('surfaced'), true, 'absent')).toEqual({
+      kind: 'gate',
+      reason: TRANSMOG_NO_KEY_REASON,
+    });
+    expect(transmogAction(f('watchlist'), true, 'absent')).toEqual({
+      kind: 'gate',
+      reason: TRANSMOG_NO_KEY_REASON,
+    });
+  });
+
+  it('a present or unknown key state does not gate — unknown never blocks', () => {
+    for (const presence of ['present', 'unknown'] as const) {
+      expect(transmogAction(f('surfaced'), true, presence)).toEqual({
+        kind: 'transmog',
+        disabled: false,
+        reason: null,
+      });
+    }
+    // The default (no host lane wired) behaves like 'unknown'.
+    expect(transmogAction(f('surfaced'), true)).toEqual({
+      kind: 'transmog',
+      disabled: false,
+      reason: null,
+    });
+  });
+
+  it('the sign-in gate wins over the key gate — signed out is untouched', () => {
+    // Even with no key, a signed-out finding keeps the existing sign-in gate.
+    expect(transmogAction(f('surfaced'), false, 'absent')).toEqual({
+      kind: 'transmog',
+      disabled: true,
+      reason: TRANSMOG_SIGNED_OUT_REASON,
+    });
+  });
+
   it('terminal states never transmog', () => {
     expect(transmogAction(f('dismissed'), true)).toEqual({ kind: 'none' });
+    expect(transmogAction(f('dismissed'), true, 'absent')).toEqual({ kind: 'none' });
   });
 });
 

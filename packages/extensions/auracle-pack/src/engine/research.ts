@@ -146,27 +146,43 @@ export function scanSummaryText(status: ScanStatus | null): string {
 }
 
 /**
+ * Whether the Auracle Agent has an LLM key/model connected, as reported by
+ * the host's optional key-state lane. `unknown` covers both an older host
+ * that predates the lane and a lane that failed to answer — in either case
+ * the pack must not block, so `unknown` is treated like `present`.
+ */
+export type KeyPresence = 'present' | 'absent' | 'unknown';
+
+/**
  * The card's primary affordance — "Transmog": hand the finding to the
  * agent with the full strategy-development harness. Derived honestly from
- * the finding's state and the agent sign-in so the render can't show a
- * control whose action doesn't exist:
+ * the finding's state, the agent sign-in, and whether the agent has a model
+ * connected, so the render can't show a control whose action doesn't exist:
  *  - drafted/backtested with a recorded link -> open the built strategy
  *  - drafted without a link (legacy rows)    -> nothing to open, no lie
- *  - surfaced/watchlist                      -> transmog (disabled + reason
- *    while signed out — the hand-off runs on the user's account)
+ *  - surfaced/watchlist, signed out          -> transmog (disabled + reason —
+ *    the hand-off runs on the user's account)
+ *  - surfaced/watchlist, signed in, no key   -> a connect-a-key gate instead
+ *    of a button that would hand off to an agent with no model to build with
+ *  - surfaced/watchlist, signed in, key or unknown -> transmog
  */
 export type TransmogAction =
   | { kind: 'transmog'; disabled: false; reason: null }
   | { kind: 'transmog'; disabled: true; reason: string }
+  | { kind: 'gate'; reason: string }
   | { kind: 'open'; path: string }
   | { kind: 'none' };
 
 export const TRANSMOG_SIGNED_OUT_REASON =
   'Sign in to transmog — the agent builds on your account.';
 
+export const TRANSMOG_NO_KEY_REASON =
+  'Connect a model for the Auracle Agent to transmog — it needs an LLM to build the strategy.';
+
 export function transmogAction(
   finding: Pick<ResearchFinding, 'status' | 'strategy_path'>,
-  signedIn: boolean
+  signedIn: boolean,
+  keyPresence: KeyPresence = 'unknown'
 ): TransmogAction {
   if (finding.status === 'drafted' || finding.status === 'backtested') {
     return finding.strategy_path
@@ -176,8 +192,15 @@ export function transmogAction(
   if (finding.status !== 'surfaced' && finding.status !== 'watchlist') {
     return { kind: 'none' };
   }
+  // Sign-in gate first, untouched: the hand-off runs on the user's account,
+  // so nothing can transmog while signed out regardless of the key state.
   if (!signedIn) {
     return { kind: 'transmog', disabled: true, reason: TRANSMOG_SIGNED_OUT_REASON };
+  }
+  // Only an affirmative "no key" gates; `unknown` (older host or a lane that
+  // failed to answer) degrades to the normal control rather than blocking.
+  if (keyPresence === 'absent') {
+    return { kind: 'gate', reason: TRANSMOG_NO_KEY_REASON };
   }
   return { kind: 'transmog', disabled: false, reason: null };
 }

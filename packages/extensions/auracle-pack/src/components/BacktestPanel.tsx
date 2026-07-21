@@ -139,6 +139,10 @@ export function BacktestResultView({ result }: { result: BacktestResultData }): 
   const window = labels.length ? `${labels[0]} to ${labels[labels.length - 1]}` : 'window unknown';
   const maxDd = typeof s.max_drawdown === 'number' ? s.max_drawdown : null;
   const provenance = sourceLabel(result.source);
+  // An external run (a QC import, say) is NOT a local in-sample backtest, so it
+  // never wears the "In-Sample" tag — its numbers came from the source platform,
+  // which the provenance Pill already names.
+  const sampleTag = provenance ? null : 'In-Sample';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -160,7 +164,7 @@ export function BacktestResultView({ result }: { result: BacktestResultData }): 
         scale="log"
         showYAxis
         title="Growth of $10,000 (log scale)"
-        description={`In-Sample · ${window} · ${result.nBars} bars`}
+        description={sampleTag ? `${sampleTag} · ${window} · ${result.nBars} bars` : `${window} · ${result.nBars} bars`}
         height={190}
         format={money}
         // The end-value line below already states the outcome; the stock
@@ -168,7 +172,7 @@ export function BacktestResultView({ result }: { result: BacktestResultData }): 
         trend={false}
         footerNote={
           ended !== null && multiple !== null
-            ? `Ended at ${money(ended)} · ${multiple.toFixed(1)}x · In-Sample`
+            ? `Ended at ${money(ended)} · ${multiple.toFixed(1)}x${sampleTag ? ` · ${sampleTag}` : ''}`
             : undefined
         }
       />
@@ -201,7 +205,7 @@ export function BacktestResultView({ result }: { result: BacktestResultData }): 
       <MetricGrid items={detailCards(s, result.trades)} columns={4} />
 
       <span style={{ fontSize: 10.5, lineHeight: 1.5, color: tone.text3 }}>
-        {houseFootnote(s, result.nBars, result.asOf)}
+        {houseFootnote(s, result.nBars, result.asOf, provenance !== null)}
       </span>
     </div>
   );
@@ -346,6 +350,10 @@ export function BacktestPanel({ host }: { host?: PanelHostLike }): JSX.Element {
   // for the "add your universe" copy.
   const emptyUniverse = snap.phase === 'failed' && snap.detail ? isEmptyUniverseError(snap.detail) : false;
   const failedCopy = emptyUniverse ? emptyUniverseCopy() : null;
+  // A run that declares a non-local source is an external run (a persisted QC
+  // import): it is framed and gated differently from a local backtest — no
+  // in-sample claim, and none of the local-only verbs (Validate, Deploy).
+  const external = Boolean(snap.result?.source);
 
   // The job id rides the subtitle: traceable back to the engine's own record,
   // without spending a row of the panel on a line that says "complete".
@@ -499,43 +507,54 @@ export function BacktestPanel({ host }: { host?: PanelHostLike }): JSX.Element {
             </div>
           ) : null}
           {/* House rule: lead with what kind of evidence this is, not with the
-              number it produced. A backtest job has no out-of-sample start, so
-              "100% In-Sample" is a structural fact, not a computed one — which
-              is why the strip is a constant and the one verb answers it. */}
-          <SampleStrip
-            headline="100% In-Sample — no out-of-sample record to date"
-            takeaway={
-              snap.validation.phase === 'done' && snap.validation.verdict
-                ? railHeadline(snap.validation.verdict.signals)
-                : snap.validation.phase === 'running'
-                  ? 'Checking for overfit…'
-                  : 'Not yet checked for overfit.'
-            }
-            actions={
-              <>
-                <Button
-                  variant="primary"
-                  busy={snap.validation.phase === 'running'}
-                  onClick={() => void backtestStore.validate()}
-                >
-                  {snap.validation.phase === 'done' ? 'Re-check overfit' : 'Validate'}
-                </Button>
-                {/* One-click deploy from the results: hand the same file to the
-                    Live Desk wizard, exactly as the editor header does. */}
-                <Button
-                  variant="ghost"
-                  testId="backtest-deploy"
-                  disabled={!snap.file}
-                  onClick={() => {
-                    if (snap.file) deployFile(snap.file, snap.strategyPath ?? undefined);
-                  }}
-                >
-                  Deploy
-                </Button>
-                <OverflowMenu items={[{ label: 'Ask the agent', onClick: () => void askAgent() }]} />
-              </>
-            }
-          />
+              number it produced. A local backtest job has no out-of-sample
+              start, so "100% In-Sample" is a structural fact and the one verb
+              (Validate) answers it. An EXTERNAL run (a persisted QC import) was
+              measured on the source platform, not here — it is NOT an in-sample
+              local backtest, so the strip drops that claim and every local-only
+              verb (overfit Validate, local Deploy/re-run). Its provenance is
+              named by the source label on the result below. */}
+          {external ? (
+            <SampleStrip
+              headline={`External result — ${sourceLabel(snap.result?.source) ?? 'external source'}`}
+              takeaway="Measured on the source platform — not re-run or validated locally."
+            />
+          ) : (
+            <SampleStrip
+              headline="100% In-Sample — no out-of-sample record to date"
+              takeaway={
+                snap.validation.phase === 'done' && snap.validation.verdict
+                  ? railHeadline(snap.validation.verdict.signals)
+                  : snap.validation.phase === 'running'
+                    ? 'Checking for overfit…'
+                    : 'Not yet checked for overfit.'
+              }
+              actions={
+                <>
+                  <Button
+                    variant="primary"
+                    busy={snap.validation.phase === 'running'}
+                    onClick={() => void backtestStore.validate()}
+                  >
+                    {snap.validation.phase === 'done' ? 'Re-check overfit' : 'Validate'}
+                  </Button>
+                  {/* One-click deploy from the results: hand the same file to the
+                      Live Desk wizard, exactly as the editor header does. */}
+                  <Button
+                    variant="ghost"
+                    testId="backtest-deploy"
+                    disabled={!snap.file}
+                    onClick={() => {
+                      if (snap.file) deployFile(snap.file, snap.strategyPath ?? undefined);
+                    }}
+                  >
+                    Deploy
+                  </Button>
+                  <OverflowMenu items={[{ label: 'Ask the agent', onClick: () => void askAgent() }]} />
+                </>
+              }
+            />
+          )}
 
           {snap.result ? (
             <BacktestResultView result={snap.result} />

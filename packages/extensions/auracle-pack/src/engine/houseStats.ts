@@ -157,9 +157,13 @@ export function tailFacts(stats: Stats): string {
  * already caused a documented house-vs-QuantConnect Sharpe discrepancy), and
  * the -100% drawdown floor the engine applies.
  */
-export function houseFootnote(stats: Stats, nBars: number, asOf: string): string {
+export function houseFootnote(stats: Stats, nBars: number, asOf: string, external = false): string {
   const lines = [
-    'In-Sample simulation — results are hypothetical.',
+    // An external run (a persisted QC import) is measured on the source
+    // platform, not simulated here, so it never claims the in-sample framing.
+    external
+      ? 'External result — measured on the source platform, not simulated locally.'
+      : 'In-Sample simulation — results are hypothetical.',
     RF_ZERO_SENTENCE,
     'VaR and CVaR are 1-day historical at 95%. Max drawdown is floored at -100%.',
     'Alpha needs a benchmark and is not measured in this run.',

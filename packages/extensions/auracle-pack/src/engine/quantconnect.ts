@@ -82,6 +82,67 @@ export function headlineStats(statistics: Record<string, unknown> | null | undef
   return out;
 }
 
+/** The engine route that persists a completed QC backtest as a local-shaped
+ *  run record (POST). Its response is read by {@link classifyPersist}. */
+export function qcPersistPath(projectId: number, backtestId: string): string {
+  return `/ui/api/quantconnect/projects/${projectId}/backtest/${encodeURIComponent(
+    backtestId
+  )}/persist`;
+}
+
+/** The engine's persist response (`.../backtest/{id}/persist`). Honest shape:
+ *  a job id on success, a disconnected flag on 409, an error line on 422. */
+export interface QcPersistBody {
+  connected?: boolean;
+  persisted?: boolean;
+  job_id?: number | null;
+  error?: string;
+}
+
+/**
+ * What persisting a completed QC backtest as a local run yielded — the single
+ * outbound edge's outcome. The engine answers honestly and this reads it:
+ *   - `opened`       200 with `persisted:true` + a numeric `job_id` — ready to
+ *                    open in the viewer.
+ *   - `disconnected` 409 — the account isn't connected (token rotated / dropped).
+ *   - `building`     422 — the backtest has no chartable equity series yet
+ *                    (still building on QuantConnect).
+ *   - `error`        anything else, including a dead transport (status 0).
+ * Each non-`opened` outcome carries a plain reason so the affordance renders an
+ * explanatory state, never a dead click.
+ */
+export type PersistOutcome =
+  | { kind: 'opened'; jobId: number }
+  | { kind: 'disconnected'; message: string }
+  | { kind: 'building'; message: string }
+  | { kind: 'error'; message: string };
+
+const PERSIST_DISCONNECTED =
+  'Reconnect QuantConnect in Settings to open this run in the viewer.';
+const PERSIST_BUILDING =
+  'QuantConnect is still finishing this backtest — open it in the viewer once the run completes.';
+
+export function classifyPersist(status: number, body: unknown): PersistOutcome {
+  const b = (body ?? {}) as QcPersistBody;
+  if (status === 200 && b.persisted === true && typeof b.job_id === 'number') {
+    return { kind: 'opened', jobId: b.job_id };
+  }
+  if (status === 409) return { kind: 'disconnected', message: PERSIST_DISCONNECTED };
+  if (status === 422) {
+    return {
+      kind: 'building',
+      message: typeof b.error === 'string' && b.error ? b.error : PERSIST_BUILDING,
+    };
+  }
+  return {
+    kind: 'error',
+    message:
+      typeof b.error === 'string' && b.error
+        ? b.error
+        : `Could not open this run in the viewer (${status || 'engine unreachable'}).`,
+  };
+}
+
 /** The import translation report as the panel reads it. */
 export interface QcTranslateReport {
   style?: string;

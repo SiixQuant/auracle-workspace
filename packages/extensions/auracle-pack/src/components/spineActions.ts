@@ -63,6 +63,24 @@ export function backtestOption(option: StrategyOption, focus?: FocusedStrategy):
 }
 
 /**
+ * Open an already-persisted run by its job id in the Backtest panel's Metrics
+ * Viewer and front the panel — the QC library's single outbound edge.
+ *
+ * Unlike the strategy hand-offs above it publishes NO Spine focus: the QC
+ * library stays OFF the Spine, so it loads the run straight into the viewer
+ * store (which frames a by-id load as a saved run) and lets the Backtest panel
+ * name the run it shows. `source` is the run's non-local provenance (e.g.
+ * "quantconnect"), threaded through so the viewer labels it and hides local
+ * verbs even though the standard result read serves the run source-blind. The
+ * same front-guard the other Backtest edges use keeps a re-open from toggling
+ * the panel shut.
+ */
+export function openRunInViewer(jobId: number, source?: string): void {
+  void backtestStore.loadJob(jobId, source ? { source } : undefined);
+  if (!isBacktestPanelOpen()) togglePanel(BACKTEST_PANEL_ID);
+}
+
+/**
  * Hand a Flow node's strategy to the Backtest ("Metrics") or Deploy surface —
  * the way the editor header does. Builds the {@link StrategyOption} and the
  * workspace focus from the node's dotted `module.Class`; a node without a path

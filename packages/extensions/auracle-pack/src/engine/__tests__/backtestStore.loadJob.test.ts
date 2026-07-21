@@ -104,3 +104,34 @@ describe('backtestStore.loadJob', () => {
     expect(snap.result?.source).toBe('quantconnect');
   });
 });
+
+describe('backtestStore.loadJob — caller-supplied source (the QC open-in-viewer edge)', () => {
+  // The standard result route serves a persisted QC run SOURCE-BLIND (it does
+  // not echo the stored kind/source), so the open edge, which knows the run is
+  // external, passes the provenance itself.
+  const sourceBlindQc = { ...localRun, strategy_path: 'quantconnect:9:bt-9' };
+
+  it('labels a source-blind result with the supplied source hint', async () => {
+    installBridge(okResult(sourceBlindQc));
+    await backtestStore.loadJob(88, { source: 'quantconnect' });
+
+    expect(backtestStore.getSnapshot().result?.source).toBe('quantconnect');
+  });
+
+  it('lets a source the body DOES declare win over the hint', async () => {
+    installBridge(okResult(qcRun)); // body carries kind: 'qc_import'
+    await backtestStore.loadJob(88, { source: 'ignored' });
+
+    expect(backtestStore.getSnapshot().result?.source).toBe('quantconnect');
+  });
+
+  it('preserves the source across a retry reload of a source-blind run', async () => {
+    installBridge(okResult(sourceBlindQc));
+    await backtestStore.loadJob(88, { source: 'quantconnect' });
+    await backtestStore.retry();
+
+    const snap = backtestStore.getSnapshot();
+    expect(snap.jobId).toBe(88);
+    expect(snap.result?.source).toBe('quantconnect');
+  });
+});

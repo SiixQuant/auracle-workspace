@@ -27,6 +27,28 @@ import { tone } from '../components/panelkit';
 /** House rule: missing data is an em dash, never a fabricated number. */
 export const EM_DASH = '—';
 
+/**
+ * The rf = 0 basis, stated once. The engine computes Sharpe and Sortino on
+ * daily returns with the risk-free rate held at zero — a convention that has
+ * already produced a documented house-vs-QuantConnect Sharpe gap. Every
+ * surface that labels the convention reuses this literal so the wording never
+ * drifts and no house ratio gets read as a QuantConnect one.
+ */
+export const RF_ZERO_SENTENCE = 'Sharpe and Sortino are daily returns at rf = 0, annualized.';
+
+/**
+ * The provenance caveat for a house-computed measure shown on a run whose
+ * numbers originated elsewhere. Keeps cross-source comparability from being
+ * implied: the figures are Auracle's own, computed from the run's returns, not
+ * the source's native analytics. Returns null for a local run — there is no
+ * other source to distinguish it from. `source` is the humanized label (e.g.
+ * "QuantConnect").
+ */
+export function houseProvenanceNote(source?: string | null): string | null {
+  if (!source) return null;
+  return `Computed by Auracle from this run's own returns, not by ${source} — the two are not comparable across data sources.`;
+}
+
 /** Trading days in a year — the engine's own annualization constant. */
 const PERIODS_PER_YEAR = 252;
 
@@ -138,7 +160,7 @@ export function tailFacts(stats: Stats): string {
 export function houseFootnote(stats: Stats, nBars: number, asOf: string): string {
   const lines = [
     'In-Sample simulation — results are hypothetical.',
-    'Sharpe and Sortino are daily returns at rf = 0, annualized.',
+    RF_ZERO_SENTENCE,
     'VaR and CVaR are 1-day historical at 95%. Max drawdown is floored at -100%.',
     'Alpha needs a benchmark and is not measured in this run.',
   ];

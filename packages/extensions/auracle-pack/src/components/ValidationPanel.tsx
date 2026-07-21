@@ -23,6 +23,8 @@ import {
   Button,
   CenterState,
   InlineNote,
+  MeasureGauge,
+  MeasureRow,
   PanelShell,
   Select,
   SkeletonRows,
@@ -73,52 +75,12 @@ function fmtSig(v: number): string {
 /**
  * The signal's measured value against its threshold — a bullet gauge. The
  * engine computes both numbers but the panel used to drop them; showing
- * them turns "attention" into "0.41 vs a 0.20 line". Positions are by
- * magnitude (overfit signals are non-negative); the exact figures below
- * the bar are the truth, the bar is the glance.
+ * them turns "attention" into "0.41 vs a 0.20 line". Renders on the shared
+ * panelkit gauge; this adapter only supplies the tier's mark colour and the
+ * count/ratio number format.
  */
 function SignalGauge({ tier, value, threshold }: { tier: string; value: number; threshold: number }) {
-  const scale = Math.max(Math.abs(value), Math.abs(threshold)) * 1.25 || 1;
-  const clamp = (x: number) => Math.min(0.97, Math.max(0.03, x));
-  const vpos = clamp(Math.abs(value) / scale);
-  const tpos = clamp(Math.abs(threshold) / scale);
-  const mark = TIER_COLOR[tier] ?? tone.text3;
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 5, maxWidth: 280 }}>
-      <div
-        style={{
-          position: 'relative',
-          height: 6,
-          borderRadius: 4,
-          background: `color-mix(in srgb, ${tone.text} 9%, transparent)`,
-        }}
-      >
-        <span
-          aria-hidden
-          title="threshold"
-          style={{ position: 'absolute', top: -2, bottom: -2, left: `${tpos * 100}%`, width: 2, borderRadius: 2, background: tone.text3 }}
-        />
-        <span
-          aria-hidden
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: `${vpos * 100}%`,
-            width: 9,
-            height: 9,
-            borderRadius: '50%',
-            transform: 'translate(-50%,-50%)',
-            background: mark,
-            border: `2px solid ${tone.surface}`,
-          }}
-        />
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>
-        <span style={{ color: mark, fontWeight: 600 }}>{fmtSig(value)}</span>
-        <span style={{ color: tone.text3 }}>threshold {fmtSig(threshold)}</span>
-      </div>
-    </div>
-  );
+  return <MeasureGauge markColor={TIER_COLOR[tier] ?? tone.text3} value={value} threshold={threshold} format={fmtSig} />;
 }
 
 function SignalRow({
@@ -136,49 +98,21 @@ function SignalRow({
   value: number | null;
   threshold: number | null;
 }) {
+  const color = TIER_COLOR[tier] ?? tone.text3;
   return (
-    <article
-      className="apk-card"
-      style={{
-        display: 'flex',
-        gap: 12,
-        padding: '11px 14px',
-        borderRadius: 9,
-        border: `1px solid ${tone.border}`,
-        background: tone.surface,
-      }}
+    <MeasureRow
+      markGlyph={TIER_MARK[tier] ?? '○'}
+      markColor={color}
+      title={name}
+      detail={plain || undefined}
+      footnote={tier === 'red' && fix ? `Usually fixed by: ${fix}` : undefined}
+      statusLabel={tier === 'unknown' ? 'not checked' : tier === 'red' ? 'attention' : 'healthy'}
+      statusColor={color}
     >
-      <span
-        aria-hidden
-        style={{ color: TIER_COLOR[tier] ?? tone.text3, fontSize: 12, lineHeight: '20px' }}
-      >
-        {TIER_MARK[tier] ?? '○'}
-      </span>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1, minWidth: 0 }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: tone.text }}>{name}</span>
-        {plain ? (
-          <span style={{ fontSize: 12.5, color: tone.text2, maxWidth: '80ch' }}>{plain}</span>
-        ) : null}
-        {tier === 'red' && fix ? (
-          <span style={{ fontSize: 11.5, color: tone.text3 }}>Usually fixed by: {fix}</span>
-        ) : null}
-        {typeof value === 'number' && typeof threshold === 'number' ? (
-          <SignalGauge tier={tier} value={value} threshold={threshold} />
-        ) : null}
-      </div>
-      <span
-        style={{
-          fontSize: 10,
-          fontWeight: 600,
-          letterSpacing: 0.5,
-          textTransform: 'uppercase',
-          color: TIER_COLOR[tier] ?? tone.text3,
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {tier === 'unknown' ? 'not checked' : tier === 'red' ? 'attention' : 'healthy'}
-      </span>
-    </article>
+      {typeof value === 'number' && typeof threshold === 'number' ? (
+        <SignalGauge tier={tier} value={value} threshold={threshold} />
+      ) : null}
+    </MeasureRow>
   );
 }
 

@@ -173,6 +173,62 @@ export async function backtestJobResult(
   return { ok: false, status: res.status };
 }
 
+/**
+ * The factor-attribution battery for a completed run: the engine reconstructs
+ * the run's daily returns from its stored equity curve, regresses them on the
+ * bundled Fama-French + momentum factors, and returns annualized alpha,
+ * per-factor loadings, t-stats, p-values and fit — each rolled into a
+ * categorical verdict and a plain-English reading computed server-side. The
+ * client only renders the strings; it derives no statistical judgment.
+ */
+export interface FactorBatteryBody {
+  ok: boolean;
+  /** Present on a rejection (4xx/5xx): the engine's plain reason (window too
+   *  short, no factor overlap, run not found, quant extra missing). */
+  error?: string;
+  job_id?: number;
+  n_obs?: number;
+  factor_set?: string[];
+  window?: { start?: string; end?: string };
+  factor_data?: {
+    source?: string;
+    coverage_start?: string;
+    coverage_end?: string;
+    stale?: boolean;
+    note?: string;
+  };
+  hac_lags?: number;
+  periods_per_year?: number;
+  /** One measure per row: alpha, market exposure, each style tilt, fit — each
+   *  carrying `measure`, `label`, `verdict`, `reading` plus its own numerics. */
+  measures?: Array<Record<string, unknown>>;
+  regression?: {
+    alpha?: number | null;
+    alpha_annual?: number | null;
+    alpha_tstat?: number | null;
+    alpha_pvalue?: number | null;
+    loadings?: Array<{ factor?: string; beta?: number | null; tstat?: number | null; pvalue?: number | null }>;
+    r_squared?: number | null;
+    r_squared_adj?: number | null;
+  };
+}
+
+/**
+ * Fetch the factor battery for a job. Keeps the HTTP status and body on
+ * failure so the caller can render the engine's own explanation for a 4xx
+ * (short window / no overlap / not found) rather than inventing an excuse or
+ * leaving a blank section.
+ */
+export async function backtestJobFactors(
+  jobId: number
+): Promise<{ ok: true; body: FactorBatteryBody } | { ok: false; status: number; body: unknown }> {
+  const res = await getJsonDetailed<FactorBatteryBody>(
+    `/ui/api/backtest/job/${jobId}/factors`
+  );
+  if (res.ok) return { ok: true, body: res.body };
+  return { ok: false, status: res.status, body: res.body };
+}
+
 /** Engine reachability + identity probe (`/ui/api/ide/connect-check`). */
 export async function connectCheck(): Promise<ConnectCheck | null> {
   return getJson<ConnectCheck>('/ui/api/ide/connect-check');

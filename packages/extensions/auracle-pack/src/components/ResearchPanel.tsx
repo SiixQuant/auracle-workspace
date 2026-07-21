@@ -52,6 +52,7 @@ import {
   tone,
 } from './panelkit';
 import { PanelHostLike, useAiPanelContext } from './aiPanel';
+import { focusStore } from '../engine/focusStore';
 
 /** The engine ranks and gates internally; the panel shows the best 20. */
 const FEED_LIMIT = 20;
@@ -384,6 +385,7 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
           draftPollTimer.current = null;
           void refresh();
           setScanNote({ kind: 'ok', text: 'Strategy built — opening it for review.' });
+          focusStore.publish({ strategy: { filePath: `strategies/${link.body.strategy_path}` } });
           host?.openFile?.(`strategies/${link.body.strategy_path}`);
         })();
       }, 5000);
@@ -545,6 +547,7 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
               onTransmog={() => void startTransmog(finding)}
               onOpen={() => {
                 if (finding.strategy_path) {
+                  focusStore.publish({ strategy: { filePath: `strategies/${finding.strategy_path}` } });
                   host?.openFile?.(`strategies/${finding.strategy_path}`);
                 }
               }}

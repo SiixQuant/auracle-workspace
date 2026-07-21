@@ -11,6 +11,7 @@
 import React, { useCallback, useState } from 'react';
 import { backtestStore } from '../engine/backtestStore';
 import { deployStore } from '../engine/deployStore';
+import { focusStore } from '../engine/focusStore';
 import { ensurePanelKitStyles, tone } from './panelkit';
 import { openHubTab } from './hub';
 import { isBacktestPanelOpen, isLivePanelOpen } from './panelVisibility';
@@ -48,6 +49,8 @@ export const RunStrategyHeader: React.FC<DocumentHeaderComponentProps> = ({
   }, []);
 
   const onRun = useCallback(() => {
+    // Publish focus first, then let the panel write its own richer context.
+    focusStore.publish({ strategy: { filePath } });
     void backtestStore.run(filePath);
     // The host event is a pure toggle, so only dispatch it when the panel is
     // closed — otherwise a re-run would toggle the open results panel shut.
@@ -56,6 +59,7 @@ export const RunStrategyHeader: React.FC<DocumentHeaderComponentProps> = ({
   }, [filePath, ping]);
 
   const onDeploy = useCallback(() => {
+    focusStore.publish({ strategy: { filePath } });
     void deployStore.deploy(filePath);
     // Front the wizard's tab regardless of desk state, then open the desk
     // only when it's closed — the same toggle guard as Run, hub-aware.

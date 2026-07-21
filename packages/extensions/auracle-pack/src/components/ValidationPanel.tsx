@@ -9,7 +9,7 @@
  * the overfit rail, the honest answer to "will this hold up out of sample?"
  * Everything is engine-computed; the panel renders the verdict verbatim.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getJsonDetailed } from '../engine/client';
 import { classifyLoadFailure, type LoadFailure } from '../engine/research';
 import {
@@ -32,6 +32,7 @@ import {
   tone,
 } from './panelkit';
 import { PanelHostLike, useAiPanelContext, handOffToAgent, type AgentNote } from './aiPanel';
+import { focusStore } from '../engine/focusStore';
 import { qty } from '../engine/format';
 
 interface DeployableStrategy {
@@ -301,9 +302,26 @@ export function ValidationPanel({ host }: { host?: PanelHostLike }): JSX.Element
 
   const onPick = (path: string) => {
     setSelected(path);
-    if (path) void check(path);
-    else setRun({ phase: 'idle' });
+    if (path) {
+      // Publish focus first; the verdict's own richer context follows.
+      focusStore.publish({ run: { kind: 'validation', id: path } });
+      void check(path);
+    } else setRun({ phase: 'idle' });
   };
+
+  // Follow on open: when the Spine points at a validation target this panel can
+  // offer, pre-select it (without auto-running) so opening lands on the focused
+  // strategy. Fires once, when the list first loads — a later manual change is
+  // the user's, not ours to override. Only acts when focus is set, so an empty
+  // focus is unchanged from today.
+  const followed = useRef(false);
+  useEffect(() => {
+    if (followed.current || list.phase !== 'ready') return;
+    followed.current = true;
+    const focus = focusStore.getSnapshot();
+    const target = focus.run?.kind === 'validation' ? focus.run.id : focus.strategy?.dottedPath;
+    if (target && list.strategies.some((s) => s.path === target)) setSelected(target);
+  }, [list]);
 
   const picker =
     list.phase === 'ready' && list.strategies.length > 0 ? (

@@ -25,6 +25,7 @@ import { authState, getJsonDetailed, postJson } from '../engine/client';
 import {
   DEEP_RANK_PROMPT,
   DEEP_RANK_SIGNED_OUT_REASON,
+  KeyPresence,
   LoadFailure,
   ResearchFeed,
   ResearchFinding,
@@ -51,7 +52,7 @@ import {
   ToolbarSpring,
   tone,
 } from './panelkit';
-import { PanelHostLike, useAiPanelContext } from './aiPanel';
+import { PanelHostLike, agentKeyPresence, useAiPanelContext } from './aiPanel';
 import { focusStore } from '../engine/focusStore';
 
 /** The engine ranks and gates internally; the panel shows the best 20. */
@@ -223,6 +224,7 @@ function FindingCard({
             variant="primary"
             busy={busy}
             disabled={action.disabled}
+            testId={`transmog-${finding.id}`}
             title={
               action.disabled
                 ? action.reason ?? undefined
@@ -232,6 +234,28 @@ function FindingCard({
           >
             ⚗ Transmog
           </Button>
+        ) : null}
+        {action.kind === 'gate' ? (
+          // No model connected: a plain explanation in place of the button, so
+          // the click is never dead and the agent is never handed work it has
+          // no LLM to do. Wraps (the column is otherwise nowrap).
+          <div
+            role="note"
+            data-testid={`transmog-gate-${finding.id}`}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 3,
+              maxWidth: 220,
+              whiteSpace: 'normal',
+              textAlign: 'right',
+              fontSize: 11,
+              color: tone.caution,
+            }}
+          >
+            <span style={{ fontWeight: 600 }}>Connect a model</span>
+            <span style={{ color: tone.text3 }}>{action.reason}</span>
+          </div>
         ) : null}
         {finding.status === 'surfaced' ? (
           <Button variant="quiet" disabled={busy} onClick={onWatch}>
@@ -252,6 +276,7 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
   const [scanNote, setScanNote] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [signedIn, setSignedIn] = useState(false);
+  const [keyPresence, setKeyPresence] = useState<KeyPresence>('unknown');
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const draftPollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -288,6 +313,13 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
       if (draftPollTimer.current) clearInterval(draftPollTimer.current);
     };
   }, [refresh]);
+
+  // Ask the host whether the agent has a model connected. Feature-detected and
+  // fail-open (see agentKeyPresence): an older host or a failed call stays
+  // 'unknown', which never gates the Transmog control.
+  useEffect(() => {
+    void agentKeyPresence(host).then(setKeyPresence);
+  }, [host]);
 
   const stopPolling = () => {
     if (pollTimer.current) {
@@ -541,7 +573,7 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
               key={finding.id}
               finding={finding}
               busy={busyId === finding.id}
-              action={transmogAction(finding, signedIn)}
+              action={transmogAction(finding, signedIn, keyPresence)}
               onWatch={() => void act(finding, 'watch')}
               onDismiss={() => void act(finding, 'dismiss')}
               onTransmog={() => void startTransmog(finding)}

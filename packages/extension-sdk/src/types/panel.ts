@@ -299,6 +299,16 @@ export interface PanelHost {
     opts?: { title?: string }
   ): Promise<{ ok: boolean; sessionId?: string; error?: string }>;
 
+  /**
+   * Whether the Auracle Agent has an LLM model/key connected for the current
+   * workspace. Lets a panel that hands work to the agent (e.g. the Research
+   * panel's Transmog action) show a connect-a-key gate instead of a dead
+   * click when no model is configured. Optional: older hosts may not provide
+   * it, so callers must feature-detect and treat its absence as unknown (do
+   * not block).
+   */
+  agentKeyState?(): Promise<{ configured: boolean }>;
+
   // ============ SETTINGS TOGGLE ============
 
   /**

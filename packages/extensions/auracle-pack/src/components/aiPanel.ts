@@ -12,6 +12,7 @@
  */
 import { useEffect } from 'react';
 import { ensureFocusAmbient, noteFocusAmbientWrite } from '../engine/focusStore';
+import type { KeyPresence } from '../engine/research';
 
 /** The slice of `PanelAIContext` a panel actually drives. */
 export interface PanelAiSlice {
@@ -31,6 +32,12 @@ export interface PanelHostLike {
     prompt: string,
     opts?: { title?: string }
   ) => Promise<{ ok: boolean; sessionId?: string; error?: string }>;
+  /**
+   * Whether the Auracle Agent has an LLM model/key connected. Optional and
+   * feature-detected like `launchAgentSession`: older hosts do not provide it.
+   * See {@link agentKeyPresence}, which folds its absence into `unknown`.
+   */
+  agentKeyState?: () => Promise<{ configured: boolean }>;
 }
 
 export type AgentNote = { kind: 'ok' | 'err'; text: string } | null;
@@ -85,4 +92,22 @@ export async function handOffToAgent(
     return { kind: 'err', text: result.error ?? 'The agent hand-off failed.' };
   }
   return { kind: 'ok', text: 'Handed to the agent — review the prefilled prompt and send it.' };
+}
+
+/**
+ * Read whether the Auracle Agent has a model connected, via the host's
+ * optional key-state lane. Collapses every non-answer to `unknown` so a
+ * missing lane (older host) or a failed call never blocks the hand-off — only
+ * an affirmative `configured: false` becomes `absent`.
+ */
+export async function agentKeyPresence(
+  host: PanelHostLike | undefined
+): Promise<KeyPresence> {
+  if (!host?.agentKeyState) return 'unknown';
+  try {
+    const { configured } = await host.agentKeyState();
+    return configured ? 'present' : 'absent';
+  } catch {
+    return 'unknown';
+  }
 }

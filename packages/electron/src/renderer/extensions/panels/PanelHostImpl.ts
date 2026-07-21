@@ -183,6 +183,19 @@ class PanelHostImpl implements PanelHost {
     }
   }
 
+  async agentKeyState(): Promise<{ configured: boolean }> {
+    try {
+      const result = await window.electronAPI.invoke('extensions:agent-key-state', {
+        workspacePath: this.workspacePath,
+      });
+      return result as { configured: boolean };
+    } catch {
+      // Fail open: a transport error must not manifest as a connect-a-key gate.
+      // The pack reads `configured: true` as "do not block".
+      return { configured: true };
+    }
+  }
+
   openSettings(): void {
     this._isSettingsOpen = true;
   }

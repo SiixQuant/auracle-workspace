@@ -47,6 +47,7 @@ import {
   tone,
 } from './panelkit';
 import { EquityChartShad } from './charts/EquityChartShad';
+import { FactorBatterySection } from './FactorBatterySection';
 import { PanelHostLike, useAiPanelContext, handOffToAgent, type AgentNote } from './aiPanel';
 import { focusStore } from '../engine/focusStore';
 import { deployFile } from './spineActions';
@@ -544,6 +545,18 @@ export function BacktestPanel({ host }: { host?: PanelHostLike }): JSX.Element {
               series for it.
             </InlineNote>
           )}
+          {/* The factor-attribution battery — a measure rail decomposing the
+              run's returns into market, size, value and momentum exposure plus
+              the residual alpha. Keyed by job id so it serves a persisted QC
+              import as readily as a local run; renders only when a chartable
+              series exists (the engine needs the equity curve to regress). */}
+          {snap.result && snap.jobId ? (
+            <FactorBatterySection
+              key={snap.jobId}
+              jobId={snap.jobId}
+              sourceLabel={sourceLabel(snap.result.source) ?? undefined}
+            />
+          ) : null}
           {note ? <InlineNote kind={note.kind}>{note.text}</InlineNote> : null}
 
           {snap.validation.phase === 'idle' ? null : snap.validation.phase === 'running' ? (

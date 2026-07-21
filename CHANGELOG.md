@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Running a strategy on the Flow canvas now draws its equity curve, and live deployments show how long they have been up (with a restart count when they have been restarted).
 - When an action needs a higher plan, the panel now shows which plan you are on and which one it needs (with a link to upgrade) instead of a bare error, and Live Algorithms warns as you approach your plan's deployment limit.
 - You can now jump straight from a validation result or a live deployment to the strategy's source file, deploy a finished backtest in one click, hand a Flow strategy to the Backtest or Deploy surface, and open a monitoring incident's run.
+- The Backtest panel now shows a factor-attribution battery for a completed run, breaking its returns into market, size, value and momentum exposure plus the alpha the factors do not explain, each with a plain-English reading; it covers saved QuantConnect imports as well as local runs, and says why it is unavailable when a run's window is too short to measure.
 <!-- New features go here -->
 - When the Auracle Agent has no model connected, a research finding's Transmog action now shows a connect-a-key explanation instead of failing on click.
 

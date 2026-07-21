@@ -440,15 +440,19 @@ export function InlineNote({
   kind,
   children,
   onDismiss,
+  testId,
 }: {
   kind: 'ok' | 'err' | 'muted';
   children: ReactNode;
   onDismiss?: () => void;
+  /** Stable kebab-case hook for tests, set on the note's root. */
+  testId?: string;
 }): JSX.Element {
   const color = kind === 'ok' ? tone.ok : kind === 'err' ? tone.danger : tone.text3;
   return (
     <span
       className="apk-enter"
+      data-testid={testId}
       role={kind === 'err' ? 'alert' : 'status'}
       style={{
         display: 'inline-flex',
@@ -609,6 +613,140 @@ export function FactorBar({
         {Math.round(value)}
       </span>
     </div>
+  );
+}
+
+/* ── measure rail ───────────────────────────────────────────────────── */
+
+/**
+ * A bullet gauge for one measure: a hairline track with a threshold tick and a
+ * value dot, and the two figures spelled out beneath. Positions are by
+ * magnitude (the rail's measures are non-negative); the numbers below the bar
+ * are the truth, the bar is the glance. The mark colour is passed in — the kit
+ * carries no notion of good/bad, so the caller (the validation rail, say) owns
+ * the semantic tint. `format` renders the two figures; it defaults to a plain
+ * two-decimal read.
+ *
+ * Extracted from the validation rail so every measure rail — the overfit
+ * signals and the factor battery — draws its gauge from one implementation.
+ */
+export function MeasureGauge({
+  markColor,
+  value,
+  threshold,
+  format = (n) => n.toFixed(2),
+}: {
+  markColor: string;
+  value: number;
+  threshold: number;
+  format?: (n: number) => string;
+}): JSX.Element {
+  const scale = Math.max(Math.abs(value), Math.abs(threshold)) * 1.25 || 1;
+  const clamp = (x: number) => Math.min(0.97, Math.max(0.03, x));
+  const vpos = clamp(Math.abs(value) / scale);
+  const tpos = clamp(Math.abs(threshold) / scale);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 5, maxWidth: 280 }}>
+      <div
+        style={{
+          position: 'relative',
+          height: 6,
+          borderRadius: 4,
+          background: `color-mix(in srgb, ${tone.text} 9%, transparent)`,
+        }}
+      >
+        <span
+          aria-hidden
+          title="threshold"
+          style={{ position: 'absolute', top: -2, bottom: -2, left: `${tpos * 100}%`, width: 2, borderRadius: 2, background: tone.text3 }}
+        />
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: `${vpos * 100}%`,
+            width: 9,
+            height: 9,
+            borderRadius: '50%',
+            transform: 'translate(-50%,-50%)',
+            background: markColor,
+            border: `2px solid ${tone.surface}`,
+          }}
+        />
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>
+        <span style={{ color: markColor, fontWeight: 600 }}>{format(value)}</span>
+        <span style={{ color: tone.text3 }}>threshold {format(threshold)}</span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * One row of a measure rail: a status mark, a title with an optional plain
+ * reading and footnote, any extra body content (a {@link MeasureGauge}, a
+ * figure line), and a right-aligned status word. The kit imposes no meaning on
+ * the mark or status colour — the caller maps its own vocabulary (the overfit
+ * tiers, or a factor verdict) onto the neutral slots, so the validation rail
+ * and the factor battery render on this one primitive.
+ */
+export function MeasureRow({
+  markGlyph,
+  markColor,
+  title,
+  detail,
+  footnote,
+  statusLabel,
+  statusColor,
+  testId,
+  children,
+}: {
+  markGlyph: ReactNode;
+  markColor: string;
+  title: ReactNode;
+  detail?: ReactNode;
+  footnote?: ReactNode;
+  statusLabel: ReactNode;
+  statusColor: string;
+  testId?: string;
+  children?: ReactNode;
+}): JSX.Element {
+  return (
+    <article
+      className="apk-card"
+      data-testid={testId}
+      style={{
+        display: 'flex',
+        gap: 12,
+        padding: '11px 14px',
+        borderRadius: 9,
+        border: `1px solid ${tone.border}`,
+        background: tone.surface,
+      }}
+    >
+      <span aria-hidden style={{ color: markColor, fontSize: 12, lineHeight: '20px' }}>
+        {markGlyph}
+      </span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1, minWidth: 0 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: tone.text }}>{title}</span>
+        {detail ? <span style={{ fontSize: 12.5, color: tone.text2, maxWidth: '80ch' }}>{detail}</span> : null}
+        {footnote ? <span style={{ fontSize: 11.5, color: tone.text3 }}>{footnote}</span> : null}
+        {children}
+      </div>
+      <span
+        style={{
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: 0.5,
+          textTransform: 'uppercase',
+          color: statusColor,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {statusLabel}
+      </span>
+    </article>
   );
 }
 

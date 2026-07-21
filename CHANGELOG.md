@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Strategy and run focus now flows between the Backtest, Live Desk, Validation, and Research panels and the editor Run header, and the AI chat follows the focused strategy without overwriting an active panel's own context.
 <!-- New features go here -->
 
 ### Changed

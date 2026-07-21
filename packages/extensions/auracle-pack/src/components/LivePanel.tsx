@@ -5,11 +5,12 @@
  * Liquidate always confirms, the broker list comes from the engine (never a
  * hardcoded set), and every number shown is an engine value.
  */
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import { authState, connectCheck, getJson, onConnectGeneration, postJson } from '../engine/client';
 import { Connector, isConnected, normalizeConnector } from '../engine/model';
 import { deployStore } from '../engine/deployStore';
+import { focusStore } from '../engine/focusStore';
 import {
   blockedReasonText,
   deployWizardMode,
@@ -1087,6 +1088,29 @@ export function LiveAlgorithmsPanel({ host }: PanelHostProps): JSX.Element {
     host,
     phase === 'ready' && selectedRow ? deploymentContext(selectedRow) : null
   );
+
+  // Publish the selected deployment to the Spine so the routing layer names the
+  // run this desk is showing; the deployment's own richer context follows.
+  useEffect(() => {
+    if (selectedRow) focusStore.publish({ run: { kind: 'deployment', id: String(selectedRow.id) } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRow?.id]);
+
+  // Follow on open: if the Spine already points at one of this desk's
+  // deployments and nothing is selected yet, open it. Fires once, when the rows
+  // first load — a later manual selection is the user's. Only acts on a focused
+  // deployment run, so an empty focus (or a strategy-only focus from Deploy)
+  // leaves the desk exactly as today.
+  const followedDeployment = useRef(false);
+  useEffect(() => {
+    if (followedDeployment.current || phase !== 'ready' || model.rows.length === 0) return;
+    followedDeployment.current = true;
+    if (model.selected != null) return;
+    const focus = focusStore.getSnapshot();
+    if (focus.run?.kind !== 'deployment') return;
+    const match = model.rows.find((row) => String(row.id) === focus.run!.id);
+    if (match) setModel((prev) => ({ ...prev, selected: match.id }));
+  }, [phase, model.rows, model.selected]);
   const investigate = async (d: Deployment) => {
     setInvestigateNote(
       await handOffToAgent(host, deploymentPrompt(d), `Investigate: ${d.name || d.strategy_path}`)

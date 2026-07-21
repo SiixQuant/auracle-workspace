@@ -46,6 +46,7 @@ import {
 } from './panelkit';
 import { EquityChartShad } from './charts/EquityChartShad';
 import { PanelHostLike, useAiPanelContext, handOffToAgent, type AgentNote } from './aiPanel';
+import { focusStore } from '../engine/focusStore';
 
 const TIER_COLOR: Record<string, string> = { green: tone.ok, red: tone.danger, unknown: tone.text3 };
 
@@ -208,6 +209,19 @@ export function BacktestPanel({ host }: { host?: PanelHostLike }): JSX.Element {
     ? { strategyPath: snap.strategyPath, cls: snap.cls, jobId: snap.jobId }
     : null;
   useAiPanelContext(host, snap.phase === 'succeeded' && run ? backtestContext(run) : null);
+
+  // Publish the focused backtest run to the Spine whenever one is live — on a
+  // fresh Run and again on reopen (follow), so the routing layer and the AI
+  // chat name the run this panel is showing. The panel still drives its own
+  // state from backtestStore; focus only holds the identity.
+  useEffect(() => {
+    if (snap.file && snap.jobId) {
+      focusStore.publish({
+        strategy: { filePath: snap.file, dottedPath: snap.strategyPath ?? undefined },
+        run: { kind: 'backtest', id: String(snap.jobId) },
+      });
+    }
+  }, [snap.file, snap.jobId, snap.strategyPath]);
 
   const askAgent = useCallback(async () => {
     if (!run) return;

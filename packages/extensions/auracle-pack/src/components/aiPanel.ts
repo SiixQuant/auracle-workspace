@@ -11,6 +11,7 @@
  *    {@link handOffToAgent}.
  */
 import { useEffect } from 'react';
+import { ensureFocusAmbient, noteFocusAmbientWrite } from '../engine/focusStore';
 
 /** The slice of `PanelAIContext` a panel actually drives. */
 export interface PanelAiSlice {
@@ -39,6 +40,12 @@ export type AgentNote = { kind: 'ok' | 'err'; text: string } | null;
  * `context` is null (e.g. the panel has no active selection). No-op on hosts
  * without `ai`. Change detection is by serialized value, so callers can pass a
  * freshly-built object each render without thrashing setContext.
+ *
+ * This is also the single wiring point for the focus store's ambient
+ * precedence: it bootstraps the focus→ambient bridge off the first host that
+ * exposes an AI sink, and every real context write here is the "active panel's
+ * own payload", so it cancels any pending minimal focus fallback — the panel's
+ * richer document always wins while it is active (see `focusStore`).
  */
 export function useAiPanelContext(
   host: PanelHostLike | undefined,
@@ -48,8 +55,13 @@ export function useAiPanelContext(
   useEffect(() => {
     const ai = host?.ai;
     if (!ai) return;
-    if (context) ai.setContext(context);
-    else ai.clearContext();
+    ensureFocusAmbient(ai);
+    if (context) {
+      ai.setContext(context);
+      noteFocusAmbientWrite();
+    } else {
+      ai.clearContext();
+    }
     // Re-run only when the host or the serialized context value changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [host, key]);

@@ -12,7 +12,8 @@
  * series — an older build, or a function/signal strategy — the panel says so
  * plainly instead of inventing numbers.
  */
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { backtestStore, type BacktestResultData } from '../engine/backtestStore';
 import {
   backtestContext,
@@ -39,6 +40,7 @@ import {
   numeric,
   OverflowMenu,
   PanelShell,
+  Pill,
   SampleStrip,
   SectionTitle,
   SkeletonRows,
@@ -115,6 +117,15 @@ function money(v: number): string {
   return `$${v.toFixed(0)}`;
 }
 
+/** Humanize a run's declared source token for the provenance label. */
+export function sourceLabel(source?: string): string | null {
+  if (!source) return null;
+  const key = source.trim().toLowerCase();
+  if (key === 'quantconnect' || key === 'qc') return 'QuantConnect';
+  // Title-case an unknown source so a future engine source still reads cleanly.
+  return source.trim().replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export function BacktestResultView({ result }: { result: BacktestResultData }): JSX.Element {
   const s = result.stats;
   const labels = result.labels;
@@ -125,9 +136,19 @@ export function BacktestResultView({ result }: { result: BacktestResultData }): 
   const multiple = result.equity.length ? result.equity[result.equity.length - 1] : null;
   const window = labels.length ? `${labels[0]} to ${labels[labels.length - 1]}` : 'window unknown';
   const maxDd = typeof s.max_drawdown === 'number' ? s.max_drawdown : null;
+  const provenance = sourceLabel(result.source);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Provenance: a run persisted from a non-local source (a QC import,
+          say) labels where its numbers came from. Local backtests declare no
+          source and stay unlabelled. */}
+      {provenance ? (
+        <div data-testid="run-source" style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Pill kind="accent">{`Source: ${provenance}`}</Pill>
+        </div>
+      ) : null}
+
       <MetricGrid items={headlineCards(s, result.nBars)} columns={6} />
 
       <EquityChartShad
@@ -186,6 +207,7 @@ export function BacktestResultView({ result }: { result: BacktestResultData }): 
 
 export function BacktestPanel({ host }: { host?: PanelHostLike }): JSX.Element {
   const snap = useSyncExternalStore(backtestStore.subscribe, backtestStore.getSnapshot);
+  const focus = useSyncExternalStore(focusStore.subscribe, focusStore.getSnapshot);
   const [note, setNote] = useState<AgentNote>(null);
   // Rescue flow (the 'unmatched' phase): create a scaffold through the engine
   // and open it. `creating` drives the button spinner; `createError` shows a
@@ -210,18 +232,65 @@ export function BacktestPanel({ host }: { host?: PanelHostLike }): JSX.Element {
     : null;
   useAiPanelContext(host, snap.phase === 'succeeded' && run ? backtestContext(run) : null);
 
-  // Publish the focused backtest run to the Spine whenever one is live — on a
-  // fresh Run and again on reopen (follow), so the routing layer and the AI
-  // chat name the run this panel is showing. The panel still drives its own
-  // state from backtestStore; focus only holds the identity.
+  // Publish the run this panel is showing to the Spine so the routing layer and
+  // the AI chat name it — a fresh local Run, and equally a run loaded by id. The
+  // panel still drives its own state from backtestStore; focus holds only the
+  // identity, plus the file when a local run knows one.
   useEffect(() => {
-    if (snap.file && snap.jobId) {
-      focusStore.publish({
-        strategy: { filePath: snap.file, dottedPath: snap.strategyPath ?? undefined },
-        run: { kind: 'backtest', id: String(snap.jobId) },
-      });
+    if (!snap.jobId) return;
+    if (snap.phase !== 'queued' && snap.phase !== 'running' && snap.phase !== 'succeeded') return;
+    // A local run names its own strategy from the file it ran; a run loaded by
+    // id (no file) keeps whatever strategy is already focused rather than
+    // blanking it, since it cannot reconstruct the file identity.
+    const strategy = snap.file
+      ? { filePath: snap.file, dottedPath: snap.strategyPath ?? undefined }
+      : focusStore.getSnapshot().strategy;
+    focusStore.publish({ strategy, run: { kind: 'backtest', id: String(snap.jobId) } });
+  }, [snap.file, snap.jobId, snap.strategyPath, snap.phase]);
+
+  // Follow the focused run: when a backtest run is focused elsewhere (the QC
+  // library, another surface) and this panel isn't already showing it, load it
+  // by id through the same succeeded view. Guarded so it never interrupts a
+  // local run in flight, and remembers the id it followed so it fires once per
+  // focus rather than looping against its own publish above.
+  const followedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const run = focus.run;
+    if (!run || run.kind !== 'backtest') {
+      // Unfocused or released — let a later focus (even the same id) follow again.
+      followedRef.current = null;
+      return;
     }
-  }, [snap.file, snap.jobId, snap.strategyPath]);
+    if (followedRef.current === run.id) return;
+    if (snap.phase === 'queued' || snap.phase === 'running' || snap.phase === 'resolving') return;
+    if (snap.jobId === Number(run.id)) {
+      // Already showing it (e.g. this panel's own run) — mark handled, no reload.
+      followedRef.current = run.id;
+      return;
+    }
+    followedRef.current = run.id;
+    void backtestStore.loadJob(Number(run.id));
+  }, [focus.run, snap.phase, snap.jobId]);
+
+  // Release a loaded (followed) run back to the unfocused viewer. Escape from
+  // within the panel and the strip's dismiss both call this: reset the local
+  // view and drop the run from focus, keeping any focused strategy.
+  const releaseLoadedRun = useCallback(() => {
+    backtestStore.reset();
+    const strategy = focusStore.getSnapshot().strategy;
+    if (strategy) focusStore.publish({ strategy });
+    else focusStore.clear();
+  }, []);
+
+  const onViewerKeyDown = useCallback(
+    (e: ReactKeyboardEvent) => {
+      if (e.key === 'Escape' && snap.origin === 'loaded') {
+        e.stopPropagation();
+        releaseLoadedRun();
+      }
+    },
+    [snap.origin, releaseLoadedRun]
+  );
 
   const askAgent = useCallback(async () => {
     if (!run) return;
@@ -279,11 +348,13 @@ export function BacktestPanel({ host }: { host?: PanelHostLike }): JSX.Element {
   // The job id rides the subtitle: traceable back to the engine's own record,
   // without spending a row of the panel on a line that says "complete".
   const description =
-    snap.cls && (snap.phase === 'running' || snap.phase === 'queued' || snap.phase === 'succeeded' || snap.phase === 'failed')
-      ? `${snap.cls} — from ${snap.file?.split(/[\\/]/).pop() ?? 'this file'}${
-          snap.phase === 'succeeded' && snap.jobId ? ` · job ${snap.jobId}` : ''
-        }`
-      : 'Run the strategy in the open file and check it for overfitting.';
+    snap.origin === 'loaded' && snap.jobId
+      ? `Metrics for a saved run — job ${snap.jobId}`
+      : snap.cls && (snap.phase === 'running' || snap.phase === 'queued' || snap.phase === 'succeeded' || snap.phase === 'failed')
+        ? `${snap.cls} — from ${snap.file?.split(/[\\/]/).pop() ?? 'this file'}${
+            snap.phase === 'succeeded' && snap.jobId ? ` · job ${snap.jobId}` : ''
+          }`
+        : 'Run the strategy in the open file and check it for overfitting.';
 
   return (
     <PanelShell title="Backtest" description={description}>
@@ -395,7 +466,36 @@ export function BacktestPanel({ host }: { host?: PanelHostLike }): JSX.Element {
         />
       ) : (
         // succeeded
-        <div className="apk-enter" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div
+          className="apk-enter"
+          data-testid="metrics-viewer"
+          onKeyDown={onViewerKeyDown}
+          style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+        >
+          {/* A run loaded by id (followed from focus) is framed as a saved run,
+              with a focus-scoped release: dismiss here or press Escape while the
+              panel has focus. */}
+          {snap.origin === 'loaded' ? (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '8px 12px',
+                borderRadius: 8,
+                border: `1px solid ${tone.border}`,
+                background: 'rgba(255,255,255,0.035)',
+              }}
+            >
+              <span style={{ fontSize: 12, color: tone.text2 }}>
+                Viewing a saved run{snap.jobId ? ` · job ${snap.jobId}` : ''}
+              </span>
+              <span style={{ marginLeft: 'auto', fontSize: 11, color: tone.text3 }}>Esc to release</span>
+              <Button variant="quiet" testId="release-run" onClick={releaseLoadedRun}>
+                Release
+              </Button>
+            </div>
+          ) : null}
           {/* House rule: lead with what kind of evidence this is, not with the
               number it produced. A backtest job has no out-of-sample start, so
               "100% In-Sample" is a structural fact, not a computed one — which

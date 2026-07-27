@@ -36,6 +36,7 @@
 import { useSyncExternalStore, type CSSProperties } from 'react';
 import { gridVitals, type GridVitals, type RoomVital } from '../../engine/gridVitals';
 import { tint, tone } from '../panelkit';
+import { PALETTE_HINT, openPalette } from './gridCommands';
 import { openRoom, zoomOriginFrom } from './gridNav';
 import {
   DISTRICTS,
@@ -61,9 +62,14 @@ const SHEET = `
 .agrid { min-height: 100%; }
 .agrid__plan { display: flex; flex-direction: column; padding: 18px 20px 44px; }
 .agrid__hint { margin: 0 0 14px; font-size: 11.5px; line-height: 1.5; color: ${tone.text3}; }
-.agrid__root { display: flex; flex-direction: column; gap: 3px; padding: 10px 13px; border-radius: 10px; border: 1px solid ${tone.accentDim}; background: ${tone.accentSoft}; }
+.agrid__root { appearance: none; font: inherit; text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: 3px; padding: 10px 13px; border-radius: 10px; border: 1px solid ${tone.accentDim}; background: ${tone.accentSoft}; transition: border-color 150ms ease-out, background-color 150ms ease-out; }
+.agrid__root:hover { border-color: ${tone.accentText}; background: ${tone.surface3}; }
+.agrid__root:focus-visible { outline: 2px solid ${tone.accentText}; outline-offset: 1px; }
+.agrid__rootrow { display: flex; align-items: center; gap: 10px; }
 .agrid__rootname { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: -0.01em; color: ${tone.text}; }
+.agrid__rootkey { margin-left: auto; font-family: ${tone.mono}; font-size: 10px; letter-spacing: 0.04em; color: ${tone.text3}; border: 1px solid ${tone.border}; border-radius: 5px; padding: 1px 5px; }
 .agrid__rootnote { font-size: 11.5px; color: ${tone.text2}; }
+@media (prefers-reduced-motion: reduce) { .agrid__root { transition: none; } }
 .agrid__stem { display: none; flex: none; width: 1px; background: ${RAIL}; }
 .agrid__districts { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
 .agrid__district { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
@@ -307,14 +313,31 @@ export function GridSheet(): JSX.Element {
         <p className="agrid__hint">
           The system as a floor plan — every surface, and what it is doing right now.
         </p>
-        <div className="agrid__root" data-testid="grid-root" data-attention={attention}>
-          <h1 className="agrid__rootname">Auracle</h1>
+        {/* The root node is the command post: pressing it (or the shortcut it
+            advertises) opens the palette, so the top of the plan is also the
+            way into every room without touching the plan at all. A button
+            rather than a heading with a button inside it — the whole node is
+            the target, and a heading may not contain one. */}
+        <button
+          type="button"
+          className="agrid__root"
+          data-testid="grid-root"
+          data-attention={attention}
+          aria-haspopup="dialog"
+          onClick={() => openPalette()}
+        >
+          <span className="agrid__rootrow">
+            <span className="agrid__rootname">Auracle</span>
+            <span className="agrid__rootkey" aria-hidden>
+              {PALETTE_HINT}
+            </span>
+          </span>
           <span className="agrid__rootnote">
             {attention === 0
               ? `${ROOM_IDS.length} rooms · nothing needs attention`
               : `${ROOM_IDS.length} rooms · ${attention} ${attention === 1 ? 'needs' : 'need'} attention`}
           </span>
-        </div>
+        </button>
         <span className="agrid__stem" aria-hidden />
         <div className="agrid__districts">
           {DISTRICTS.map((district) => (

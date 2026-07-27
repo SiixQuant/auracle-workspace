@@ -30,7 +30,8 @@
  * is broken; it only decides which line says so.
  */
 import type { GridVitals, Health } from '../../engine/gridVitals';
-import type { RoomId } from './rooms';
+import { firstFault } from './districts';
+import { ROOMS, type RoomId } from './rooms';
 
 /**
  * The container width, in px, at which the sheet switches to the FULL TREE and
@@ -203,21 +204,38 @@ export interface SheetAlert {
   /** True when a room is faulted — the chip is red and it is worth pressing. */
   active: boolean;
   text: string;
+  /** The faulted room the chip points at — the leader's target and the room
+   *  the chip opens. Null when the sheet is clear. */
+  room: RoomId | null;
+  /** The target room's display title, for the button's accessible label. */
+  roomTitle: string | null;
 }
 
 /**
- * What the pinned chip says. The STATE is `gridVitals`' own reading of the
- * deployments room — never a second count of the feed — and the naming comes
- * from the subjects that reading carries.
+ * What the pinned chip says. The STATE is `gridVitals`' own reading — never a
+ * second count of any feed — and the TARGET is the same first-faulted-room
+ * rule the AI strip speaks by ({@link firstFault}), so the chip, the strip and
+ * the red dot always point at one card. Naming comes from the subjects the
+ * reading carries; a room that names nothing gets its note instead, and a
+ * faulted room with nothing to say is still red — it will not invent a name.
  */
 export function sheetAlert(vitals: GridVitals): SheetAlert {
-  const deploys = vitals.deploys;
-  if (deploys.health !== 'fault') return { active: false, text: 'no open alerts' };
-  const subjects = deploys.subjects;
-  // Faulted with nothing named: still red, but it will not invent a name.
-  if (subjects.length === 0) return { active: true, text: 'Deployments needs attention' };
-  const named =
-    subjects.length === 1 ? subjects[0] : `${subjects[0]} and ${subjects.length - 1} more`;
-  const alerts = subjects.length === 1 ? '1 alert' : `${subjects.length} alerts`;
-  return { active: true, text: `${alerts} — ${named} → Deployments` };
+  const room = firstFault(vitals);
+  if (room === null) return { active: false, text: 'no open alerts', room: null, roomTitle: null };
+  const title = ROOMS[room].title;
+  const vital = vitals[room];
+  const subjects = vital.subjects;
+  if (subjects.length > 0) {
+    const named =
+      subjects.length === 1 ? subjects[0] : `${subjects[0]} and ${subjects.length - 1} more`;
+    const alerts = subjects.length === 1 ? '1 alert' : `${subjects.length} alerts`;
+    return { active: true, text: `${alerts} — ${named} → ${title}`, room, roomTitle: title };
+  }
+  const detail = vital.fact ?? vital.note;
+  return {
+    active: true,
+    text: detail ? `${title} needs attention — ${detail}` : `${title} needs attention`,
+    room,
+    roomTitle: title,
+  };
 }

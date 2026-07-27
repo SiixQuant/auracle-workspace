@@ -93,6 +93,18 @@ export function districtSummary(district: District, vitals: GridVitals): string 
   return facts.length > 0 ? facts.join(' · ') : 'no readings yet';
 }
 
+/** The first faulted room in the order the plan lays the districts out — the
+ *  AI strip, the pinned alert and the reader's eye all arrive at the same
+ *  card. Null when nothing is faulted. */
+export function firstFault(vitals: GridVitals): RoomId | null {
+  for (const district of DISTRICTS) {
+    for (const room of district.rooms) {
+      if (vitals[room].health === 'fault') return room;
+    }
+  }
+  return null;
+}
+
 /** Rooms across the whole sheet that are not nominal — the root node's count. */
 export function roomsNeedingAttention(vitals: GridVitals): number {
   return DISTRICTS.reduce(

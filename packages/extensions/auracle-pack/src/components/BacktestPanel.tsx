@@ -29,7 +29,6 @@ import {
   firstFreeScaffoldRel,
   isEmptyUniverseError,
 } from '../engine/strategyTemplate';
-import { markBacktestPanelMounted, markBacktestPanelUnmounted } from './panelVisibility';
 import { railHeadline, type ValidationSignal } from '../engine/validation';
 import { detailCards, headlineCards, houseFootnote, tailFacts } from '../engine/houseStats';
 import {
@@ -221,13 +220,6 @@ export function BacktestPanel({ host }: { host?: PanelHostLike }): JSX.Element {
   // ride onto the next run.
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-
-  // The host only exposes a toggle event to open panels; report our mount state
-  // so the Run header can avoid toggling an already-open panel shut on a re-run.
-  useEffect(() => {
-    markBacktestPanelMounted();
-    return markBacktestPanelUnmounted;
-  }, []);
 
   useEffect(() => {
     setCreateError(null);

@@ -74,33 +74,26 @@
     },
     "panels": [
       {
-        "id": "backtest",
-        "title": "Backtest",
-        "icon": "play_circle",
-        "placement": "bottom",
+        "id": "grid",
+        "title": "Auracle",
+        "icon": "grid_view",
+        "placement": "fullscreen",
         "order": 68,
         "aiSupported": true,
-        "tooltip": "Backtest the open strategy and check it for overfitting."
-      },
-      {
-        "id": "strategy-lab",
-        "title": "Strategy Lab",
-        "icon": "science",
-        "placement": "fullscreen",
-        "order": 69,
-        "aiSupported": true,
-        "tooltip": "Research, QC import, and validation — the build-and-prove pipeline in one place.",
-        "aliases": ["research", "qc-import", "validation"]
-      },
-      {
-        "id": "live-desk",
-        "title": "Live Desk",
-        "icon": "monitoring",
-        "placement": "fullscreen",
-        "order": 70,
-        "aiSupported": true,
-        "tooltip": "Deployments, blotter, incidents, schedules, and runway — the live floor.",
-        "aliases": ["live-algorithms", "blotter", "incidents", "schedules", "runway"]
+        "tooltip": "Every Auracle surface in one plan: research, strategies, backtests, validation, deployments, and the live floor.",
+        "aliases": [
+          "backtest",
+          "strategy-lab",
+          "live-desk",
+          "research",
+          "qc-import",
+          "validation",
+          "live-algorithms",
+          "blotter",
+          "incidents",
+          "schedules",
+          "runway"
+        ]
       }
     ]
   }

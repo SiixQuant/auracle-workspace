@@ -5,7 +5,8 @@
  * Automatically updates when panels are loaded/unloaded.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type ComponentType } from 'react';
+import type { PanelGutterButtonProps } from '@nimbalyst/runtime';
 import {
   getRegisteredPanels,
   getPanelsByPlacement,
@@ -60,24 +61,26 @@ export function usePanelsByPlacement(
 }
 
 /**
- * Hook that returns gutter button data for extension panels (sidebar and fullscreen).
+ * Gutter button data for one extension panel. `gutterButton` is the panel's
+ * own button component when it contributes one (the SDK's documented opt-out
+ * from the default icon button) — an extension needs it to draw state the
+ * host cannot know about, e.g. a count of open alerts.
  */
-export function useExtensionGutterButtons(): Array<{
+export interface ExtensionGutterButton {
   id: string;
   icon: string;
   label: string;
   placement: 'sidebar' | 'fullscreen';
   order: number;
   isAlpha: boolean;
-}> {
-  const [buttons, setButtons] = useState<Array<{
-    id: string;
-    icon: string;
-    label: string;
-    placement: 'sidebar' | 'fullscreen';
-    order: number;
-    isAlpha: boolean;
-  }>>([]);
+  gutterButton?: ComponentType<PanelGutterButtonProps>;
+}
+
+/**
+ * Hook that returns gutter button data for extension panels (sidebar and fullscreen).
+ */
+export function useExtensionGutterButtons(): ExtensionGutterButton[] {
+  const [buttons, setButtons] = useState<ExtensionGutterButton[]>([]);
 
   useEffect(() => {
     function updateButtons(): void {
@@ -91,6 +94,7 @@ export function useExtensionGutterButtons(): Array<{
           placement: p.placement as 'sidebar' | 'fullscreen',
           order: p.order,
           isAlpha: p.requiredReleaseChannel === 'alpha',
+          gutterButton: p.gutterButton,
         }));
 
       setButtons(gutterButtons);

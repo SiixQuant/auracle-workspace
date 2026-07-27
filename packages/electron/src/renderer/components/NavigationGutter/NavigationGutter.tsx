@@ -13,6 +13,7 @@ import { ExtensionDevIndicator } from '../ExtensionDevIndicator';
 import { BackgroundTaskIndicator } from '../BackgroundTaskIndicator';
 import { VoiceModeButton } from '../UnifiedAI/VoiceModeButton';
 import { useExtensionGutterButtons, useExtensionBottomPanelButtons } from '../../extensions/panels/usePanels';
+import { useThemeValue } from '../../hooks/useTheme';
 import { HelpTooltip } from '../../help';
 import { setActiveSessionAtom } from '../../store';
 import {
@@ -205,6 +206,10 @@ export const NavigationGutter: React.FC<NavigationGutterProps> = ({
   // Get extension panel buttons from the panel registry
   const extensionPanelButtons = useExtensionGutterButtons();
   const extensionBottomPanelButtons = useExtensionBottomPanelButtons();
+  // Handed to a panel-contributed gutter button; 'auto' is never a real
+  // runtime value for an extension, so resolve it the way PanelContainer does.
+  const themeValue = useThemeValue();
+  const extensionTheme = themeValue === 'auto' ? 'light' : themeValue;
   // Content mode buttons - primary navigation (top)
   const contentModeButtonsTop: NavButton[] = [
     {
@@ -494,34 +499,48 @@ export const NavigationGutter: React.FC<NavigationGutterProps> = ({
         <div className="nav-section nav-extension-modes flex flex-col items-center gap-1 w-full px-1.5 py-1 pt-2 mt-1 border-t border-nim">
           {extensionPanelButtons
             .filter(panel => panel.placement === 'fullscreen')
-            .map((panel) => (
-              <button
-                key={panel.id}
-                className={`nav-button relative w-9 h-9 flex items-center justify-center border-none rounded-md cursor-pointer transition-all duration-150 p-0 active:scale-95 focus-visible:outline-2 focus-visible:outline-[var(--nim-primary)] focus-visible:outline-offset-2 ${activeExtensionPanel === panel.id ? 'active bg-nim-primary text-nim-on-primary hover:bg-nim-primary-hover' : 'bg-transparent text-nim-muted hover:bg-nim-tertiary hover:text-nim'}`}
-                onClick={() => {
-                  const newPanelId = activeExtensionPanel === panel.id ? null : panel.id;
-                  onExtensionPanelChange?.(newPanelId);
-                  posthog?.capture('extension_panel_toggled', {
-                    panelId: panel.id,
-                    placement: panel.placement,
-                    action: newPanelId ? 'activated' : 'deactivated',
-                  });
-                }}
-                title={panel.label}
-                aria-label={panel.label}
-                aria-pressed={activeExtensionPanel === panel.id}
-                data-panel-id={panel.id}
-              >
-                <MaterialSymbol
-                  icon={panel.icon}
-                  size={20}
-                  fill={activeExtensionPanel === panel.id}
-                />
-                {panel.isAlpha && (
-                  <AlphaBadge size="dot" className="absolute top-0 right-0.5 pointer-events-none" />
-                )}
-              </button>
-            ))}
+            .map((panel) => {
+              const isActive = activeExtensionPanel === panel.id;
+              const activate = (): void => {
+                const newPanelId = isActive ? null : panel.id;
+                onExtensionPanelChange?.(newPanelId);
+                posthog?.capture('extension_panel_toggled', {
+                  panelId: panel.id,
+                  placement: panel.placement,
+                  action: newPanelId ? 'activated' : 'deactivated',
+                });
+              };
+
+              // A panel may contribute its own button (SDK `gutterButton`) when
+              // it has state the host cannot know — e.g. a count of open alerts.
+              // It replaces the default icon button; the wrapper keeps the
+              // panel id addressable without adding a box to the flex column.
+              const CustomButton = panel.gutterButton;
+              if (CustomButton) {
+                return (
+                  <div key={panel.id} className="contents" data-panel-id={panel.id}>
+                    <CustomButton isActive={isActive} onActivate={activate} theme={extensionTheme} />
+                  </div>
+                );
+              }
+
+              return (
+                <button
+                  key={panel.id}
+                  className={`nav-button relative w-9 h-9 flex items-center justify-center border-none rounded-md cursor-pointer transition-all duration-150 p-0 active:scale-95 focus-visible:outline-2 focus-visible:outline-[var(--nim-primary)] focus-visible:outline-offset-2 ${isActive ? 'active bg-nim-primary text-nim-on-primary hover:bg-nim-primary-hover' : 'bg-transparent text-nim-muted hover:bg-nim-tertiary hover:text-nim'}`}
+                  onClick={activate}
+                  title={panel.label}
+                  aria-label={panel.label}
+                  aria-pressed={isActive}
+                  data-panel-id={panel.id}
+                >
+                  <MaterialSymbol icon={panel.icon} size={20} fill={isActive} />
+                  {panel.isAlpha && (
+                    <AlphaBadge size="dot" className="absolute top-0 right-0.5 pointer-events-none" />
+                  )}
+                </button>
+              );
+            })}
         </div>
       )}
 

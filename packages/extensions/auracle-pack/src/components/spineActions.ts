@@ -2,32 +2,19 @@
  * Spine cross-panel actions — the side-effecting navigation edges panels fire
  * to hand a strategy or run to another surface. Each mirrors the editor header
  * (RunStrategyHeader): publish focus FIRST, drive the target domain store, then
- * open the destination panel via the host's toggle event and hub tab, guarded
- * so a re-fire can't toggle an already-open panel shut. Centralised so the
- * panel-id constants and toggle plumbing live in one tested place.
+ * open the destination room in the Grid. Centralised so the routing plumbing
+ * lives in one tested place.
+ *
+ * `openGridRoom` addresses the room's alias id, which the host reads as
+ * navigation rather than a toggle — so a repeated hand-off opens the room it
+ * names and can never close the Grid out from under the user.
  */
 import { backtestStore } from '../engine/backtestStore';
 import { deployStore } from '../engine/deployStore';
 import { focusStore, type FocusedStrategy } from '../engine/focusStore';
 import type { StrategyOption } from '../engine/deploy';
 import { strategySourceFromDotted } from '../engine/spineNav';
-import { openHubTab } from './hub';
-import { isBacktestPanelOpen, isLivePanelOpen } from './panelVisibility';
-
-/** Full panel ids (extensionId.panelId) — the toggle-panel event routes by id. */
-const BACKTEST_PANEL_ID = 'com.auracle.pack.backtest';
-const LIVE_DESK_PANEL_ID = 'com.auracle.pack.live-desk';
-
-function togglePanel(panelId: string): void {
-  window.dispatchEvent(new CustomEvent('nimbalyst:toggle-panel', { detail: { panelId } }));
-}
-
-/** Open the Live Desk, only when it isn't already the mounted surface (a bare
- *  toggle would otherwise close it out from under a sibling tab). */
-function frontLiveDesk(): void {
-  openHubTab('live-desk', 'deployments');
-  if (!isLivePanelOpen()) togglePanel(LIVE_DESK_PANEL_ID);
-}
+import { openGridRoom } from './grid/gridNav';
 
 /**
  * Deploy the strategy in `filePath` (the Backtest results "Deploy"): resolve
@@ -37,7 +24,7 @@ function frontLiveDesk(): void {
 export function deployFile(filePath: string, dottedPath?: string): void {
   focusStore.publish({ strategy: { filePath, dottedPath } });
   void deployStore.deploy(filePath);
-  frontLiveDesk();
+  openGridRoom('deploys');
 }
 
 /**
@@ -48,36 +35,34 @@ export function deployFile(filePath: string, dottedPath?: string): void {
 export function deployOption(option: StrategyOption, focus?: FocusedStrategy): void {
   if (focus) focusStore.publish({ strategy: focus });
   deployStore.choose(option);
-  frontLiveDesk();
+  openGridRoom('deploys');
 }
 
 /**
- * Run an already-resolved strategy option in the Backtest panel and front it
- * (a Flow node "Metrics"): the panel renders the full metrics and overfit
- * check — the surface a backtest run's metrics live on.
+ * Run an already-resolved strategy option and open the Backtest room (a Flow
+ * node "Metrics"): that room renders the full metrics and overfit check — the
+ * surface a backtest run's metrics live on.
  */
 export function backtestOption(option: StrategyOption, focus?: FocusedStrategy): void {
   if (focus) focusStore.publish({ strategy: focus });
   void backtestStore.choose(option);
-  if (!isBacktestPanelOpen()) togglePanel(BACKTEST_PANEL_ID);
+  openGridRoom('backtest');
 }
 
 /**
- * Open an already-persisted run by its job id in the Backtest panel's Metrics
- * Viewer and front the panel — the QC library's single outbound edge.
+ * Open an already-persisted run by its job id in the Backtest room's Metrics
+ * Viewer — the QC library's single outbound edge.
  *
  * Unlike the strategy hand-offs above it publishes NO Spine focus: the QC
  * library stays OFF the Spine, so it loads the run straight into the viewer
  * store (which frames a by-id load as a saved run) and lets the Backtest panel
  * name the run it shows. `source` is the run's non-local provenance (e.g.
  * "quantconnect"), threaded through so the viewer labels it and hides local
- * verbs even though the standard result read serves the run source-blind. The
- * same front-guard the other Backtest edges use keeps a re-open from toggling
- * the panel shut.
+ * verbs even though the standard result read serves the run source-blind.
  */
 export function openRunInViewer(jobId: number, source?: string): void {
   void backtestStore.loadJob(jobId, source ? { source } : undefined);
-  if (!isBacktestPanelOpen()) togglePanel(BACKTEST_PANEL_ID);
+  openGridRoom('backtest');
 }
 
 /**

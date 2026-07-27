@@ -133,6 +133,30 @@ describe('the shortcut belongs to the focused panel', () => {
     expect(screen.queryByTestId('grid-palette')).toBeNull();
   });
 
+  it('takes the combination off a later global listener, but only while focused', () => {
+    const globalShortcut = vi.fn();
+    renderGrid();
+    // Registered after the panel's own, the way the host shell's global
+    // shortcut layer re-registers when a fullscreen panel becomes active.
+    window.addEventListener('keydown', globalShortcut, { capture: true });
+
+    try {
+      // Nothing focused: the press is not the Grid's to take.
+      pressShortcut();
+      expect(globalShortcut).toHaveBeenCalledTimes(1);
+      expect(screen.queryByTestId('grid-palette')).toBeNull();
+
+      globalShortcut.mockClear();
+      act(() => panel().focus());
+      pressShortcut();
+
+      expect(globalShortcut).not.toHaveBeenCalled();
+      expect(screen.getByTestId('grid-palette')).toBeTruthy();
+    } finally {
+      window.removeEventListener('keydown', globalShortcut, { capture: true });
+    }
+  });
+
   it('stops listening once the panel is gone', () => {
     renderGrid();
     act(() => panel().focus());
@@ -214,6 +238,16 @@ describe('typing narrows, Enter routes', () => {
     );
 
     fireEvent.keyDown(input(), { key: 'ArrowUp' });
+    expect(screen.getByTestId(`grid-palette-item-${first}`).getAttribute('aria-selected')).toBe(
+      'true'
+    );
+
+    // Tab has nowhere to go behind a modal, so it walks the list too.
+    fireEvent.keyDown(input(), { key: 'Tab' });
+    expect(screen.getByTestId(`grid-palette-item-${second}`).getAttribute('aria-selected')).toBe(
+      'true'
+    );
+    fireEvent.keyDown(input(), { key: 'Tab', shiftKey: true });
     expect(screen.getByTestId(`grid-palette-item-${first}`).getAttribute('aria-selected')).toBe(
       'true'
     );

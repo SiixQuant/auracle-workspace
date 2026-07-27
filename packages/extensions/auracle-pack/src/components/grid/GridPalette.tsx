@@ -123,6 +123,11 @@ export function GridPalette(): JSX.Element {
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
       move(-1);
+    } else if (event.key === 'Tab') {
+      // The palette is modal, so there is nowhere behind it for Tab to go: it
+      // walks the list instead of dropping focus out through the back.
+      event.preventDefault();
+      move(event.shiftKey ? -1 : 1);
     } else if (event.key === 'Enter') {
       event.preventDefault();
       run(shown[active]);

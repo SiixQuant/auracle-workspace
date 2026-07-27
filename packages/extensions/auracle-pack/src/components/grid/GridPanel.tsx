@@ -79,23 +79,28 @@ export function GridPanel(props: PanelHostProps): JSX.Element {
    * when-clause, so declaring one there would take the combination away from
    * every other surface — see the palette issue notes.
    *
-   * Capture phase, because the host's own global shortcut layer listens at the
-   * window in capture and calls `stopPropagation()`; a bubble-phase listener
-   * here would simply never run. Guarded on the panel being mounted, visible,
-   * and containing whatever has focus, so nothing fires for a Grid that is
-   * merely alive somewhere off screen.
+   * Capture phase at the window, because the host's own global shortcut layer
+   * listens there in capture and calls `stopPropagation()` — a bubble-phase
+   * listener here would simply never run. Among listeners on the same target
+   * and phase the order is registration order, and this panel is a child of
+   * the host shell, so its effect registers first; stopping the event
+   * IMMEDIATELY is therefore what keeps the host's own combination from also
+   * firing and pulling this panel off screen mid-press.
+   *
+   * Guarded on the panel being mounted, visible, and containing whatever has
+   * focus, so nothing fires for a Grid that is merely alive off screen.
    */
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key.toLowerCase() !== 'k' || event.altKey || event.shiftKey) return;
+      if (event.key?.toLowerCase() !== 'k' || event.altKey || event.shiftKey) return;
       if (!event.metaKey && !event.ctrlKey) return;
       const host = hostRef.current;
       if (!host || !host.isConnected) return;
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       if (!host.contains(document.activeElement)) return;
       event.preventDefault();
-      event.stopPropagation();
+      event.stopImmediatePropagation();
       togglePalette();
     };
     window.addEventListener('keydown', onKeyDown, { capture: true });

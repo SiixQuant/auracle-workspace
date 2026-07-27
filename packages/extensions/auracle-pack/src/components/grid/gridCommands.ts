@@ -21,7 +21,7 @@
  */
 import type { GridVitals, Health } from '../../engine/gridVitals';
 import { ROOM_ICONS } from './districts';
-import { openRoom } from './gridNav';
+import { openRoomFocused } from './gridNav';
 import { ROOM_CONTEXT } from './roomContext';
 import { ROOM_IDS, ROOMS } from './rooms';
 
@@ -109,9 +109,11 @@ export function filterCommands(commands: GridCommand[], query: string): GridComm
 
 /* ── the base provider: every room ──────────────────────────────────── */
 
-/** The rooms, as commands. `openRoom` rather than `openGridRoom`: the palette
- *  only ever runs while the Grid is already the surface on screen, so asking
- *  the host to front the panel again would be a second, pointless toggle. */
+/** The rooms, as commands. `openRoomFocused` rather than `openGridRoom`: the
+ *  palette only ever runs while the Grid is already the surface on screen, so
+ *  asking the host to front the panel again would be a second, pointless
+ *  toggle — but the room still has to land on the object the reader is looking
+ *  at, which is what the focused open guarantees. */
 const roomsProvider: GridCommandProvider = {
   id: 'rooms',
   list: ({ vitals }) =>
@@ -125,7 +127,7 @@ const roomsProvider: GridCommandProvider = {
       keywords: [id, ROOMS[id].title, ROOM_CONTEXT[id]],
       section: 'Rooms',
       health: vitals[id]?.health,
-      run: () => openRoom(id),
+      run: () => openRoomFocused(id),
     })),
 };
 

@@ -16,7 +16,14 @@
  * ALIASES as navigation (open, never close). So a hand-off addresses the
  * room's alias id — that is what keeps a second hand-off from closing the
  * Grid out from under the user, with no open/closed flag to keep in sync.
+ *
+ * Every way IN goes through {@link openRoomFocused} — an aliased toggle, the
+ * palette, a wired-to chip, a pack-internal hand-off — so a room can never be
+ * reached by a path that forgot to settle the focus it should land on. See
+ * `gridFocus` for what a transition does to focus.
  */
+import type { Focus } from '../../engine/focusStore';
+import { publishRoomFocus } from './gridFocus';
 import { isRoomId, type RoomId } from './rooms';
 
 export const PACK_PREFIX = 'com.auracle.pack.';
@@ -144,7 +151,25 @@ export function openRoom(room: RoomId, origin?: string | null): void {
   notify();
 }
 
-/** Back to the plan. */
+/**
+ * Select a room AND settle the focus it lands on — the entry point every
+ * caller outside this module should use.
+ *
+ * `hint` names the concrete object the room is being opened FOR (a deep link
+ * that already knows the run, an annotation that knows the strategy file);
+ * anything it leaves out is carried from the current focus, so an unhinted
+ * jump preserves what the reader was already looking at. Focus is published
+ * BEFORE the room changes, so the page mounts already pointing at the right
+ * object rather than correcting itself a frame later.
+ */
+export function openRoomFocused(room: RoomId, hint?: Focus, origin?: string | null): void {
+  publishRoomFocus(hint);
+  openRoom(room, origin);
+}
+
+/** Back to the plan. Focus is left exactly as it was: stepping out to the plan
+ *  is not a decision to stop looking at something, and a page reopened from
+ *  here has to show the same object it showed before. */
 export function openGridHome(): void {
   zoomOrigin = null;
   if (activeRoom === null) return;
@@ -163,21 +188,30 @@ export function subscribeGrid(listener: () => void): () => void {
  * Select `room` AND ask the host to front the Grid — the one call every
  * pack-internal hand-off makes. Addressed to the room's alias id so the host
  * navigates rather than toggles (see the file header).
+ *
+ * A caller that already published its own focus (the Spine hand-offs do)
+ * passes no hint and keeps it: an unhinted open carries the current focus
+ * through unchanged.
  */
-export function openGridRoom(room: RoomId): void {
-  openRoom(room);
+export function openGridRoom(room: RoomId, hint?: Focus): void {
+  openRoomFocused(room, hint);
   if (typeof window === 'undefined') return;
   window.dispatchEvent(
     new CustomEvent('nimbalyst:toggle-panel', { detail: { panelId: routeIdForRoom(room) } })
   );
 }
 
-/** Window listener: an aliased toggle from anywhere also selects its room. */
+/**
+ * Window listener: an aliased toggle from anywhere also selects its room —
+ * the deep-link path. It lands through the focused open like every other
+ * entry, so a room reached by its retired id shows the same object it would
+ * have shown reached from the plan.
+ */
 function onTogglePanelEvent(event: Event): void {
   const panelId = (event as CustomEvent).detail?.panelId;
   if (typeof panelId !== 'string') return;
   const room = resolveRoom(panelId);
-  if (room) openRoom(room);
+  if (room) openRoomFocused(room);
 }
 
 if (typeof window !== 'undefined') {

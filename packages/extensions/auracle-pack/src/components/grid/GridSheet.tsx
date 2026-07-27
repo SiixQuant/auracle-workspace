@@ -42,7 +42,7 @@ import { useSyncExternalStore, type CSSProperties } from 'react';
 import { gridVitals, type GridVitals, type RoomVital } from '../../engine/gridVitals';
 import { tint, tone } from '../panelkit';
 import { PALETTE_HINT, openPalette } from './gridCommands';
-import { openRoom, zoomOriginFrom } from './gridNav';
+import { openRoomFocused, zoomOriginFrom } from './gridNav';
 import {
   DISTRICTS,
   HEALTH_COLOR,
@@ -182,7 +182,7 @@ function RoomCard({
         // native tooltip firing a second later would land on top of it.
         // The room page zooms out of the card that was pressed, so the press
         // and the arrival read as one gesture rather than a screen swap.
-        onClick={(event) => openRoom(id, zoomOriginFrom(event.currentTarget))}
+        onClick={(event) => openRoomFocused(id, undefined, zoomOriginFrom(event.currentTarget))}
         {...peek}
       >
         <span className="agrid__rtop">

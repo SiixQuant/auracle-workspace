@@ -48,7 +48,7 @@
  * mounted above the router so a mutation raised from the palette is answered
  * on whatever view happens to be up.
  */
-import type { GridVitals, RoomVital } from '../../engine/gridVitals';
+import type { GridVitals } from '../../engine/gridVitals';
 import { HEALTH_WORD } from './districts';
 // Read inside functions only, never at module scope: `rooms` pulls in every
 // page component, and the page frame is what mounts this layer's action bar.
@@ -180,25 +180,18 @@ async function executeIntent(intent: ActionIntent): Promise<AiActionResult> {
 /* ── the catalog ────────────────────────────────────────────────────── */
 
 /**
- * The names behind a reading, when the vital carries them.
+ * The reading fields every intent carries: what the plan currently says about
+ * this room, quoted rather than recomputed.
  *
- * Written as a widening read rather than a direct field access on purpose:
- * the sheet's wire overlay adds `subjects` to `RoomVital` in a change landing
- * alongside this one, and this layer must compile and behave sensibly on
- * either side of that landing — with names when they are there, and with the
- * reading line alone when they are not.
+ * `subjects` is the reading's own naming of what it is about (the errored
+ * deployments behind a faulted `deploys`), so an intent addresses the same
+ * things the sheet drew its red dot from. A reading that names nothing simply
+ * contributes no Named lines.
  */
-export function subjectsOf(vital: RoomVital): readonly string[] {
-  const named = (vital as RoomVital & { subjects?: readonly string[] }).subjects;
-  return Array.isArray(named) ? named : [];
-}
-
-/** The reading fields every intent carries: what the plan currently says about
- *  this room, quoted rather than recomputed. */
 function readingFields(room: RoomId, vitals: GridVitals): IntentField[] {
   const vital = vitals[room];
   const fields: IntentField[] = [];
-  for (const subject of subjectsOf(vital)) fields.push({ label: 'Named', value: subject });
+  for (const subject of vital.subjects) fields.push({ label: 'Named', value: subject });
   if (vital.note) fields.push({ label: 'Reading', value: vital.note });
   fields.push({ label: 'State', value: HEALTH_WORD[vital.health] });
   return fields;

@@ -176,9 +176,16 @@ describe('the strip is the assistant on the plan', () => {
 
     expect(strip().getAttribute('data-state')).toBe('proposing');
     // It speaks about the room the plan drew in red, and quotes that room's
-    // own reading rather than a second opinion about it.
+    // own reading rather than a second opinion about it — including which
+    // deployment stopped, which is the difference between a count and a name.
     expect(strip().getAttribute('data-subject')).toBe('deploys');
+    expect(screen.getByTestId('grid-ai-strip-subject').textContent).toBe('strategy-1');
     expect(screen.getByTestId('grid-ai-strip-line').textContent).toContain('1 errored');
+    // And the repair addresses that same named thing.
+    expect(offered('deploys-repair').intent.fields).toContainEqual({
+      label: 'Named',
+      value: 'strategy-1',
+    });
     // The plan it states is the repair's own summary, not a paraphrase.
     expect(screen.getByTestId('grid-ai-strip-plan').textContent).toBe(
       offered('deploys-repair').intent.summary

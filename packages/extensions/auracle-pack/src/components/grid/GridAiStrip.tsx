@@ -26,7 +26,7 @@
  */
 import { useSyncExternalStore } from 'react';
 import { gridVitals, type GridVitals } from '../../engine/gridVitals';
-import { tint, tone } from '../panelkit';
+import { tone } from '../panelkit';
 import { DISTRICTS } from './districts';
 import {
   aiRunStore,
@@ -34,28 +34,19 @@ import {
   repairForRoom,
   requestAiAction,
   resultLine,
-  subjectsOf,
 } from './gridAiActions';
 import { openRoom, zoomOriginFrom } from './gridNav';
+// The plan's structural accent (see gridTheme): the assistant's mark belongs
+// to the plan's furniture, not to its state. Nothing here carrying state is
+// drawn with it — the fault it names stays on the semantic red.
+import { GRID_ACCENT, GRID_ACCENT_DIM, GRID_ACCENT_SOFT } from './gridTheme';
 import { ROOMS, type RoomId } from './rooms';
-
-/**
- * The Grid's structural accent.
- *
- * DUPLICATED ON PURPOSE, and temporarily: the sheet's wire overlay introduces
- * `gridTheme.ts` holding exactly this value with the full argument for why the
- * plan's structure is drawn in the IDE's blue while everything carrying STATE
- * stays on the semantic hues. That change and this one are in flight together;
- * whichever lands second collapses this constant into the import. Nothing
- * carrying state is drawn with it here either.
- */
-const GRID_ACCENT = '#60a5fa';
 
 const STYLE_ID = 'auracle-grid-aistrip-styles';
 
 const SHEET = `
 .agrid-ai { position: sticky; bottom: 0; z-index: 3; display: flex; align-items: flex-start; gap: 11px; padding: 11px 20px 13px; border-top: 1px solid ${tone.border}; background: ${tone.surface}; }
-.agrid-ai__mark { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 7px; border: 1px solid ${tint(GRID_ACCENT, 38)}; background: ${tint(GRID_ACCENT, 11)}; color: ${GRID_ACCENT}; }
+.agrid-ai__mark { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 7px; border: 1px solid ${GRID_ACCENT_DIM}; background: ${GRID_ACCENT_SOFT}; color: ${GRID_ACCENT}; }
 .agrid-ai__mark .material-symbols-outlined { font-size: 15px; line-height: 1; }
 .agrid-ai__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
 .agrid-ai__line { margin: 0; font-size: 12.5px; line-height: 1.5; color: ${tone.text}; }
@@ -123,7 +114,7 @@ export function GridAiStrip(): JSX.Element {
   const state = run.running !== null ? 'working' : fault !== null ? 'proposing' : 'nominal';
   const repair = fault === null ? null : repairForRoom(fault, vitals);
   const vital = fault === null ? null : vitals[fault];
-  const named = vital === null ? [] : subjectsOf(vital);
+  const named = vital === null ? [] : vital.subjects;
 
   return (
     <aside

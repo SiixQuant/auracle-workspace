@@ -4,13 +4,21 @@
  * ## One call for the districts the engine consolidates
  * The engine serves `GET /ui/api/summary`: every district's vitals in one pass,
  * fanned in server-side from the same store queries each room's own endpoint
- * uses. So the sheet asks once instead of once per room, and the home can never
- * disagree with the room you open from it — they are reading the same query.
+ * uses. So the sheet asks once instead of once per room, and for every room it
+ * covers the home cannot disagree with what you find when you open it — the
+ * two are reading the same query.
  *
  * Three rooms are NOT in that payload, because the engine has no district block
  * for them: the QuantConnect project list, the deployable-strategy list, and
  * the order blotter. Those keep their own reads, on the slow lane, and the
  * table below says so rather than pretending the one call covers everything.
+ *
+ * Connections is a fourth exception, and a subtler one: the consolidated
+ * payload's connections block counts BROKERS only, while the Connections room
+ * lists brokers, data providers and integrations alike. Reading the counts from
+ * the one call would make the card and the room disagree — an errored data
+ * provider would move one and not the other — so this room keeps the same
+ * registry read the room itself uses.
  *
  * ## Counts come from the summary; names do not
  * The consolidated payload is counts. When it reports errored deployments the
@@ -44,6 +52,7 @@
 import { getJson, onConnectGeneration } from './client';
 import { backtestStore, type BacktestSnapshot } from './backtestStore';
 import { DEPLOY_FAILED_STATE, type Deployment } from './live';
+import { isConnected, type Connector } from './model';
 import type { BlotterOrder } from './monitors';
 // Type-only: erased at build time, so the engine layer keeps no runtime
 // dependency on the component that owns the room table.
@@ -95,13 +104,6 @@ export interface SchedulesBlock {
   active?: number | null;
 }
 
-/** Connector health as the engine's in-memory poll cache reports it. */
-export interface ConnectionsBlock {
-  total?: number | null;
-  by_state?: Record<string, number> | null;
-  connected?: number | null;
-}
-
 export interface RunwayBlock {
   /** Stage name → the engine's own reached word (`yes` when it has been). */
   reached?: Record<string, string> | null;
@@ -118,7 +120,6 @@ export interface SummaryBody {
   research?: ResearchBlock | null;
   deployments?: DeploymentsBlock | null;
   schedules?: SchedulesBlock | null;
-  connections?: ConnectionsBlock | null;
   runway?: RunwayBlock | null;
   /** The districts whose read failed, by name. */
   degraded?: string[];
@@ -139,10 +140,11 @@ export interface VitalSources {
    * Null when nothing has been read; empty when nothing is errored.
    */
   errored: string[] | null;
-  /** Rooms the consolidated payload has no block for. */
+  /** Rooms the consolidated payload has no block for, or counts differently. */
   qc: QcBody | null;
   strategies: unknown[] | null;
   orders: BlotterOrder[] | null;
+  connections: Connector[] | null;
   /** Always present: an in-process store, not a fetch. */
   run: BacktestSnapshot;
 }
@@ -308,22 +310,19 @@ function runwayVital(block: RunwayBlock | null | undefined): RoomVital {
 /** Connector states that mean "wired but not healthy" — worth an amber dot,
  *  not a red one. `not_configured` is deliberately absent: the platform is
  *  keyless by default, so an unconfigured connector is a choice. */
-const DEGRADED_CONN_STATES = ['degraded', 'disconnected', 'connecting', 'reconnecting'];
+const DEGRADED_CONN_STATES = new Set(['degraded', 'disconnected', 'connecting', 'reconnecting']);
 
-function connsVital(block: ConnectionsBlock | null | undefined): RoomVital {
-  if (!block) return QUIET;
-  const total = figure(block.total);
-  if (total === null) return QUIET;
-  if (total === 0) return vital('nominal', 'none available');
-  const by = block.by_state ?? {};
-  const errored = figure(by.error) ?? 0;
-  if (errored > 0) return vital('fault', `${errored} of ${total} in error`, `${errored} in error`);
-  const degraded = DEGRADED_CONN_STATES.reduce((sum, state) => sum + (figure(by[state]) ?? 0), 0);
+function connsVital(rows: Connector[] | null): RoomVital {
+  if (rows === null) return QUIET;
+  if (rows.length === 0) return vital('nominal', 'none available');
+  const errored = rows.filter((row) => row.status?.state === 'error').length;
+  if (errored > 0) return vital('fault', `${errored} of ${rows.length} in error`, `${errored} in error`);
+  const degraded = rows.filter((row) => DEGRADED_CONN_STATES.has(row.status?.state ?? '')).length;
   if (degraded > 0) {
-    return vital('degraded', `${degraded} of ${total} degraded`, `${degraded} degraded`);
+    return vital('degraded', `${degraded} of ${rows.length} degraded`, `${degraded} degraded`);
   }
-  const connected = figure(block.connected) ?? 0;
-  return vital('nominal', `${connected} of ${total} connected`, `${connected}/${total} up`);
+  const connected = rows.filter((row) => isConnected(row.status)).length;
+  return vital('nominal', `${connected} of ${rows.length} connected`, `${connected}/${rows.length} up`);
 }
 
 /** Every room's reading, from whatever the sources currently hold. */
@@ -340,7 +339,7 @@ export function deriveRooms(sources: VitalSources): GridVitals {
     incidents: incidentsVital(figure(summary?.open_alerts)),
     schedules: schedulesVital(summary?.schedules),
     runway: runwayVital(summary?.runway),
-    conns: connsVital(summary?.connections),
+    conns: connsVital(sources.connections),
   };
 }
 
@@ -353,7 +352,7 @@ export function worseHealth(a: Health, b: Health): Health {
 
 /* ── store ──────────────────────────────────────────────────────────── */
 
-/** The consolidated read: everything a person watches while something runs. */
+/** The live lane: the districts a person watches while something is running. */
 const FAST_MS = 30_000;
 /** The three rooms the summary has no block for. A project list or a strategy
  *  list does not move by the second. */
@@ -369,6 +368,7 @@ function emptySources(): VitalSources {
     qc: null,
     strategies: null,
     orders: null,
+    connections: null,
     run: backtestStore.getSnapshot(),
   };
 }
@@ -407,7 +407,16 @@ function republish(): void {
   for (const listener of listeners) listener();
 }
 
-function apply(patch: Partial<VitalSources>): void {
+/**
+ * Bumped by `reset` and by every reconnect. A read carries the generation it
+ * started under and is DROPPED if that generation has moved on, so a slow
+ * answer to a question nobody is asking any more can never overwrite a fresh
+ * one — or repaint a store a test has just cleared.
+ */
+let generation = 0;
+
+function apply(patch: Partial<VitalSources>, startedAt = generation): void {
+  if (startedAt !== generation) return;
   sources = { ...sources, ...patch };
   republish();
 }
@@ -434,31 +443,49 @@ export function erroredNames(rows: Deployment[] | null): string[] | null {
 }
 
 /**
- * The one consolidated read, plus the naming read it triggers only when the
- * engine reports a deployment errored. Nothing errored, one request.
+ * The consolidated read and the connection registry, plus the naming read the
+ * summary triggers only when it reports a deployment errored. Nothing errored,
+ * two requests — the districts, and the connectors the one call counts
+ * differently (see the header).
  */
-async function readSummary(): Promise<void> {
-  const summary = await getJson<SummaryBody>(SUMMARY_PATH);
+async function readLive(): Promise<void> {
+  const startedAt = generation;
+  const [summary, connections] = await Promise.all([
+    getJson<SummaryBody>(SUMMARY_PATH),
+    getJson<{ connections?: Connector[] }>('/ui/api/connections?kind=all'),
+  ]);
+  const connectors = rowsOf<Connector>(connections, 'connections');
   if (summary === null || (figure(summary.deployments?.errored) ?? 0) === 0) {
-    apply({ summary, errored: summary === null ? null : [] });
+    apply({ summary, errored: summary === null ? null : [], connections: connectors }, startedAt);
     return;
   }
   const rows = await getJson<Deployment[]>('/deployments');
-  apply({ summary, errored: erroredNames(Array.isArray(rows) ? rows : null) });
+  apply(
+    {
+      summary,
+      errored: erroredNames(Array.isArray(rows) ? rows : null),
+      connections: connectors,
+    },
+    startedAt
+  );
 }
 
 /** The three rooms the consolidated payload carries no block for. */
 async function readUncovered(): Promise<void> {
+  const startedAt = generation;
   const [qc, strategies, orders] = await Promise.all([
     getJson<QcBody>('/ui/api/quantconnect/projects'),
     getJson<{ strategies?: unknown[] }>('/ui/api/backtest/strategies?deployable=1'),
     getJson<{ orders?: BlotterOrder[] }>('/ui/api/orders'),
   ]);
-  apply({
-    qc,
-    strategies: rowsOf<unknown>(strategies, 'strategies'),
-    orders: rowsOf<BlotterOrder>(orders, 'orders'),
-  });
+  apply(
+    {
+      qc,
+      strategies: rowsOf<unknown>(strategies, 'strategies'),
+      orders: rowsOf<BlotterOrder>(orders, 'orders'),
+    },
+    startedAt
+  );
 }
 
 function start(): void {
@@ -467,13 +494,15 @@ function start(): void {
   // frame already carries the session's run and its validation.
   stopRunWatch = backtestStore.subscribe(() => apply({ run: backtestStore.getSnapshot() }));
   apply({ run: backtestStore.getSnapshot() });
-  void readSummary();
+  void readLive();
   void readUncovered();
-  fastTimer = setInterval(() => void readSummary(), FAST_MS);
+  fastTimer = setInterval(() => void readLive(), FAST_MS);
   slowTimer = setInterval(() => void readUncovered(), SLOW_MS);
-  // A reconnect (new key, engine restarted) invalidates every reading at once.
+  // A reconnect (new key, engine restarted) invalidates every reading at once,
+  // including any that is still in flight.
   stopGenerationWatch = onConnectGeneration(() => {
-    void readSummary();
+    generation += 1;
+    void readLive();
     void readUncovered();
   });
 }
@@ -507,12 +536,13 @@ export const gridVitals = {
 
   /** Read every source now (a manual refresh, and what the tests drive). */
   async refresh(): Promise<void> {
-    await Promise.all([readSummary(), readUncovered()]);
+    await Promise.all([readLive(), readUncovered()]);
   },
 
   /** Drop every reading back to quiet. Tests use it for isolation; nothing in
    *  the product calls it, because a live sheet re-reads rather than blanks. */
   reset(): void {
+    generation += 1;
     sources = emptySources();
     vitals = deriveRooms(sources);
     for (const listener of listeners) listener();

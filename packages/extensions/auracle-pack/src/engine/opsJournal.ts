@@ -85,8 +85,11 @@ export interface RepairOutcome {
   /**
    * True when the engine refused the AUTHORITY rather than the operation: the
    * target did not resolve to paper scope, so this needs an approved operator.
-   * Distinct from an operation the engine cannot run at all, which no amount of
-   * approving changes.
+   *
+   * Read from the engine's own words, not from the status code: the same 403
+   * carries the licence-state and plan-cap refusals, and calling one of those
+   * "needs an approved operator" would invent a cause. Anything that does not
+   * say scope is reported exactly as the engine put it.
    */
   needsApproval: boolean;
 }
@@ -119,12 +122,13 @@ export async function applyRepair(
       needsApproval: false,
     };
   }
+  const message = str(body.detail) ?? str(body.error) ?? str(body.message);
   return {
     ok: false,
     status: response.status,
     entryId: null,
-    message: str(body.detail) ?? str(body.error) ?? str(body.message),
-    needsApproval: response.status === 403,
+    message,
+    needsApproval: response.status === 403 && /scope/i.test(message ?? ''),
   };
 }
 

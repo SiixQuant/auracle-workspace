@@ -30,12 +30,12 @@
  * rather than reporting work on something that no longer needed it.
  *
  * ## The undo the strip offers
- * A repair that lands leaves the id of its journal entry here, so the surface
- * that ran it can offer to put it back without re-deriving what "back" was —
- * the engine recorded that at the time. The full history stays where it lives,
- * on the Incidents page.
+ * A repair that lands leaves its journal ids here, so the surface that ran it
+ * can offer to put it back without re-deriving what "back" was — the engine
+ * recorded that at the time. The full history stays where it lives, on the
+ * Incidents page.
  */
-import { getJson } from '../../engine/client';
+import { getJsonDetailed } from '../../engine/client';
 import { confirmedPost, LIQUIDATE_ACTION } from '../../engine/confirm';
 import { availableActions, type Deployment } from '../../engine/live';
 import type { Connector } from '../../engine/model';
@@ -62,12 +62,27 @@ export function registerAgentHost(host: PanelHostLike | undefined): void {
   agentHost = host;
 }
 
+/**
+ * Withdraw `host`, but only while it is still the one on file. A second panel
+ * mounting has already replaced it, and clearing that would leave the live
+ * panel telling people their build cannot hand off to the agent — which would
+ * be false.
+ */
+export function unregisterAgentHost(host: PanelHostLike | undefined): void {
+  if (agentHost === host) agentHost = undefined;
+}
+
 /* ── the undo the last repair left behind ───────────────────────────── */
 
-/** A repair that landed, and the journal entry that reverses it. */
+/** A repair that landed, and every journal entry that reverses it. */
 export interface UndoableRepair {
-  /** The engine's journal id — what the undo route addresses. */
-  entryId: string;
+  /**
+   * The engine's journal ids, in the order they were created — ALL of them,
+   * because a repair over three deployments made three changes and putting
+   * "the repair" back means putting all three back. Keeping only the last one
+   * would leave two silently in effect behind a button that said Undo.
+   */
+  entryIds: readonly string[];
   /** The operation it came from, so a surface offers it against the right outcome. */
   operation: string;
 }
@@ -103,26 +118,47 @@ export const repairUndoStore = {
 };
 
 /**
- * Reverse the repair that just ran, through the engine's own recorded inverse.
- * The offer is withdrawn on success; on a refusal it stays, carrying the
- * engine's reason, because the thing it would reverse is still in effect.
+ * Reverse the repair that just ran, through the engine's own recorded inverses.
+ *
+ * Newest first, so a chain of changes comes apart in the order it went on. The
+ * offer is withdrawn only when every entry came back; anything the engine
+ * refused stays on offer carrying its reason, because what it would reverse is
+ * still in effect.
  */
 export async function undoLastRepair(): Promise<{ ok: boolean; message: string | null }> {
   const pending = lastRepair;
   if (pending === null) return { ok: false, message: 'There is nothing recorded to put back.' };
-  const result = await undoEntry(pending.entryId);
-  if (result.ok) publishUndo(null);
-  return result;
+
+  const stuck: string[] = [];
+  const refusals: string[] = [];
+  for (const entryId of [...pending.entryIds].reverse()) {
+    const result = await undoEntry(entryId);
+    if (result.ok) continue;
+    stuck.push(entryId);
+    if (result.message !== null) refusals.push(result.message);
+  }
+  if (stuck.length === 0) {
+    publishUndo(null);
+    return { ok: true, message: null };
+  }
+  // Only what is still in effect stays on offer.
+  publishUndo({ entryIds: stuck.reverse(), operation: pending.operation });
+  return { ok: false, message: refusals.join(' ') || 'The undo did not go through.' };
 }
 
 /* ── shared phrasing ────────────────────────────────────────────────── */
 
-/** One refusal, in the engine's own words wherever it gave any. */
+/**
+ * One refusal, in the engine's own words wherever it gave any.
+ *
+ * The scope reading is added ONLY where the engine said scope. Its 403 also
+ * carries plan-cap and licence-state refusals, and labelling one of those
+ * "requires approval" would send someone looking for a permission that was
+ * never the problem.
+ */
 function refusalLine(target: string, outcome: RepairOutcome): string {
   if (outcome.needsApproval) {
-    return `${target}: requires approval on live scope — ${
-      outcome.message ?? 'the engine limits autonomous maintenance to paper-scope targets.'
-    }`;
+    return `${target}: requires approval on live scope — ${outcome.message}`;
   }
   if (outcome.status === 0) return `${target}: the engine did not answer.`;
   return `${target}: ${outcome.message ?? `the engine refused it (${outcome.status}).`}`;
@@ -140,8 +176,8 @@ function plural(n: number, one: string, many = `${one}s`): string {
  *
  * Every target is attempted even after one is refused: the operations are
  * independent, and stopping at the first refusal would leave the rest in the
- * state the press was meant to fix while reporting a single failure. The last
- * entry the engine journalled becomes the reversal on offer.
+ * state the press was meant to fix while reporting a single failure. Every
+ * entry the engine journalled becomes part of the reversal on offer.
  */
 async function runRepair(
   operation: string,
@@ -157,20 +193,20 @@ async function runRepair(
   }
 
   const refused: string[] = [];
+  const entryIds: string[] = [];
   let applied = 0;
-  let lastEntryId: string | null = null;
 
   for (const target of targets) {
     const outcome = await applyRepair(action, target);
     if (outcome.ok) {
       applied += 1;
-      if (outcome.entryId !== null) lastEntryId = outcome.entryId;
+      if (outcome.entryId !== null) entryIds.push(outcome.entryId);
       continue;
     }
     refused.push(refusalLine(target, outcome));
   }
 
-  publishUndo(lastEntryId === null ? null : { entryId: lastEntryId, operation });
+  publishUndo(entryIds.length === 0 ? null : { entryIds, operation });
 
   if (refused.length === 0) {
     return { kind: 'done', note: `The engine ran the repair on ${plural(applied, noun)}.` };
@@ -179,33 +215,73 @@ async function runRepair(
   return { kind: 'failed', note: `${ran}${refused.join(' ')}` };
 }
 
-/** The deployments the engine currently reports errored, by id. */
-async function erroredDeployments(): Promise<string[] | null> {
-  const rows = await getJson<Deployment[]>('/deployments');
-  if (!Array.isArray(rows)) return null;
-  return rows.filter((row) => row.state === 'errored').map((row) => String(row.id));
+/**
+ * A read that could not be taken, said as what it was.
+ *
+ * An engine that never answered and an engine that REFUSED are different facts,
+ * and the plain client erases the difference by collapsing every failure to
+ * null. The targets an operation acts on are worth the detailed read: reporting
+ * a rejected credential as network trouble sends someone to the wrong place.
+ */
+function readFailure(status: number, what: string): AiActionResult {
+  return {
+    kind: 'failed',
+    note:
+      status === 0
+        ? 'The engine did not answer, so nothing was sent.'
+        : `The engine would not list ${what} (${status}), so nothing was sent.`,
+  };
 }
 
-/** The connectors the engine currently reports in error, by id. */
-async function erroredConnectors(): Promise<string[] | null> {
-  const body = await getJson<{ connections?: Connector[] }>('/ui/api/connections?kind=all');
-  const rows = body?.connections;
-  if (!Array.isArray(rows)) return null;
-  return rows.filter((row) => row.status?.state === 'error').map((row) => row.id);
+/** Every deployment the engine currently lists. */
+async function listDeployments(): Promise<
+  { ok: true; rows: Deployment[] } | { ok: false; status: number }
+> {
+  const result = await getJsonDetailed<Deployment[]>('/deployments');
+  if (!result.ok) return { ok: false, status: result.status };
+  return { ok: true, rows: Array.isArray(result.body) ? result.body : [] };
 }
 
-const UNREACHABLE = 'The engine did not answer, so nothing was sent.';
+/**
+ * The connector kinds the engine's data-feed operation can resolve: it looks a
+ * target up in the broker and provider registries, and an INTEGRATION is in
+ * neither. Sending one would be asking for a repair the engine cannot perform,
+ * and reporting its 404 as a failed repair.
+ */
+const RECYCLABLE_KINDS = new Set(['broker', 'data_provider']);
 
 registerAiExecutor('deploy.restart-errored', async (intent) => {
-  const targets = await erroredDeployments();
-  if (targets === null) return { kind: 'failed', note: UNREACHABLE };
+  const listed = await listDeployments();
+  if (!listed.ok) return readFailure(listed.status, 'the deployments');
+  const targets = listed.rows
+    .filter((row) => row.state === 'errored')
+    .map((row) => String(row.id));
   return runRepair(intent.operation, REDEPLOY_DEPLOYMENT, targets, 'deployment');
 });
 
 registerAiExecutor('connection.reconnect-errored', async (intent) => {
-  const targets = await erroredConnectors();
-  if (targets === null) return { kind: 'failed', note: UNREACHABLE };
-  return runRepair(intent.operation, RESTART_DATA_FEED, targets, 'connection');
+  const result = await getJsonDetailed<{ connections?: Connector[] }>(
+    '/ui/api/connections?kind=all'
+  );
+  if (!result.ok) return readFailure(result.status, 'the connections');
+  const rows = Array.isArray(result.body?.connections) ? result.body.connections : [];
+  const errored = rows.filter((row) => row.status?.state === 'error');
+  const targets = errored.filter((row) => RECYCLABLE_KINDS.has(row.kind)).map((row) => row.id);
+
+  const outcome = await runRepair(intent.operation, RESTART_DATA_FEED, targets, 'connection');
+  // An errored integration is a real fault the reading counted, and this
+  // operation is not the thing that fixes it. Said once, rather than sent and
+  // reported as a repair that failed.
+  const skipped = errored.length - targets.length;
+  if (skipped === 0) return outcome;
+  const aside = ` ${plural(skipped, 'connection')} the engine cannot recycle ${
+    skipped === 1 ? 'was' : 'were'
+  } left alone.`;
+  return outcome.kind === 'done'
+    ? { kind: 'done', note: `${outcome.note}${aside}` }
+    : outcome.kind === 'failed'
+      ? { kind: 'failed', note: `${outcome.note}${aside}` }
+      : outcome;
 });
 
 /* ── mutation: the approved, declared, capital-affecting call ────────── */
@@ -224,10 +300,10 @@ registerAiExecutor('connection.reconnect-errored', async (intent) => {
  * state alone.
  */
 async function liquidateAll(): Promise<AiActionResult> {
-  const rows = await getJson<Deployment[]>('/deployments');
-  if (!Array.isArray(rows)) return { kind: 'failed', note: UNREACHABLE };
+  const listed = await listDeployments();
+  if (!listed.ok) return readFailure(listed.status, 'the deployments');
 
-  const targets = rows.filter((row) => availableActions(row.state).includes('liquidate'));
+  const targets = listed.rows.filter((row) => availableActions(row.state).includes('liquidate'));
   if (targets.length === 0) {
     return {
       kind: 'done',
@@ -251,10 +327,16 @@ async function liquidateAll(): Promise<AiActionResult> {
       continue;
     }
     reapprove = reapprove || outcome.reapprove;
+    // "We never sent it" and "the engine refused it" are different facts, and
+    // only one of them means anything happened. The stage says which.
+    const stage =
+      outcome.stage === 'declare' ? 'it was never sent' : 'the engine refused it';
     if (outcome.status === 0) {
-      refused.push(`${name}: the engine did not answer.`);
+      refused.push(`${name}: the engine did not answer, so ${stage}.`);
     } else {
-      refused.push(`${name}: ${outcome.message ?? `the engine refused it (${outcome.status}).`}`);
+      refused.push(
+        `${name}: ${stage} — ${outcome.message ?? `the engine answered ${outcome.status}.`}`
+      );
     }
   }
 

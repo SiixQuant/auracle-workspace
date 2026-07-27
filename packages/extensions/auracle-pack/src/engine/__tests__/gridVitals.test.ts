@@ -38,6 +38,7 @@ function sources(patch: Partial<VitalSources> = {}): VitalSources {
     qc: null,
     strategies: null,
     orders: null,
+    connections: null,
     run: IDLE_RUN,
     ...patch,
   };
@@ -72,16 +73,15 @@ describe('a district the engine could not read stays quiet', () => {
       sources(
         answered({
           deployments: null,
-          connections: null,
           schedules: null,
           research: null,
           runway: null,
           open_alerts: null,
-          degraded: ['deployments', 'connections', 'schedules', 'research', 'runway', 'incidents'],
+          degraded: ['deployments', 'schedules', 'research', 'runway', 'incidents'],
         })
       )
     );
-    for (const id of ['deploys', 'conns', 'schedules', 'findings', 'runway', 'incidents'] as const) {
+    for (const id of ['deploys', 'schedules', 'findings', 'runway', 'incidents'] as const) {
       expect(rooms[id]).toMatchObject({ health: 'nominal', note: null, fact: null });
     }
   });
@@ -135,22 +135,35 @@ describe('an answered source states what it found', () => {
   });
 
   it('reads a connector in error as a fault and a wobbling one as degraded', () => {
-    expect(
-      deriveRooms(
-        sources(answered({ connections: { total: 2, by_state: { error: 1, connected: 1 }, connected: 1 } }))
-      ).conns
-    ).toMatchObject({ health: 'fault', note: '1 of 2 in error' });
-
-    expect(
-      deriveRooms(sources(answered({ connections: { total: 1, by_state: { degraded: 1 }, connected: 0 } }))).conns
-        .health
-    ).toBe('degraded');
-
+    // Connections keeps the registry read the room itself uses: the
+    // consolidated call counts brokers only, and the card must not disagree
+    // with the room it opens.
+    const conn = (id: string, state: string, kind = 'broker') => ({
+      id,
+      display_label: id,
+      blurb: '',
+      kind,
+      status: { state },
+      fields: [],
+      asset_kinds: [],
+      test_supported: false,
+      gated: false,
+      gated_reason: '',
+    });
+    expect(deriveRooms(sources({ connections: [conn('a', 'error'), conn('b', 'connected')] })).conns).toMatchObject({
+      health: 'fault',
+      note: '1 of 2 in error',
+    });
+    expect(deriveRooms(sources({ connections: [conn('a', 'degraded')] })).conns.health).toBe('degraded');
     // Keyless by default: an unconfigured connector is a choice, not a problem.
+    expect(deriveRooms(sources({ connections: [conn('a', 'not_configured')] })).conns).toMatchObject({
+      health: 'nominal',
+      note: '0 of 1 connected',
+    });
+    // A data provider counts too — the room lists it, so the card must.
     expect(
-      deriveRooms(sources(answered({ connections: { total: 1, by_state: { not_configured: 1 }, connected: 0 } })))
-        .conns
-    ).toMatchObject({ health: 'nominal', note: '0 of 1 connected' });
+      deriveRooms(sources({ connections: [conn('yf', 'error', 'data_provider')] })).conns.health
+    ).toBe('fault');
   });
 
   it('counts the schedules and the stages the engine reported', () => {

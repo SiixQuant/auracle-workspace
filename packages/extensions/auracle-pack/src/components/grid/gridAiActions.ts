@@ -286,9 +286,13 @@ const CATALOG: readonly AiActionDef[] = [
             operation: 'deploy.liquidate-all',
             room: 'deploys',
             summary:
-              'Flatten every open position on every deployment the engine lists, at market.',
+              'Flatten every open position on every deployment the engine will flatten, at market.',
             fields: [
-              { label: 'Scope', value: 'every deployment the engine lists' },
+              // Stated as the executor actually resolves it: the engine's
+              // lifecycle refuses the verb from some states, and those
+              // deployments are never addressed. Approving this is approving
+              // the set the engine accepts, not a set it would reject half of.
+              { label: 'Scope', value: 'every deployment the engine will accept the verb for' },
               ...readingFields('deploys', vitals),
               { label: 'Affects capital', value: 'yes' },
               { label: 'Reversible', value: 'no, a flattened position cannot be restored' },

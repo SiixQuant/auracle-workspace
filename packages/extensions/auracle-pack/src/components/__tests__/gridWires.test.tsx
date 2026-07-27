@@ -196,6 +196,7 @@ function sources(patch: Partial<VitalSources> = {}): VitalSources {
     qc: null,
     strategies: null,
     orders: null,
+    connections: null,
     run: IDLE_RUN,
     ...patch,
   } as VitalSources;

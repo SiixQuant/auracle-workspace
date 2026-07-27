@@ -32,7 +32,7 @@ import { aiRunStore, approveAiAction, declineAiAction } from './gridAiActions';
 import './gridAiCommands';
 // Same reason, for what the actions DO: the executors register on import, so an
 // action raised from the palette or a room page finds its lane installed.
-import { registerAgentHost } from './gridAiExecutors';
+import { registerAgentHost, unregisterAgentHost } from './gridAiExecutors';
 import { closePalette, isPaletteOpen, subscribePalette, togglePalette } from './gridCommands';
 import { useRoomAiContext } from './gridFocus';
 import { getActiveRoom, subscribeGrid } from './gridNav';
@@ -97,10 +97,11 @@ export function GridPanel(props: PanelHostProps): JSX.Element {
 
   // Hand the executors the host they hand a draft off to. Published from the
   // panel because the module-level registry holds no host of its own, and
-  // withdrawn on unmount so a torn-down panel never lends its lane on.
+  // withdrawn on unmount — but only while it is still this panel's host, so a
+  // second panel taking over is not undone by the first one closing.
   useEffect(() => {
     registerAgentHost(props.host);
-    return () => registerAgentHost(undefined);
+    return () => unregisterAgentHost(props.host);
   }, [props.host]);
 
   /**

@@ -117,16 +117,24 @@ async function toEngineResponse(response: Response): Promise<EngineResponse> {
  * the credential headers this module assembles: a name outside it is dropped,
  * silently and without failing the request.
  */
-const CALLER_HEADERS = new Set(['x-auracle-confirmation']);
+const CALLER_HEADERS = new Map([['x-auracle-confirmation', 'X-Auracle-Confirmation']]);
 
-/** `extra`, reduced to the allowlisted names with usable string values. */
+/**
+ * `extra`, reduced to the allowlisted names with usable string values.
+ *
+ * The CANONICAL spelling is emitted, not the caller's: two differently-cased
+ * copies of one header would otherwise both survive and be joined into a single
+ * comma-joined value the engine cannot read, and a name with stray whitespace
+ * is not a legal header at all.
+ */
 export function callerHeaders(extra: unknown): Record<string, string> {
   if (extra === null || typeof extra !== 'object' || Array.isArray(extra)) return {};
   const out: Record<string, string> = {};
   for (const [name, value] of Object.entries(extra as Record<string, unknown>)) {
-    if (!CALLER_HEADERS.has(name.trim().toLowerCase())) continue;
+    const canonical = CALLER_HEADERS.get(name.trim().toLowerCase());
+    if (canonical === undefined) continue;
     if (typeof value !== 'string' || value.length === 0) continue;
-    out[name] = value;
+    out[canonical] = value;
   }
   return out;
 }
@@ -150,10 +158,12 @@ export async function auracleEngineRequest(
     csrf = csrfToken ?? (await fetchCsrf(config));
   }
 
+  const caller = callerHeaders(extraHeaders);
+
   const doFetch = async (token: string | null): Promise<Response> => {
     // Caller headers first, so the assembled credential headers below always
     // win a name collision rather than being overwritten by the caller's.
-    const headers = { ...callerHeaders(extraHeaders), ...baseHeaders(config, isMutation ? token : null) };
+    const headers = { ...caller, ...baseHeaders(config, isMutation ? token : null) };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     return fetch(`${config.engineUrl}${requestPath}`, {
       method: method.toUpperCase(),
@@ -163,8 +173,18 @@ export async function auracleEngineRequest(
   };
 
   let response = await doFetch(csrf);
-  if (isMutation && response.status === 403) {
-    // Stale or missing CSRF token: refresh once and retry.
+  // Stale or missing CSRF token: refresh once and retry.
+  //
+  // NEVER when the request carries a caller header. The engine's guarded
+  // operations spend theirs on first presentation, and a 403 from one of those
+  // routes can also come from the handler itself — so a blind retry would
+  // resend a stamp that is already used, turn the real reason into "already
+  // used", and cost the operator a second approval for something that was
+  // never going to work. One attempt, and the caller reads the real answer.
+  // Those requests are preceded by an ordinary mutation of their own (the
+  // declaration), which refreshes the shared CSRF token, so the one attempt is
+  // made with a token that was just proven.
+  if (isMutation && response.status === 403 && Object.keys(caller).length === 0) {
     csrf = await fetchCsrf(config);
     response = await doFetch(csrf);
   }

@@ -11,12 +11,18 @@ import { describe, expect, it } from 'vitest';
 import { callerHeaders } from '../AuracleEngineHandlers';
 
 describe('the headers a caller may add', () => {
-  it('keeps the one the engine expects, whatever case it is written in', () => {
+  it('keeps the one the engine expects, and emits it under the one spelling', () => {
     expect(callerHeaders({ 'X-Auracle-Confirmation': 'issued-1' })).toEqual({
       'X-Auracle-Confirmation': 'issued-1',
     });
+    // However the caller wrote it, one canonical name reaches the request —
+    // two spellings of the same header would be joined into one unreadable
+    // value, and a name with stray whitespace is not a legal header at all.
     expect(callerHeaders({ 'x-auracle-confirmation': 'issued-1' })).toEqual({
-      'x-auracle-confirmation': 'issued-1',
+      'X-Auracle-Confirmation': 'issued-1',
+    });
+    expect(callerHeaders({ ' X-Auracle-Confirmation ': 'issued-1' })).toEqual({
+      'X-Auracle-Confirmation': 'issued-1',
     });
   });
 

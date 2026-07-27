@@ -33,7 +33,14 @@ interface PostCall {
 
 const stub = vi.hoisted(() => ({
   gets: {} as Record<string, unknown>,
-  replies: {} as Record<string, { ok: boolean; status: number; body: unknown }>,
+  /** Statuses for reads the engine REFUSES, as against ones it never answered. */
+  getStatus: {} as Record<string, number>,
+  /** A canned answer per path prefix, or a function for one that varies per call. */
+  replies: {} as Record<
+    string,
+    | { ok: boolean; status: number; body: unknown }
+    | (() => { ok: boolean; status: number; body: unknown })
+  >,
   posts: [] as Array<{ path: string; body: unknown; headers: Record<string, string> | undefined }>,
 }));
 
@@ -44,11 +51,19 @@ vi.mock('../../engine/client', () => ({
     }
     return null;
   }),
-  getJsonDetailed: vi.fn(async () => ({ ok: false, status: 0, body: null })),
+  getJsonDetailed: vi.fn(async (path: string) => {
+    for (const [prefix, status] of Object.entries(stub.getStatus)) {
+      if (path.startsWith(prefix)) return { ok: false, status, body: null };
+    }
+    for (const [prefix, body] of Object.entries(stub.gets)) {
+      if (path.startsWith(prefix)) return { ok: true, body };
+    }
+    return { ok: false, status: 0, body: null };
+  }),
   postJson: vi.fn(async (path: string, body?: unknown, headers?: Record<string, string>) => {
     stub.posts.push({ path, body, headers });
     for (const [prefix, reply] of Object.entries(stub.replies)) {
-      if (path.startsWith(prefix)) return reply;
+      if (path.startsWith(prefix)) return typeof reply === 'function' ? reply() : reply;
     }
     // Nothing said otherwise: the engine did not answer.
     return { ok: false, status: 0, body: null };
@@ -137,6 +152,7 @@ function postsTo(prefix: string): PostCall[] {
 
 beforeEach(() => {
   stub.gets = {};
+  stub.getStatus = {};
   stub.replies = {};
   stub.posts = [];
   gridVitals.reset();
@@ -152,6 +168,7 @@ afterEach(async () => {
   repairUndoStore.clear();
   registerAgentHost(undefined);
   stub.gets = {};
+  stub.getStatus = {};
   stub.replies = {};
   stub.posts = [];
   await alertStore.refresh();
@@ -186,8 +203,8 @@ describe('a repair runs as a journalled maintenance operation', () => {
   it('reconnects only the connectors the engine reports in error', async () => {
     stub.gets['/ui/api/connections'] = {
       connections: [
-        { id: 'ibkr', status: { state: 'error' } },
-        { id: 'yfinance', status: { state: 'connected' } },
+        { id: 'ibkr', kind: 'broker', status: { state: 'error' } },
+        { id: 'yfinance', kind: 'data_provider', status: { state: 'connected' } },
       ],
     };
     stub.replies['/ui/api/ops/repair'] = { ok: true, status: 200, body: { entry: { id: 4 } } };
@@ -200,6 +217,27 @@ describe('a repair runs as a journalled maintenance operation', () => {
       actor_class: 'autonomous',
     });
     expect(result.kind).toBe('done');
+  });
+
+  it('leaves an errored connector the operation cannot recycle alone, and says so', async () => {
+    // The engine resolves this operation against its broker and provider
+    // registries; an integration is in neither, so sending it would be asking
+    // for a repair that cannot exist and reporting the 404 as a failure.
+    stub.gets['/ui/api/connections'] = {
+      connections: [
+        { id: 'ibkr', kind: 'broker', status: { state: 'error' } },
+        { id: 'quantconnect', kind: 'integration', status: { state: 'error' } },
+      ],
+    };
+    stub.replies['/ui/api/ops/repair'] = { ok: true, status: 200, body: { entry: { id: 5 } } };
+
+    const result = await run(action('connection.reconnect-errored', 'repair', 'conns'));
+
+    expect(postsTo('/ui/api/ops/repair').map((call) => (call.body as { target: string }).target)).toEqual([
+      'ibkr',
+    ]);
+    expect(result.kind).toBe('done');
+    expect(result.kind === 'done' && result.note).toContain('cannot recycle');
   });
 
   it('reads a refusal of the autonomous class as needing an approved operator', async () => {
@@ -221,6 +259,34 @@ describe('a repair runs as a journalled maintenance operation', () => {
     expect(result.kind === 'failed' && result.note).toContain('needs an approved operator');
     // Nothing landed, so nothing is offered to put back.
     expect(repairUndoStore.getSnapshot()).toBeNull();
+  });
+
+  it('does not read every refusal as an authority one', async () => {
+    // The same status carries the plan-cap and licence refusals. Calling one of
+    // those "requires approval" would send someone after a permission that was
+    // never the problem.
+    stub.gets['/deployments'] = [deployment(1, 'errored')];
+    stub.replies['/ui/api/ops/repair'] = {
+      ok: false,
+      status: 403,
+      body: { detail: 'your plan allows 3 deployments; this one would be the 4th' },
+    };
+
+    const result = await run(action('deploy.restart-errored', 'repair', 'deploys'));
+
+    expect(result.kind).toBe('failed');
+    expect(result.kind === 'failed' && result.note).toContain('your plan allows 3 deployments');
+    expect(result.kind === 'failed' && result.note).not.toContain('requires approval');
+  });
+
+  it('says a refused listing is a refusal, not an engine that went quiet', async () => {
+    stub.getStatus['/deployments'] = 500;
+
+    const result = await run(action('deploy.restart-errored', 'repair', 'deploys'));
+
+    expect(result.kind).toBe('failed');
+    expect(result.kind === 'failed' && result.note).toContain('would not list');
+    expect(result.kind === 'failed' && result.note).not.toContain('did not answer');
   });
 
   it('sends nothing when the fault cleared between the press and the call', async () => {
@@ -497,6 +563,34 @@ describe('the strip offers to put the last repair back', () => {
     expect(postsTo('/ui/api/ops/journal/42/undo')).toHaveLength(1);
     // Reversed once: the offer is withdrawn rather than left to be pressed again.
     expect(screen.queryByTestId('grid-ai-strip-undo')).toBeNull();
+    expect(repairUndoStore.getSnapshot()).toBeNull();
+  });
+
+  it('reverses every entry a multi-target repair created, not only the last', async () => {
+    serveDeployments([deployment(1, 'errored'), deployment(2, 'errored')]);
+    // Two targets, so the engine journals two entries.
+    let nextEntry = 0;
+    stub.replies['/ui/api/ops/repair'] = () => {
+      nextEntry += 1;
+      return { ok: true, status: 200, body: { entry: { id: nextEntry } } };
+    };
+    stub.replies['/ui/api/ops/journal'] = { ok: true, status: 200, body: { entry: {} } };
+
+    render(<GridPanel {...HOST_PROPS} />);
+    await settle();
+    fireEvent.click(screen.getByTestId('grid-ai-strip-repair'));
+    await flush();
+
+    expect(repairUndoStore.getSnapshot()?.entryIds).toEqual(['1', '2']);
+
+    fireEvent.click(screen.getByTestId('grid-ai-strip-undo'));
+    await flush();
+
+    // Newest first: a chain of changes comes apart in the order it went on.
+    expect(postsTo('/ui/api/ops/journal').map((call) => call.path)).toEqual([
+      '/ui/api/ops/journal/2/undo',
+      '/ui/api/ops/journal/1/undo',
+    ]);
     expect(repairUndoStore.getSnapshot()).toBeNull();
   });
 

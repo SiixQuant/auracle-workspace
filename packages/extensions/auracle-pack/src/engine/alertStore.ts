@@ -6,8 +6,13 @@
  * very incident feed the Incidents surface reads and labels "N open" — the
  * caller's dismissals honored, the same bounded lookback — so the badge and the
  * room cannot drift, and a user can always verify the badge by opening that
- * room and counting the rows. Reading it here rather than fetching the feed
- * again is what lets the badge and the Grid sheet share one call.
+ * room and counting the rows. Reading the figure the engine already computes,
+ * rather than fetching and measuring the feed again, is also what puts the
+ * badge and the Grid sheet on the same call.
+ *
+ * They still each pay for their own read of it: the badge lives in the rail and
+ * is mounted whether or not the Grid is, so it cannot be a projection of a
+ * store that only polls while the sheet is on screen.
  *
  * HONESTY: an engine that did not answer (or is too old to serve the route)
  * reads ZERO, never the last count it managed to fetch. A badge still claiming

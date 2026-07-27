@@ -38,7 +38,7 @@
  * and every reversal, stays in the Incidents room; this is the one-press
  * version of the row you just created.
  */
-import { useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { gridVitals, type GridVitals } from '../../engine/gridVitals';
 import { tone } from '../panelkit';
 import { DISTRICTS } from './districts';
@@ -135,6 +135,14 @@ export function GridAiStrip(): JSX.Element {
   );
   const [undoing, setUndoing] = useState(false);
   const [undoNote, setUndoNote] = useState<string | null>(null);
+
+  // A refusal explains ONE outcome. When the outcome moves on, so does it —
+  // otherwise the reason the last reversal failed sits under the next action's
+  // result, describing something that is no longer on screen.
+  const outcome = run.outcome;
+  useEffect(() => {
+    setUndoNote(null);
+  }, [outcome]);
 
   const fault = firstFault(vitals);
   const state = run.running !== null ? 'working' : fault !== null ? 'proposing' : 'nominal';

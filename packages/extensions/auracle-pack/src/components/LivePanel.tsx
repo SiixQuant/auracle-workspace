@@ -461,6 +461,39 @@ function statePill(state: string): 'ok' | 'danger' | 'caution' | 'muted' {
   return isActive(state) ? 'caution' : 'muted';
 }
 
+/**
+ * What a surrounding room frame needs to headline this desk: the rows it is
+ * ACTUALLY showing, not a second read of `/deployments`. Counts stay null
+ * until the desk has an answer, so a frame rendering this never shows a zero
+ * it cannot back.
+ */
+export interface LiveDeskSummary {
+  phase: 'loading' | 'ready' | 'unreachable';
+  deployed: number | null;
+  active: number | null;
+  errored: number | null;
+  /** Total equity across the rows that reported one. */
+  equity: number | null;
+}
+
+function summarizeDesk(
+  phase: LiveDeskSummary['phase'],
+  rows: Deployment[]
+): LiveDeskSummary {
+  if (phase !== 'ready') {
+    return { phase, deployed: null, active: null, errored: null, equity: null };
+  }
+  const funded = rows.filter((row) => typeof row.equity === 'number' && Number.isFinite(row.equity));
+  return {
+    phase,
+    deployed: rows.length,
+    active: rows.filter((row) => isActive(row.state)).length,
+    errored: rows.filter((row) => row.state === 'errored').length,
+    // Only rows that reported equity contribute; none reporting means no total.
+    equity: funded.length > 0 ? funded.reduce((sum, row) => sum + (row.equity as number), 0) : null,
+  };
+}
+
 /** A deployable strategy as the picker lists it — `path` is the import module
  *  (post-split), `cls` the class; the deploy loader needs them separately. */
 interface PickerStrategy {
@@ -1108,7 +1141,14 @@ function LedgerView({ deployment }: { deployment: Deployment }) {
   );
 }
 
-export function LiveAlgorithmsPanel({ host }: PanelHostProps): JSX.Element {
+export function LiveAlgorithmsPanel({
+  host,
+  onSummary,
+}: PanelHostProps & {
+  /** Report the desk's headline counts to a room frame. Optional — the panel
+   *  is unchanged when nothing is listening. */
+  onSummary?: (summary: LiveDeskSummary) => void;
+}): JSX.Element {
   const [model, setModel] = useState<LiveAlgorithms>({ rows: [], selected: null });
   const [phase, setPhase] = useState<'loading' | 'ready' | 'unreachable'>('loading');
   const [view, setView] = useState<'table' | 'wizard'>('table');
@@ -1211,6 +1251,14 @@ export function LiveAlgorithmsPanel({ host }: PanelHostProps): JSX.Element {
       offGeneration();
     };
   }, [load]);
+
+  // The room frame headlines the rows this desk is showing, from this panel's
+  // own state — one read of the engine, one set of numbers. Reported above the
+  // wizard branch below so the frame's figures survive opening the wizard,
+  // which is a view of this same room rather than a different one.
+  useEffect(() => {
+    onSummary?.(summarizeDesk(phase, model.rows));
+  }, [phase, model.rows, onSummary]);
 
   const dispatch = async (id: number, action: LiveAction) => {
     if (isDestructive(action) && pendingConfirm?.id !== id) {

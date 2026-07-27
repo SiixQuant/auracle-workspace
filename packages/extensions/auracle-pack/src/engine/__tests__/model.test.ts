@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   Connector,
+  connectorTag,
   defaultExpanded,
   isConnected,
   normalizeConnector,
@@ -48,5 +49,40 @@ describe('engine model helpers (ported native tests)', () => {
     expect(isConnected(connector.status)).toBe(true);
     expect(connector.test_supported).toBe(true);
     expect(connector.gated).toBe(false);
+  });
+});
+
+describe('the shared connector status tag', () => {
+  it('claims connected only when the engine says so', () => {
+    expect(connectorTag(conn('connected'))).toEqual({ kind: 'ok', label: 'Connected' });
+  });
+
+  it('reads a keyless source as ready, not as unconfigured', () => {
+    const keyless = normalizeConnector({ id: 'yfinance', status: { state: 'not_configured' } });
+    expect(connectorTag(keyless)).toEqual({ kind: 'ok', label: 'Ready' });
+  });
+
+  it('carries the engine detail on an error', () => {
+    const errored = normalizeConnector({
+      id: 'polygon',
+      status: { state: 'error', detail: 'key rejected' },
+    });
+    expect(connectorTag(errored)).toEqual({ kind: 'danger', label: 'key rejected' });
+    expect(connectorTag(conn('error'))).toEqual({ kind: 'danger', label: 'Error' });
+  });
+
+  it('shows an in-between state as it is rather than flattening it', () => {
+    expect(connectorTag(conn('reconnecting'))).toEqual({
+      kind: 'caution',
+      label: 'reconnecting',
+    });
+  });
+
+  it('falls back to not configured for an empty or unset state', () => {
+    expect(connectorTag(conn(''))).toEqual({ kind: 'muted', label: 'Not configured' });
+    expect(connectorTag(conn('not_configured'))).toEqual({
+      kind: 'muted',
+      label: 'Not configured',
+    });
   });
 });

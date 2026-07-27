@@ -74,10 +74,11 @@ export function GridPanel(props: PanelHostProps): JSX.Element {
 
   /**
    * The shortcut, scoped to this panel by FOCUS rather than by a manifest
-   * keybinding. The SDK's `contributions.keybindings` can only bind to a
-   * panel's auto-registered toggle command and fires app-wide with no
-   * when-clause, so declaring one there would take the combination away from
-   * every other surface — see the palette issue notes.
+   * keybinding. The SDK's `contributions.keybindings` is the only keybinding
+   * surface an extension has, and it can address exactly one kind of command:
+   * a panel's auto-registered TOGGLE. It cannot reach an action inside a
+   * panel, and it carries no when-clause, so a declared binding would fire
+   * app-wide and could still not open this palette.
    *
    * Capture phase at the window, because the host's own global shortcut layer
    * listens there in capture and calls `stopPropagation()` — a bubble-phase

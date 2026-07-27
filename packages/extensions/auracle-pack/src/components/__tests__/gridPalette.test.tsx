@@ -39,6 +39,7 @@ import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import { GridPanel } from '../grid/GridPanel';
 import { closePalette, registerCommandProvider } from '../grid/gridCommands';
 import { getActiveRoom, openGridHome } from '../grid/gridNav';
+import { ROOMS, ROOM_IDS } from '../grid/rooms';
 import { alertStore } from '../../engine/alertStore';
 import { gridVitals } from '../../engine/gridVitals';
 
@@ -220,6 +221,24 @@ describe('typing narrows, Enter routes', () => {
 
     expect(getActiveRoom()).toBe('validation');
     expect(screen.queryByTestId('grid-palette')).toBeNull();
+  });
+
+  // The issue's own acceptance line: EVERY room is reachable from the keyboard
+  // alone. A title can narrow to more than one row (a room's blurb may name
+  // another room's subject), so the walk to the target is part of the flow.
+  it.each(ROOM_IDS)('reaches the %s room by typing its name', (id) => {
+    renderGrid();
+    openFromRoot();
+
+    type(ROOMS[id].title);
+    const target = rowIds().indexOf(`room-${id}`);
+    expect(target).toBeGreaterThanOrEqual(0);
+    for (let step = 0; step < target; step += 1) {
+      fireEvent.keyDown(input(), { key: 'ArrowDown' });
+    }
+    fireEvent.keyDown(input(), { key: 'Enter' });
+
+    expect(getActiveRoom()).toBe(id);
   });
 
   it('walks the highlight with the arrows and runs the row it lands on', () => {

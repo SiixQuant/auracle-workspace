@@ -30,19 +30,25 @@
  */
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
-import { alertStore } from '../../engine/alertStore';
-import { backtestStore } from '../../engine/backtestStore';
+import { gridVitals } from '../../engine/gridVitals';
 import { EmbeddedShellContext, ensurePanelKitStyles, numeric, tone } from '../panelkit';
 import { getZoomOrigin, openGridHome, openRoom, zoomOriginFrom } from './gridNav';
 import { ROOMS, type RoomId } from './rooms';
-import { WIRED_TO, faultedRooms } from './wiring';
+import { WIRED_TO } from './wiring';
 
 /** How a room reports itself: red needs you, amber is degraded, green is fine. */
 export type RoomStatus = 'attention' | 'degraded' | 'nominal';
 
-/** One headline figure. `value: null` renders the quiet placeholder — a room
- *  that cannot read a number says so rather than showing the last one it saw. */
-export interface RoomVital {
+/**
+ * One headline figure on a room page. `value: null` renders the quiet
+ * placeholder — a page that cannot read a number says so rather than showing
+ * the last one it saw.
+ *
+ * Named apart from the sheet's `RoomVital` (engine/gridVitals) because they
+ * answer different questions: that one is a room's health as the PLAN reads it
+ * from a distance, this one is a figure the page states in full.
+ */
+export interface PageVital {
   label: string;
   value: string | null;
   /** Semantic ink for the figure. Omitted = neutral. */
@@ -134,15 +140,21 @@ export function RoomPage({
   status: RoomStatus;
   statusLabel?: string;
   context: string;
-  vitals?: RoomVital[];
+  vitals?: PageVital[];
   children: ReactNode;
 }): JSX.Element {
   ensurePanelKitStyles();
   ensureRoomStyles();
   const pageRef = useRef<HTMLElement | null>(null);
-  const alerts = useSyncExternalStore(alertStore.subscribe, alertStore.getSnapshot, () => 0);
-  const backtest = useSyncExternalStore(backtestStore.subscribe, backtestStore.getSnapshot);
-  const faulted = faultedRooms(alerts, backtest.phase);
+  // The chips' fault flags come from the SHEET's readings, not a second
+  // derivation: a room the plan drew with a red dot has to be flagged the same
+  // way wherever else it is named, or the two surfaces argue in front of the
+  // user. Subscribing keeps the flag live while the room stays open.
+  const vitalsByRoom = useSyncExternalStore(
+    gridVitals.subscribe,
+    gridVitals.getSnapshot,
+    gridVitals.getSnapshot
+  );
 
   // Read once, on mount: the transition belongs to this page's arrival, and the
   // origin that produced it cannot change while it is showing.
@@ -320,7 +332,13 @@ export function RoomPage({
             Wired to
           </span>
           {WIRED_TO[room].map((target) => {
-            const hasFault = faulted.has(target);
+            const reading = vitalsByRoom[target];
+            const hasFault = reading.health === 'fault';
+            // A flagged chip carries the room's own note, so the reason travels
+            // with the flag instead of costing a trip to find out.
+            const chipTitle = hasFault
+              ? `${ROOMS[target].title} needs attention${reading.note ? ` — ${reading.note}` : ''}`
+              : ROOMS[target].title;
             return (
               <button
                 key={target}
@@ -328,7 +346,7 @@ export function RoomPage({
                 className="auracle-room__chip"
                 data-testid={`room-wired-${target}`}
                 data-fault={hasFault ? 'true' : undefined}
-                title={hasFault ? `${ROOMS[target].title} needs attention` : ROOMS[target].title}
+                title={chipTitle}
                 onClick={(event) => openRoom(target, zoomOriginFrom(event.currentTarget))}
               >
                 {ROOMS[target].title}

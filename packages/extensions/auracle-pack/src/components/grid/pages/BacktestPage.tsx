@@ -17,7 +17,7 @@ import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import { backtestStore, type BacktestSnapshot } from '../../../engine/backtestStore';
 import { EM_DASH, RF_ZERO_SENTENCE, headlineCards } from '../../../engine/houseStats';
 import { BacktestPanel } from '../../BacktestPanel';
-import { RoomPage, type RoomStatus, type RoomVital } from '../RoomPage';
+import { RoomPage, type RoomStatus, type PageVital } from '../RoomPage';
 
 function state(snap: BacktestSnapshot): { status: RoomStatus; label?: string } {
   switch (snap.phase) {
@@ -75,7 +75,7 @@ export function BacktestPage({ host }: PanelHostProps): JSX.Element {
     return typeof value === 'string' && value !== EM_DASH ? value : null;
   };
 
-  const vitals: RoomVital[] = [
+  const vitals: PageVital[] = [
     { label: 'CAGR', value: figure('CAGR') },
     { label: 'Sharpe', value: figure('Sharpe') },
     { label: 'max drawdown', value: figure('Max drawdown'), emphasis: 'bad' },

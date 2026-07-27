@@ -14,7 +14,7 @@ import { useState } from 'react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import { duration } from '../../../engine/format';
 import { ResearchPanel, type ResearchSummary } from '../../ResearchPanel';
-import { RoomPage, type RoomStatus, type RoomVital } from '../RoomPage';
+import { RoomPage, type RoomStatus, type PageVital } from '../RoomPage';
 
 /** A figure the engine gave us, or null for the frame's quiet placeholder. */
 function figure(n: number | null | undefined): string | null {
@@ -41,7 +41,7 @@ export function FindingsPage({ host }: PanelHostProps): JSX.Element {
   const [summary, setSummary] = useState<ResearchSummary | null>(null);
   const { status, label } = state(summary);
 
-  const vitals: RoomVital[] = [
+  const vitals: PageVital[] = [
     { label: 'findings', value: figure(summary?.findings) },
     { label: 'top score', value: figure(summary?.topScore) },
     { label: 'since scan', value: since(summary?.lastScan ?? null) },

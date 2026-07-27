@@ -14,7 +14,7 @@ import { useState } from 'react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import type { ValidationVerdict } from '../../../engine/validation';
 import { ValidationPanel } from '../../ValidationPanel';
-import { RoomPage, type RoomStatus, type RoomVital } from '../RoomPage';
+import { RoomPage, type RoomStatus, type PageVital } from '../RoomPage';
 
 interface Rail {
   healthy: number;
@@ -43,7 +43,7 @@ export function ValidationPage({ host }: PanelHostProps): JSX.Element {
   const counts = rail(verdict);
   const { status, label } = state(counts);
 
-  const vitals: RoomVital[] = [
+  const vitals: PageVital[] = [
     { label: 'healthy', value: counts ? String(counts.healthy) : null },
     { label: 'need attention', value: counts ? String(counts.red) : null, emphasis: 'bad' },
     { label: 'not checked', value: counts ? String(counts.unknown) : null, emphasis: 'warn' },

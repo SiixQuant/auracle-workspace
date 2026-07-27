@@ -12,7 +12,7 @@
 import { useState } from 'react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import { QcImportPanel, type QcLibrarySummary } from '../../QcImportPanel';
-import { RoomPage, type RoomStatus, type RoomVital } from '../RoomPage';
+import { RoomPage, type RoomStatus, type PageVital } from '../RoomPage';
 
 function state(summary: QcLibrarySummary | null): { status: RoomStatus; label?: string } {
   if (!summary || summary.phase === 'loading') return { status: 'degraded', label: 'reading' };
@@ -26,7 +26,7 @@ export function QcPage({ host }: PanelHostProps): JSX.Element {
   const [summary, setSummary] = useState<QcLibrarySummary | null>(null);
   const { status, label } = state(summary);
 
-  const vitals: RoomVital[] = [
+  const vitals: PageVital[] = [
     { label: 'projects', value: typeof summary?.projects === 'number' ? String(summary.projects) : null },
     { label: 'record home', value: 'QC' },
   ];

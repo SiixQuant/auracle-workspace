@@ -13,12 +13,13 @@
  */
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { panels } from '../../index';
 import { alertStore } from '../../engine/alertStore';
+import { gridVitals } from '../../engine/gridVitals';
 import { openGridHome, openRoom } from '../grid/gridNav';
-import { faultedRooms } from '../grid/wiring';
-import type { RoomId } from '../grid/rooms';
+import { WIRED_TO } from '../grid/wiring';
+import { ROOM_IDS, type RoomId } from '../grid/rooms';
 
 vi.mock('../../engine/client', () => ({
   authState: vi.fn(async () => ({ signedIn: true })),
@@ -55,11 +56,12 @@ const FINDING = {
 const STRATEGY = { path: 'strategies.alpha.AlphaOne', doc: 'A workspace strategy' };
 const QC_PROJECT = { projectId: 7, name: 'Pairs research', language: 'Py' };
 
-/** No incidents unless a test says otherwise — the honest default. */
-let incidents: unknown[] = [];
+/** Nothing wrong anywhere unless a test says otherwise — the honest default. */
+let deployments: unknown[] = [];
 
 async function defaultGetJson(path: string): Promise<unknown> {
-  if (path.startsWith('/ui/api/incidents')) return { incidents };
+  if (path.startsWith('/deployments')) return deployments;
+  if (path.startsWith('/ui/api/incidents')) return { incidents: [] };
   if (path.startsWith('/ui/api/quantconnect/projects')) {
     return { connected: true, projects: [QC_PROJECT] };
   }
@@ -86,19 +88,21 @@ function renderGrid(room: RoomId) {
 }
 
 beforeEach(() => {
-  incidents = [];
+  deployments = [];
   vi.mocked(getJson).mockImplementation(defaultGetJson as never);
   vi.mocked(getJsonDetailed).mockImplementation(defaultGetJsonDetailed as never);
+  gridVitals.reset();
 });
 
 afterEach(async () => {
   cleanup();
   openGridHome();
   vi.restoreAllMocks();
-  // The alert count is module state; leave it at zero for the next case.
-  incidents = [];
+  // Both stores are module state; leave them quiet for the next case.
+  deployments = [];
   vi.mocked(getJson).mockImplementation(defaultGetJson as never);
   await alertStore.refresh();
+  gridVitals.reset();
 });
 
 describe('the room page frame', () => {
@@ -112,8 +116,11 @@ describe('the room page frame', () => {
     expect(screen.getByTestId('room-status')).toBeTruthy();
     expect(screen.getByTestId('room-context').textContent).toBeTruthy();
 
-    // The vitals are the panel's own feed, once it has loaded.
-    expect((await screen.findByTestId('room-vital-top-score')).textContent).toContain('87');
+    // The vitals are the panel's own feed, once it has loaded — the figure has
+    // to ARRIVE, not merely have a slot reserved for it.
+    await waitFor(() => {
+      expect(screen.getByTestId('room-vital-top-score').textContent).toContain('87');
+    });
     expect(screen.getByTestId('room-vital-findings').textContent).toContain('1');
 
     const wired = screen.getByTestId('room-wired');
@@ -170,8 +177,10 @@ describe('the room page frame', () => {
     expect(room.textContent).toContain('not built yet');
   });
 
-  it('flags a wired chip whose room holds an open fault', async () => {
-    incidents = [{ id: 1, title: 'A deployment stopped' }];
+  it('flags a wired chip from the same reading the plan draws its dot from', async () => {
+    // One errored deployment is a FAULT in the sheet's vitals, so the chip that
+    // names that room has to carry the flag too.
+    deployments = [{ id: 1, name: 'a', strategy_path: 's.S', state: 'errored', positions: [] }];
     renderGrid('validation');
 
     expect(await screen.findByTestId('room-wired-fault-deploys')).toBeTruthy();
@@ -199,16 +208,16 @@ describe('the room page frame', () => {
   });
 });
 
-describe('faults are read from what the pack already knows', () => {
-  it('an open incident flags the room that lists it and the deployments it is about', () => {
-    const faulted = faultedRooms(1, 'idle');
-    expect([...faulted].sort()).toEqual(['deploys', 'incidents']);
+describe('the wiring covers the whole plan', () => {
+  it('names only rooms that exist, and never wires a room to itself', () => {
+    for (const [room, targets] of Object.entries(WIRED_TO) as Array<[RoomId, RoomId[]]>) {
+      expect(targets).not.toContain(room);
+      for (const target of targets) expect(ROOM_IDS).toContain(target);
+    }
   });
 
-  it('a failed or unreachable run flags the Backtest room', () => {
-    expect(faultedRooms(0, 'failed').has('backtest')).toBe(true);
-    expect(faultedRooms(0, 'engine-down').has('backtest')).toBe(true);
-    expect(faultedRooms(0, 'succeeded').size).toBe(0);
+  it('gives every room somewhere to go', () => {
+    for (const room of ROOM_IDS) expect(WIRED_TO[room].length).toBeGreaterThan(0);
   });
 });
 

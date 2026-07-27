@@ -28,7 +28,7 @@
 import { useSyncExternalStore, type CSSProperties } from 'react';
 import { gridVitals, type GridVitals, type Health, type RoomVital } from '../../engine/gridVitals';
 import { tint, tone } from '../panelkit';
-import { openRoom } from './gridNav';
+import { openRoom, zoomOriginFrom } from './gridNav';
 import { DISTRICTS, ROOM_ICONS, districtHealth, districtSummary, roomsNeedingAttention, type District } from './districts';
 import { ROOMS, ROOM_IDS, type RoomId } from './rooms';
 
@@ -133,7 +133,9 @@ function RoomCard({ id, vital }: { id: RoomId; vital: RoomVital }): JSX.Element 
         data-health={vital.health}
         aria-label={label}
         title={label}
-        onClick={() => openRoom(id)}
+        // The room page zooms out of the card that was pressed, so the press
+        // and the arrival read as one gesture rather than a screen swap.
+        onClick={(event) => openRoom(id, zoomOriginFrom(event.currentTarget))}
       >
         <span className="agrid__rtop">
           <span className="material-symbols-outlined agrid__rico" aria-hidden>

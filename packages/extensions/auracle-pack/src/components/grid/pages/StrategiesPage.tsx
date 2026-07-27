@@ -43,7 +43,7 @@ import {
   tone,
 } from '../../panelkit';
 import { backtestOption, deployOption } from '../../spineActions';
-import { RoomPage, type RoomStatus, type RoomVital } from '../RoomPage';
+import { RoomPage, type RoomStatus, type PageVital } from '../RoomPage';
 
 type ListState =
   | { phase: 'loading' }
@@ -157,7 +157,7 @@ export function StrategiesPage({ host }: PanelHostProps): JSX.Element {
   const ready = list.phase === 'ready' ? list : null;
   const focusedFile = focus.strategy?.filePath ?? null;
 
-  const vitals: RoomVital[] = [
+  const vitals: PageVital[] = [
     { label: 'runnable', value: ready ? String(ready.options.length) : null },
     {
       label: 'not runnable',

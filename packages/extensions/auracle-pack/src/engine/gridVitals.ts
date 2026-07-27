@@ -47,6 +47,17 @@ export interface RoomVital {
   /** A short fragment the district's summary line is composed from. Null when
    *  the room has nothing worth saying at district altitude. */
   fact: string | null;
+  /**
+   * What this reading is ABOUT, when it is about named things — the errored
+   * deployments behind a faulted `deploys`, say. Empty when the room's reading
+   * names nothing.
+   *
+   * It lives on the vital rather than being re-fetched by whoever wants to
+   * name the trouble, so a surface that says "one alert, and it is THIS one"
+   * is quoting the same reading the sheet drew its red dot from. Nothing
+   * derives the fault a second time: `health` is still the only state.
+   */
+  subjects: readonly string[];
 }
 
 export type GridVitals = Readonly<Record<RoomId, RoomVital>>;
@@ -79,10 +90,18 @@ export interface VitalSources {
 
 /* ── derivation (pure) ──────────────────────────────────────────────── */
 
-const QUIET: RoomVital = { health: 'nominal', note: null, fact: null };
+/** Shared empty list — a reading that names nothing allocates nothing. */
+const NO_SUBJECTS: readonly string[] = [];
 
-function vital(health: Health, note: string | null, fact: string | null = null): RoomVital {
-  return { health, note, fact };
+const QUIET: RoomVital = { health: 'nominal', note: null, fact: null, subjects: NO_SUBJECTS };
+
+function vital(
+  health: Health,
+  note: string | null,
+  fact: string | null = null,
+  subjects: readonly string[] = NO_SUBJECTS
+): RoomVital {
+  return { health, note, fact, subjects };
 }
 
 function count(n: number, one: string, many = `${one}s`): string {
@@ -168,10 +187,20 @@ function validationVital(validation: BacktestSnapshot['validation']): RoomVital 
 function deploysVital(rows: Deployment[] | null): RoomVital {
   if (rows === null) return QUIET;
   if (rows.length === 0) return vital('nominal', 'nothing deployed');
-  const errored = rows.filter((row) => row.state === DEPLOY_FAILED_STATE).length;
+  const failed = rows.filter((row) => row.state === DEPLOY_FAILED_STATE);
   const running = rows.filter((row) => isActive(row.state)).length;
-  if (errored > 0) {
-    return vital('fault', `${running} running · ${errored} errored`, `${errored} errored`);
+  if (failed.length > 0) {
+    // The names travel with the reading, so an annotation can say WHICH
+    // deployment stopped without going back to the feed for a second opinion.
+    // A row the engine sent without a name is identified by its id rather than
+    // rendered blank.
+    const named = failed.map((row) => row.name || `deployment ${row.id}`);
+    return vital(
+      'fault',
+      `${running} running · ${failed.length} errored`,
+      `${failed.length} errored`,
+      named
+    );
   }
   return vital('nominal', `${running} running of ${rows.length}`, `${running} running`);
 }
@@ -276,11 +305,19 @@ let stopGenerationWatch: (() => void) | null = null;
 let stopAlertWatch: (() => void) | null = null;
 let stopRunWatch: (() => void) | null = null;
 
+function sameSubjects(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((name, i) => name === b[i]);
+}
+
 function unchanged(a: GridVitals, b: GridVitals): boolean {
   for (const key of Object.keys(a) as RoomId[]) {
     if (a[key].health !== b[key].health || a[key].note !== b[key].note || a[key].fact !== b[key].fact) {
       return false;
     }
+    // A note that reads the same while the NAMES behind it changed (one
+    // deployment recovers as another fails) is still a moved reading — the
+    // annotation is naming a different thing.
+    if (!sameSubjects(a[key].subjects, b[key].subjects)) return false;
   }
   return true;
 }

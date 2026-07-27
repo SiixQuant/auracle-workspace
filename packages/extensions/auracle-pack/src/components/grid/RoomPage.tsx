@@ -31,7 +31,13 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { gridVitals } from '../../engine/gridVitals';
-import { EmbeddedShellContext, ensurePanelKitStyles, numeric, tone } from '../panelkit';
+import {
+  EmbeddedShellContext,
+  ensurePanelKitStyles,
+  numeric,
+  prefersReducedMotion,
+  tone,
+} from '../panelkit';
 import { getZoomOrigin, openGridHome, openRoom, zoomOriginFrom } from './gridNav';
 import { ROOMS, type RoomId } from './rooms';
 import { WIRED_TO } from './wiring';
@@ -105,17 +111,6 @@ function ensureRoomStyles(): void {
   el.id = STYLE_ID;
   el.textContent = SHEET;
   document.head.appendChild(el);
-}
-
-/** Whether the reader asked the system for less motion. Absent matchMedia
- *  (an old host, a test environment) is treated as "no preference". */
-function prefersReducedMotion(): boolean {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
-  try {
-    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  } catch {
-    return false;
-  }
 }
 
 /** An element that owns the Escape key itself (a field the reader is typing in). */

@@ -103,6 +103,26 @@ export const numeric: CSSProperties = { fontVariantNumeric: 'tabular-nums', font
 export const trendColor = (n: number | null | undefined): string =>
   typeof n !== 'number' || n === 0 ? tone.text3 : n > 0 ? tone.ok : tone.danger;
 
+/**
+ * Whether the reader asked the system for less motion.
+ *
+ * The stylesheet answers this too, in `@media (prefers-reduced-motion)`. This
+ * is the same question asked in JS, for the cases CSS cannot cover: an
+ * animation that is a DOM node rather than a property (an SVG `animateMotion`),
+ * where the honest response is not to render it at all.
+ *
+ * Absent `matchMedia` (an older host, a test environment) reads as "no
+ * preference stated", which is what a browser without the query means.
+ */
+export function prefersReducedMotion(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
+}
+
 /* ── injected stylesheet (once) ─────────────────────────────────────── */
 
 const STYLE_ID = 'auracle-panelkit-styles';

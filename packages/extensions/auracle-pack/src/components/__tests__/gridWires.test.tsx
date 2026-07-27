@@ -53,7 +53,8 @@ import { ROOM_IDS, type RoomId } from '../grid/rooms';
 import { alertStore } from '../../engine/alertStore';
 import type { BacktestSnapshot } from '../../engine/backtestStore';
 import type { Deployment } from '../../engine/live';
-import { deriveRooms, gridVitals, type VitalSources } from '../../engine/gridVitals';
+import { deriveRooms, erroredNames, gridVitals, type VitalSources } from '../../engine/gridVitals';
+import { deploymentsBlock, summaryBody } from '../../engine/__tests__/summaryFixture';
 
 /* ── a tree-tier layout, described because jsdom lays nothing out ───── */
 
@@ -190,18 +191,29 @@ const IDLE_RUN: BacktestSnapshot = {
 
 function sources(patch: Partial<VitalSources> = {}): VitalSources {
   return {
-    findings: null,
+    summary: null,
+    errored: null,
     qc: null,
     strategies: null,
-    run: IDLE_RUN,
-    deployments: null,
     orders: null,
-    incidents: null,
-    schedules: null,
-    runway: null,
-    connections: null,
+    run: IDLE_RUN,
     ...patch,
   } as VitalSources;
+}
+
+/** The readings an engine reporting `rows` produces: the consolidated counts
+ *  plus the names behind whichever of them are errored. */
+function deployed(rows: Deployment[], patch: Parameters<typeof summaryBody>[0] = {}): Partial<VitalSources> {
+  return {
+    summary: summaryBody({ deployments: deploymentsBlock(rows), ...patch }),
+    errored: erroredNames(rows),
+  };
+}
+
+/** The same deployments, served over the wire the store actually reads. */
+function serveDeployments(rows: Deployment[]): void {
+  stub.feeds['/ui/api/summary'] = summaryBody({ deployments: deploymentsBlock(rows) });
+  stub.feeds['/deployments'] = rows;
 }
 
 describe('the routing keeps its lanes', () => {
@@ -273,7 +285,7 @@ describe('an edge speaks as loudly as the room it watches', () => {
 
   it('leaves every unwatched edge quiet whatever the readings say', () => {
     const faulted = deriveRooms(
-      sources({ deployments: [deployment(1, 'errored')], incidents: 4 })
+      sources({ ...deployed([deployment(1, 'errored')]), summary: summaryBody({ deployments: deploymentsBlock([deployment(1, 'errored')]), open_alerts: 4 }) })
     );
     const { wires } = layoutWires(ALL_BOXES, faulted);
     for (const wire of wires) {
@@ -285,16 +297,14 @@ describe('an edge speaks as loudly as the room it watches', () => {
 
 describe('the alert line quotes the reading', () => {
   it('names the errored deployment, and counts them', () => {
-    const one = deriveRooms(sources({ deployments: [deployment(7, 'errored')] }));
+    const one = deriveRooms(sources(deployed([deployment(7, 'errored')])));
     expect(sheetAlert(one)).toEqual({
       active: true,
       text: '1 alert — gap_fade_r7 → Deployments',
     });
 
     const several = deriveRooms(
-      sources({
-        deployments: [deployment(7, 'errored'), deployment(8, 'errored')],
-      })
+      sources(deployed([deployment(7, 'errored'), deployment(8, 'errored')]))
     );
     expect(sheetAlert(several).text).toBe('2 alerts — gap_fade_r7 and 1 more → Deployments');
   });
@@ -384,7 +394,7 @@ describe('the overlay draws on the full tree only', () => {
 
 describe('the sheet raises the alarm the readings raise', () => {
   it('reddens the incident edge, pulses it, and pins an annotation', async () => {
-    stub.feeds['/deployments'] = [deployment(1, 'running'), deployment(2, 'errored')];
+    serveDeployments([deployment(1, 'running'), deployment(2, 'errored')]);
     render(<GridSheet />);
     await settle();
 
@@ -407,12 +417,12 @@ describe('the sheet raises the alarm the readings raise', () => {
   });
 
   it('puts the alarm away the moment the deployment recovers', async () => {
-    stub.feeds['/deployments'] = [deployment(1, 'errored')];
+    serveDeployments([deployment(1, 'errored')]);
     render(<GridSheet />);
     await settle();
     expect(wiresOfKind('err')).toHaveLength(1);
 
-    stub.feeds['/deployments'] = [deployment(1, 'running')];
+    serveDeployments([deployment(1, 'running')]);
     await settle();
 
     expect(wiresOfKind('err')).toHaveLength(0);
@@ -425,7 +435,7 @@ describe('the sheet raises the alarm the readings raise', () => {
   });
 
   it('opens the deployments room when the annotation is pressed', async () => {
-    stub.feeds['/deployments'] = [deployment(1, 'errored')];
+    serveDeployments([deployment(1, 'errored')]);
     render(<GridSheet />);
     await settle();
 
@@ -459,7 +469,7 @@ describe('a reduced-motion session gets no pulse', () => {
     })) as typeof window.matchMedia;
 
     try {
-      stub.feeds['/deployments'] = [deployment(1, 'errored')];
+      serveDeployments([deployment(1, 'errored')]);
       render(<GridSheet />);
       await settle();
 

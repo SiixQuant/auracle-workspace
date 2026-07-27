@@ -138,14 +138,18 @@ export type AiExecutor = (intent: ActionIntent) => Promise<AiActionResult>;
 const executors = new Map<string, AiExecutor>();
 
 /**
- * Install the executor for one operation. Returns the disposer that removes it
- * again — the same shape as the palette's provider registry, so a later lane
- * (or a test) can install and withdraw without leaking into the next one.
+ * Install the executor for one operation. Returns the disposer that puts back
+ * whatever was there before — the same shape as the palette's provider
+ * registry, so a later lane (or a test) can install over an existing executor
+ * and withdraw without leaving the operation less wired than it found it.
  */
 export function registerAiExecutor(operation: string, executor: AiExecutor): () => void {
+  const previous = executors.get(operation);
   executors.set(operation, executor);
   return () => {
-    if (executors.get(operation) === executor) executors.delete(operation);
+    if (executors.get(operation) !== executor) return;
+    if (previous === undefined) executors.delete(operation);
+    else executors.set(operation, previous);
   };
 }
 

@@ -57,6 +57,76 @@ export type JournalLoad =
 export const APPLIED = 'applied';
 
 const JOURNAL_PATH = '/ui/api/ops/journal';
+const REPAIR_PATH = '/ui/api/ops/repair';
+
+/**
+ * The authority class a request declares.
+ *
+ * `autonomous` says an agent acted on its own, and the ENGINE accepts it only
+ * for paper-scope targets — the scope being resolved from the target's own
+ * record, never from anything the request claims. A repair raised by the
+ * assistant therefore declares `autonomous` and lets the engine refuse it where
+ * the refusal belongs, rather than deciding its own authority on the way out.
+ */
+export const AUTONOMOUS = 'autonomous';
+
+/** The maintenance operations this client asks for by name. */
+export const REDEPLOY_DEPLOYMENT = 'redeploy_deployment';
+export const RESTART_DATA_FEED = 'restart_data_feed';
+
+/** How one repair ended. */
+export interface RepairOutcome {
+  ok: boolean;
+  status: number;
+  /** The journal id the engine recorded, so the caller can offer its undo. */
+  entryId: string | null;
+  /** The engine's own reason, when it gave one. */
+  message: string | null;
+  /**
+   * True when the engine refused the AUTHORITY rather than the operation: the
+   * target did not resolve to paper scope, so this needs an approved operator.
+   * Distinct from an operation the engine cannot run at all, which no amount of
+   * approving changes.
+   */
+  needsApproval: boolean;
+}
+
+/**
+ * Run one maintenance operation and report what the engine said.
+ *
+ * The journal row lands before the operation runs, so a successful outcome
+ * always carries an id the undo route can address — which is what lets a
+ * surface offer "put that back" without re-deriving what "back" was.
+ */
+export async function applyRepair(
+  action: string,
+  target: string,
+  actorClass: string = AUTONOMOUS
+): Promise<RepairOutcome> {
+  const response = await postJson(REPAIR_PATH, {
+    action,
+    target,
+    actor_class: actorClass,
+  });
+  const body = (response.body ?? {}) as Record<string, unknown>;
+  if (response.ok) {
+    const entry = normalizeEntry(body.entry);
+    return {
+      ok: true,
+      status: response.status,
+      entryId: entry?.id ?? null,
+      message: null,
+      needsApproval: false,
+    };
+  }
+  return {
+    ok: false,
+    status: response.status,
+    entryId: null,
+    message: str(body.detail) ?? str(body.error) ?? str(body.message),
+    needsApproval: response.status === 403,
+  };
+}
 
 /** Fields an object-shaped `target` / `inverse` may name itself with, in the
  *  order a reader would prefer to see. */

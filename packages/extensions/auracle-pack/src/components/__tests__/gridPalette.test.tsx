@@ -42,6 +42,7 @@ import { getActiveRoom, openGridHome } from '../grid/gridNav';
 import { ROOMS, ROOM_IDS } from '../grid/rooms';
 import { alertStore } from '../../engine/alertStore';
 import { gridVitals } from '../../engine/gridVitals';
+import { deploymentsBlock, summaryBody } from '../../engine/__tests__/summaryFixture';
 
 /** The Grid uses its host props only to hand them to a room page; the plan and
  *  the palette need none of them. */
@@ -116,6 +117,15 @@ afterEach(async () => {
   await alertStore.refresh();
   gridVitals.reset();
 });
+
+/** The engine's consolidated call, describing `rows`, plus the naming read the
+ *  sheet follows it with when one of them is errored. */
+function serveDeployments(rows: Array<Record<string, unknown>>): void {
+  stub.feeds['/ui/api/summary'] = summaryBody({
+    deployments: deploymentsBlock(rows as Array<{ state: string }>),
+  });
+  stub.feeds['/deployments'] = rows;
+}
 
 describe('the shortcut belongs to the focused panel', () => {
   it('ignores the shortcut until focus is inside the Grid, then toggles', () => {
@@ -365,7 +375,7 @@ describe('commands come from providers', () => {
 
 describe('the palette reads the system state', () => {
   it('floats a faulted room to the top and marks it', async () => {
-    stub.feeds['/deployments'] = [deployment(1, 'errored')];
+    serveDeployments([deployment(1, 'errored')]);
     renderGrid();
     await settle();
 

@@ -1,37 +1,50 @@
 /**
  * The Grid sheet's vitals — one live reading per room.
  *
- * There is no consolidated engine summary route, so this composes the sheet's
- * readings from the SAME sources the pre-Grid panels read: the deployments
- * list, the order feed, the schedule table, the runway stages, the connection
- * registry, the research feed, the QuantConnect project list, the strategy
- * discovery route, plus two in-process stores (alertStore for open incidents,
- * backtestStore for the session's run and its validation). Nothing here
- * computes a number the engine did not supply.
+ * ## One call for the districts the engine consolidates
+ * The engine serves `GET /ui/api/summary`: every district's vitals in one pass,
+ * fanned in server-side from the same store queries each room's own endpoint
+ * uses. So the sheet asks once instead of once per room, and the home can never
+ * disagree with the room you open from it — they are reading the same query.
  *
- * HONESTY: a source that did not answer reads QUIET — no note, no figure —
- * never the last value it managed to fetch. A number that survives its source
- * going dark is worse than no number, because the sheet's whole job is to say
- * what is true right now. The one deliberate inheritance is the incident
- * count: alertStore reports ZERO for an engine that did not answer (its
- * documented badge contract), so "none open" here means exactly what the rail
- * badge means.
+ * Three rooms are NOT in that payload, because the engine has no district block
+ * for them: the QuantConnect project list, the deployable-strategy list, and
+ * the order blotter. Those keep their own reads, on the slow lane, and the
+ * table below says so rather than pretending the one call covers everything.
  *
- * FIRST PAINT: the snapshot is a plain module-level object, so a mount reads
- * it synchronously and paints immediately — from an empty (quiet) table on the
+ * ## Counts come from the summary; names do not
+ * The consolidated payload is counts. When it reports errored deployments the
+ * sheet needs to NAME them — the AI strip says which deployment stopped rather
+ * than how many — so one detail read follows, and ONLY then. Nothing is
+ * errored, nothing extra is fetched: the steady state is a single request.
+ *
+ * ## Honesty
+ * A source that did not answer reads QUIET — no note, no figure — never the
+ * last value it managed to fetch. A number that survives its source going dark
+ * is worse than no number, because the sheet's whole job is to say what is true
+ * right now. The engine applies the same rule inside the one call: a district
+ * whose read failed comes back null and names itself in `degraded`, and a null
+ * block lands here as quiet exactly like an unanswered fetch.
+ *
+ * Validation is the one block that is null BY DESIGN — the engine measures the
+ * overfit signals on demand and no run stores its tally — so that reading stays
+ * client-derived from the session's own run, which is the only place the answer
+ * exists at all.
+ *
+ * ## First paint
+ * The snapshot is a plain module-level object, so a mount reads it
+ * synchronously and paints immediately — from an empty (quiet) table on the
  * first visit, and from the last readings on every later one. Fetches never
  * gate the first frame; they replace it when they land.
  *
- * COST: polling is lazy and stops with the last subscriber, so the sheet costs
- * nothing while a room is open or the Grid is closed. Operate-side feeds move
- * fastest, so they are on the short interval; the rest are on the long one.
+ * ## Cost
+ * Polling is lazy and stops with the last subscriber, so the sheet costs
+ * nothing while a room is open or the Grid is closed.
  */
 import { getJson, onConnectGeneration } from './client';
-import { alertStore } from './alertStore';
 import { backtestStore, type BacktestSnapshot } from './backtestStore';
-import { DEPLOY_FAILED_STATE, isActive, type Deployment } from './live';
-import { isConnected, type Connector } from './model';
-import type { BlotterOrder, StageTruth } from './monitors';
+import { DEPLOY_FAILED_STATE, type Deployment } from './live';
+import type { BlotterOrder } from './monitors';
 // Type-only: erased at build time, so the engine layer keeps no runtime
 // dependency on the component that owns the room table.
 import type { RoomId } from '../components/grid/rooms';
@@ -62,30 +75,76 @@ export interface RoomVital {
 
 export type GridVitals = Readonly<Record<RoomId, RoomVital>>;
 
-/** A finding as the sheet reads it — the feed is engine-ranked, so the first
- *  row carries the top score and no client-side sorting happens here. */
-interface FeedFinding {
-  score?: unknown;
+/* ── the consolidated payload ───────────────────────────────────────── */
+
+/** The research district's block. */
+export interface ResearchBlock {
+  findings?: number | null;
+  top_score?: number | null;
 }
 
-interface ScheduleLine {
-  enabled?: boolean;
+/** The deployments district's block — counts only; no names. */
+export interface DeploymentsBlock {
+  total?: number | null;
+  running?: number | null;
+  errored?: number | null;
+}
+
+export interface SchedulesBlock {
+  total?: number | null;
+  active?: number | null;
+}
+
+/** Connector health as the engine's in-memory poll cache reports it. */
+export interface ConnectionsBlock {
+  total?: number | null;
+  by_state?: Record<string, number> | null;
+  connected?: number | null;
+}
+
+export interface RunwayBlock {
+  /** Stage name → the engine's own reached word (`yes` when it has been). */
+  reached?: Record<string, string> | null;
+}
+
+/**
+ * `GET /ui/api/summary`. Every block is optional and nullable because the
+ * engine returns null for a district whose read failed — that is the honest
+ * shape, and reading it as anything else would invent a number.
+ */
+export interface SummaryBody {
+  /** The open-incident count — the incidents feed's own length. */
+  open_alerts?: number | null;
+  research?: ResearchBlock | null;
+  deployments?: DeploymentsBlock | null;
+  schedules?: SchedulesBlock | null;
+  connections?: ConnectionsBlock | null;
+  runway?: RunwayBlock | null;
+  /** The districts whose read failed, by name. */
+  degraded?: string[];
+}
+
+/** A schedule/QC/strategy row is only ever counted, so nothing is typed. */
+interface QcBody {
+  connected?: boolean;
+  projects?: unknown[];
 }
 
 /** Everything the readings are derived from. Null means "no answer yet". */
 export interface VitalSources {
-  findings: FeedFinding[] | null;
-  qc: { connected?: boolean; projects?: unknown[] } | null;
+  /** The one consolidated read. */
+  summary: SummaryBody | null;
+  /**
+   * The errored deployments by name, read only when the summary reports some.
+   * Null when nothing has been read; empty when nothing is errored.
+   */
+  errored: string[] | null;
+  /** Rooms the consolidated payload has no block for. */
+  qc: QcBody | null;
   strategies: unknown[] | null;
+  orders: BlotterOrder[] | null;
   /** Always present: an in-process store, not a fetch. */
   run: BacktestSnapshot;
-  deployments: Deployment[] | null;
-  orders: BlotterOrder[] | null;
-  /** Open-incident count from alertStore, or null before its first read. */
-  incidents: number | null;
-  schedules: ScheduleLine[] | null;
-  runway: Record<string, StageTruth> | null;
-  connections: Connector[] | null;
 }
 
 /* ── derivation (pure) ──────────────────────────────────────────────── */
@@ -108,22 +167,24 @@ function count(n: number, one: string, many = `${one}s`): string {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-/** The research feed is served capped, so a full page is reported as "N+" —
- *  the sheet never states a total the route did not establish. */
-export const FINDINGS_LIMIT = 20;
-
-function findingsVital(rows: FeedFinding[] | null): RoomVital {
-  if (rows === null) return QUIET;
-  if (rows.length === 0) return vital('nominal', 'no findings yet');
-  const capped = rows.length >= FINDINGS_LIMIT;
-  const many = capped ? `${FINDINGS_LIMIT}+ findings` : count(rows.length, 'finding');
-  const top = rows[0]?.score;
-  const note =
-    typeof top === 'number' && Number.isFinite(top) ? `${many} · top ${Math.round(top)}` : many;
-  return vital('nominal', note, many);
+/** A block's figure as a number, or null when the engine did not state one.
+ *  An absent field is never read as zero: "none" and "not reported" are
+ *  different answers and the sheet must not merge them. */
+function figure(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
-function qcVital(body: VitalSources['qc']): RoomVital {
+function findingsVital(block: ResearchBlock | null | undefined): RoomVital {
+  if (!block) return QUIET;
+  const findings = figure(block.findings);
+  if (findings === null) return QUIET;
+  if (findings === 0) return vital('nominal', 'no findings yet');
+  const many = count(findings, 'finding');
+  const top = figure(block.top_score);
+  return vital('nominal', top === null ? many : `${many} · top ${Math.round(top)}`, many);
+}
+
+function qcVital(body: QcBody | null): RoomVital {
   if (body === null) return QUIET;
   // A QuantConnect account that was never connected is a choice, not a fault.
   if (body.connected === false) return vital('nominal', 'not connected');
@@ -184,25 +245,33 @@ function validationVital(validation: BacktestSnapshot['validation']): RoomVital 
   }
 }
 
-function deploysVital(rows: Deployment[] | null): RoomVital {
-  if (rows === null) return QUIET;
-  if (rows.length === 0) return vital('nominal', 'nothing deployed');
-  const failed = rows.filter((row) => row.state === DEPLOY_FAILED_STATE);
-  const running = rows.filter((row) => isActive(row.state)).length;
-  if (failed.length > 0) {
-    // The names travel with the reading, so an annotation can say WHICH
-    // deployment stopped without going back to the feed for a second opinion.
-    // A row the engine sent without a name is identified by its id rather than
-    // rendered blank.
-    const named = failed.map((row) => row.name || `deployment ${row.id}`);
+/**
+ * The deployments reading: counts from the consolidated payload, names from the
+ * detail read that follows a reported fault.
+ *
+ * A fault whose names have not landed yet still faults — the dot is drawn from
+ * the count the engine gave, and the naming catches up. It never waits on the
+ * second read to tell the truth about the first.
+ */
+function deploysVital(
+  block: DeploymentsBlock | null | undefined,
+  errored: string[] | null
+): RoomVital {
+  if (!block) return QUIET;
+  const total = figure(block.total);
+  if (total === null) return QUIET;
+  if (total === 0) return vital('nominal', 'nothing deployed');
+  const running = figure(block.running) ?? 0;
+  const failed = figure(block.errored) ?? 0;
+  if (failed > 0) {
     return vital(
       'fault',
-      `${running} running · ${failed.length} errored`,
-      `${failed.length} errored`,
-      named
+      `${running} running · ${failed} errored`,
+      `${failed} errored`,
+      errored ?? NO_SUBJECTS
     );
   }
-  return vital('nominal', `${running} running of ${rows.length}`, `${running} running`);
+  return vital('nominal', `${running} running of ${total}`, `${running} running`);
 }
 
 function blotterVital(rows: BlotterOrder[] | null): RoomVital {
@@ -217,53 +286,61 @@ function incidentsVital(open: number | null): RoomVital {
   return open === 0 ? vital('nominal', 'none open') : vital('fault', `${open} open`, `${open} open`);
 }
 
-function schedulesVital(rows: ScheduleLine[] | null): RoomVital {
-  if (rows === null) return QUIET;
-  if (rows.length === 0) return vital('nominal', 'nothing scheduled');
-  const enabled = rows.filter((row) => row.enabled === true).length;
-  return vital('nominal', `${enabled} enabled of ${rows.length}`, `${enabled} enabled`);
+function schedulesVital(block: SchedulesBlock | null | undefined): RoomVital {
+  if (!block) return QUIET;
+  const total = figure(block.total);
+  if (total === null) return QUIET;
+  if (total === 0) return vital('nominal', 'nothing scheduled');
+  const enabled = figure(block.active) ?? 0;
+  return vital('nominal', `${enabled} enabled of ${total}`, `${enabled} enabled`);
 }
 
-function runwayVital(stages: Record<string, StageTruth> | null): RoomVital {
-  if (stages === null) return QUIET;
+function runwayVital(block: RunwayBlock | null | undefined): RoomVital {
+  if (!block) return QUIET;
+  const stages = block.reached;
+  if (!stages) return QUIET;
   const names = Object.keys(stages);
   if (names.length === 0) return vital('nominal', 'no stages reported');
-  const reached = names.filter((name) => stages[name]?.reached === 'yes').length;
+  const reached = names.filter((name) => stages[name] === 'yes').length;
   return vital('nominal', `${reached} of ${names.length} stages reached`, `${reached}/${names.length} stages`);
 }
 
 /** Connector states that mean "wired but not healthy" — worth an amber dot,
  *  not a red one. `not_configured` is deliberately absent: the platform is
  *  keyless by default, so an unconfigured connector is a choice. */
-const DEGRADED_CONN_STATES = new Set(['degraded', 'disconnected', 'connecting', 'reconnecting']);
+const DEGRADED_CONN_STATES = ['degraded', 'disconnected', 'connecting', 'reconnecting'];
 
-function connsVital(rows: Connector[] | null): RoomVital {
-  if (rows === null) return QUIET;
-  if (rows.length === 0) return vital('nominal', 'none available');
-  const errored = rows.filter((row) => row.status?.state === 'error').length;
-  if (errored > 0) return vital('fault', `${errored} of ${rows.length} in error`, `${errored} in error`);
-  const degraded = rows.filter((row) => DEGRADED_CONN_STATES.has(row.status?.state ?? '')).length;
+function connsVital(block: ConnectionsBlock | null | undefined): RoomVital {
+  if (!block) return QUIET;
+  const total = figure(block.total);
+  if (total === null) return QUIET;
+  if (total === 0) return vital('nominal', 'none available');
+  const by = block.by_state ?? {};
+  const errored = figure(by.error) ?? 0;
+  if (errored > 0) return vital('fault', `${errored} of ${total} in error`, `${errored} in error`);
+  const degraded = DEGRADED_CONN_STATES.reduce((sum, state) => sum + (figure(by[state]) ?? 0), 0);
   if (degraded > 0) {
-    return vital('degraded', `${degraded} of ${rows.length} degraded`, `${degraded} degraded`);
+    return vital('degraded', `${degraded} of ${total} degraded`, `${degraded} degraded`);
   }
-  const connected = rows.filter((row) => isConnected(row.status)).length;
-  return vital('nominal', `${connected} of ${rows.length} connected`, `${connected}/${rows.length} up`);
+  const connected = figure(block.connected) ?? 0;
+  return vital('nominal', `${connected} of ${total} connected`, `${connected}/${total} up`);
 }
 
 /** Every room's reading, from whatever the sources currently hold. */
 export function deriveRooms(sources: VitalSources): GridVitals {
+  const summary = sources.summary;
   return {
-    findings: findingsVital(sources.findings),
+    findings: findingsVital(summary?.research),
     qc: qcVital(sources.qc),
     strategies: strategiesVital(sources.strategies),
     backtest: backtestVital(sources.run),
     validation: validationVital(sources.run.validation),
-    deploys: deploysVital(sources.deployments),
+    deploys: deploysVital(summary?.deployments, sources.errored),
     blotter: blotterVital(sources.orders),
-    incidents: incidentsVital(sources.incidents),
-    schedules: schedulesVital(sources.schedules),
-    runway: runwayVital(sources.runway),
-    conns: connsVital(sources.connections),
+    incidents: incidentsVital(figure(summary?.open_alerts)),
+    schedules: schedulesVital(summary?.schedules),
+    runway: runwayVital(summary?.runway),
+    conns: connsVital(summary?.connections),
   };
 }
 
@@ -276,23 +353,23 @@ export function worseHealth(a: Health, b: Health): Health {
 
 /* ── store ──────────────────────────────────────────────────────────── */
 
-/** Operate-side feeds: the ones a user watches while something is running. */
+/** The consolidated read: everything a person watches while something runs. */
 const FAST_MS = 30_000;
-/** Everything else — a project list or a stage table does not move by the second. */
+/** The three rooms the summary has no block for. A project list or a strategy
+ *  list does not move by the second. */
 const SLOW_MS = 60_000;
+
+/** Where the districts come from, in one call. */
+export const SUMMARY_PATH = '/ui/api/summary';
 
 function emptySources(): VitalSources {
   return {
-    findings: null,
+    summary: null,
+    errored: null,
     qc: null,
     strategies: null,
-    run: backtestStore.getSnapshot(),
-    deployments: null,
     orders: null,
-    incidents: null,
-    schedules: null,
-    runway: null,
-    connections: null,
+    run: backtestStore.getSnapshot(),
   };
 }
 
@@ -302,7 +379,6 @@ const listeners = new Set<() => void>();
 let fastTimer: ReturnType<typeof setInterval> | null = null;
 let slowTimer: ReturnType<typeof setInterval> | null = null;
 let stopGenerationWatch: (() => void) | null = null;
-let stopAlertWatch: (() => void) | null = null;
 let stopRunWatch: (() => void) | null = null;
 
 function sameSubjects(a: readonly string[], b: readonly string[]): boolean {
@@ -345,63 +421,60 @@ function rowsOf<T>(body: unknown, key: string): T[] | null {
   return Array.isArray(value) ? (value as T[]) : [];
 }
 
-async function readFast(): Promise<void> {
-  const [deployments, orders, schedules] = await Promise.all([
-    getJson<Deployment[]>('/deployments'),
-    getJson<{ orders?: BlotterOrder[] }>('/ui/api/orders'),
-    getJson<{ schedules?: ScheduleLine[] }>('/ui/api/schedules.json'),
-  ]);
-  apply({
-    deployments: Array.isArray(deployments) ? deployments : null,
-    orders: rowsOf<BlotterOrder>(orders, 'orders'),
-    schedules: rowsOf<ScheduleLine>(schedules, 'schedules'),
-  });
-}
-
-async function readSlow(): Promise<void> {
-  const [findings, qc, strategies, runway, connections] = await Promise.all([
-    getJson<{ findings?: FeedFinding[] }>(`/ui/api/research/feed?limit=${FINDINGS_LIMIT}`),
-    getJson<{ connected?: boolean; projects?: unknown[] }>('/ui/api/quantconnect/projects'),
-    getJson<{ strategies?: unknown[] }>('/ui/api/backtest/strategies?deployable=1'),
-    getJson<{ stages?: Record<string, StageTruth> }>('/ui/api/runway'),
-    getJson<{ connections?: Connector[] }>('/ui/api/connections?kind=all'),
-  ]);
-  apply({
-    findings: rowsOf<FeedFinding>(findings, 'findings'),
-    qc,
-    strategies: rowsOf<unknown>(strategies, 'strategies'),
-    runway: runway === null ? null : ((runway.stages ?? {}) as Record<string, StageTruth>),
-    connections: rowsOf<Connector>(connections, 'connections'),
-  });
+/**
+ * The errored deployments as the engine names them, for the reading that has to
+ * say WHICH one stopped. A row the engine sent without a name is identified by
+ * its id rather than rendered blank.
+ */
+export function erroredNames(rows: Deployment[] | null): string[] | null {
+  if (rows === null) return null;
+  return rows
+    .filter((row) => row.state === DEPLOY_FAILED_STATE)
+    .map((row) => row.name || `deployment ${row.id}`);
 }
 
 /**
- * The open-alert count, read through the store the rail badge reads. That
- * store only notifies when the count CHANGES, so a genuinely empty feed would
- * never announce itself — one explicit read is what tells the sheet the
- * difference between "nothing read yet" (quiet) and "none open".
+ * The one consolidated read, plus the naming read it triggers only when the
+ * engine reports a deployment errored. Nothing errored, one request.
  */
-async function readAlerts(): Promise<void> {
-  await alertStore.refresh();
-  apply({ incidents: alertStore.getSnapshot() });
+async function readSummary(): Promise<void> {
+  const summary = await getJson<SummaryBody>(SUMMARY_PATH);
+  if (summary === null || (figure(summary.deployments?.errored) ?? 0) === 0) {
+    apply({ summary, errored: summary === null ? null : [] });
+    return;
+  }
+  const rows = await getJson<Deployment[]>('/deployments');
+  apply({ summary, errored: erroredNames(Array.isArray(rows) ? rows : null) });
+}
+
+/** The three rooms the consolidated payload carries no block for. */
+async function readUncovered(): Promise<void> {
+  const [qc, strategies, orders] = await Promise.all([
+    getJson<QcBody>('/ui/api/quantconnect/projects'),
+    getJson<{ strategies?: unknown[] }>('/ui/api/backtest/strategies?deployable=1'),
+    getJson<{ orders?: BlotterOrder[] }>('/ui/api/orders'),
+  ]);
+  apply({
+    qc,
+    strategies: rowsOf<unknown>(strategies, 'strategies'),
+    orders: rowsOf<BlotterOrder>(orders, 'orders'),
+  });
 }
 
 function start(): void {
   if (fastTimer !== null) return;
-  // In-process stores first: they answer synchronously, so the sheet's second
+  // The in-process store first: it answers synchronously, so the sheet's second
   // frame already carries the session's run and its validation.
   stopRunWatch = backtestStore.subscribe(() => apply({ run: backtestStore.getSnapshot() }));
-  stopAlertWatch = alertStore.subscribe(() => apply({ incidents: alertStore.getSnapshot() }));
   apply({ run: backtestStore.getSnapshot() });
-  void readAlerts();
-  void readFast();
-  void readSlow();
-  fastTimer = setInterval(() => void readFast(), FAST_MS);
-  slowTimer = setInterval(() => void readSlow(), SLOW_MS);
+  void readSummary();
+  void readUncovered();
+  fastTimer = setInterval(() => void readSummary(), FAST_MS);
+  slowTimer = setInterval(() => void readUncovered(), SLOW_MS);
   // A reconnect (new key, engine restarted) invalidates every reading at once.
   stopGenerationWatch = onConnectGeneration(() => {
-    void readFast();
-    void readSlow();
+    void readSummary();
+    void readUncovered();
   });
 }
 
@@ -412,8 +485,6 @@ function stop(): void {
   slowTimer = null;
   stopGenerationWatch?.();
   stopGenerationWatch = null;
-  stopAlertWatch?.();
-  stopAlertWatch = null;
   stopRunWatch?.();
   stopRunWatch = null;
 }
@@ -436,7 +507,7 @@ export const gridVitals = {
 
   /** Read every source now (a manual refresh, and what the tests drive). */
   async refresh(): Promise<void> {
-    await Promise.all([readFast(), readSlow(), readAlerts()]);
+    await Promise.all([readSummary(), readUncovered()]);
   },
 
   /** Drop every reading back to quiet. Tests use it for isolation; nothing in

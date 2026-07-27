@@ -311,6 +311,46 @@ const MOCK_CONNECTORS = [
   { id: 'quantconnect', display_label: 'QuantConnect', blurb: 'Cloud backtesting + live', kind: 'integration', status: { state: 'error', detail: 'token expired' }, test_supported: true },
 ];
 
+/**
+ * The engine's consolidated status call, composed from the very mocks the
+ * per-room routes above serve — so the harness plan and the harness rooms tell
+ * the same story rather than two.
+ */
+const MOCK_SUMMARY = () => {
+  const byState: Record<string, number> = {};
+  for (const connector of MOCK_CONNECTORS) {
+    byState[connector.status.state] = (byState[connector.status.state] ?? 0) + 1;
+  }
+  return {
+    as_of: new Date().toISOString(),
+    open_alerts: MOCK_INCIDENTS.incidents.length,
+    research: {
+      findings: MOCK_RESEARCH_FEED.findings.length,
+      top_score: Math.round(MOCK_RESEARCH_FEED.findings[0].score * 100),
+    },
+    deployments: {
+      total: MOCK_DEPLOYMENTS.length,
+      running: MOCK_DEPLOYMENTS.filter((row) => row.state === 'running').length,
+      errored: MOCK_DEPLOYMENTS.filter((row) => row.state === 'errored').length,
+    },
+    schedules: {
+      total: MOCK_SCHEDULES.schedules.length,
+      active: MOCK_SCHEDULES.schedules.filter((row) => row.enabled).length,
+    },
+    connections: {
+      total: MOCK_CONNECTORS.length,
+      by_state: byState,
+      connected: byState.connected ?? 0,
+    },
+    runway: {
+      reached: Object.fromEntries(
+        Object.entries(MOCK_RUNWAY.stages).map(([name, stage]) => [name, stage.reached])
+      ),
+    },
+    degraded: [],
+  };
+};
+
 const connectorDetail = (id: string) => {
   const base = MOCK_CONNECTORS.find((c) => c.id === id) ?? MOCK_CONNECTORS[0];
   return {
@@ -331,6 +371,7 @@ function engineRequest(method: string, path: string): { ok: boolean; status: num
   if (/^\/deployments\/\d+\/orders/.test(p)) return ok(MOCK_ORDERS);
   if (p === '/deployments') return ok(MOCK_DEPLOYMENTS);
   if (p.startsWith('/ui/api/orders')) return ok(MOCK_BLOTTER);
+  if (p.startsWith('/ui/api/summary')) return ok(MOCK_SUMMARY());
   if (p.startsWith('/ui/api/incidents')) return ok(MOCK_INCIDENTS);
   if (p.startsWith('/ui/api/schedules')) return ok(MOCK_SCHEDULES);
   if (p.startsWith('/ui/api/runway')) return ok(MOCK_RUNWAY);

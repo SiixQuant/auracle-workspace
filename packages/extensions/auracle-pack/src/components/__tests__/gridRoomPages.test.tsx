@@ -17,6 +17,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { panels } from '../../index';
 import { alertStore } from '../../engine/alertStore';
 import { gridVitals } from '../../engine/gridVitals';
+import { deploymentsBlock, summaryBody } from '../../engine/__tests__/summaryFixture';
 import { openGridHome, openRoom } from '../grid/gridNav';
 import { WIRED_TO } from '../grid/wiring';
 import { ROOM_IDS, type RoomId } from '../grid/rooms';
@@ -61,6 +62,11 @@ let deployments: unknown[] = [];
 
 async function defaultGetJson(path: string): Promise<unknown> {
   if (path.startsWith('/deployments')) return deployments;
+  // The consolidated status call, describing the same deployments the naming
+  // read above serves, so the sheet's dot and this page's chips agree.
+  if (path.startsWith('/ui/api/summary')) {
+    return summaryBody({ deployments: deploymentsBlock(deployments as Array<{ state: string }>) });
+  }
   if (path.startsWith('/ui/api/incidents')) return { incidents: [] };
   if (path.startsWith('/ui/api/quantconnect/projects')) {
     return { connected: true, projects: [QC_PROJECT] };

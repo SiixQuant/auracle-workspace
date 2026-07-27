@@ -38,6 +38,7 @@ import { ROOM_CONTEXT } from '../grid/roomContext';
 import { openGridHome, openRoom } from '../grid/gridNav';
 import { alertStore } from '../../engine/alertStore';
 import { gridVitals } from '../../engine/gridVitals';
+import { deploymentsBlock, summaryBody } from '../../engine/__tests__/summaryFixture';
 
 /** A deployment row shaped as the engine serves it. */
 function deployment(id: number, state: string): Record<string, unknown> {
@@ -105,9 +106,18 @@ afterEach(async () => {
   gridVitals.reset();
 });
 
+/** The engine's consolidated call, describing `rows`, plus the naming read the
+ *  sheet follows it with when one of them is errored. */
+function serveDeployments(rows: Array<Record<string, unknown>>): void {
+  stub.feeds['/ui/api/summary'] = summaryBody({
+    deployments: deploymentsBlock(rows as Array<{ state: string }>),
+  });
+  stub.feeds['/deployments'] = rows;
+}
+
 describe('the hover peek', () => {
   it('lifts after the delay, carrying the room reading and what the room is for', async () => {
-    stub.feeds['/deployments'] = [deployment(1, 'running'), deployment(2, 'running')];
+    serveDeployments([deployment(1, 'running'), deployment(2, 'running')]);
     render(<GridSheet />);
     await settle();
 
@@ -240,7 +250,7 @@ describe('folding a district', () => {
   });
 
   it('keeps reporting the worst room it contains while folded', async () => {
-    stub.feeds['/deployments'] = [deployment(1, 'errored')];
+    serveDeployments([deployment(1, 'errored')]);
     render(<GridSheet />);
     await settle();
 

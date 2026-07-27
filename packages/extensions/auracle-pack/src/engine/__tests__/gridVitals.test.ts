@@ -5,10 +5,16 @@
  * was never taken), a source that answered with nothing produces a stated
  * zero, and only conditions the engine actually reported raise a dot above
  * nominal.
+ *
+ * Most of the table now comes from ONE consolidated call, so the honesty rule
+ * has a second half worth pinning: a district the engine could not read comes
+ * back as a null BLOCK inside an otherwise healthy payload, and that has to
+ * land as quiet — not as a zero, and not as the last number the block held.
  */
 import { describe, expect, it } from 'vitest';
-import { deriveRooms, worseHealth, type VitalSources } from '../gridVitals';
+import { deriveRooms, erroredNames, worseHealth, type VitalSources } from '../gridVitals';
 import type { BacktestSnapshot } from '../backtestStore';
+import { summaryBody } from './summaryFixture';
 
 const IDLE_RUN: BacktestSnapshot = {
   file: null,
@@ -27,31 +33,20 @@ const IDLE_RUN: BacktestSnapshot = {
 
 function sources(patch: Partial<VitalSources> = {}): VitalSources {
   return {
-    findings: null,
+    summary: null,
+    errored: null,
     qc: null,
     strategies: null,
-    run: IDLE_RUN,
-    deployments: null,
     orders: null,
-    incidents: null,
-    schedules: null,
-    runway: null,
     connections: null,
+    run: IDLE_RUN,
     ...patch,
   };
 }
 
-/** A deployment row, trimmed to the fields the reading uses. */
-function deployment(id: number, state: string) {
-  return {
-    id,
-    name: `s${id}`,
-    strategy_path: `strategies.s${id}.S`,
-    broker: 'paper',
-    mode: 'paper',
-    state,
-    positions: [],
-  };
+/** An answered engine, with one block patched to whatever the case is about. */
+function answered(patch: Parameters<typeof summaryBody>[0] = {}): Partial<VitalSources> {
+  return { summary: summaryBody(patch), errored: [] };
 }
 
 describe('an unanswered source says nothing', () => {
@@ -65,46 +60,89 @@ describe('an unanswered source says nothing', () => {
 
   it('every fetched room carries no note at all', () => {
     // The two store-fed rooms (backtest, validation) always have a session
-    // state to state; every route-fed room stays blank until its route answers.
+    // state to state; every fetched room stays blank until the engine answers.
     for (const id of ['findings', 'qc', 'strategies', 'deploys', 'blotter', 'incidents', 'schedules', 'runway', 'conns'] as const) {
       expect(rooms[id].note).toBeNull();
     }
   });
 });
 
+describe('a district the engine could not read stays quiet', () => {
+  it('reads a null block as nothing, never as zero', () => {
+    const rooms = deriveRooms(
+      sources(
+        answered({
+          deployments: null,
+          schedules: null,
+          research: null,
+          runway: null,
+          open_alerts: null,
+          degraded: ['deployments', 'schedules', 'research', 'runway', 'incidents'],
+        })
+      )
+    );
+    for (const id of ['deploys', 'schedules', 'findings', 'runway', 'incidents'] as const) {
+      expect(rooms[id]).toMatchObject({ health: 'nominal', note: null, fact: null });
+    }
+  });
+});
+
 describe('an answered source states what it found', () => {
-  it('distinguishes an empty feed from an absent one', () => {
-    expect(deriveRooms(sources({ deployments: [] })).deploys.note).toBe('nothing deployed');
-    expect(deriveRooms(sources({ deployments: null })).deploys.note).toBeNull();
-    expect(deriveRooms(sources({ incidents: 0 })).incidents.note).toBe('none open');
-    expect(deriveRooms(sources({ incidents: null })).incidents.note).toBeNull();
+  it('distinguishes an empty district from an absent one', () => {
+    expect(deriveRooms(sources(answered())).deploys.note).toBe('nothing deployed');
+    expect(deriveRooms(sources()).deploys.note).toBeNull();
+    expect(deriveRooms(sources(answered())).incidents.note).toBe('none open');
+    expect(deriveRooms(sources({ summary: summaryBody({ open_alerts: null }) })).incidents.note).toBeNull();
   });
 
   it('faults on an errored deployment and on an open incident', () => {
     const rooms = deriveRooms(
-      sources({ deployments: [deployment(1, 'running'), deployment(2, 'errored')], incidents: 3 })
+      sources({
+        ...answered({
+          deployments: { total: 2, running: 1, errored: 1 },
+          open_alerts: 3,
+        }),
+        errored: ['strategy-2'],
+      })
     );
     expect(rooms.deploys.health).toBe('fault');
     expect(rooms.deploys.note).toBe('1 running · 1 errored');
+    // The names travel with the reading, so an annotation can say WHICH one.
+    expect(rooms.deploys.subjects).toEqual(['strategy-2']);
     expect(rooms.incidents.health).toBe('fault');
     expect(rooms.incidents.note).toBe('3 open');
   });
 
-  it('caps the findings count rather than claiming a total the route never gave', () => {
-    const many = Array.from({ length: 20 }, (_, i) => ({ score: 90 - i }));
-    expect(deriveRooms(sources({ findings: many })).findings.note).toBe('20+ findings · top 90');
-    expect(deriveRooms(sources({ findings: [{ score: 71.4 }] })).findings.note).toBe(
+  it('faults on the count alone, before the names have landed', () => {
+    const rooms = deriveRooms(
+      sources({
+        summary: summaryBody({ deployments: { total: 1, running: 0, errored: 1 } }),
+        errored: null,
+      })
+    );
+    expect(rooms.deploys.health).toBe('fault');
+    expect(rooms.deploys.subjects).toEqual([]);
+  });
+
+  it('states the findings total the engine established, with its top score', () => {
+    expect(deriveRooms(sources(answered({ research: { findings: 37, top_score: 90 } }))).findings.note).toBe(
+      '37 findings · top 90'
+    );
+    expect(deriveRooms(sources(answered({ research: { findings: 1, top_score: 71.4 } }))).findings.note).toBe(
       '1 finding · top 71'
     );
-    expect(deriveRooms(sources({ findings: [{}] })).findings.note).toBe('1 finding');
+    expect(deriveRooms(sources(answered({ research: { findings: 1 } }))).findings.note).toBe('1 finding');
   });
 
   it('reads a connector in error as a fault and a wobbling one as degraded', () => {
-    const conn = (id: string, state: string) => ({
+    // Connections keeps the registry read the room itself uses: the
+    // consolidated call counts brokers only, and the card must not disagree
+    // with the room it opens.
+    const conn = (id: string, state: string, kind = 'broker') => ({
       id,
       display_label: id,
       blurb: '',
-      kind: 'broker',
+      kind,
       status: { state },
       fields: [],
       asset_kinds: [],
@@ -122,6 +160,19 @@ describe('an answered source states what it found', () => {
       health: 'nominal',
       note: '0 of 1 connected',
     });
+    // A data provider counts too — the room lists it, so the card must.
+    expect(
+      deriveRooms(sources({ connections: [conn('yf', 'error', 'data_provider')] })).conns.health
+    ).toBe('fault');
+  });
+
+  it('counts the schedules and the stages the engine reported', () => {
+    expect(deriveRooms(sources(answered({ schedules: { total: 2, active: 1 } }))).schedules.note).toBe(
+      '1 enabled of 2'
+    );
+    expect(
+      deriveRooms(sources(answered({ runway: { reached: { research: 'yes', monitor: 'no' } } }))).runway.note
+    ).toBe('1 of 2 stages reached');
   });
 
   it('reports the run and its validation from the session store', () => {
@@ -150,6 +201,19 @@ describe('an answered source states what it found', () => {
     );
     expect(red.validation.health).toBe('degraded');
     expect(red.validation.note).toBe('1 of 2 checks need attention');
+  });
+});
+
+describe('the naming read behind a reported fault', () => {
+  it('names the errored rows, and falls back to the id when the engine sent none', () => {
+    expect(
+      erroredNames([
+        { id: 1, name: 'alpha', strategy_path: 's.A', broker: 'paper', mode: 'paper', state: 'errored', positions: [] },
+        { id: 2, name: '', strategy_path: 's.B', broker: 'paper', mode: 'paper', state: 'errored', positions: [] },
+        { id: 3, name: 'gamma', strategy_path: 's.C', broker: 'paper', mode: 'paper', state: 'running', positions: [] },
+      ])
+    ).toEqual(['alpha', 'deployment 2']);
+    expect(erroredNames(null)).toBeNull();
   });
 });
 

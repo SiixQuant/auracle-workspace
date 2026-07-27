@@ -92,7 +92,7 @@ const SHEET = `
 .agrid__flag { font-size: 13px; line-height: 1; }
 .agrid__fold { appearance: none; margin-left: auto; flex: none; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: ${tone.text3}; cursor: pointer; transition: background-color 150ms ease-out, color 150ms ease-out; }
 .agrid__fold:hover { background: ${tone.surface2}; color: ${tone.text}; }
-.agrid__fold:focus-visible { outline: 2px solid ${tone.accentText}; outline-offset: 1px; }
+.agrid__fold:focus-visible { outline: 2px solid ${GRID_ACCENT}; outline-offset: 1px; }
 .agrid__fold .material-symbols-outlined { font-size: 17px; line-height: 1; }
 .agrid__sum { font-size: 11px; color: ${tone.text3}; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .agrid__count { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; border: 1px solid ${tone.border}; background: ${tone.surface}; font-size: 11.5px; color: ${tone.text2}; }

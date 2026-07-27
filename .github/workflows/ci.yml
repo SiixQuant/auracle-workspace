@@ -144,6 +144,10 @@ jobs:
         working-directory: packages/extensions/csv-spreadsheet
         run: npx tsc --noEmit
 
+      - name: TypeScript check - extensions/auracle-pack
+        working-directory: packages/extensions/auracle-pack
+        run: npx tsc --noEmit
+
   # Cheap Ubuntu smoke that catches transcript bundle breakage from runtime
   # changes without paying the 10x macOS multiplier. The full iOS simulator
   # build still runs in ios-transcript-tests.yml on push to main and on PRs

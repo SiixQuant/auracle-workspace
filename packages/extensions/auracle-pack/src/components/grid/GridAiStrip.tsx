@@ -26,11 +26,19 @@
  * vital, so they can never name different ones.
  *
  * WHAT IT WILL NOT DO: it never claims an outcome. A settled execution appends
- * the executor's own line — including the honest "pending engine wiring" the
- * stubs return — and the strip's state goes back to whatever the readings
- * actually say.
+ * the executor's own line — including the honest "pending engine wiring" an
+ * unavailable lane returns — and the strip's state goes back to whatever the
+ * readings actually say.
+ *
+ * THE UNDO NEXT TO THE OUTCOME: a repair that landed leaves the engine's own
+ * journal id behind, so the strip can offer to put that one action back right
+ * where it reported it — which is where a person is standing when they decide
+ * it was the wrong call. It is the LAST repair only, and it is offered only
+ * while the engine still holds it as reversible. The full history, every entry
+ * and every reversal, stays in the Incidents room; this is the one-press
+ * version of the row you just created.
  */
-import { useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { gridVitals, type GridVitals } from '../../engine/gridVitals';
 import { tone } from '../panelkit';
 import { DISTRICTS } from './districts';
@@ -41,6 +49,7 @@ import {
   requestAiAction,
   resultLine,
 } from './gridAiActions';
+import { repairUndoStore, undoLastRepair } from './gridAiExecutors';
 import { openRoomFocused, zoomOriginFrom } from './gridNav';
 // The plan's structural accent (see gridTheme): the assistant's mark belongs
 // to the plan's furniture, not to its state. Nothing here carrying state is
@@ -74,6 +83,10 @@ const SHEET = `
 .agrid-ai__put { appearance: none; flex: none; border: 0; background: transparent; padding: 2px 4px; border-radius: 5px; color: ${tone.text3}; cursor: pointer; font: inherit; font-size: 11px; }
 .agrid-ai__put:hover { color: ${tone.text}; }
 .agrid-ai__put:focus-visible { outline: 2px solid ${tone.accentText}; outline-offset: 1px; }
+.agrid-ai__put:disabled { cursor: default; opacity: 0.5; }
+.agrid-ai__put--undo { border: 1px solid ${tone.borderStrong}; color: ${tone.text2}; padding: 2px 8px; }
+.agrid-ai__put--undo:hover:not(:disabled) { color: ${tone.text}; border-color: ${tone.accentDim}; }
+.agrid-ai__undonote { margin: 0; font-size: 11px; line-height: 1.5; color: ${tone.danger}; }
 
 @container auracle-grid (min-width: 1280px) {
   .agrid-ai { padding-inline: 28px; }
@@ -115,6 +128,21 @@ export function GridAiStrip(): JSX.Element {
     aiRunStore.getSnapshot,
     aiRunStore.getSnapshot
   );
+  const reversible = useSyncExternalStore(
+    repairUndoStore.subscribe,
+    repairUndoStore.getSnapshot,
+    repairUndoStore.getSnapshot
+  );
+  const [undoing, setUndoing] = useState(false);
+  const [undoNote, setUndoNote] = useState<string | null>(null);
+
+  // A refusal explains ONE outcome. When the outcome moves on, so does it —
+  // otherwise the reason the last reversal failed sits under the next action's
+  // result, describing something that is no longer on screen.
+  const outcome = run.outcome;
+  useEffect(() => {
+    setUndoNote(null);
+  }, [outcome]);
 
   const fault = firstFault(vitals);
   const state = run.running !== null ? 'working' : fault !== null ? 'proposing' : 'nominal';
@@ -213,15 +241,48 @@ export function GridAiStrip(): JSX.Element {
             <p className="agrid-ai__outtext">
               {run.outcome.action.label}: {resultLine(run.outcome.result)}
             </p>
+            {/* Offered against THIS outcome only: the engine journalled an
+                entry for the repair that just ran, and this reverses that one.
+                It disappears the moment the engine no longer holds it. */}
+            {reversible !== null && reversible.operation === run.outcome.action.intent.operation ? (
+              <button
+                type="button"
+                className="agrid-ai__put agrid-ai__put--undo"
+                data-testid="grid-ai-strip-undo"
+                disabled={undoing}
+                title="Run the engine's recorded inverse for the repair that just ran"
+                onClick={() => {
+                  setUndoing(true);
+                  setUndoNote(null);
+                  void undoLastRepair().then((result) => {
+                    setUndoing(false);
+                    // Only a refusal says anything: a reversal that worked
+                    // withdraws the offer, which is the whole message.
+                    if (!result.ok) setUndoNote(result.message ?? 'The undo did not go through.');
+                  });
+                }}
+              >
+                Undo
+              </button>
+            ) : null}
             <button
               type="button"
               className="agrid-ai__put"
               data-testid="grid-ai-strip-result-dismiss"
-              onClick={() => dismissAiOutcome()}
+              onClick={() => {
+                setUndoNote(null);
+                dismissAiOutcome();
+              }}
             >
               Dismiss
             </button>
           </div>
+        ) : null}
+
+        {undoNote ? (
+          <p className="agrid-ai__undonote" data-testid="grid-ai-strip-undo-note">
+            {undoNote}
+          </p>
         ) : null}
       </div>
     </aside>

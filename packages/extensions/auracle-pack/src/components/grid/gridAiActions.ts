@@ -138,14 +138,18 @@ export type AiExecutor = (intent: ActionIntent) => Promise<AiActionResult>;
 const executors = new Map<string, AiExecutor>();
 
 /**
- * Install the executor for one operation. Returns the disposer that removes it
- * again — the same shape as the palette's provider registry, so a later lane
- * (or a test) can install and withdraw without leaking into the next one.
+ * Install the executor for one operation. Returns the disposer that puts back
+ * whatever was there before — the same shape as the palette's provider
+ * registry, so a later lane (or a test) can install over an existing executor
+ * and withdraw without leaving the operation less wired than it found it.
  */
 export function registerAiExecutor(operation: string, executor: AiExecutor): () => void {
+  const previous = executors.get(operation);
   executors.set(operation, executor);
   return () => {
-    if (executors.get(operation) === executor) executors.delete(operation);
+    if (executors.get(operation) !== executor) return;
+    if (previous === undefined) executors.delete(operation);
+    else executors.set(operation, previous);
   };
 }
 
@@ -282,9 +286,13 @@ const CATALOG: readonly AiActionDef[] = [
             operation: 'deploy.liquidate-all',
             room: 'deploys',
             summary:
-              'Flatten every open position on every deployment the engine lists, at market.',
+              'Flatten every open position on every deployment the engine will flatten, at market.',
             fields: [
-              { label: 'Scope', value: 'every deployment the engine lists' },
+              // Stated as the executor actually resolves it: the engine's
+              // lifecycle refuses the verb from some states, and those
+              // deployments are never addressed. Approving this is approving
+              // the set the engine accepts, not a set it would reject half of.
+              { label: 'Scope', value: 'every deployment the engine will accept the verb for' },
               ...readingFields('deploys', vitals),
               { label: 'Affects capital', value: 'yes' },
               { label: 'Reversible', value: 'no, a flattened position cannot be restored' },

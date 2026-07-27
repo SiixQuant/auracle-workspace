@@ -55,6 +55,7 @@ import { getActiveRoom, openGridHome, openRoom } from '../grid/gridNav';
 import type { RoomId } from '../grid/rooms';
 import { alertStore } from '../../engine/alertStore';
 import { gridVitals } from '../../engine/gridVitals';
+import { deploymentsBlock, summaryBody } from '../../engine/__tests__/summaryFixture';
 
 const HOST_PROPS = {} as PanelHostProps;
 
@@ -71,14 +72,23 @@ function deployment(id: number, state: string): Record<string, unknown> {
   };
 }
 
+/** The consolidated status call describing `rows`, plus the naming read the
+ *  sheet follows it with when one of them is errored. */
+function serveDeployments(rows: Array<Record<string, unknown>>): void {
+  stub.feeds['/ui/api/summary'] = summaryBody({
+    deployments: deploymentsBlock(rows as Array<{ state: string }>),
+  });
+  stub.feeds['/deployments'] = rows;
+}
+
 /** One deployment in the failed state — the fault the plan draws in red. */
 function anErroredDeployment(): void {
-  stub.feeds['/deployments'] = [deployment(1, 'errored')];
+  serveDeployments([deployment(1, 'errored')]);
 }
 
 /** A healthy deployment: something IS deployed, but nothing is wrong. */
 function aRunningDeployment(): void {
-  stub.feeds['/deployments'] = [deployment(1, 'running')];
+  serveDeployments([deployment(1, 'running')]);
 }
 
 /** Let every pending read land, inside act, so React sees one settled frame. */
@@ -236,7 +246,9 @@ describe('the strip is the assistant on the plan', () => {
     expect(outcome.textContent).toContain('The engine restarted it.');
   });
 
-  it('reports a stubbed repair as pending wiring rather than as a success', async () => {
+  it('reports a repair the engine refused as a failure, never as a success', async () => {
+    // Every mutation in this file's client stub answers "nothing answered", so
+    // the repair reaches the engine lane and comes back refused.
     anErroredDeployment();
     renderGrid();
     await settle();
@@ -245,12 +257,30 @@ describe('the strip is the assistant on the plan', () => {
     await flush();
 
     const outcome = screen.getByTestId('grid-ai-strip-result');
-    expect(outcome.getAttribute('data-result')).toBe('not-wired');
+    expect(outcome.getAttribute('data-result')).toBe('failed');
     expect(outcome.getAttribute('data-result')).not.toBe('done');
-    expect(outcome.textContent).toContain('Pending engine wiring');
-    expect(outcome.textContent).toContain('nothing changed');
+    expect(outcome.textContent).toContain('did not answer');
+    // Nothing to put back, because nothing was recorded.
+    expect(screen.queryByTestId('grid-ai-strip-undo')).toBeNull();
     // The fault is still the fault: nothing about the plan improved.
     expect(strip().getAttribute('data-state')).toBe('proposing');
+  });
+
+  it('reports an unavailable lane as pending wiring rather than as a result', async () => {
+    // The draft hands off to the agent, and this host has no agent lane at all.
+    // That is neither a success nor a failure, and the surface must say so.
+    stub.feeds['/ui/api/summary'] = summaryBody({ research: { findings: 1, top_score: 87 } });
+    openRoom('findings');
+    renderGrid();
+    await settle();
+
+    fireEvent.click(screen.getByTestId('room-ai-action-findings-draft'));
+    await flush();
+
+    const outcome = screen.getByTestId('room-ai-outcome');
+    expect(outcome.getAttribute('data-result')).toBe('not-wired');
+    expect(screen.getByTestId('room-ai-note').textContent).toContain('Nothing was sent');
+    expect(screen.queryByTestId('room-ai-reply')).toBeNull();
   });
 });
 
@@ -274,7 +304,7 @@ describe('the classes are drawn as four different things', () => {
   });
 
   it('runs a draft on one press and produces only a visible draft', async () => {
-    stub.feeds['/ui/api/research/feed'] = { findings: [{ score: 87 }] };
+    stub.feeds['/ui/api/summary'] = summaryBody({ research: { findings: 1, top_score: 87 } });
     const executor = wire('strategy.draft-from-finding', async () => ({
       kind: 'done',
       note: 'Wrote one draft strategy.',
@@ -300,7 +330,7 @@ describe('the classes are drawn as four different things', () => {
   });
 
   it('answers an advisory inline, from the reading on screen', async () => {
-    stub.feeds['/ui/api/incidents'] = { incidents: [{ id: 1 }, { id: 2 }] };
+    stub.feeds['/ui/api/summary'] = summaryBody({ open_alerts: 2 });
     renderBar('incidents');
     await settle();
 
@@ -318,7 +348,7 @@ describe('the classes are drawn as four different things', () => {
   });
 
   it('draws no bar at all for a room with nothing to offer', async () => {
-    stub.feeds['/ui/api/schedules.json'] = { schedules: [{ enabled: true }] };
+    stub.feeds['/ui/api/summary'] = summaryBody({ schedules: { total: 1, active: 1 } });
     renderBar('schedules');
     await settle();
 
@@ -428,7 +458,7 @@ describe('a mutation cannot happen without approval', () => {
     expect(screen.queryByTestId('ai-approval')).toBeNull();
   });
 
-  it('surfaces the stub honestly when the approved operation has nothing behind it', async () => {
+  it('surfaces the engine refusing an approved operation, never as a success', async () => {
     aRunningDeployment();
     openRoom('deploys');
     renderGrid();
@@ -439,8 +469,8 @@ describe('a mutation cannot happen without approval', () => {
     await flush();
 
     const outcome = screen.getByTestId('room-ai-outcome');
-    expect(outcome.getAttribute('data-result')).toBe('not-wired');
-    expect(screen.getByTestId('room-ai-note').textContent).toContain('Pending engine wiring');
+    expect(outcome.getAttribute('data-result')).toBe('failed');
+    expect(screen.getByTestId('room-ai-note').textContent).toContain('did not answer');
     expect(screen.queryByTestId('room-ai-reply')).toBeNull();
   });
 });
@@ -464,7 +494,7 @@ describe('the palette carries the assistant', () => {
   });
 
   it('offers the draft on the findings context', async () => {
-    stub.feeds['/ui/api/research/feed'] = { findings: [{ score: 87 }] };
+    stub.feeds['/ui/api/summary'] = summaryBody({ research: { findings: 1, top_score: 87 } });
     renderGrid();
     await settle();
     openFromRoot();

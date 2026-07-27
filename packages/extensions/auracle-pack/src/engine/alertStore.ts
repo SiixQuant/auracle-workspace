@@ -1,12 +1,18 @@
 /**
  * Open-alert count — the single number the rail button badges.
  *
- * SOURCE: the engine's incident feed, `GET /ui/api/incidents`, which is the
- * same feed the Incidents surface reads and labels "N open". An incident IS an
- * open alert: the engine stops serving one once it is dismissed or resolved,
- * so the count is the feed's length, with no client-side severity policy to
- * drift from what the room shows. A user can always verify the badge by
- * opening that room and counting the rows.
+ * SOURCE: `open_alerts` on the engine's consolidated status call,
+ * `GET /ui/api/summary`. The engine computes that figure as the length of the
+ * very incident feed the Incidents surface reads and labels "N open" — the
+ * caller's dismissals honored, the same bounded lookback — so the badge and the
+ * room cannot drift, and a user can always verify the badge by opening that
+ * room and counting the rows. Reading the figure the engine already computes,
+ * rather than fetching and measuring the feed again, is also what puts the
+ * badge and the Grid sheet on the same call.
+ *
+ * They still each pay for their own read of it: the badge lives in the rail and
+ * is mounted whether or not the Grid is, so it cannot be a projection of a
+ * store that only polls while the sheet is on screen.
  *
  * HONESTY: an engine that did not answer (or is too old to serve the route)
  * reads ZERO, never the last count it managed to fetch. A badge still claiming
@@ -17,7 +23,7 @@
  * stops with the last, so a window that never renders the badge pays nothing.
  */
 import { getJson, onConnectGeneration } from './client';
-import type { Incident } from './monitors';
+import { SUMMARY_PATH, type SummaryBody } from './gridVitals';
 
 /** Same cadence as the Incidents surface, so the two never disagree for long. */
 const POLL_MS = 30_000;
@@ -34,8 +40,13 @@ function publish(next: number): void {
 }
 
 async function read(): Promise<void> {
-  const feed = await getJson<{ incidents?: Incident[] }>('/ui/api/incidents');
-  publish(Array.isArray(feed?.incidents) ? feed.incidents.length : 0);
+  const summary = await getJson<SummaryBody>(SUMMARY_PATH);
+  const open = summary?.open_alerts;
+  // Zero for anything that is not a stated count: an engine that did not
+  // answer, a build that does not serve the call, and a district whose own
+  // read failed (the engine reports that block as null) all leave the badge
+  // clear rather than claiming a number nobody can act on.
+  publish(typeof open === 'number' && Number.isFinite(open) ? open : 0);
 }
 
 function start(): void {

@@ -30,6 +30,9 @@ import { aiRunStore, approveAiAction, declineAiAction } from './gridAiActions';
 // Side-effect import: registers the assistant's palette provider. Done here,
 // at the panel, so the rows exist whether the plan or a room is showing.
 import './gridAiCommands';
+// Same reason, for what the actions DO: the executors register on import, so an
+// action raised from the palette or a room page finds its lane installed.
+import { registerAgentHost, unregisterAgentHost } from './gridAiExecutors';
 import { closePalette, isPaletteOpen, subscribePalette, togglePalette } from './gridCommands';
 import { useRoomAiContext } from './gridFocus';
 import { getActiveRoom, subscribeGrid } from './gridNav';
@@ -91,6 +94,15 @@ export function GridPanel(props: PanelHostProps): JSX.Element {
   // Tell the chat which room is showing and what it is focused on. No-op on a
   // host with no AI lane, and on the home plan.
   useRoomAiContext(props.host, roomId, roomId ? ROOMS[roomId].title : null);
+
+  // Hand the executors the host they hand a draft off to. Published from the
+  // panel because the module-level registry holds no host of its own, and
+  // withdrawn on unmount — but only while it is still this panel's host, so a
+  // second panel taking over is not undone by the first one closing.
+  useEffect(() => {
+    registerAgentHost(props.host);
+    return () => unregisterAgentHost(props.host);
+  }, [props.host]);
 
   /**
    * The shortcut, scoped to this panel by FOCUS rather than by a manifest

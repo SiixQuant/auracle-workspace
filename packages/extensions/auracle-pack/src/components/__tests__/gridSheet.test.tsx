@@ -35,6 +35,7 @@ import { ROOM_IDS } from '../grid/rooms';
 import { getActiveRoom, openGridHome } from '../grid/gridNav';
 import { alertStore } from '../../engine/alertStore';
 import { gridVitals } from '../../engine/gridVitals';
+import { deploymentsBlock, summaryBody } from '../../engine/__tests__/summaryFixture';
 
 /** A deployment row shaped as the engine serves it. */
 function deployment(id: number, state: string): Record<string, unknown> {
@@ -47,6 +48,15 @@ function deployment(id: number, state: string): Record<string, unknown> {
     state,
     positions: [],
   };
+}
+
+/** The engine's consolidated call, describing `rows`, plus the naming read the
+ *  sheet follows it with when one of them is errored. */
+function serveDeployments(rows: Array<Record<string, unknown>>): void {
+  stub.feeds['/ui/api/summary'] = summaryBody({
+    deployments: deploymentsBlock(rows as Array<{ state: string }>),
+  });
+  stub.feeds['/deployments'] = rows;
 }
 
 /** Let every pending read land, inside act, so React sees one settled frame. */
@@ -116,7 +126,7 @@ describe('a room follows its source', () => {
     await settle();
     expect(screen.queryByTestId('grid-home-note-deploys')).toBeNull();
 
-    stub.feeds['/deployments'] = [deployment(1, 'running'), deployment(2, 'running')];
+    serveDeployments([deployment(1, 'running'), deployment(2, 'running')]);
     await settle();
 
     expect(screen.getByTestId('grid-home-dot-deploys').getAttribute('data-health')).toBe('nominal');
@@ -124,32 +134,36 @@ describe('a room follows its source', () => {
   });
 
   it('turns the dot red and re-reads the note when a deployment errors', async () => {
-    stub.feeds['/deployments'] = [deployment(1, 'running'), deployment(2, 'running')];
+    serveDeployments([deployment(1, 'running'), deployment(2, 'running')]);
     render(<GridSheet />);
     await settle();
     expect(screen.getByTestId('grid-home-dot-deploys').getAttribute('data-health')).toBe('nominal');
 
-    stub.feeds['/deployments'] = [deployment(1, 'running'), deployment(2, 'errored')];
+    serveDeployments([deployment(1, 'running'), deployment(2, 'errored')]);
     await settle();
 
     expect(screen.getByTestId('grid-home-dot-deploys').getAttribute('data-health')).toBe('fault');
     expect(screen.getByTestId('grid-home-note-deploys').textContent).toBe('1 running · 1 errored');
   });
 
-  it('reads open incidents through the alert store the rail badge uses', async () => {
+  it('reads open incidents from the same figure the rail badge badges', async () => {
+    stub.feeds['/ui/api/summary'] = summaryBody();
     render(<GridSheet />);
     await settle();
     expect(screen.getByTestId('grid-home-note-incidents').textContent).toBe('none open');
 
-    stub.feeds['/ui/api/incidents'] = { incidents: [{ severity: 'critical' }, { severity: 'warning' }] };
+    stub.feeds['/ui/api/summary'] = summaryBody({ open_alerts: 2 });
     await settle();
 
     expect(screen.getByTestId('grid-home-dot-incidents').getAttribute('data-health')).toBe('fault');
     expect(screen.getByTestId('grid-home-note-incidents').textContent).toBe('2 open');
+    // The badge reads the very same figure, so the two cannot disagree.
+    await alertStore.refresh();
+    expect(alertStore.getSnapshot()).toBe(2);
   });
 
   it('drops a reading back to quiet when its source stops answering', async () => {
-    stub.feeds['/ui/api/schedules.json'] = { schedules: [{ enabled: true }, { enabled: false }] };
+    stub.feeds['/ui/api/summary'] = summaryBody({ schedules: { total: 2, active: 1 } });
     render(<GridSheet />);
     await settle();
     expect(screen.getByTestId('grid-home-note-schedules').textContent).toBe('1 enabled of 2');
@@ -159,6 +173,20 @@ describe('a room follows its source', () => {
     await settle();
     expect(screen.queryByTestId('grid-home-note-schedules')).toBeNull();
   });
+
+  it('goes quiet for a district the engine itself could not read', async () => {
+    stub.feeds['/ui/api/summary'] = summaryBody({ schedules: { total: 2, active: 1 } });
+    render(<GridSheet />);
+    await settle();
+    expect(screen.getByTestId('grid-home-note-schedules').textContent).toBe('1 enabled of 2');
+
+    // The engine answered, but that one district's own read failed. A null
+    // block is quiet, never a zero dressed up as news.
+    stub.feeds['/ui/api/summary'] = summaryBody({ schedules: null, degraded: ['schedules'] });
+    await settle();
+    expect(screen.queryByTestId('grid-home-note-schedules')).toBeNull();
+    expect(screen.getByTestId('grid-home-dot-schedules').getAttribute('data-health')).toBe('nominal');
+  });
 });
 
 describe('a district reports the worst room it contains', () => {
@@ -167,7 +195,7 @@ describe('a district reports the worst room it contains', () => {
     await settle();
     expect(screen.queryByTestId('grid-district-flag-operate')).toBeNull();
 
-    stub.feeds['/deployments'] = [deployment(1, 'errored')];
+    serveDeployments([deployment(1, 'errored')]);
     await settle();
 
     const flag = screen.getByTestId('grid-district-flag-operate');
@@ -180,7 +208,7 @@ describe('a district reports the worst room it contains', () => {
   });
 
   it('composes its summary from the rooms that actually answered', async () => {
-    stub.feeds['/deployments'] = [deployment(1, 'running')];
+    serveDeployments([deployment(1, 'running')]);
     stub.feeds['/ui/api/orders'] = { orders: [{ symbol: 'AAPL' }, { symbol: 'MSFT' }] };
     render(<GridSheet />);
     await settle();
@@ -194,7 +222,7 @@ describe('a district reports the worst room it contains', () => {
   });
 
   it('counts the rooms needing attention on the root node', async () => {
-    stub.feeds['/deployments'] = [deployment(1, 'errored')];
+    serveDeployments([deployment(1, 'errored')]);
     render(<GridSheet />);
     await settle();
 

@@ -33,11 +33,22 @@ export async function engineConfig(): Promise<{ engineUrl: string; hasKey: boole
   }
 }
 
-async function request(method: string, path: string, body?: unknown): Promise<BridgeResponse> {
+async function request(
+  method: string,
+  path: string,
+  body?: unknown,
+  headers?: Record<string, string>
+): Promise<BridgeResponse> {
   const invoke = bridge();
   if (!invoke) return { ok: false, status: 0, body: null };
   try {
-    return (await invoke('auracle:engine-request', method, path, body)) as BridgeResponse;
+    return (await invoke(
+      'auracle:engine-request',
+      method,
+      path,
+      body,
+      headers
+    )) as BridgeResponse;
   } catch {
     return { ok: false, status: 0, body: null };
   }
@@ -66,9 +77,18 @@ export async function getJsonDetailed<T>(
   return { ok: false, status: response.status, body: response.body };
 }
 
-/** Mutation returning the full bridge response so callers can render errors honestly. */
-export async function postJson(path: string, body?: unknown): Promise<BridgeResponse> {
-  return request('POST', path, body);
+/**
+ * Mutation returning the full bridge response so callers can render errors
+ * honestly. `headers` carries the per-request stamps the engine expects on its
+ * guarded operations; the bridge accepts only the names it knows and assembles
+ * the credential headers itself.
+ */
+export async function postJson(
+  path: string,
+  body?: unknown,
+  headers?: Record<string, string>
+): Promise<BridgeResponse> {
+  return request('POST', path, body, headers);
 }
 
 export async function putJson(path: string, body?: unknown): Promise<BridgeResponse> {

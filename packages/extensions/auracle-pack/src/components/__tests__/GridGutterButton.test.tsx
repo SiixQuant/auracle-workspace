@@ -1,7 +1,7 @@
 /**
  * The rail badge is the only thing that can say "something needs you" once
  * every surface lives behind one button, so its number has to come from the
- * engine's incident feed and follow it — including down to nothing, and
+ * engine's own open-alert figure and follow it — including down to nothing, and
  * including an engine that stops answering (which must read zero, not the
  * last count it managed to fetch).
  */
@@ -18,16 +18,21 @@ import { getJson } from '../../engine/client';
 import { alertStore } from '../../engine/alertStore';
 import { GridGutterButton } from '../grid/GridGutterButton';
 
-/** `n` open incidents on the feed the badge reads. */
+/** `n` open incidents on the consolidated call the badge reads. */
 function feed(n: number): void {
-  vi.mocked(getJson).mockResolvedValue({
-    incidents: Array.from({ length: n }, (_, i) => ({ id: i, severity: 'warning' })),
-  } as never);
+  vi.mocked(getJson).mockResolvedValue({ open_alerts: n } as never);
 }
 
 /** The engine did not answer — getJson erases the body. */
 function unreachable(): void {
   vi.mocked(getJson).mockResolvedValue(null as never);
+}
+
+/** The engine answered, but its own incident read failed — the block is null
+ *  and the district names itself in `degraded`. The badge must still read zero
+ *  rather than treating a missing figure as news. */
+function degraded(): void {
+  vi.mocked(getJson).mockResolvedValue({ open_alerts: null, degraded: ['incidents'] } as never);
 }
 
 async function refresh(): Promise<void> {
@@ -55,7 +60,7 @@ function renderButton(onActivate = vi.fn()): { onActivate: ReturnType<typeof vi.
 }
 
 describe('the badge carries the open-alert count', () => {
-  it('shows the number the incident feed reports', async () => {
+  it('shows the number the engine reports', async () => {
     feed(3);
     renderButton();
     await refresh();
@@ -92,6 +97,17 @@ describe('the badge carries the open-alert count', () => {
     expect(screen.getByTestId('auracle-grid-gutter-badge').textContent).toBe('4');
 
     unreachable();
+    await refresh();
+    expect(screen.queryByTestId('auracle-grid-gutter-badge')).toBeNull();
+  });
+
+  it('reads zero when the engine answered without a figure', async () => {
+    feed(4);
+    renderButton();
+    await refresh();
+    expect(screen.getByTestId('auracle-grid-gutter-badge').textContent).toBe('4');
+
+    degraded();
     await refresh();
     expect(screen.queryByTestId('auracle-grid-gutter-badge')).toBeNull();
   });

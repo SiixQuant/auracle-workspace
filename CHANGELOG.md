@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-<!-- New features go here -->
+- The Auracle panel now opens on a single plan of the whole platform, with every area's live state on one screen, one-press repairs for the things that break, an explicit approval step before anything that moves capital, and a way to reverse a repair straight from where it ran.
 
 ### Changed
 <!-- Changes to existing functionality go here -->

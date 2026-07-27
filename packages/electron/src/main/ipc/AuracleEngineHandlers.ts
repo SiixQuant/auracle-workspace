@@ -16,6 +16,8 @@ import { logger } from '../utils/logger';
  *   - mutations (non-GET) first obtain the `auracle_csrf` cookie from
  *     `GET /ui/api/status`, then echo it as both cookie and `X-CSRF-Token`
  *   - a 403 on a mutation refreshes the CSRF token once and retries
+ *   - a caller may add only the headers named in {@link CALLER_HEADERS}; the
+ *     credential headers above are assembled here and are never caller-supplied
  *
  * Credentials come from the launcher-provisioned config file
  * `~/.config/auracle/auracle.json` `{engine_url, api_key}`, overridable for
@@ -107,6 +109,37 @@ async function toEngineResponse(response: Response): Promise<EngineResponse> {
 }
 
 /**
+ * The only headers a caller may add to a bridged request.
+ *
+ * The engine has one family of operations that carry a per-request approval
+ * stamp in a header of its own, and the pack has to be able to send it. The
+ * list is an allowlist rather than a passthrough so a caller can never reach
+ * the credential headers this module assembles: a name outside it is dropped,
+ * silently and without failing the request.
+ */
+const CALLER_HEADERS = new Map([['x-auracle-confirmation', 'X-Auracle-Confirmation']]);
+
+/**
+ * `extra`, reduced to the allowlisted names with usable string values.
+ *
+ * The CANONICAL spelling is emitted, not the caller's: two differently-cased
+ * copies of one header would otherwise both survive and be joined into a single
+ * comma-joined value the engine cannot read, and a name with stray whitespace
+ * is not a legal header at all.
+ */
+export function callerHeaders(extra: unknown): Record<string, string> {
+  if (extra === null || typeof extra !== 'object' || Array.isArray(extra)) return {};
+  const out: Record<string, string> = {};
+  for (const [name, value] of Object.entries(extra as Record<string, unknown>)) {
+    const canonical = CALLER_HEADERS.get(name.trim().toLowerCase());
+    if (canonical === undefined) continue;
+    if (typeof value !== 'string' || value.length === 0) continue;
+    out[canonical] = value;
+  }
+  return out;
+}
+
+/**
  * Make an authenticated request to the local Auracle engine's /ui surface,
  * reusing the same cookie + CSRF handling as the renderer bridge. Exported so
  * other main-process services (e.g. the proactive-notification paid gate) can
@@ -115,7 +148,8 @@ async function toEngineResponse(response: Response): Promise<EngineResponse> {
 export async function auracleEngineRequest(
   method: string,
   requestPath: string,
-  body?: unknown
+  body?: unknown,
+  extraHeaders?: Record<string, string>
 ): Promise<EngineResponse> {
   const config = await readConfig();
   const isMutation = method.toUpperCase() !== 'GET';
@@ -124,8 +158,12 @@ export async function auracleEngineRequest(
     csrf = csrfToken ?? (await fetchCsrf(config));
   }
 
+  const caller = callerHeaders(extraHeaders);
+
   const doFetch = async (token: string | null): Promise<Response> => {
-    const headers = baseHeaders(config, isMutation ? token : null);
+    // Caller headers first, so the assembled credential headers below always
+    // win a name collision rather than being overwritten by the caller's.
+    const headers = { ...caller, ...baseHeaders(config, isMutation ? token : null) };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     return fetch(`${config.engineUrl}${requestPath}`, {
       method: method.toUpperCase(),
@@ -135,8 +173,18 @@ export async function auracleEngineRequest(
   };
 
   let response = await doFetch(csrf);
-  if (isMutation && response.status === 403) {
-    // Stale or missing CSRF token: refresh once and retry.
+  // Stale or missing CSRF token: refresh once and retry.
+  //
+  // NEVER when the request carries a caller header. The engine's guarded
+  // operations spend theirs on first presentation, and a 403 from one of those
+  // routes can also come from the handler itself — so a blind retry would
+  // resend a stamp that is already used, turn the real reason into "already
+  // used", and cost the operator a second approval for something that was
+  // never going to work. One attempt, and the caller reads the real answer.
+  // Those requests are preceded by an ordinary mutation of their own (the
+  // declaration), which refreshes the shared CSRF token, so the one attempt is
+  // made with a token that was just proven.
+  if (isMutation && response.status === 403 && Object.keys(caller).length === 0) {
     csrf = await fetchCsrf(config);
     response = await doFetch(csrf);
   }
@@ -327,12 +375,23 @@ export function registerAuracleEngineHandlers(): void {
 
   safeHandle(
     'auracle:engine-request',
-    async (_event, method: string, requestPath: string, body?: unknown) => {
+    async (
+      _event,
+      method: string,
+      requestPath: string,
+      body?: unknown,
+      extraHeaders?: unknown
+    ) => {
       if (typeof requestPath !== 'string' || !requestPath.startsWith('/')) {
         return { ok: false, status: 0, body: 'invalid path' };
       }
       try {
-        return await auracleEngineRequest(method, requestPath, body);
+        return await auracleEngineRequest(
+          method,
+          requestPath,
+          body,
+          callerHeaders(extraHeaders)
+        );
       } catch (error) {
         // Engine down/unreachable is a normal state the UI renders honestly.
         logger.main?.debug?.(

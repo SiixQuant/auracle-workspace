@@ -55,7 +55,7 @@ import type { GridVitals } from '../../engine/gridVitals';
 import { prefersReducedMotion, tint, tone } from '../panelkit';
 import { gridFoldStore } from './gridFoldStore';
 import { GRID_ACCENT } from './gridTheme';
-import { openRoom, zoomOriginFrom } from './gridNav';
+import { openRoomFocused, zoomOriginFrom } from './gridNav';
 import {
   TREE_MIN_WIDTH,
   WIRED_ROOMS,
@@ -273,7 +273,9 @@ export function WireOverlay({ vitals }: { vitals: GridVitals }): JSX.Element {
         data-state={alert.active ? 'alert' : 'clear'}
         disabled={!alert.active}
         title={alert.active ? 'Open Deployments' : undefined}
-        onClick={(event) => openRoom('deploys', zoomOriginFrom(event.currentTarget))}
+        // The annotation is a way INTO a room like any other, so it lands
+        // through the focused open and carries what the reader was looking at.
+        onClick={(event) => openRoomFocused('deploys', undefined, zoomOriginFrom(event.currentTarget))}
       >
         <span className="material-symbols-outlined agrid__annotico" aria-hidden>
           {alert.active ? 'bolt' : 'check_circle'}

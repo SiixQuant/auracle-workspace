@@ -272,9 +272,9 @@ const CATALOG: readonly AiActionDef[] = [
     label: 'Liquidate every open position',
     icon: 'bolt',
     keywords: ['liquidate', 'flatten', 'close', 'positions', 'capital'],
-    // Offered whenever the room has deployments at all: this is the action a
-    // person reaches for when something is wrong that a restart will not fix,
-    // which is precisely when the plan is not showing a fault.
+    // Offered whenever the room has deployments at all, faulted or not:
+    // flattening is what a person reaches for when a restart will not fix it,
+    // and equally when nothing is wrong and they simply want to be flat.
     intent: (vitals) =>
       vitals.deploys.fact === null
         ? null

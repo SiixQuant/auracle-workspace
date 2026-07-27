@@ -19,6 +19,12 @@
  * ("2 need attention"). A count tells you to go looking; a name tells you what
  * happened. The strip is the difference between a dashboard and an assistant.
  *
+ * NOT THE SAME THING AS THE PINNED ALERT: the wire overlay's chip annotates the
+ * MAP — it hangs off the room it is about and draws only at the full tree tier.
+ * This proposes a MOVE, and does it at every tier, which is why the two can
+ * name the same deployment without either being redundant. Both read the same
+ * vital, so they can never name different ones.
+ *
  * WHAT IT WILL NOT DO: it never claims an outcome. A settled execution appends
  * the executor's own line — including the honest "pending engine wiring" the
  * stubs return — and the strip's state goes back to whatever the readings

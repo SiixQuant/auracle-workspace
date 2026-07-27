@@ -32,6 +32,11 @@
  * districts in a rank, rooms ranked under each — only when the pane is wide
  * enough to draw it without scrolling sideways. The tree's rails are drawn
  * with border-box pseudo-elements, so the geometry costs no dependency.
+ *
+ * WIRES: the full tree tier also carries a wire overlay and one pinned alert
+ * ({@link WireOverlay}). Both are that tier's alone — the stacked tiers have no
+ * single room rank for the lanes to hang under — so the plan reserves the lane
+ * band as bottom padding there and nowhere else.
  */
 import { useSyncExternalStore, type CSSProperties } from 'react';
 import { gridVitals, type GridVitals, type RoomVital } from '../../engine/gridVitals';
@@ -49,7 +54,10 @@ import {
   type District,
 } from './districts';
 import { gridFoldStore, type FoldedDistricts } from './gridFoldStore';
+import { GRID_ACCENT, GRID_ACCENT_DIM, GRID_ACCENT_SOFT } from './gridTheme';
+import { TREE_MIN_WIDTH } from './gridWires';
 import { useRoomPeek, type PeekHandlers } from './RoomPeek';
+import { WireOverlay } from './WireOverlay';
 import { ROOMS, ROOM_IDS, type RoomId } from './rooms';
 
 const STYLE_ID = 'auracle-grid-sheet-styles';
@@ -60,22 +68,22 @@ const RAIL = tone.borderStrong;
 
 const SHEET = `
 .agrid { min-height: 100%; }
-.agrid__plan { display: flex; flex-direction: column; padding: 18px 20px 44px; }
+.agrid__plan { position: relative; display: flex; flex-direction: column; padding: 18px 20px 44px; }
 .agrid__hint { margin: 0 0 14px; font-size: 11.5px; line-height: 1.5; color: ${tone.text3}; }
-.agrid__root { appearance: none; font: inherit; text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: 3px; padding: 10px 13px; border-radius: 10px; border: 1px solid ${tone.accentDim}; background: ${tone.accentSoft}; transition: border-color 150ms ease-out, background-color 150ms ease-out; }
-.agrid__root:hover { border-color: ${tone.accentText}; background: ${tone.surface3}; }
-.agrid__root:focus-visible { outline: 2px solid ${tone.accentText}; outline-offset: 1px; }
+.agrid__root { position: relative; z-index: 1; appearance: none; font: inherit; text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: 3px; padding: 10px 13px; border-radius: 10px; border: 1px solid ${GRID_ACCENT_DIM}; background: ${GRID_ACCENT_SOFT}; transition: border-color 150ms ease-out, background-color 150ms ease-out; }
+.agrid__root:hover { border-color: ${GRID_ACCENT}; background: ${tone.surface3}; }
+.agrid__root:focus-visible { outline: 2px solid ${GRID_ACCENT}; outline-offset: 1px; }
 .agrid__rootrow { display: flex; align-items: center; gap: 10px; }
 .agrid__rootname { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: -0.01em; color: ${tone.text}; }
 .agrid__rootkey { margin-left: auto; font-family: ${tone.mono}; font-size: 10px; letter-spacing: 0.04em; color: ${tone.text3}; border: 1px solid ${tone.border}; border-radius: 5px; padding: 1px 5px; }
 .agrid__rootnote { font-size: 11.5px; color: ${tone.text2}; }
 @media (prefers-reduced-motion: reduce) { .agrid__root { transition: none; } }
 .agrid__stem { display: none; flex: none; width: 1px; background: ${RAIL}; }
-.agrid__districts { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
+.agrid__districts { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
 .agrid__district { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .agrid__label { display: flex; flex-direction: column; gap: 3px; max-width: 100%; min-width: 0; padding: 8px 12px; border-radius: 8px; border: 1px solid ${tone.border}; background: ${tone.surface}; }
 .agrid__ltop { display: flex; align-items: center; gap: 9px; }
-.agrid__num { font-family: ${tone.mono}; font-size: 11px; font-weight: 650; color: ${tone.accentText}; }
+.agrid__num { font-family: ${tone.mono}; font-size: 11px; font-weight: 650; color: ${GRID_ACCENT}; }
 .agrid__name { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.13em; color: ${tone.text2}; white-space: nowrap; }
 .agrid__flag { font-size: 13px; line-height: 1; }
 .agrid__fold { appearance: none; margin-left: auto; flex: none; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: ${tone.text3}; cursor: pointer; transition: background-color 150ms ease-out, color 150ms ease-out; }
@@ -87,10 +95,16 @@ const SHEET = `
 .agrid__cdot { flex: none; width: 6px; height: 6px; border-radius: 50%; }
 .agrid__rooms { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .agrid__slot { display: flex; min-width: 0; }
-.agrid__room { appearance: none; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; text-align: left; font: inherit; cursor: pointer; padding: 9px 12px; border-radius: 9px; border: 1px solid ${tone.border}; background: ${tone.surface}; }
+.agrid__room { appearance: none; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; text-align: left; font: inherit; cursor: pointer; padding: 9px 12px; border-radius: 9px; border: 1px solid ${tone.border}; background: ${tone.surface}; transition: border-color 150ms ease-out, background-color 150ms ease-out; }
 .agrid__room[data-health='degraded'] { border-color: ${tint(tone.caution, 45)}; }
 .agrid__room[data-health='fault'] { border-color: ${tint(tone.danger, 55)}; }
-.agrid__room:focus-visible { outline: 2px solid ${tone.accentText}; outline-offset: 1px; }
+/* Hover raises the plane on every card, but only a NOMINAL card takes the
+   Grid accent on its border — a room reporting trouble keeps its own colour
+   under the pointer, or hovering would erase the reading. */
+.agrid__room:hover { background: ${tone.surface2}; }
+.agrid__room[data-health='nominal']:hover { border-color: ${GRID_ACCENT_DIM}; }
+.agrid__room[data-health='nominal']:active { border-color: ${GRID_ACCENT}; }
+.agrid__room:focus-visible { outline: 2px solid ${GRID_ACCENT}; outline-offset: 1px; }
 .agrid__rtop { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .agrid__rico { font-size: 14px; line-height: 1; flex: none; color: ${tone.text3}; }
 .agrid__room[data-health='degraded'] .agrid__rico { color: ${tone.caution}; }
@@ -104,8 +118,10 @@ const SHEET = `
   .agrid__rooms { grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); }
 }
 
-@container auracle-grid (min-width: 1280px) {
-  .agrid__plan { align-items: center; padding-top: 22px; }
+@container auracle-grid (min-width: ${TREE_MIN_WIDTH}px) {
+  /* The bottom padding is the LANE BAND: the wire overlay hangs its three
+     lanes below the room rank, and only this tier draws them. */
+  .agrid__plan { align-items: center; padding-top: 22px; padding-bottom: 92px; }
   .agrid__hint { text-align: center; }
   .agrid__root { width: 218px; }
   .agrid__stem { display: block; height: 18px; }
@@ -127,7 +143,7 @@ const SHEET = `
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .agrid__fold { transition: none; }
+  .agrid__fold, .agrid__room { transition: none; }
 }
 `;
 
@@ -313,6 +329,9 @@ export function GridSheet(): JSX.Element {
         <p className="agrid__hint">
           The system as a floor plan — every surface, and what it is doing right now.
         </p>
+        {/* Covers and measures the plan it sits in, so it goes inside it.
+            Draws only at the full tree tier — see WireOverlay. */}
+        <WireOverlay vitals={vitals} />
         {/* The root node is the command post: pressing it (or the shortcut it
             advertises) opens the palette, so the top of the plan is also the
             way into every room without touching the plan at all. A button

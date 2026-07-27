@@ -15,22 +15,16 @@
 import { useSyncExternalStore } from 'react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import { ensurePanelKitStyles, tone } from '../panelkit';
-import { getActiveRoom, openGridHome, openRoom, subscribeGrid } from './gridNav';
-import { ROOMS, ROOM_LIST, type RoomId } from './rooms';
+import { getActiveRoom, openGridHome, subscribeGrid } from './gridNav';
+import { GridSheet } from './GridSheet';
+import { ROOMS, type RoomId } from './rooms';
 
 const STYLE_ID = 'auracle-grid-styles';
 
+/** The panel is the @container the sheet's layout tiers are written against —
+ *  the one rule that has to live out here, above whichever view is showing. */
 const SHEET = `
 .auracle-grid { container-type: inline-size; container-name: auracle-grid; }
-.auracle-grid__rooms { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
-@container auracle-grid (min-width: 560px) {
-  .auracle-grid__rooms { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@container auracle-grid (min-width: 900px) {
-  .auracle-grid__rooms { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-.auracle-grid__room { appearance: none; text-align: left; font: inherit; cursor: pointer; background: ${tone.surface}; border: 1px solid ${tone.border}; border-radius: 11px; padding: 13px 14px; display: flex; flex-direction: column; gap: 4px; }
-.auracle-grid__room:focus-visible { outline: 2px solid ${tone.accentText}; outline-offset: 1px; }
 `;
 
 function ensureGridStyles(): void {
@@ -39,47 +33,6 @@ function ensureGridStyles(): void {
   el.id = STYLE_ID;
   el.textContent = SHEET;
   document.head.appendChild(el);
-}
-
-/** The plan: every room the pack owns, one press away. */
-function GridHome(): JSX.Element {
-  return (
-    <div
-      data-testid="auracle-grid-home"
-      style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '18px 20px' }}
-    >
-      <header style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 15,
-            fontWeight: 600,
-            letterSpacing: '-0.01em',
-            color: tone.text,
-          }}
-        >
-          System plan
-        </h1>
-        <p style={{ margin: 0, fontSize: 12.5, color: tone.text2 }}>
-          Every Auracle surface, from a finding to a live deployment.
-        </p>
-      </header>
-      <div className="auracle-grid__rooms">
-        {ROOM_LIST.map((room) => (
-          <button
-            key={room.id}
-            type="button"
-            className="apk-card auracle-grid__room"
-            data-testid={`grid-home-room-${room.id}`}
-            onClick={() => openRoom(room.id)}
-          >
-            <span style={{ fontSize: 13, fontWeight: 600, color: tone.text }}>{room.title}</span>
-            <span style={{ fontSize: 12, color: tone.text2 }}>{room.blurb}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 /** One room, with the way back to the plan. */
@@ -136,7 +89,7 @@ export function GridPanel(props: PanelHostProps): JSX.Element {
         font: `13px/1.5 ${tone.font}`,
       }}
     >
-      {roomId === null ? <GridHome /> : <GridRoomView roomId={roomId} hostProps={props} />}
+      {roomId === null ? <GridSheet /> : <GridRoomView roomId={roomId} hostProps={props} />}
     </div>
   );
 }

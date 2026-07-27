@@ -15,6 +15,7 @@ import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import type { ValidationVerdict } from '../../../engine/validation';
 import { ValidationPanel } from '../../ValidationPanel';
 import { RoomPage, type RoomStatus, type PageVital } from '../RoomPage';
+import { ROOM_CONTEXT } from '../roomContext';
 
 interface Rail {
   healthy: number;
@@ -54,7 +55,7 @@ export function ValidationPage({ host }: PanelHostProps): JSX.Element {
       room="validation"
       status={status}
       statusLabel={label}
-      context="The overfit gates for one strategy, every signal computed by the engine on a real backtest and walk-forward. This is the out-of-sample honesty check, not the deploy preflight."
+      context={`${ROOM_CONTEXT.validation} This is the out-of-sample honesty check, not the deploy preflight.`}
       vitals={vitals}
     >
       <ValidationPanel host={host} onVerdict={setVerdict} />

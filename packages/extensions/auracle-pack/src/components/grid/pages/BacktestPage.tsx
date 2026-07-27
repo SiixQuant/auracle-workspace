@@ -18,6 +18,7 @@ import { backtestStore, type BacktestSnapshot } from '../../../engine/backtestSt
 import { EM_DASH, RF_ZERO_SENTENCE, headlineCards } from '../../../engine/houseStats';
 import { BacktestPanel } from '../../BacktestPanel';
 import { RoomPage, type RoomStatus, type PageVital } from '../RoomPage';
+import { ROOM_CONTEXT } from '../roomContext';
 
 function state(snap: BacktestSnapshot): { status: RoomStatus; label?: string } {
   switch (snap.phase) {
@@ -46,7 +47,7 @@ function contextFor(snap: BacktestSnapshot): string {
   }
   switch (snap.phase) {
     case 'idle':
-      return 'Run a strategy from its file and its curves, headline metrics and overfit check land here.';
+      return ROOM_CONTEXT.backtest;
     case 'resolving':
       return 'Matching the open file against the strategies the engine discovered.';
     case 'queued':

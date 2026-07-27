@@ -13,6 +13,7 @@
  * the registry stays the routing contract and nothing else.
  */
 import { worseHealth, type GridVitals, type Health } from '../../engine/gridVitals';
+import { tone } from '../panelkit';
 import type { RoomId } from './rooms';
 
 export interface District {
@@ -47,6 +48,27 @@ export const ROOM_ICONS: Record<RoomId, string> = {
   schedules: 'schedule',
   runway: 'flight_takeoff',
   conns: 'hub',
+};
+
+/**
+ * How a reading is drawn and how it is said — one table each, read by every
+ * surface that renders health on the sheet (the card's dot and border, the
+ * district's flag, a folded district's chip, the hover peek). They live beside
+ * the icon table for the same reason: presentation of the plan, not routing.
+ *
+ * `nominal` is GREY on purpose: a healthy room is not an achievement to
+ * celebrate, it is the absence of a problem, so only trouble takes a hue.
+ */
+export const HEALTH_COLOR: Record<Health, string> = {
+  nominal: tone.text3,
+  degraded: tone.caution,
+  fault: tone.danger,
+};
+
+export const HEALTH_WORD: Record<Health, string> = {
+  nominal: 'nominal',
+  degraded: 'degraded',
+  fault: 'needs attention',
 };
 
 /** Every room this district contains, at its worst reading — what the label's

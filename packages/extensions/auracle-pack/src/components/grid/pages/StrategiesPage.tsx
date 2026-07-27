@@ -44,6 +44,7 @@ import {
 } from '../../panelkit';
 import { backtestOption, deployOption } from '../../spineActions';
 import { RoomPage, type RoomStatus, type PageVital } from '../RoomPage';
+import { ROOM_CONTEXT } from '../roomContext';
 
 type ListState =
   | { phase: 'loading' }
@@ -175,7 +176,7 @@ export function StrategiesPage({ host }: PanelHostProps): JSX.Element {
       room="strategies"
       status={status}
       statusLabel={label}
-      context="Every strategy the engine discovered in your workspace, and every file it had to leave out with the reason why. From here a strategy goes to a backtest or to a deployment."
+      context={`${ROOM_CONTEXT.strategies} From here a strategy goes to a backtest or to a deployment.`}
       vitals={vitals}
     >
       <PanelShell

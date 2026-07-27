@@ -13,6 +13,7 @@ import { useState } from 'react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import { QcImportPanel, type QcLibrarySummary } from '../../QcImportPanel';
 import { RoomPage, type RoomStatus, type PageVital } from '../RoomPage';
+import { ROOM_CONTEXT } from '../roomContext';
 
 function state(summary: QcLibrarySummary | null): { status: RoomStatus; label?: string } {
   if (!summary || summary.phase === 'loading') return { status: 'degraded', label: 'reading' };
@@ -36,7 +37,7 @@ export function QcPage({ host }: PanelHostProps): JSX.Element {
       room="qc"
       status={status}
       statusLabel={label}
-      context="Your linked QuantConnect account. Backtests of record live there, not here — a finished cloud run opens in the Metrics Viewer, and nothing is certified locally."
+      context={`${ROOM_CONTEXT.qc} Backtests of record live there, not here — a finished cloud run opens in the Metrics Viewer, and nothing is certified locally.`}
       vitals={vitals}
     >
       <QcImportPanel host={host} onSummary={setSummary} />

@@ -17,6 +17,14 @@
  * cold start, populated on any later visit) and fills in as fetches land.
  * Nothing here awaits before rendering.
  *
+ * READING WITHOUT CLICKING: two things keep the plan a plan as it fills up.
+ * Resting on a room lifts a peek ({@link useRoomPeek}) carrying that room's
+ * reading and what it is for, so a card can be understood without opening it.
+ * A district folds to a count chip ({@link gridFoldStore}), so the floors a
+ * person is not working on can be put away without leaving the plan — and
+ * because the fold lives in a store rather than in this component's state,
+ * anything else drawn off the plan's shape redraws with it.
+ *
  * LAYOUT: `@container`, never `@media`. The Grid renders inside a host pane
  * whose width has nothing to do with the window's. Three tiers, written
  * mobile-first: a single stacked column by default; rooms in a row under each
@@ -26,28 +34,24 @@
  * with border-box pseudo-elements, so the geometry costs no dependency.
  */
 import { useSyncExternalStore, type CSSProperties } from 'react';
-import { gridVitals, type GridVitals, type Health, type RoomVital } from '../../engine/gridVitals';
+import { gridVitals, type GridVitals, type RoomVital } from '../../engine/gridVitals';
 import { tint, tone } from '../panelkit';
 import { openRoom, zoomOriginFrom } from './gridNav';
-import { DISTRICTS, ROOM_ICONS, districtHealth, districtSummary, roomsNeedingAttention, type District } from './districts';
+import {
+  DISTRICTS,
+  HEALTH_COLOR,
+  HEALTH_WORD,
+  ROOM_ICONS,
+  districtHealth,
+  districtSummary,
+  roomsNeedingAttention,
+  type District,
+} from './districts';
+import { gridFoldStore, type FoldedDistricts } from './gridFoldStore';
+import { useRoomPeek, type PeekHandlers } from './RoomPeek';
 import { ROOMS, ROOM_IDS, type RoomId } from './rooms';
 
 const STYLE_ID = 'auracle-grid-sheet-styles';
-
-/** The dot, the flag, and a card's border all read from one table. `nominal`
- *  is GREY on purpose: a healthy room is not an achievement to celebrate, it
- *  is the absence of a problem, so only trouble takes a hue. */
-const HEALTH_COLOR: Record<Health, string> = {
-  nominal: tone.text3,
-  degraded: tone.caution,
-  fault: tone.danger,
-};
-
-const HEALTH_WORD: Record<Health, string> = {
-  nominal: 'nominal',
-  degraded: 'degraded',
-  fault: 'needs attention',
-};
 
 /** Rail hairline — one step up from the card border so the tree stays legible
  *  against the canvas without competing with the cards it connects. */
@@ -68,7 +72,13 @@ const SHEET = `
 .agrid__num { font-family: ${tone.mono}; font-size: 11px; font-weight: 650; color: ${tone.accentText}; }
 .agrid__name { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.13em; color: ${tone.text2}; white-space: nowrap; }
 .agrid__flag { font-size: 13px; line-height: 1; }
+.agrid__fold { appearance: none; margin-left: auto; flex: none; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: ${tone.text3}; cursor: pointer; transition: background-color 150ms ease-out, color 150ms ease-out; }
+.agrid__fold:hover { background: ${tone.surface2}; color: ${tone.text}; }
+.agrid__fold:focus-visible { outline: 2px solid ${tone.accentText}; outline-offset: 1px; }
+.agrid__fold .material-symbols-outlined { font-size: 17px; line-height: 1; }
 .agrid__sum { font-size: 11px; color: ${tone.text3}; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agrid__count { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; border: 1px solid ${tone.border}; background: ${tone.surface}; font-size: 11.5px; color: ${tone.text2}; }
+.agrid__cdot { flex: none; width: 6px; height: 6px; border-radius: 50%; }
 .agrid__rooms { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .agrid__slot { display: flex; min-width: 0; }
 .agrid__room { appearance: none; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; text-align: left; font: inherit; cursor: pointer; padding: 9px 12px; border-radius: 9px; border: 1px solid ${tone.border}; background: ${tone.surface}; }
@@ -106,6 +116,12 @@ const SHEET = `
   .agrid__slot:last-child::before { right: 50%; }
   .agrid__slot:only-child::before { display: none; }
   .agrid__slot::after { content: ''; position: absolute; top: 0; left: 50%; width: 1px; height: 16px; background: ${RAIL}; }
+  /* Centred under the district's rail, which drops straight into it. */
+  .agrid__count { align-self: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agrid__fold { transition: none; }
 }
 `;
 
@@ -118,7 +134,15 @@ function ensureSheetStyles(): void {
 }
 
 /** One room: icon, title, health dot, and the one line it can currently back. */
-function RoomCard({ id, vital }: { id: RoomId; vital: RoomVital }): JSX.Element {
+function RoomCard({
+  id,
+  vital,
+  peek,
+}: {
+  id: RoomId;
+  vital: RoomVital;
+  peek: PeekHandlers;
+}): JSX.Element {
   const room = ROOMS[id];
   const label = vital.note
     ? `${room.title} — ${HEALTH_WORD[vital.health]}, ${vital.note}`
@@ -132,10 +156,12 @@ function RoomCard({ id, vital }: { id: RoomId; vital: RoomVital }): JSX.Element 
         data-room={id}
         data-health={vital.health}
         aria-label={label}
-        title={label}
+        // No `title`: the peek says the same thing sooner and says more, and a
+        // native tooltip firing a second later would land on top of it.
         // The room page zooms out of the card that was pressed, so the press
         // and the arrival read as one gesture rather than a screen swap.
         onClick={(event) => openRoom(id, zoomOriginFrom(event.currentTarget))}
+        {...peek}
       >
         <span className="agrid__rtop">
           <span className="material-symbols-outlined agrid__rico" aria-hidden>
@@ -162,17 +188,37 @@ function RoomCard({ id, vital }: { id: RoomId; vital: RoomVital }): JSX.Element 
   );
 }
 
-/** One district: its number, its name, what its rooms add up to, and a flag
- *  the moment any room inside it stops being nominal. */
-function DistrictBlock({ district, vitals }: { district: District; vitals: GridVitals }): JSX.Element {
+/**
+ * One district: its number, its name, what its rooms add up to, and a flag the
+ * moment any room inside it stops being nominal.
+ *
+ * FOLDED, the rooms are replaced by a count chip carrying the same worst-case
+ * reading the flag reports — so a put-away floor still says how it is, and a
+ * fault can never hide behind a fold. The chip and the room row share one
+ * element id, so the toggle's `aria-controls` always names the live region.
+ */
+function DistrictBlock({
+  district,
+  vitals,
+  folded,
+  peek,
+}: {
+  district: District;
+  vitals: GridVitals;
+  folded: boolean;
+  peek: (id: RoomId) => PeekHandlers;
+}): JSX.Element {
   const health = districtHealth(district, vitals);
+  const bodyId = `agrid-rooms-${district.id}`;
   return (
     <section
       className="agrid__district"
       data-testid={`grid-district-${district.id}`}
       data-district={district.number}
       data-health={health}
-      style={{ '--agrid-span': district.rooms.length } as CSSProperties}
+      data-folded={folded ? 'true' : 'false'}
+      // A folded district stops claiming its rooms' share of the rank.
+      style={{ '--agrid-span': folded ? 1 : district.rooms.length } as CSSProperties}
     >
       <div className="agrid__label">
         <span className="agrid__ltop">
@@ -190,17 +236,50 @@ function DistrictBlock({ district, vitals }: { district: District; vitals: GridV
               flag
             </span>
           )}
+          <button
+            type="button"
+            className="agrid__fold"
+            data-testid={`grid-district-fold-${district.id}`}
+            aria-expanded={!folded}
+            aria-controls={bodyId}
+            aria-label={`${folded ? 'Expand' : 'Collapse'} the ${district.name} district`}
+            onClick={() => gridFoldStore.set(district.id, !folded)}
+          >
+            <span className="material-symbols-outlined" aria-hidden>
+              {folded ? 'chevron_right' : 'expand_more'}
+            </span>
+          </button>
         </span>
         <span className="agrid__sum" data-testid={`grid-district-summary-${district.id}`}>
           {districtSummary(district, vitals)}
         </span>
       </div>
       <span className="agrid__stem" aria-hidden />
-      <div className="agrid__rooms">
-        {district.rooms.map((id) => (
-          <RoomCard key={id} id={id} vital={vitals[id]} />
-        ))}
-      </div>
+      {folded ? (
+        <div
+          id={bodyId}
+          className="agrid__count"
+          data-testid={`grid-district-count-${district.id}`}
+          data-health={health}
+        >
+          <span>{district.rooms.length} rooms</span>
+          <span aria-hidden>·</span>
+          <span
+            className="agrid__cdot"
+            data-testid={`grid-district-countdot-${district.id}`}
+            data-health={health}
+            role="img"
+            aria-label={HEALTH_WORD[health]}
+            style={{ background: HEALTH_COLOR[health] }}
+          />
+        </div>
+      ) : (
+        <div id={bodyId} className="agrid__rooms">
+          {district.rooms.map((id) => (
+            <RoomCard key={id} id={id} vital={vitals[id]} peek={peek(id)} />
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -212,6 +291,14 @@ export function GridSheet(): JSX.Element {
     gridVitals.getSnapshot,
     gridVitals.getSnapshot
   );
+  // One subscription for the whole plan, not one per district: the fold store's
+  // snapshot only changes reference when a district actually folds.
+  const folded: FoldedDistricts = useSyncExternalStore(
+    gridFoldStore.subscribe,
+    gridFoldStore.getSnapshot,
+    gridFoldStore.getSnapshot
+  );
+  const { handlers, peek } = useRoomPeek(vitals);
   const attention = roomsNeedingAttention(vitals);
 
   return (
@@ -231,10 +318,17 @@ export function GridSheet(): JSX.Element {
         <span className="agrid__stem" aria-hidden />
         <div className="agrid__districts">
           {DISTRICTS.map((district) => (
-            <DistrictBlock key={district.id} district={district} vitals={vitals} />
+            <DistrictBlock
+              key={district.id}
+              district={district}
+              vitals={vitals}
+              folded={folded.has(district.id)}
+              peek={handlers}
+            />
           ))}
         </div>
       </div>
+      {peek}
     </div>
   );
 }

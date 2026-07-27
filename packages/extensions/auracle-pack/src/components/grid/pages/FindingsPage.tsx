@@ -15,6 +15,7 @@ import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import { duration } from '../../../engine/format';
 import { ResearchPanel, type ResearchSummary } from '../../ResearchPanel';
 import { RoomPage, type RoomStatus, type PageVital } from '../RoomPage';
+import { ROOM_CONTEXT } from '../roomContext';
 
 /** A figure the engine gave us, or null for the frame's quiet placeholder. */
 function figure(n: number | null | undefined): string | null {
@@ -52,7 +53,7 @@ export function FindingsPage({ host }: PanelHostProps): JSX.Element {
       room="findings"
       status={status}
       statusLabel={label}
-      context="Papers the engine scanned and ranked for tradability, strongest first. Every score is engine-computed; a finding you believe goes straight to a drafted strategy."
+      context={`${ROOM_CONTEXT.findings} Every score is engine-computed; a finding you believe goes straight to a drafted strategy.`}
       vitals={vitals}
     >
       <ResearchPanel host={host} onSummary={setSummary} />

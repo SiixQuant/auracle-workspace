@@ -54,6 +54,17 @@ type ListState =
   | { phase: 'disconnected' }
   | { phase: 'ready'; projects: QcProject[] };
 
+/**
+ * What the surrounding room frame headlines about this library — the state of
+ * the project list this panel is showing, not a second read of the same route.
+ * `projects` stays null until a list actually arrives, so an unreachable or
+ * unlinked account never renders as a count.
+ */
+export interface QcLibrarySummary {
+  phase: ListState['phase'];
+  projects: number | null;
+}
+
 type ImportState =
   | { phase: 'translating' }
   | { phase: 'error'; message: string }
@@ -320,7 +331,14 @@ function ProjectCard({
   );
 }
 
-export function QcImportPanel({ host }: PanelHostProps): JSX.Element {
+export function QcImportPanel({
+  host,
+  onSummary,
+}: PanelHostProps & {
+  /** Report the library's headline state to a room frame. Optional — the
+   *  panel is unchanged when nothing is listening. */
+  onSummary?: (summary: QcLibrarySummary) => void;
+}): JSX.Element {
   const [list, setList] = useState<ListState>({ phase: 'loading' });
   const [activeId, setActiveId] = useState<number | null>(null);
   const [importState, setImportState] = useState<ImportState | null>(null);
@@ -353,6 +371,15 @@ export function QcImportPanel({ host }: PanelHostProps): JSX.Element {
   }, []);
 
   useEffect(() => { void loadProjects(); }, [loadProjects]);
+
+  // The room frame headlines the list this panel is showing, from this panel's
+  // own state — one read of the engine, one set of numbers.
+  useEffect(() => {
+    onSummary?.({
+      phase: list.phase,
+      projects: list.phase === 'ready' ? list.projects.length : null,
+    });
+  }, [list, onSummary]);
 
   // Ambient: publish the active project + its last translation to the AI chat.
   const activeProject =

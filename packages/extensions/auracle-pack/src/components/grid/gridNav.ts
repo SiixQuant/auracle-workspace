@@ -93,6 +93,9 @@ export function routeIdForRoom(room: RoomId): string {
 
 /** null = the home plan. */
 let activeRoom: RoomId | null = null;
+/** CSS `transform-origin` for the room page's enter transition, or null for
+ *  the centre default — see {@link zoomOriginFrom}. */
+let zoomOrigin: string | null = null;
 const listeners = new Set<() => void>();
 
 function notify(): void {
@@ -103,8 +106,39 @@ export function getActiveRoom(): RoomId | null {
   return activeRoom;
 }
 
+/**
+ * Where the room page zooms FROM: the centre of the control that opened it,
+ * measured against the Grid's own box, so the page appears to grow out of the
+ * thing that was pressed rather than out of the middle of the panel.
+ *
+ * Deliberately NOT part of the subscribed snapshot: it is read once when the
+ * page mounts (the transition is a mount effect), so putting it in the store's
+ * value would only add a render for something no one re-reads.
+ */
+export function getZoomOrigin(): string | null {
+  return zoomOrigin;
+}
+
+/**
+ * Measure `el`'s centre relative to the Grid root as a `transform-origin`.
+ * Returns null when there is no layout to measure (jsdom, a detached node, a
+ * control outside the Grid) — the page then zooms from its centre.
+ */
+export function zoomOriginFrom(el: Element | null | undefined): string | null {
+  if (!el || typeof document === 'undefined') return null;
+  const host = el.closest('.auracle-grid');
+  if (!host) return null;
+  const hostBox = host.getBoundingClientRect();
+  const box = el.getBoundingClientRect();
+  if (box.width === 0 && box.height === 0) return null;
+  const x = Math.round(box.left + box.width / 2 - hostBox.left);
+  const y = Math.round(box.top + box.height / 2 - hostBox.top);
+  return `${x}px ${y}px`;
+}
+
 /** Select a room inside the Grid. Does not open the panel — see openGridRoom. */
-export function openRoom(room: RoomId): void {
+export function openRoom(room: RoomId, origin?: string | null): void {
+  zoomOrigin = origin ?? null;
   if (activeRoom === room) return;
   activeRoom = room;
   notify();
@@ -112,6 +146,7 @@ export function openRoom(room: RoomId): void {
 
 /** Back to the plan. */
 export function openGridHome(): void {
+  zoomOrigin = null;
   if (activeRoom === null) return;
   activeRoom = null;
   notify();

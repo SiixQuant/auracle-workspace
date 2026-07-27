@@ -7,14 +7,20 @@
  * router renders it, and the alias table (gridNav) resolves every retired
  * panel id onto one of these ids.
  *
- * Room bodies are deliberately placeholders here. The sheet and the real
- * pages land in the follow-on work; what this file fixes NOW is the id set
- * and the routing contract, so nothing upstream has to change again when a
- * placeholder is swapped for its real page.
+ * Every room wears the same page frame ({@link RoomPage}); what differs is the
+ * BODY. The rooms whose page has been built mount their real surface, the rest
+ * mount a placeholder body until their own issue lands — which is why swapping
+ * one in never touches anything upstream of this table.
  */
 import type { ComponentType } from 'react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import { tone } from '../panelkit';
+import { RoomPage } from './RoomPage';
+import { BacktestPage } from './pages/BacktestPage';
+import { FindingsPage } from './pages/FindingsPage';
+import { QcPage } from './pages/QcPage';
+import { StrategiesPage } from './pages/StrategiesPage';
+import { ValidationPage } from './pages/ValidationPage';
 
 /** Every room, in the order the home plan lists them. */
 export const ROOM_IDS = [
@@ -44,49 +50,52 @@ export interface GridRoom {
 }
 
 /**
- * A room page that states what it is and nothing it cannot back up. Carries
- * the room's `data-testid` so a route can be asserted before the real page
- * exists — and keeps carrying it afterwards.
+ * A room whose page is not built yet: the frame, an honest body, and nothing
+ * it cannot back up. It wears the same frame as a finished room — including
+ * the room's `data-testid` and its wired-to edges — so a route (and a jump
+ * from another room) can be asserted before the real body exists, and keeps
+ * working unchanged afterwards.
  */
-function placeholder(id: RoomId, title: string, blurb: string): ComponentType<PanelHostProps> {
+function placeholder(id: RoomId, blurb: string): ComponentType<PanelHostProps> {
   function RoomPlaceholder(): JSX.Element {
     return (
-      <section
-        data-testid={`grid-room-${id}`}
-        data-room={id}
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 6,
-          padding: '18px 20px',
-          color: tone.text,
-        }}
-      >
-        <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600, letterSpacing: '-0.01em' }}>
-          {title}
-        </h2>
-        <p style={{ margin: 0, fontSize: 12.5, color: tone.text2 }}>{blurb}</p>
+      <RoomPage room={id} status="nominal" statusLabel="not built" context={blurb}>
         <p style={{ margin: 0, fontSize: 12.5, color: tone.text3 }}>
           This room is routed and named. Its page is not built yet.
         </p>
-      </section>
+      </RoomPage>
     );
   }
   RoomPlaceholder.displayName = `GridRoom(${id})`;
   return RoomPlaceholder;
 }
 
-function room(id: RoomId, title: string, blurb: string): GridRoom {
-  return { id, title, blurb, component: placeholder(id, title, blurb) };
+function room(
+  id: RoomId,
+  title: string,
+  blurb: string,
+  component?: ComponentType<PanelHostProps>
+): GridRoom {
+  return { id, title, blurb, component: component ?? placeholder(id, blurb) };
 }
 
 /** The registry the router and the home plan both read. */
 export const ROOMS: Record<RoomId, GridRoom> = {
-  findings: room('findings', 'Findings', 'Ranked research findings and what makes them tradable.'),
-  qc: room('qc', 'QC Library', 'Backtests imported from QuantConnect.'),
-  strategies: room('strategies', 'Strategies', 'Every strategy in the workspace.'),
-  backtest: room('backtest', 'Backtest', 'Run a strategy and read its metrics.'),
-  validation: room('validation', 'Validation', 'Overfit checks and out-of-sample verdicts.'),
+  findings: room(
+    'findings',
+    'Findings',
+    'Ranked research findings and what makes them tradable.',
+    FindingsPage
+  ),
+  qc: room('qc', 'QC Library', 'Backtests imported from QuantConnect.', QcPage),
+  strategies: room('strategies', 'Strategies', 'Every strategy in the workspace.', StrategiesPage),
+  backtest: room('backtest', 'Backtest', 'Run a strategy and read its metrics.', BacktestPage),
+  validation: room(
+    'validation',
+    'Validation',
+    'Overfit checks and out-of-sample verdicts.',
+    ValidationPage
+  ),
   deploys: room('deploys', 'Deployments', 'Paper and live deployments, and their state.'),
   blotter: room('blotter', 'Blotter', 'Orders the deployments have sent.'),
   incidents: room('incidents', 'Incidents', 'What needs attention right now.'),

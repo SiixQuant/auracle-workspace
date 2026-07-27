@@ -55,6 +55,7 @@ import {
 } from './districts';
 import { gridFoldStore, type FoldedDistricts } from './gridFoldStore';
 import { GRID_ACCENT, GRID_ACCENT_DIM, GRID_ACCENT_SOFT } from './gridTheme';
+import { GridAiStrip } from './GridAiStrip';
 import { TREE_MIN_WIDTH } from './gridWires';
 import { useRoomPeek, type PeekHandlers } from './RoomPeek';
 import { WireOverlay } from './WireOverlay';
@@ -67,8 +68,11 @@ const STYLE_ID = 'auracle-grid-sheet-styles';
 const RAIL = tone.borderStrong;
 
 const SHEET = `
-.agrid { min-height: 100%; }
-.agrid__plan { position: relative; display: flex; flex-direction: column; padding: 18px 20px 44px; }
+/* A column so the AI strip can sit along the bottom of the plan and stay
+   there: it is sticky against this sheet's own scroll box, and the plan takes
+   whatever height is left. */
+.agrid { min-height: 100%; display: flex; flex-direction: column; }
+.agrid__plan { position: relative; flex: 1 1 auto; display: flex; flex-direction: column; padding: 18px 20px 44px; }
 .agrid__hint { margin: 0 0 14px; font-size: 11.5px; line-height: 1.5; color: ${tone.text3}; }
 .agrid__root { position: relative; z-index: 1; appearance: none; font: inherit; text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: 3px; padding: 10px 13px; border-radius: 10px; border: 1px solid ${GRID_ACCENT_DIM}; background: ${GRID_ACCENT_SOFT}; transition: border-color 150ms ease-out, background-color 150ms ease-out; }
 .agrid__root:hover { border-color: ${GRID_ACCENT}; background: ${tone.surface3}; }
@@ -370,6 +374,9 @@ export function GridSheet(): JSX.Element {
           ))}
         </div>
       </div>
+      {/* The assistant sits UNDER the plan, not over it: it speaks about what
+          the plan is showing, so it must never cover the thing it is naming. */}
+      <GridAiStrip />
       {peek}
     </div>
   );

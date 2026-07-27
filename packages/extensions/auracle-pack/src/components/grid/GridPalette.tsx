@@ -52,6 +52,7 @@ const SHEET = `
 .agrid-cmd__row[data-active='true'] { background: ${tone.surface3}; }
 .agrid-cmd__rico { flex: none; font-size: 15px; line-height: 1; color: ${tone.text3}; }
 .agrid-cmd__label { flex: 1; min-width: 0; font-size: 12.5px; color: ${tone.text}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agrid-cmd__badge { flex: none; font-size: 9.5px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; padding: 1px 5px; border-radius: 4px; border: 1px solid ${tone.border}; color: ${tone.text3}; }
 .agrid-cmd__dot { flex: none; width: 6px; height: 6px; border-radius: 50%; }
 .agrid-cmd__empty { padding: 14px 10px; font-size: 12px; color: ${tone.text3}; }
 
@@ -240,6 +241,14 @@ export function GridPalette(): JSX.Element {
                         {command.icon}
                       </span>
                       <span className="agrid-cmd__label">{command.label}</span>
+                      {command.badge ? (
+                        <span
+                          className="agrid-cmd__badge"
+                          data-testid={`grid-palette-badge-${command.id}`}
+                        >
+                          {command.badge}
+                        </span>
+                      ) : null}
                       {/* Only trouble takes a dot: a healthy row saying so in
                           colour would make eleven quiet rows shout at once. */}
                       {command.health && command.health !== 'nominal' ? (

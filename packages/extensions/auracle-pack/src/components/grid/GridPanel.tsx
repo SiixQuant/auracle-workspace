@@ -25,6 +25,11 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import { ensurePanelKitStyles, tone } from '../panelkit';
+import { AiApprovalDialog } from './AiApprovalDialog';
+import { aiRunStore, approveAiAction, declineAiAction } from './gridAiActions';
+// Side-effect import: registers the assistant's palette provider. Done here,
+// at the panel, so the rows exist whether the plan or a room is showing.
+import './gridAiCommands';
 import { closePalette, isPaletteOpen, subscribePalette, togglePalette } from './gridCommands';
 import { useRoomAiContext } from './gridFocus';
 import { getActiveRoom, subscribeGrid } from './gridNav';
@@ -75,6 +80,11 @@ export function GridPanel(props: PanelHostProps): JSX.Element {
   ensureGridStyles();
   const roomId = useSyncExternalStore(subscribeGrid, getActiveRoom, () => null);
   const paletteOpen = useSyncExternalStore(subscribePalette, isPaletteOpen, () => false);
+  // The approval gate is mounted above the router for the same reason the
+  // palette is: a mutation can be raised from the plan, from a room, or from
+  // the palette, and it has to be answerable on whichever view is showing when
+  // it is raised.
+  const aiRun = useSyncExternalStore(aiRunStore.subscribe, aiRunStore.getSnapshot, aiRunStore.getSnapshot);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const wasOpen = useRef(false);
 
@@ -142,6 +152,7 @@ export function GridPanel(props: PanelHostProps): JSX.Element {
       data-testid="auracle-grid"
       data-room={roomId ?? 'home'}
       data-palette={paletteOpen ? 'open' : 'closed'}
+      data-approval={aiRun.pending ? 'open' : 'closed'}
       // Focusable but not tabbable: a click anywhere on the plan puts focus
       // inside the panel, which is what makes the shortcut's focus guard match
       // what a person would call "I am looking at the Grid".
@@ -157,6 +168,13 @@ export function GridPanel(props: PanelHostProps): JSX.Element {
         {roomId === null ? <GridSheet /> : <GridRoomView roomId={roomId} hostProps={props} />}
       </div>
       {paletteOpen ? <GridPalette /> : null}
+      {aiRun.pending ? (
+        <AiApprovalDialog
+          action={aiRun.pending}
+          onApprove={() => void approveAiAction()}
+          onDecline={declineAiAction}
+        />
+      ) : null}
     </div>
   );
 }

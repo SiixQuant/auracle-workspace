@@ -16,6 +16,7 @@ import type { ComponentType } from 'react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import { tone } from '../panelkit';
 import { RoomPage } from './RoomPage';
+import { ROOM_CONTEXT } from './roomContext';
 import { BacktestPage } from './pages/BacktestPage';
 import { FindingsPage } from './pages/FindingsPage';
 import { QcPage } from './pages/QcPage';
@@ -43,8 +44,6 @@ export interface GridRoom {
   id: RoomId;
   /** The room's name, as the plan and the room header say it. */
   title: string;
-  /** One line naming what lives here — the home card's second line. */
-  blurb: string;
   /** The page this room renders. A placeholder until its own issue lands. */
   component: ComponentType<PanelHostProps>;
 }
@@ -55,11 +54,15 @@ export interface GridRoom {
  * the room's `data-testid` and its wired-to edges — so a route (and a jump
  * from another room) can be asserted before the real body exists, and keeps
  * working unchanged afterwards.
+ *
+ * Its context line is the room's own sentence from {@link ROOM_CONTEXT}, the
+ * same one the sheet's hover peek shows — a room does not get described one
+ * way on the plan and another way on its page.
  */
-function placeholder(id: RoomId, blurb: string): ComponentType<PanelHostProps> {
+function placeholder(id: RoomId): ComponentType<PanelHostProps> {
   function RoomPlaceholder(): JSX.Element {
     return (
-      <RoomPage room={id} status="nominal" statusLabel="not built" context={blurb}>
+      <RoomPage room={id} status="nominal" statusLabel="not built" context={ROOM_CONTEXT[id]}>
         <p style={{ margin: 0, fontSize: 12.5, color: tone.text3 }}>
           This room is routed and named. Its page is not built yet.
         </p>
@@ -70,38 +73,23 @@ function placeholder(id: RoomId, blurb: string): ComponentType<PanelHostProps> {
   return RoomPlaceholder;
 }
 
-function room(
-  id: RoomId,
-  title: string,
-  blurb: string,
-  component?: ComponentType<PanelHostProps>
-): GridRoom {
-  return { id, title, blurb, component: component ?? placeholder(id, blurb) };
+function room(id: RoomId, title: string, component?: ComponentType<PanelHostProps>): GridRoom {
+  return { id, title, component: component ?? placeholder(id) };
 }
 
 /** The registry the router and the home plan both read. */
 export const ROOMS: Record<RoomId, GridRoom> = {
-  findings: room(
-    'findings',
-    'Findings',
-    'Ranked research findings and what makes them tradable.',
-    FindingsPage
-  ),
-  qc: room('qc', 'QC Library', 'Backtests imported from QuantConnect.', QcPage),
-  strategies: room('strategies', 'Strategies', 'Every strategy in the workspace.', StrategiesPage),
-  backtest: room('backtest', 'Backtest', 'Run a strategy and read its metrics.', BacktestPage),
-  validation: room(
-    'validation',
-    'Validation',
-    'Overfit checks and out-of-sample verdicts.',
-    ValidationPage
-  ),
-  deploys: room('deploys', 'Deployments', 'Paper and live deployments, and their state.'),
-  blotter: room('blotter', 'Blotter', 'Orders the deployments have sent.'),
-  incidents: room('incidents', 'Incidents', 'What needs attention right now.'),
-  schedules: room('schedules', 'Schedules', 'What runs, and when.'),
-  runway: room('runway', 'Runway', 'How far each idea has travelled toward live.'),
-  conns: room('conns', 'Connections', 'The engine, the broker, and the data sources.'),
+  findings: room('findings', 'Findings', FindingsPage),
+  qc: room('qc', 'QC Library', QcPage),
+  strategies: room('strategies', 'Strategies', StrategiesPage),
+  backtest: room('backtest', 'Backtest', BacktestPage),
+  validation: room('validation', 'Validation', ValidationPage),
+  deploys: room('deploys', 'Deployments'),
+  blotter: room('blotter', 'Blotter'),
+  incidents: room('incidents', 'Incidents'),
+  schedules: room('schedules', 'Schedules'),
+  runway: room('runway', 'Runway'),
+  conns: room('conns', 'Connections'),
 };
 
 /** The rooms in plan order — `ROOM_IDS` is the single ordering authority. */

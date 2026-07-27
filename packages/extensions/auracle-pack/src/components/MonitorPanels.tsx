@@ -92,6 +92,17 @@ function feedGate(data: null | undefined, reload: () => void): JSX.Element {
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
+/**
+ * How a polled feed reads to a surrounding room frame. Every count below stays
+ * null until the engine has answered, so a frame rendering one of these
+ * summaries shows the quiet placeholder rather than a zero it cannot back.
+ */
+export type FeedPhase = 'loading' | 'unreachable' | 'ready';
+
+function feedPhase(data: unknown): FeedPhase {
+  return data === undefined ? 'loading' : data === null ? 'unreachable' : 'ready';
+}
+
 /** A hairline-separated list of rows in a single card. */
 function ListCard({ children }: { children: ReactNode }): JSX.Element {
   return (
@@ -132,10 +143,42 @@ function SideTag({ action }: { action?: string }): JSX.Element | null {
   );
 }
 
-export function BlotterPanel({ host }: PanelHostProps): JSX.Element {
+/** The order book's headline counts. */
+export interface BlotterSummary {
+  phase: FeedPhase;
+  orders: number | null;
+  filled: number | null;
+  working: number | null;
+}
+
+export function BlotterPanel({
+  host,
+  onSummary,
+}: PanelHostProps & {
+  /** Report the loaded book's headline counts to a room frame. Optional — the
+   *  panel is unchanged when nothing is listening. */
+  onSummary?: (summary: BlotterSummary) => void;
+}): JSX.Element {
   const [data, reload] = usePolledFeed<{ orders?: BlotterOrder[] }>('/ui/api/orders', 30_000);
   const [confirming, setConfirming] = useState(false);
   useAiPanelContext(host, data ? blotterContext(data.orders ?? []) : null);
+
+  // The room frame headlines the book this panel is showing, from this panel's
+  // own feed — one read of the engine, one set of numbers.
+  useEffect(() => {
+    const phase = feedPhase(data);
+    const rows = data?.orders ?? [];
+    onSummary?.(
+      phase === 'ready'
+        ? {
+            phase,
+            orders: rows.length,
+            filled: rows.filter((order) => order.status === 'filled').length,
+            working: rows.filter((order) => order.status !== 'filled').length,
+          }
+        : { phase, orders: null, filled: null, working: null }
+    );
+  }, [data, onSummary]);
 
   const description = 'Every order your engine has placed, most recent first.';
   if (data === undefined || data === null) {
@@ -218,13 +261,43 @@ const SEVERITY: Record<string, { color: string; pill: 'danger' | 'caution' | 'mu
   info: { color: tone.text3, pill: 'muted' },
 };
 
-export function IncidentsPanel({ host }: PanelHostProps): JSX.Element {
+/** The incident wall's headline counts. */
+export interface IncidentsSummary {
+  phase: FeedPhase;
+  open: number | null;
+  critical: number | null;
+}
+
+export function IncidentsPanel({
+  host,
+  onSummary,
+}: PanelHostProps & {
+  /** Report the open feed's headline counts to a room frame. Optional — the
+   *  panel is unchanged when nothing is listening. */
+  onSummary?: (summary: IncidentsSummary) => void;
+}): JSX.Element {
   const [data, reload] = usePolledFeed<{ incidents?: Incident[]; plain?: string }>(
     '/ui/api/incidents',
     30_000
   );
   const [note, setNote] = useState<AgentNote>(null);
   useAiPanelContext(host, data ? incidentsContext(data.incidents ?? []) : null);
+
+  // The room frame headlines the wall this panel is showing, from this panel's
+  // own feed — one read of the engine, one set of numbers.
+  useEffect(() => {
+    const phase = feedPhase(data);
+    const rows = data?.incidents ?? [];
+    onSummary?.(
+      phase === 'ready'
+        ? {
+            phase,
+            open: rows.length,
+            critical: rows.filter((incident) => incident.severity === 'critical').length,
+          }
+        : { phase, open: null, critical: null }
+    );
+  }, [data, onSummary]);
 
   // Open the incident's job in the agent. An incident identifies a JOB (its
   // `open_job` action), never a deployment, so the honest jump is the run — the
@@ -353,11 +426,38 @@ function humanizeCron(cron?: string): string | null {
   return `${days} · ${time}`;
 }
 
-export function SchedulesPanel(_props: PanelHostProps): JSX.Element {
+/** The schedule table's headline counts. */
+export interface SchedulesSummary {
+  phase: FeedPhase;
+  scheduled: number | null;
+  enabled: number | null;
+  paused: number | null;
+}
+
+export function SchedulesPanel({
+  onSummary,
+}: PanelHostProps & {
+  /** Report the loaded table's headline counts to a room frame. Optional — the
+   *  panel is unchanged when nothing is listening. */
+  onSummary?: (summary: SchedulesSummary) => void;
+}): JSX.Element {
   const [data, reload] = usePolledFeed<{ schedules?: ScheduleRow[] }>(
     '/ui/api/schedules.json',
     30_000
   );
+
+  // The room frame headlines the table this panel is showing, from this panel's
+  // own feed — one read of the engine, one set of numbers.
+  useEffect(() => {
+    const phase = feedPhase(data);
+    const rows = data?.schedules ?? [];
+    const enabled = rows.filter((row) => row.enabled === true).length;
+    onSummary?.(
+      phase === 'ready'
+        ? { phase, scheduled: rows.length, enabled, paused: rows.length - enabled }
+        : { phase, scheduled: null, enabled: null, paused: null }
+    );
+  }, [data, onSummary]);
 
   const description = 'Strategies set to run on a cron cadence.';
   if (data === undefined || data === null) {
@@ -448,12 +548,51 @@ const REACHED_PILL: Record<string, { label: string; kind: 'ok' | 'caution' | 'mu
   unknown: { label: 'unknown', kind: 'caution' },
 };
 
-export function RunwayPanel({ host }: PanelHostProps): JSX.Element {
+/** The runway's headline reading: how far the work has actually travelled. */
+export interface RunwaySummary {
+  phase: FeedPhase;
+  stages: number | null;
+  reached: number | null;
+  /** The furthest stage the engine reports as reached, by its display name. */
+  furthest: string | null;
+}
+
+export function RunwayPanel({
+  host,
+  onSummary,
+}: PanelHostProps & {
+  /** Report the loaded stages to a room frame. Optional — the panel is
+   *  unchanged when nothing is listening. */
+  onSummary?: (summary: RunwaySummary) => void;
+}): JSX.Element {
   const [data, reload] = usePolledFeed<{ stages?: Record<string, StageTruth> }>(
     '/ui/api/runway',
     60_000
   );
   useAiPanelContext(host, data ? runwayContext(data.stages ?? {}) : null);
+
+  // The room frame headlines the stages this panel is showing, from this
+  // panel's own feed — one read of the engine, one set of numbers.
+  useEffect(() => {
+    const phase = feedPhase(data);
+    if (phase !== 'ready') {
+      onSummary?.({ phase, stages: null, reached: null, furthest: null });
+      return;
+    }
+    const stages = data?.stages ?? {};
+    const reachedStages = RUNWAY_STAGES.filter((stage) => stages[stage]?.reached === 'yes');
+    onSummary?.({
+      phase,
+      stages: RUNWAY_STAGES.length,
+      reached: reachedStages.length,
+      // The LAST reached stage in runway order — how far the work actually got,
+      // not merely how many boxes are ticked.
+      furthest:
+        reachedStages.length > 0
+          ? RUNWAY_LABELS[reachedStages[reachedStages.length - 1]]
+          : null,
+    });
+  }, [data, onSummary]);
 
   const description =
     'Research to live, one honest step at a time — each stage shows whether it has been reached, and the evidence.';

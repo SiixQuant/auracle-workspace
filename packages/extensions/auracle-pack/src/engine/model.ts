@@ -94,6 +94,41 @@ export function defaultExpanded(connectors: Connector[]): boolean {
   return connectors.length > 0 && !connectors.some((connector) => isConnected(connector.status));
 }
 
+/**
+ * Connectors that need no credentials — the platform is keyless by default, so
+ * reading these as "not configured" would understate a source that is ready to
+ * use right now.
+ */
+export const KEYLESS_IDS: ReadonlySet<string> = new Set(['yfinance', 'simulator']);
+
+export interface ConnectorTag {
+  kind: 'ok' | 'caution' | 'danger' | 'muted';
+  label: string;
+}
+
+/**
+ * The one status tag every connector surface renders — the Settings page and
+ * the Grid's Connections room read this same function, so the two can never
+ * describe one connector with two different words.
+ *
+ * The engine's own vocabulary is preserved: an error or an intermediate state
+ * shows the engine's `detail` when it gave one, and any state that is neither
+ * connected, keyless-ready, nor errored is shown AS IS rather than flattened
+ * into "not configured" — a connector that is reconnecting has not failed.
+ */
+export function connectorTag(connector: Connector): ConnectorTag {
+  if (isConnected(connector.status)) return { kind: 'ok', label: 'Connected' };
+  if (KEYLESS_IDS.has(connector.id)) return { kind: 'ok', label: 'Ready' };
+  const state = connector.status?.state ?? '';
+  if (state === 'error') {
+    return { kind: 'danger', label: connector.status.detail || 'Error' };
+  }
+  if (state && state !== 'not_configured') {
+    return { kind: 'caution', label: connector.status.detail || state };
+  }
+  return { kind: 'muted', label: 'Not configured' };
+}
+
 /** Fill engine-optional fields so list rows render without undefined checks. */
 export function normalizeConnector(raw: Partial<Connector> & { id: string }): Connector {
   return {

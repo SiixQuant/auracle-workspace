@@ -169,12 +169,12 @@ describe('the room page frame', () => {
     expect(screen.queryByTestId('grid-room-findings')).toBeNull();
   });
 
-  it('routes to a room whose page is not built yet, which shows its placeholder', () => {
+  it('routes across districts, into a room from another wave', () => {
     renderGrid('validation');
     fireEvent.click(screen.getByTestId('room-wired-deploys'));
 
-    const room = screen.getByTestId('grid-room-deploys');
-    expect(room.textContent).toContain('not built yet');
+    expect(screen.getByTestId('grid-room-deploys')).toBeTruthy();
+    expect(screen.queryByTestId('grid-room-validation')).toBeNull();
   });
 
   it('flags a wired chip from the same reading the plan draws its dot from', async () => {

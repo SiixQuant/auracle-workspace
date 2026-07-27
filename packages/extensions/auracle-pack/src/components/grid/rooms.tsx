@@ -7,19 +7,25 @@
  * router renders it, and the alias table (gridNav) resolves every retired
  * panel id onto one of these ids.
  *
- * Every room wears the same page frame ({@link RoomPage}); what differs is the
- * BODY. The rooms whose page has been built mount their real surface, the rest
- * mount a placeholder body until their own issue lands — which is why swapping
- * one in never touches anything upstream of this table.
+ * Every room wears the same page frame (`RoomPage`); what differs is the BODY,
+ * which mounts the real surface for that work rather than a lookalike. Swapping
+ * a page in never touches anything upstream of this table.
+ *
+ * What a room is FOR is not declared here — that sentence lives in
+ * `roomContext.ts`, which the page and the sheet's hover peek both read, so a
+ * room is never described one way on the plan and another way on its own page.
  */
 import type { ComponentType } from 'react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
-import { tone } from '../panelkit';
-import { RoomPage } from './RoomPage';
-import { ROOM_CONTEXT } from './roomContext';
 import { BacktestPage } from './pages/BacktestPage';
+import { BlotterPage } from './pages/BlotterPage';
+import { ConnsPage } from './pages/ConnsPage';
+import { DeploysPage } from './pages/DeploysPage';
 import { FindingsPage } from './pages/FindingsPage';
+import { IncidentsPage } from './pages/IncidentsPage';
 import { QcPage } from './pages/QcPage';
+import { RunwayPage } from './pages/RunwayPage';
+import { SchedulesPage } from './pages/SchedulesPage';
 import { StrategiesPage } from './pages/StrategiesPage';
 import { ValidationPage } from './pages/ValidationPage';
 
@@ -44,37 +50,12 @@ export interface GridRoom {
   id: RoomId;
   /** The room's name, as the plan and the room header say it. */
   title: string;
-  /** The page this room renders. A placeholder until its own issue lands. */
+  /** The page this room renders. */
   component: ComponentType<PanelHostProps>;
 }
 
-/**
- * A room whose page is not built yet: the frame, an honest body, and nothing
- * it cannot back up. It wears the same frame as a finished room — including
- * the room's `data-testid` and its wired-to edges — so a route (and a jump
- * from another room) can be asserted before the real body exists, and keeps
- * working unchanged afterwards.
- *
- * Its context line is the room's own sentence from {@link ROOM_CONTEXT}, the
- * same one the sheet's hover peek shows — a room does not get described one
- * way on the plan and another way on its page.
- */
-function placeholder(id: RoomId): ComponentType<PanelHostProps> {
-  function RoomPlaceholder(): JSX.Element {
-    return (
-      <RoomPage room={id} status="nominal" statusLabel="not built" context={ROOM_CONTEXT[id]}>
-        <p style={{ margin: 0, fontSize: 12.5, color: tone.text3 }}>
-          This room is routed and named. Its page is not built yet.
-        </p>
-      </RoomPage>
-    );
-  }
-  RoomPlaceholder.displayName = `GridRoom(${id})`;
-  return RoomPlaceholder;
-}
-
-function room(id: RoomId, title: string, component?: ComponentType<PanelHostProps>): GridRoom {
-  return { id, title, component: component ?? placeholder(id) };
+function room(id: RoomId, title: string, component: ComponentType<PanelHostProps>): GridRoom {
+  return { id, title, component };
 }
 
 /** The registry the router and the home plan both read. */
@@ -84,12 +65,12 @@ export const ROOMS: Record<RoomId, GridRoom> = {
   strategies: room('strategies', 'Strategies', StrategiesPage),
   backtest: room('backtest', 'Backtest', BacktestPage),
   validation: room('validation', 'Validation', ValidationPage),
-  deploys: room('deploys', 'Deployments'),
-  blotter: room('blotter', 'Blotter'),
-  incidents: room('incidents', 'Incidents'),
-  schedules: room('schedules', 'Schedules'),
-  runway: room('runway', 'Runway'),
-  conns: room('conns', 'Connections'),
+  deploys: room('deploys', 'Deployments', DeploysPage),
+  blotter: room('blotter', 'Blotter', BlotterPage),
+  incidents: room('incidents', 'Incidents', IncidentsPage),
+  schedules: room('schedules', 'Schedules', SchedulesPage),
+  runway: room('runway', 'Runway', RunwayPage),
+  conns: room('conns', 'Connections', ConnsPage),
 };
 
 /** The rooms in plan order — `ROOM_IDS` is the single ordering authority. */

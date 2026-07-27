@@ -20,6 +20,8 @@ import {
 import {
   Connector,
   FieldMeta,
+  KEYLESS_IDS,
+  connectorTag,
   defaultExpanded,
   isConnected,
   normalizeConnector,
@@ -29,8 +31,6 @@ import { parseEngineError, paywallFromReason, type EngineError } from '../engine
 import { refreshEntitlements } from '../engine/entitlements';
 import { UpgradeGate } from './UpgradeGate';
 import { Button, InlineNote, Pill, Select, ensurePanelKitStyles, tint, tone } from './panelkit';
-
-const KEYLESS_IDS = new Set(['yfinance', 'simulator']);
 
 const SECTIONS: Array<{ kind: string; title: string }> = [
   { kind: 'broker', title: 'Brokers' },
@@ -416,37 +416,21 @@ function Section({
       {expanded ? (
         <div style={styles.rows}>
           {connectors.map((connector) => {
-            const connected = isConnected(connector.status);
-            const keyless = KEYLESS_IDS.has(connector.id);
-            const st = connector.status.state;
-            const errored = st === 'error';
-            // Any other non-empty, non-"not_configured" state (connecting, stale,
-            // expired…) must show as-is, not be flattened to "Not configured".
-            const intermediate = !connected && !keyless && !errored && !!st && st !== 'not_configured';
+            // One tag rule, shared with the Grid's Connections room, so the two
+            // surfaces never describe the same connector with different words.
+            const tag = connectorTag(connector);
             return (
               <div key={connector.id} className="apk-card" style={styles.row} onClick={() => onSelect(connector)}>
                 <span aria-hidden style={styles.dot(dotColor(connector))} />
                 <span style={styles.rowLabel}>{connector.display_label || connector.id}</span>
                 <span style={styles.rowBlurb}>{connector.blurb}</span>
                 {connector.gated ? <Pill kind="caution">Upgrade</Pill> : null}
-                {connected ? (
-                  <Pill kind="ok" dot>
-                    Connected
-                  </Pill>
-                ) : keyless ? (
-                  <Pill kind="ok" dot>
-                    Ready
-                  </Pill>
-                ) : errored ? (
-                  <Pill kind="danger" dot>
-                    {connector.status.detail || 'Error'}
-                  </Pill>
-                ) : intermediate ? (
-                  <Pill kind="caution" dot>
-                    {connector.status.detail || st}
-                  </Pill>
+                {tag.kind === 'muted' ? (
+                  <span style={styles.statusText(false)}>{tag.label}</span>
                 ) : (
-                  <span style={styles.statusText(false)}>Not configured</span>
+                  <Pill kind={tag.kind} dot>
+                    {tag.label}
+                  </Pill>
                 )}
                 <span aria-hidden style={styles.chev}>
                   ›

@@ -531,7 +531,7 @@ export function BacktestPanel({ host }: { host?: PanelHostLike }): JSX.Element {
                     {snap.validation.phase === 'done' ? 'Re-check overfit' : 'Validate'}
                   </Button>
                   {/* One-click deploy from the results: hand the same file to the
-                      Live Desk wizard, exactly as the editor header does. */}
+                      Deploy wizard, exactly as the editor header does. */}
                   <Button
                     variant="ghost"
                     testId="backtest-deploy"

@@ -1,6 +1,6 @@
 /**
  * The backtest-results "Deploy" edge, at the mocked seam: a finished run hands
- * its file to the shared deploy action (which fronts the Live Desk wizard), and
+ * its file to the shared deploy action (which opens the Deployments room), and
  * the button is disabled when the run has no resolvable file.
  */
 // @vitest-environment jsdom

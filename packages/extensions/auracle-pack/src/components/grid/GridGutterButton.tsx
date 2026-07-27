@@ -15,12 +15,15 @@
 import { useSyncExternalStore } from 'react';
 import type { PanelGutterButtonProps } from '@nimbalyst/extension-sdk';
 import { alertStore } from '../../engine/alertStore';
-import { tone } from '../panelkit';
+import { ensurePanelKitStyles, tone } from '../panelkit';
 
 /** Above this the exact number stops mattering and the glyph would not fit. */
 const BADGE_CAP = 99;
 
 export function GridGutterButton({ isActive, onActivate }: PanelGutterButtonProps): JSX.Element {
+  // The rail renders before any panel does, so the kit's sheet (which carries
+  // the focus ring below) may not be on the page yet.
+  ensurePanelKitStyles();
   const alerts = useSyncExternalStore(
     alertStore.subscribe,
     alertStore.getSnapshot,
@@ -33,6 +36,7 @@ export function GridGutterButton({ isActive, onActivate }: PanelGutterButtonProp
   return (
     <button
       type="button"
+      className="apk-btn"
       data-testid="auracle-grid-gutter-button"
       data-alert-count={alerts}
       aria-label={label}

@@ -4,21 +4,16 @@
  * contribution point for extensions). The flagship surface of the Hermes
  * design pass (PRD #59): a brand tile, the strategy's name, and the two
  * everyday actions — Run backtest (hands the file to backtestStore + opens
- * the Backtest panel) and Deploy (hands the file to deployStore + fronts
- * the Live Desk's Deployments tab, pre-bound to this file's strategy).
- * Each panel owns its own lifecycle + results; the header only launches.
+ * the Grid's Backtest room) and Deploy (hands the file to deployStore +
+ * opens the Deployments room, pre-bound to this file's strategy).
+ * Each room owns its own lifecycle + results; the header only launches.
  */
 import React, { useCallback, useState } from 'react';
 import { backtestStore } from '../engine/backtestStore';
 import { deployStore } from '../engine/deployStore';
 import { focusStore } from '../engine/focusStore';
 import { ensurePanelKitStyles, tone } from './panelkit';
-import { openHubTab } from './hub';
-import { isBacktestPanelOpen, isLivePanelOpen } from './panelVisibility';
-
-/** Full panel ids (extensionId.panelId) — the toggle-panel event routes by id. */
-const BACKTEST_PANEL_ID = 'com.auracle.pack.backtest';
-const LIVE_DESK_PANEL_ID = 'com.auracle.pack.live-desk';
+import { openGridRoom } from './grid/gridNav';
 
 /** Props the host hands every document-header component. */
 interface DocumentHeaderComponentProps {
@@ -28,12 +23,6 @@ interface DocumentHeaderComponentProps {
   contentVersion: number;
   onContentChange?: (next: string) => void;
   editor?: unknown;
-}
-
-function togglePanel(panelId: string): void {
-  window.dispatchEvent(
-    new CustomEvent('nimbalyst:toggle-panel', { detail: { panelId } })
-  );
 }
 
 export const RunStrategyHeader: React.FC<DocumentHeaderComponentProps> = ({
@@ -52,19 +41,16 @@ export const RunStrategyHeader: React.FC<DocumentHeaderComponentProps> = ({
     // Publish focus first, then let the panel write its own richer context.
     focusStore.publish({ strategy: { filePath } });
     void backtestStore.run(filePath);
-    // The host event is a pure toggle, so only dispatch it when the panel is
-    // closed — otherwise a re-run would toggle the open results panel shut.
-    if (!isBacktestPanelOpen()) togglePanel(BACKTEST_PANEL_ID);
+    // Addressed to the room's alias id, which the host reads as navigation —
+    // so a re-run opens the results, never toggling an open Grid shut.
+    openGridRoom('backtest');
     ping('run');
   }, [filePath, ping]);
 
   const onDeploy = useCallback(() => {
     focusStore.publish({ strategy: { filePath } });
     void deployStore.deploy(filePath);
-    // Front the wizard's tab regardless of desk state, then open the desk
-    // only when it's closed — the same toggle guard as Run, hub-aware.
-    openHubTab('live-desk', 'deployments');
-    if (!isLivePanelOpen()) togglePanel(LIVE_DESK_PANEL_ID);
+    openGridRoom('deploys');
     ping('deploy');
   }, [filePath, ping]);
 

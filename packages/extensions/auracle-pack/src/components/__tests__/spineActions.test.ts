@@ -2,18 +2,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../engine/backtestStore', () => ({ backtestStore: { choose: vi.fn(), loadJob: vi.fn() } }));
 vi.mock('../../engine/deployStore', () => ({ deployStore: { deploy: vi.fn(), choose: vi.fn() } }));
-vi.mock('../hub', () => ({ openHubTab: vi.fn() }));
-vi.mock('../panelVisibility', () => ({
-  isBacktestPanelOpen: vi.fn(() => false),
-  isLivePanelOpen: vi.fn(() => false),
-}));
 
 import { backtestStore } from '../../engine/backtestStore';
 import { deployStore } from '../../engine/deployStore';
 import { focusStore } from '../../engine/focusStore';
-import { openHubTab } from '../hub';
-import { isBacktestPanelOpen, isLivePanelOpen } from '../panelVisibility';
+import { getActiveRoom, openGridHome } from '../grid/gridNav';
 import { backtestOption, deployFile, deployOption, handOffNode, openRunInViewer } from '../spineActions';
+
+/** The alias ids the hand-offs address — never the Grid's own id, which the
+ *  host would read as a toggle and could close the Grid mid-hand-off. */
+const DEPLOYS_ROUTE = 'com.auracle.pack.live-algorithms';
+const BACKTEST_ROUTE = 'com.auracle.pack.backtest';
 
 const OPTION = { path: 'strategies.momentum.Mom', cls: 'Mom', label: 'Mom' };
 
@@ -30,13 +29,12 @@ beforeEach(() => {
 
 afterEach(() => {
   focusStore.clear();
+  openGridHome();
   vi.clearAllMocks();
-  vi.mocked(isBacktestPanelOpen).mockReturnValue(false);
-  vi.mocked(isLivePanelOpen).mockReturnValue(false);
 });
 
 describe('deployFile — Backtest results "Deploy"', () => {
-  it('publishes focus, resolves the file through deployStore, and fronts the Live Desk', () => {
+  it('publishes focus, resolves the file through deployStore, and opens the Deployments room', () => {
     deployFile('strategies/momentum.py', 'strategies.momentum.Mom');
 
     expect(focusStore.getSnapshot().strategy).toEqual({
@@ -44,21 +42,22 @@ describe('deployFile — Backtest results "Deploy"', () => {
       dottedPath: 'strategies.momentum.Mom',
     });
     expect(deployStore.deploy).toHaveBeenCalledWith('strategies/momentum.py');
-    expect(openHubTab).toHaveBeenCalledWith('live-desk', 'deployments');
-    expect(toggledPanelIds()).toEqual(['com.auracle.pack.live-desk']);
+    expect(getActiveRoom()).toBe('deploys');
+    expect(toggledPanelIds()).toEqual([DEPLOYS_ROUTE]);
   });
 
-  it('does not toggle the Live Desk when it is already the mounted surface', () => {
-    vi.mocked(isLivePanelOpen).mockReturnValue(true);
+  it('re-firing keeps naming the room, so the host navigates instead of closing', () => {
     deployFile('strategies/momentum.py');
-    // The hub tab is still fronted, but no bare toggle that would close it.
-    expect(openHubTab).toHaveBeenCalledWith('live-desk', 'deployments');
-    expect(toggledPanelIds()).toEqual([]);
+    deployFile('strategies/momentum.py');
+    // Both requests are aliased: the host reads them as navigation, so a
+    // second Deploy cannot toggle the open Grid shut.
+    expect(toggledPanelIds()).toEqual([DEPLOYS_ROUTE, DEPLOYS_ROUTE]);
+    expect(getActiveRoom()).toBe('deploys');
   });
 });
 
 describe('deployOption — Flow node "Deploy"', () => {
-  it('binds the resolved option to the wizard and fronts the Live Desk', () => {
+  it('binds the resolved option to the wizard and opens the Deployments room', () => {
     deployOption(OPTION, { filePath: 'strategies/momentum.py', dottedPath: OPTION.path });
 
     expect(deployStore.choose).toHaveBeenCalledWith(OPTION);
@@ -66,7 +65,8 @@ describe('deployOption — Flow node "Deploy"', () => {
       filePath: 'strategies/momentum.py',
       dottedPath: OPTION.path,
     });
-    expect(toggledPanelIds()).toEqual(['com.auracle.pack.live-desk']);
+    expect(toggledPanelIds()).toEqual([DEPLOYS_ROUTE]);
+    expect(getActiveRoom()).toBe('deploys');
   });
 
   it('omits focus when none is supplied (e.g. an unmappable node)', () => {
@@ -77,7 +77,7 @@ describe('deployOption — Flow node "Deploy"', () => {
 });
 
 describe('backtestOption — Flow node "Metrics" (view metrics)', () => {
-  it('runs the option in the Backtest panel and fronts it', () => {
+  it('runs the option and opens the Backtest room', () => {
     backtestOption(OPTION, { filePath: 'strategies/momentum.py', dottedPath: OPTION.path });
 
     expect(backtestStore.choose).toHaveBeenCalledWith(OPTION);
@@ -85,14 +85,8 @@ describe('backtestOption — Flow node "Metrics" (view metrics)', () => {
       filePath: 'strategies/momentum.py',
       dottedPath: OPTION.path,
     });
-    expect(toggledPanelIds()).toEqual(['com.auracle.pack.backtest']);
-  });
-
-  it('does not re-toggle the Backtest panel when it is already open', () => {
-    vi.mocked(isBacktestPanelOpen).mockReturnValue(true);
-    backtestOption(OPTION);
-    expect(backtestStore.choose).toHaveBeenCalledWith(OPTION);
-    expect(toggledPanelIds()).toEqual([]);
+    expect(toggledPanelIds()).toEqual([BACKTEST_ROUTE]);
+    expect(getActiveRoom()).toBe('backtest');
   });
 });
 
@@ -101,18 +95,20 @@ describe('handOffNode — Flow "Metrics" / "Deploy"', () => {
   const option = { path: 'strategies.momentum.Mom', cls: 'Mom', label: 'Mom' };
   const focus = { filePath: 'strategies/momentum.py', dottedPath: 'strategies.momentum.Mom' };
 
-  it('builds the option + workspace focus and runs it in the Backtest panel', () => {
+  it('builds the option + workspace focus and runs it in the Backtest room', () => {
     handOffNode(node, 'backtest');
     expect(backtestStore.choose).toHaveBeenCalledWith(option);
     expect(focusStore.getSnapshot().strategy).toEqual(focus);
-    expect(toggledPanelIds()).toEqual(['com.auracle.pack.backtest']);
+    expect(toggledPanelIds()).toEqual([BACKTEST_ROUTE]);
+    expect(getActiveRoom()).toBe('backtest');
   });
 
   it('builds the option + workspace focus and binds the Deploy wizard', () => {
     handOffNode(node, 'deploy');
     expect(deployStore.choose).toHaveBeenCalledWith(option);
     expect(focusStore.getSnapshot().strategy).toEqual(focus);
-    expect(toggledPanelIds()).toEqual(['com.auracle.pack.live-desk']);
+    expect(toggledPanelIds()).toEqual([DEPLOYS_ROUTE]);
+    expect(getActiveRoom()).toBe('deploys');
   });
 
   it('still hands off a desk-grafted node, focus carrying its (non-openable) path', () => {
@@ -136,11 +132,12 @@ describe('handOffNode — Flow "Metrics" / "Deploy"', () => {
 });
 
 describe('openRunInViewer — QC library "Open in Metrics Viewer" (the one outbound edge)', () => {
-  it('loads the persisted run by id (with its source) and fronts the Backtest panel', () => {
+  it('loads the persisted run by id (with its source) and opens the Backtest room', () => {
     openRunInViewer(4242, 'quantconnect');
 
     expect(backtestStore.loadJob).toHaveBeenCalledWith(4242, { source: 'quantconnect' });
-    expect(toggledPanelIds()).toEqual(['com.auracle.pack.backtest']);
+    expect(toggledPanelIds()).toEqual([BACKTEST_ROUTE]);
+    expect(getActiveRoom()).toBe('backtest');
   });
 
   it('publishes NO Spine focus — the QC library stays off the Spine', () => {
@@ -150,14 +147,6 @@ describe('openRunInViewer — QC library "Open in Metrics Viewer" (the one outbo
     // publish strategy or run focus the way the strategy hand-offs do.
     expect(focusStore.getSnapshot().strategy).toBeUndefined();
     expect(focusStore.getSnapshot().run).toBeUndefined();
-  });
-
-  it('does not re-toggle the Backtest panel when it is already open', () => {
-    vi.mocked(isBacktestPanelOpen).mockReturnValue(true);
-    openRunInViewer(4242, 'quantconnect');
-
-    expect(backtestStore.loadJob).toHaveBeenCalledWith(4242, { source: 'quantconnect' });
-    expect(toggledPanelIds()).toEqual([]);
   });
 
   it('omits the source hint when none is given', () => {

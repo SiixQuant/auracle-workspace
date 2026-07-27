@@ -1120,9 +1120,6 @@ export function LiveAlgorithmsPanel({ host }: PanelHostProps): JSX.Element {
   const deploySnap = useSyncExternalStore(deployStore.subscribe, deployStore.getSnapshot);
   const hasBinding = deploySnap.phase !== 'idle';
 
-  // Mount tracking moved to LiveDeskPanel: the hub owns "the live surface is
-  // open" so Deploy won't toggle the desk shut while a sibling tab is up.
-
   // Publish the selected deployment to the AI chat (ambient), and offer a
   // one-click investigate hand-off for it.
   const selectedRow = selectedDeployment(model);

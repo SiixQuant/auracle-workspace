@@ -22,7 +22,7 @@ import { QcImportPanel, QcBacktestResult } from '../src/components/QcImportPanel
 import { BacktestPanel, BacktestResultView } from '../src/components/BacktestPanel';
 import { backtestStore, type BacktestResultData } from '../src/engine/backtestStore';
 import { EquityChartShad } from '../src/components/charts/EquityChartShad';
-import { LiveDeskPanel, StrategyLabPanel } from '../src/components/hubPanels';
+import { GridPanel } from '../src/components/grid/GridPanel';
 import { RunStrategyHeader } from '../src/components/RunStrategyHeader';
 
 /* ── mock data ─────────────────────────────────────────────── */
@@ -442,8 +442,7 @@ function RunHeaderHarness(): JSX.Element {
 
 const PANELS: Record<string, (props: { host: never }) => JSX.Element> = {
   live: LiveAlgorithmsPanel,
-  'strategy-lab': StrategyLabPanel as (props: { host: never }) => JSX.Element,
-  'live-desk': LiveDeskPanel as (props: { host: never }) => JSX.Element,
+  grid: GridPanel as (props: { host: never }) => JSX.Element,
   'run-header': RunHeaderHarness as (props: { host: never }) => JSX.Element,
   'deploy-bound': (() => <DeployWizardHarness deploy={DEPLOY_BOUND} />) as (props: { host: never }) => JSX.Element,
   'deploy-blocked': (() => <DeployWizardHarness deploy={DEPLOY_BLOCKED} />) as (props: { host: never }) => JSX.Element,

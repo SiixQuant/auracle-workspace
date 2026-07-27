@@ -174,7 +174,15 @@ function VerdictHero({ signals }: { signals: ValidationVerdict['signals'] }): JS
   );
 }
 
-export function ValidationPanel({ host }: { host?: PanelHostLike }): JSX.Element {
+export function ValidationPanel({
+  host,
+  onVerdict,
+}: {
+  host?: PanelHostLike;
+  /** Report the verdict on screen (null when no check is showing) to a room
+   *  frame, so the gates it headlines are this panel's own, never a re-run. */
+  onVerdict?: (verdict: ValidationVerdict | null) => void;
+}): JSX.Element {
   const [list, setList] = useState<ListState>({ phase: 'loading' });
   const [selected, setSelected] = useState('');
   const [run, setRun] = useState<RunState>({ phase: 'idle' });
@@ -182,6 +190,10 @@ export function ValidationPanel({ host }: { host?: PanelHostLike }): JSX.Element
 
   // Publish the active verdict to the AI chat (ambient) while a check is shown.
   useAiPanelContext(host, run.phase === 'done' ? validationContext(run.verdict) : null);
+
+  useEffect(() => {
+    onVerdict?.(run.phase === 'done' ? run.verdict : null);
+  }, [run, onVerdict]);
 
   const askAgent = async (verdict: ValidationVerdict) => {
     const cls = verdict.strategy_path.split('.').pop() ?? verdict.strategy_path;

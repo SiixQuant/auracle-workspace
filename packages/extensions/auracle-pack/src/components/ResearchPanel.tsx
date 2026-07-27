@@ -93,6 +93,35 @@ type LoadState =
   | { phase: 'failed'; why: LoadFailure }
   | { phase: 'ready'; feed: ResearchFeed };
 
+/**
+ * What the surrounding room frame needs to headline this panel: the size of
+ * the feed the panel is ACTUALLY showing, not a second read of the same
+ * endpoint. Numbers are null until they are known, so a frame that renders
+ * this never has to invent a placeholder or keep a stale figure.
+ */
+export interface ResearchSummary {
+  phase: 'loading' | 'failed' | 'ready';
+  /** Findings on the feed, once it has loaded. */
+  findings: number | null;
+  /** Highest composite on the feed (engine-computed; the panel never rescores). */
+  topScore: number | null;
+  /** ISO stamp of the last completed scan, when the engine reported one. */
+  lastScan: string | null;
+}
+
+function summarize(load: LoadState): ResearchSummary {
+  if (load.phase !== 'ready') {
+    return { phase: load.phase, findings: null, topScore: null, lastScan: null };
+  }
+  const findings = load.feed.findings;
+  return {
+    phase: 'ready',
+    findings: findings.length,
+    topScore: findings.length ? Math.max(...findings.map((f) => f.composite)) : null,
+    lastScan: load.feed.last_scan,
+  };
+}
+
 const BAND_COLOR: Record<string, string> = {
   candidate: tone.ok,
   watchlist: tone.caution,
@@ -386,7 +415,15 @@ function FindingRow({
   );
 }
 
-export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Element {
+export function ResearchPanel({
+  host,
+  onSummary,
+}: {
+  host?: PanelHostLike;
+  /** Report the loaded feed's headline figures to a room frame. Optional —
+   *  the panel is unchanged when nothing is listening. */
+  onSummary?: (summary: ResearchSummary) => void;
+} = {}): JSX.Element {
   const [load, setLoad] = useState<LoadState>({ phase: 'loading' });
   const [scan, setScan] = useState<ScanStatus | null>(null);
   const [scanNote, setScanNote] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
@@ -402,6 +439,12 @@ export function ResearchPanel({ host }: { host?: PanelHostLike } = {}): JSX.Elem
   // Ambient: publish the current feed to the AI chat so the agent knows what
   // research the user is looking at.
   useAiPanelContext(host, load.phase === 'ready' ? researchContext(load.feed) : null);
+
+  // The room frame headlines the feed this panel is showing, from this panel's
+  // own state — one read of the engine, one set of numbers.
+  useEffect(() => {
+    onSummary?.(summarize(load));
+  }, [load, onSummary]);
 
   const refresh = useCallback(async () => {
     const result = await getJsonDetailed<Record<string, unknown>>(

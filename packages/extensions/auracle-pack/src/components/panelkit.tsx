@@ -14,7 +14,7 @@
  * semantic colour carrying meaning, tabular numerics — not a marketing page.
  */
 import type { CSSProperties, ReactNode } from 'react';
-import { useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 import {
   FloatingPortal,
   flip,
@@ -156,6 +156,21 @@ export function ensurePanelKitStyles(): void {
 
 /* ── shell ──────────────────────────────────────────────────────────── */
 
+/**
+ * True when a panel is rendered as the BODY of a Grid room page.
+ *
+ * The room frame already states the room's name, its status and one context
+ * sentence, so a body that also draws its own hero heading says the same thing
+ * twice. Rather than thread an `embedded` prop through every panel (and every
+ * caller that never needs it), the frame declares it once through context and
+ * {@link PanelShell} adapts: it drops the title, the description and its own
+ * page chrome — scroll box, canvas background, reading-width cap — and keeps
+ * everything that is a live fact (the toolbar, the `meta` line, the hero band).
+ *
+ * Default false, so a panel mounted anywhere else is byte-for-byte unchanged.
+ */
+export const EmbeddedShellContext = createContext(false);
+
 export function PanelShell({
   title,
   description,
@@ -177,6 +192,28 @@ export function PanelShell({
   children: ReactNode;
 }): JSX.Element {
   ensurePanelKitStyles();
+  const embedded = useContext(EmbeddedShellContext);
+
+  if (embedded) {
+    return (
+      <div
+        className="auracle-panel auracle-panel--embedded"
+        style={{ display: 'flex', flexDirection: 'column', gap: 16, color: tone.text, font: `13px/1.5 ${tone.font}` }}
+      >
+        {toolbar || meta ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {toolbar}
+            {meta ? (
+              <span style={{ fontSize: 12, color: tone.text3, whiteSpace: 'nowrap', ...numeric }}>{meta}</span>
+            ) : null}
+          </div>
+        ) : null}
+        {hero}
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div className="auracle-panel" style={{ height: '100%', overflowY: 'auto', background: tone.bg }}>
       <div

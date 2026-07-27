@@ -15,7 +15,7 @@
 import { useSyncExternalStore } from 'react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import { ensurePanelKitStyles, tone } from '../panelkit';
-import { getActiveRoom, openGridHome, subscribeGrid } from './gridNav';
+import { getActiveRoom, subscribeGrid } from './gridNav';
 import { GridSheet } from './GridSheet';
 import { ROOMS, type RoomId } from './rooms';
 
@@ -35,40 +35,17 @@ function ensureGridStyles(): void {
   document.head.appendChild(el);
 }
 
-/** One room, with the way back to the plan. */
+/**
+ * One room. The page itself carries the whole frame — breadcrumb, status,
+ * vitals, body, wired-to (see RoomPage) — so the router adds no chrome of its
+ * own; a second header here would state the room's name twice.
+ *
+ * Keyed by room so moving between rooms REMOUNTS the page: the enter
+ * transition is a mount effect, and a reused instance would arrive without one.
+ */
 function GridRoomView({ roomId, hostProps }: { roomId: RoomId; hostProps: PanelHostProps }): JSX.Element {
-  const room = ROOMS[roomId];
-  const Page = room.component;
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '8px 14px',
-          borderBottom: `1px solid ${tone.border}`,
-          flex: 'none',
-        }}
-      >
-        <button
-          type="button"
-          className="apk-hubtab"
-          data-testid="grid-back"
-          onClick={openGridHome}
-        >
-          System plan
-        </button>
-        <span aria-hidden style={{ color: tone.text3, fontSize: 12 }}>
-          /
-        </span>
-        <span style={{ fontSize: 12, fontWeight: 600, color: tone.text }}>{room.title}</span>
-      </div>
-      <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-        <Page {...hostProps} />
-      </div>
-    </div>
-  );
+  const Page = ROOMS[roomId].component;
+  return <Page key={roomId} {...hostProps} />;
 }
 
 export function GridPanel(props: PanelHostProps): JSX.Element {

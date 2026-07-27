@@ -1,6 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../engine/backtestStore', () => ({ backtestStore: { choose: vi.fn(), loadJob: vi.fn() } }));
+// The room registry these actions route into reaches the sheet's vitals, which
+// read the run store on import — so the double has to be a STORE, not just the
+// two verbs the hand-offs call.
+vi.mock('../../engine/backtestStore', () => ({
+  backtestStore: {
+    choose: vi.fn(),
+    loadJob: vi.fn(),
+    subscribe: vi.fn(() => () => {}),
+    getSnapshot: vi.fn(() => ({ phase: 'idle', validation: { phase: 'idle' } })),
+  },
+}));
 vi.mock('../../engine/deployStore', () => ({ deployStore: { deploy: vi.fn(), choose: vi.fn() } }));
 
 import { backtestStore } from '../../engine/backtestStore';

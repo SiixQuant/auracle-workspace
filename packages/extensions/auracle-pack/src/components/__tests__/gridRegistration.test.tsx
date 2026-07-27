@@ -13,10 +13,23 @@ import { ROOM_IDS, ROOM_LIST } from '../grid/rooms';
 import { openGridHome, openRoom } from '../grid/gridNav';
 import manifest from '../../../manifest.json';
 
+// The rooms with a built page mount their REAL surface, so the seam has to
+// cover everything those surfaces reach for on open. Every call answers
+// "nothing / unreachable", which is what this file asserts against: the route
+// lands on the room whatever the engine is doing.
 vi.mock('../../engine/client', () => ({
+  authState: vi.fn(async () => ({ signedIn: false })),
+  engineConfig: vi.fn(async () => ({ engineUrl: '', hasKey: false })),
   getJson: vi.fn(async () => null),
   getJsonDetailed: vi.fn(async () => ({ ok: false, status: 0, body: null })),
   postJson: vi.fn(async () => ({ ok: false, status: 0, body: null })),
+  putJson: vi.fn(async () => ({ ok: false, status: 0, body: null })),
+  runBacktest: vi.fn(async () => ({ ok: false, status: 0, body: null })),
+  backtestJobStatus: vi.fn(async () => null),
+  backtestJobResult: vi.fn(async () => null),
+  backtestJobFactors: vi.fn(async () => null),
+  resolveRunSource: vi.fn(() => undefined),
+  connectCheck: vi.fn(async () => null),
   bumpConnectGeneration: vi.fn(),
   onConnectGeneration: vi.fn(() => () => {}),
 }));

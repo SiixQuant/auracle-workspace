@@ -39,9 +39,9 @@
  * version of the row you just created.
  */
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { gridVitals, type GridVitals } from '../../engine/gridVitals';
+import { gridVitals } from '../../engine/gridVitals';
 import { tone } from '../panelkit';
-import { DISTRICTS } from './districts';
+import { firstFault } from './districts';
 import {
   aiRunStore,
   dismissAiOutcome,
@@ -55,7 +55,7 @@ import { openRoomFocused, zoomOriginFrom } from './gridNav';
 // to the plan's furniture, not to its state. Nothing here carrying state is
 // drawn with it — the fault it names stays on the semantic red.
 import { GRID_ACCENT, GRID_ACCENT_DIM, GRID_ACCENT_SOFT } from './gridTheme';
-import { ROOMS, type RoomId } from './rooms';
+import { ROOMS } from './rooms';
 
 const STYLE_ID = 'auracle-grid-aistrip-styles';
 
@@ -103,17 +103,6 @@ function ensureStripStyles(): void {
   el.id = STYLE_ID;
   el.textContent = SHEET;
   document.head.appendChild(el);
-}
-
-/** The faulted room the strip speaks about: the first one in the order the
- *  plan is laid out, so the strip and the eye arrive at the same card. */
-function firstFault(vitals: GridVitals): RoomId | null {
-  for (const district of DISTRICTS) {
-    for (const room of district.rooms) {
-      if (vitals[room].health === 'fault') return room;
-    }
-  }
-  return null;
 }
 
 export function GridAiStrip(): JSX.Element {

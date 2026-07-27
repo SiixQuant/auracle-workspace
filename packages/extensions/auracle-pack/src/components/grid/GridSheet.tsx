@@ -115,11 +115,22 @@ const SHEET = `
 .agrid__room[data-health='fault'] .agrid__rico { color: ${tone.danger}; }
 .agrid__rtitle { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; color: ${tone.text}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .agrid__rdot { flex: none; width: 6px; height: 6px; border-radius: 50%; }
-.agrid__rnote { font-size: 11px; color: ${tone.text3}; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agrid__rnote { width: 0; min-width: 100%; font-size: 11px; color: ${tone.text3}; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .agrid__room[data-health='fault'] .agrid__rnote { color: ${tone.danger}; }
 
 @container auracle-grid (min-width: 640px) {
   .agrid__rooms { grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); }
+}
+
+/* Wide tree: every room grows to its own title before sharing leftovers, so
+   nothing truncates when there is room to spare. The note's width is pinned
+   to the card above (width 0 + min-width 100%), so only the TITLE row sets
+   the card's floor — long notes still truncate. Below this width the compact
+   equal-share layout returns and titles may ellipsize; that trade keeps the
+   tree tier viable down to its breakpoint. */
+@container auracle-grid (min-width: 1460px) {
+  .agrid__slot { flex: 1 1 auto; }
+  .agrid__room { min-width: fit-content; }
 }
 
 @container auracle-grid (min-width: ${TREE_MIN_WIDTH}px) {

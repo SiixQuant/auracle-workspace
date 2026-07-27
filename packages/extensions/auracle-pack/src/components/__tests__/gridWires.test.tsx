@@ -302,6 +302,8 @@ describe('the alert line quotes the reading', () => {
     expect(sheetAlert(one)).toEqual({
       active: true,
       text: '1 alert — gap_fade_r7 → Deployments',
+      room: 'deploys',
+      roomTitle: 'Deployments',
     });
 
     const several = deriveRooms(
@@ -311,7 +313,25 @@ describe('the alert line quotes the reading', () => {
   });
 
   it('goes quiet, not green-by-assumption, when nothing has answered', () => {
-    expect(sheetAlert(quietVitals())).toEqual({ active: false, text: 'no open alerts' });
+    expect(sheetAlert(quietVitals())).toEqual({
+      active: false,
+      text: 'no open alerts',
+      room: null,
+      roomTitle: null,
+    });
+  });
+
+  it('points at the first faulted room in plan order, not only deployments', () => {
+    // Open incidents fault their room while every deployment runs clean: the
+    // chip must not read green while the sheet shows a red dot.
+    const vitals = deriveRooms(
+      sources(deployed([deployment(7, 'running')], { open_alerts: 3 }))
+    );
+    const alert = sheetAlert(vitals);
+    expect(alert.active).toBe(true);
+    expect(alert.room).toBe('incidents');
+    expect(alert.roomTitle).toBe('Incidents');
+    expect(alert.text).toContain('Incidents needs attention');
   });
 });
 

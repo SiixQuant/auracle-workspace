@@ -27,6 +27,41 @@ import { RunStrategyHeader } from '../src/components/RunStrategyHeader';
 
 /* ── mock data ─────────────────────────────────────────────── */
 
+const MOCK_JOURNAL: Array<{
+  id: number;
+  actor: string;
+  action: string;
+  target: string;
+  pre_state: unknown;
+  inverse: string;
+  status: string;
+  created_at: string;
+  undone_at: string | null;
+}> = [
+  {
+    id: 2,
+    actor: 'auracle-ai',
+    action: 'redeploy_deployment',
+    target: 'sfx_hardened',
+    pre_state: { state: 'errored', reason: 'data feed unavailable' },
+    inverse: 'return the deployment to its recorded state',
+    status: 'applied',
+    created_at: '2026-07-27T09:12:04Z',
+    undone_at: null,
+  },
+  {
+    id: 1,
+    actor: 'operator',
+    action: 're_arm_schedule',
+    target: 'eod reconcile',
+    pre_state: { enabled: false },
+    inverse: 'disable the schedule again',
+    status: 'undone',
+    created_at: '2026-07-26T16:20:00Z',
+    undone_at: '2026-07-26T16:41:12Z',
+  },
+];
+
 const MOCK_VERDICT = {
   as_of: '2026-07-12T10:00:00Z',
   strategy_path: 'strategies.desk.atlas.AtlasMomentum',
@@ -370,6 +405,32 @@ function engineRequest(method: string, path: string): { ok: boolean; status: num
   if (/^\/deployments\/\d+\/equity/.test(p)) return ok(MOCK_LIVE_EQUITY);
   if (/^\/deployments\/\d+\/orders/.test(p)) return ok(MOCK_ORDERS);
   if (p === '/deployments') return ok(MOCK_DEPLOYMENTS);
+  // ── ops journal: two recorded actions, one still reversible ──
+  if (p.startsWith('/ui/api/ops/journal') && p.includes('/undo')) {
+    const id = p.split('/').slice(-2)[0];
+    const row = MOCK_JOURNAL.find((e) => String(e.id) === id);
+    if (!row) return { ok: false, status: 404, body: { detail: 'no such entry' } };
+    if (row.status !== 'applied') return { ok: false, status: 409, body: { detail: 'already undone' } };
+    row.status = 'undone';
+    row.undone_at = new Date().toISOString();
+    return ok({ entry: row });
+  }
+  if (p.startsWith('/ui/api/ops/journal')) return ok({ entries: MOCK_JOURNAL });
+  if (p.startsWith('/ui/api/ops/repair')) {
+    const row = {
+      id: MOCK_JOURNAL.length + 1,
+      actor: 'auracle-ai',
+      action: 'restart_data_feed',
+      target: 'ibkr-gateway',
+      pre_state: { state: 'error' },
+      inverse: 'restore recorded connector state',
+      status: 'applied',
+      created_at: new Date().toISOString(),
+      undone_at: null as string | null,
+    };
+    MOCK_JOURNAL.unshift(row);
+    return ok({ entry: row });
+  }
   if (p.startsWith('/ui/api/orders')) return ok(MOCK_BLOTTER);
   if (p.startsWith('/ui/api/summary')) return ok(MOCK_SUMMARY());
   if (p.startsWith('/ui/api/incidents')) return ok(MOCK_INCIDENTS);

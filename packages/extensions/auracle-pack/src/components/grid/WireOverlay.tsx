@@ -170,7 +170,11 @@ export function WireOverlay({ vitals }: { vitals: GridVitals }): JSX.Element {
     }
 
     const boxes: Partial<Record<RoomId, RoomBox>> = {};
-    for (const id of WIRED_ROOMS) {
+    const targets: readonly RoomId[] =
+      alert.room !== null && !WIRED_ROOMS.includes(alert.room)
+        ? [...WIRED_ROOMS, alert.room]
+        : WIRED_ROOMS;
+    for (const id of targets) {
       const measured = boxOf(sheet.querySelector(`[data-room="${id}"]`), box);
       if (measured) boxes[id] = measured;
     }
@@ -182,12 +186,13 @@ export function WireOverlay({ vitals }: { vitals: GridVitals }): JSX.Element {
       chipBox && (chipBox.width > 0 || chipBox.height > 0)
         ? { x: chipBox.left - box.left + 12, y: chipBox.bottom - box.top + 2 }
         : null;
-    const leader = alert.active ? leaderPath(anchor, boxes.deploys ?? null) : '';
+    const leader =
+      alert.active && alert.room !== null ? leaderPath(anchor, boxes[alert.room] ?? null) : '';
 
     setGeometry({ width: box.width, height: box.height, wires, faultPath, leader });
     // `folded` is a dependency rather than a value read here: the cards it
     // hides are simply not found by the query above.
-  }, [alert.active, folded, vitals]);
+  }, [alert.active, alert.room, folded, vitals]);
 
   // A LAYOUT effect: the wires are routed against boxes this commit has just
   // laid out, and running after paint would show a frame of stale routing.
@@ -272,10 +277,13 @@ export function WireOverlay({ vitals }: { vitals: GridVitals }): JSX.Element {
         data-testid="grid-alert"
         data-state={alert.active ? 'alert' : 'clear'}
         disabled={!alert.active}
-        title={alert.active ? 'Open Deployments' : undefined}
+        title={alert.active && alert.roomTitle ? `Open ${alert.roomTitle}` : undefined}
         // The annotation is a way INTO a room like any other, so it lands
         // through the focused open and carries what the reader was looking at.
-        onClick={(event) => openRoomFocused('deploys', undefined, zoomOriginFrom(event.currentTarget))}
+        onClick={(event) => {
+          if (alert.room === null) return;
+          openRoomFocused(alert.room, undefined, zoomOriginFrom(event.currentTarget));
+        }}
       >
         <span className="material-symbols-outlined agrid__annotico" aria-hidden>
           {alert.active ? 'bolt' : 'check_circle'}

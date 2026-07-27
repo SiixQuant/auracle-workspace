@@ -12,7 +12,10 @@
  * the person cannot see unless they are taken there. Advisory answers render
  * in the room's own bar, a repair's outcome renders there too, and a mutation
  * raises the approval dialog above whatever is showing. So a row navigates
- * first and then requests, which makes one keystroke read as one move.
+ * first and then requests, which makes one keystroke read as one move. It
+ * navigates through the focus spine's own entry point and passes no hint: an
+ * AI row names a ROOM, so whatever the reader was already focused on is
+ * carried into it, exactly as the rooms provider does it.
  *
  * The class discipline is untouched by the shortcut: `requestAiAction` is the
  * same entry point the room bar uses, so a mutation reached from the palette
@@ -24,7 +27,7 @@
  */
 import { registerCommandProvider, type GridCommandProvider } from './gridCommands';
 import { availableActions, requestAiAction } from './gridAiActions';
-import { openRoom } from './gridNav';
+import { openRoomFocused } from './gridNav';
 import { ROOMS } from './rooms';
 
 /** The heading the assistant's rows file under. */
@@ -55,7 +58,7 @@ const aiProvider: GridCommandProvider = {
       // this palette means "this room is unwell", and an action row wearing
       // one would say something about itself that is not true.
       run: () => {
-        openRoom(action.room);
+        openRoomFocused(action.room);
         void requestAiAction(action);
       },
     })),

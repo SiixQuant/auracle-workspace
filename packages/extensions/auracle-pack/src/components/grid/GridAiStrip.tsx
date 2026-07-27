@@ -41,7 +41,7 @@ import {
   requestAiAction,
   resultLine,
 } from './gridAiActions';
-import { openRoom, zoomOriginFrom } from './gridNav';
+import { openRoomFocused, zoomOriginFrom } from './gridNav';
 // The plan's structural accent (see gridTheme): the assistant's mark belongs
 // to the plan's furniture, not to its state. Nothing here carrying state is
 // drawn with it — the fault it names stays on the semantic red.
@@ -186,7 +186,12 @@ export function GridAiStrip(): JSX.Element {
                 type="button"
                 className="agrid-ai__btn agrid-ai__btn--open"
                 data-testid="grid-ai-strip-open"
-                onClick={(event) => openRoom(fault, zoomOriginFrom(event.currentTarget))}
+                // No hint: the strip names a ROOM, not a particular strategy
+                // or run, so the focus the reader already had is carried in
+                // rather than blanked on the way.
+                onClick={(event) =>
+                  openRoomFocused(fault, undefined, zoomOriginFrom(event.currentTarget))
+                }
               >
                 Open {ROOMS[fault].title}
               </button>

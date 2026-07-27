@@ -16,11 +16,17 @@
  * router: the shortcut has to work from inside a room as well as from the
  * plan, and an overlay that only existed on the home view would vanish the
  * moment it was used.
+ *
+ * The page descriptor the AI chat reads is published from here for the same
+ * reason: the router is the one place that knows which room is showing, so
+ * every room announces itself the same way rather than eleven pages each
+ * remembering to (see `gridFocus`).
  */
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import { ensurePanelKitStyles, tone } from '../panelkit';
 import { closePalette, isPaletteOpen, subscribePalette, togglePalette } from './gridCommands';
+import { useRoomAiContext } from './gridFocus';
 import { getActiveRoom, subscribeGrid } from './gridNav';
 import { GridPalette } from './GridPalette';
 import { GridSheet } from './GridSheet';
@@ -71,6 +77,10 @@ export function GridPanel(props: PanelHostProps): JSX.Element {
   const paletteOpen = useSyncExternalStore(subscribePalette, isPaletteOpen, () => false);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const wasOpen = useRef(false);
+
+  // Tell the chat which room is showing and what it is focused on. No-op on a
+  // host with no AI lane, and on the home plan.
+  useRoomAiContext(props.host, roomId, roomId ? ROOMS[roomId].title : null);
 
   /**
    * The shortcut, scoped to this panel by FOCUS rather than by a manifest

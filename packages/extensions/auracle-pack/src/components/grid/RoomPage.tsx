@@ -38,7 +38,7 @@ import {
   prefersReducedMotion,
   tone,
 } from '../panelkit';
-import { getZoomOrigin, openGridHome, openRoom, zoomOriginFrom } from './gridNav';
+import { getZoomOrigin, openGridHome, openRoomFocused, zoomOriginFrom } from './gridNav';
 import { ROOMS, type RoomId } from './rooms';
 import { WIRED_TO } from './wiring';
 
@@ -342,7 +342,12 @@ export function RoomPage({
                 data-testid={`room-wired-${target}`}
                 data-fault={hasFault ? 'true' : undefined}
                 title={chipTitle}
-                onClick={(event) => openRoom(target, zoomOriginFrom(event.currentTarget))}
+                // No focus hint: a jump along a wire is still about the same
+                // object, so the deployment (or the strategy file) the reader
+                // arrived with travels into the room they are going to.
+                onClick={(event) =>
+                  openRoomFocused(target, undefined, zoomOriginFrom(event.currentTarget))
+                }
               >
                 {ROOMS[target].title}
                 {hasFault ? (

@@ -15,7 +15,7 @@
 import {
   PACK_PREFIX,
   getActiveRoom,
-  openRoom,
+  openRoomFocused,
   subscribeGrid,
 } from './grid/gridNav';
 import type { RoomId } from './grid/rooms';
@@ -63,9 +63,11 @@ export function roomForHubTab(hub: HubId, tab: string): RoomId {
   return HUB_TAB_ROOMS[`${hub}:${tab}`] ?? HUB_DEFAULT_ROOMS[hub];
 }
 
-/** Select the room a hub tab became. Signature-compatible with the hub era. */
+/** Select the room a hub tab became. Signature-compatible with the hub era,
+ *  and routed through the focused open so a hub-era caller lands on the same
+ *  object every other entry into that room would. */
 export function openHubTab(hub: HubId, tab: string): void {
-  openRoom(roomForHubTab(hub, tab));
+  openRoomFocused(roomForHubTab(hub, tab));
 }
 
 /**

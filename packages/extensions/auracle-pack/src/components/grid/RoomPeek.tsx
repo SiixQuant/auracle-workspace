@@ -35,6 +35,7 @@ import { FloatingPortal, flip, offset, shift, useFloating } from '@floating-ui/r
 import type { GridVitals } from '../../engine/gridVitals';
 import { tone } from '../panelkit';
 import { HEALTH_COLOR, HEALTH_WORD, ROOM_ICONS } from './districts';
+import { gridFoldStore } from './gridFoldStore';
 import { subscribeGrid } from './gridNav';
 import { ROOM_CONTEXT } from './roomContext';
 import { ROOMS, type RoomId } from './rooms';
@@ -92,16 +93,19 @@ export function useRoomPeek(vitals: GridVitals): {
 
   // A peek belongs to the pointer that raised it, so it dies with the moment:
   // a room opening under it (the plan is gone), the plan scrolling beneath it
-  // (the card it points at has moved), and the sheet unmounting.
+  // or folding under it (the card it points at has moved, or left the DOM
+  // without ever firing a mouseleave), and the sheet unmounting.
   useEffect(() => {
     const onScroll = (): void => clear();
     // Capture: the plan scrolls inside the panel's own box, and a scroll event
     // there does not bubble to the window.
     window.addEventListener('scroll', onScroll, true);
-    const unsubscribe = subscribeGrid(clear);
+    const stopNav = subscribeGrid(clear);
+    const stopFold = gridFoldStore.subscribe(clear);
     return () => {
       window.removeEventListener('scroll', onScroll, true);
-      unsubscribe();
+      stopNav();
+      stopFold();
       clear();
     };
   }, [clear]);

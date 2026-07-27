@@ -116,7 +116,8 @@ const SHEET = `
   .agrid__slot:last-child::before { right: 50%; }
   .agrid__slot:only-child::before { display: none; }
   .agrid__slot::after { content: ''; position: absolute; top: 0; left: 50%; width: 1px; height: 16px; background: ${RAIL}; }
-  .agrid__count { align-self: center; margin-top: 16px; }
+  /* Centred under the district's rail, which drops straight into it. */
+  .agrid__count { align-self: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {

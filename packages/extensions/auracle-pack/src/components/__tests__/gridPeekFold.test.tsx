@@ -195,6 +195,20 @@ describe('the hover peek', () => {
     });
     expect(screen.queryByTestId('grid-room-peek')).toBeNull();
   });
+
+  it('clears when the district folds under it', async () => {
+    render(<GridSheet />);
+    await settle();
+
+    await rest(screen.getByTestId('grid-home-room-schedules'));
+    expect(screen.getByTestId('grid-room-peek')).toBeTruthy();
+
+    // The card it points at is about to leave the DOM, which fires no
+    // mouseleave of its own — without this the peek would be stranded.
+    fireEvent.click(screen.getByTestId('grid-district-fold-operate'));
+    await wait(0);
+    expect(screen.queryByTestId('grid-room-peek')).toBeNull();
+  });
 });
 
 describe('folding a district', () => {

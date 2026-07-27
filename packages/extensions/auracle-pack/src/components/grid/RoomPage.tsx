@@ -39,6 +39,7 @@ import {
   tone,
 } from '../panelkit';
 import { getZoomOrigin, openGridHome, openRoomFocused, zoomOriginFrom } from './gridNav';
+import { RoomAiBar } from './RoomAiBar';
 import { ROOMS, type RoomId } from './rooms';
 import { WIRED_TO } from './wiring';
 
@@ -299,6 +300,12 @@ export function RoomPage({
             ))}
           </div>
         ) : null}
+
+        {/* What the assistant can do about THIS room, above the work rather
+            than after it: an action offered underneath a long body would be
+            an action nobody scrolls to. Renders nothing at all when the room
+            has nothing to offer (see RoomAiBar). */}
+        <RoomAiBar room={room} />
 
         <div data-testid="room-body" style={{ minWidth: 0 }}>
           <EmbeddedShellContext.Provider value>{children}</EmbeddedShellContext.Provider>

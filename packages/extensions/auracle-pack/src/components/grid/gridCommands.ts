@@ -38,6 +38,13 @@ export interface GridCommand {
   keywords?: string[];
   /** The heading this command files under. */
   section: string;
+  /**
+   * A short mark drawn at the end of the row — "AI" on the assistant's rows.
+   * A section heading scrolls out of sight while its rows are still on screen,
+   * so a row that will ACT on the system carries the mark itself rather than
+   * relying on the heading it arrived under.
+   */
+  badge?: string;
   /** What Enter (or a click) does. */
   run: () => void;
   /**

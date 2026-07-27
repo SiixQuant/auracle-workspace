@@ -22,6 +22,7 @@
 import type { GridVitals, Health } from '../../engine/gridVitals';
 import { ROOM_ICONS } from './districts';
 import { openRoom } from './gridNav';
+import { ROOM_CONTEXT } from './roomContext';
 import { ROOM_IDS, ROOMS } from './rooms';
 
 /** One runnable row. */
@@ -118,7 +119,10 @@ const roomsProvider: GridCommandProvider = {
       id: `room-${id}`,
       label: `Open ${ROOMS[id].title}`,
       icon: ROOM_ICONS[id],
-      keywords: [id, ROOMS[id].title, ROOMS[id].blurb],
+      // Searchable by what the room is FOR, not only by its name: the sentence
+      // is the one every other surface shows, so nobody has to guess the title
+      // of the room that holds the thing they are after.
+      keywords: [id, ROOMS[id].title, ROOM_CONTEXT[id]],
       section: 'Rooms',
       health: vitals[id]?.health,
       run: () => openRoom(id),

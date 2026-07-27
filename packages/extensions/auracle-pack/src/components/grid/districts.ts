@@ -53,8 +53,9 @@ export const ROOM_ICONS: Record<RoomId, string> = {
 /**
  * How a reading is drawn and how it is said — one table each, read by every
  * surface that renders health on the sheet (the card's dot and border, the
- * district's flag, a folded district's chip, the hover peek). They live beside
- * the icon table for the same reason: presentation of the plan, not routing.
+ * district's flag, a folded district's chip, the hover peek, a palette row).
+ * They live beside the icon table for the same reason: presentation of the
+ * plan, not routing.
  *
  * `nominal` is GREY on purpose: a healthy room is not an achievement to
  * celebrate, it is the absence of a problem, so only trouble takes a hue.

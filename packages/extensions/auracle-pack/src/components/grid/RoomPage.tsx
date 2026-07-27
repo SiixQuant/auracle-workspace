@@ -67,13 +67,18 @@ const EM_DASH = '—';
 const STYLE_ID = 'auracle-room-styles';
 
 const SHEET = `
-.auracle-room { height: 100%; overflow: auto; padding: 16px 16px 30px; transform-origin: var(--auracle-zoom-origin, 50% 40%); }
+.auracle-room { height: 100%; overflow: auto; padding: 0 16px 30px; transform-origin: var(--auracle-zoom-origin, 50% 40%); }
+/* The way back stays on screen: a long body must never scroll its own exit
+   away. Sticky against this page (its own scroll box), bleeding into the
+   page gutter so nothing scrolls through it. */
+.auracle-room__crumb { position: sticky; top: 0; z-index: 2; background: ${tone.bg}; margin-inline: -16px; padding: 15px 16px 12px; }
 .auracle-room__sheet { max-width: 880px; margin-inline: auto; display: flex; flex-direction: column; gap: 15px; }
 .auracle-room__vitals { display: flex; flex-wrap: wrap; gap: 10px 30px; }
 .auracle-room[data-zoom="on"] { animation: auracle-room-zoom 180ms cubic-bezier(0.22, 1, 0.36, 1); }
 @keyframes auracle-room-zoom { from { transform: scale(0.94); opacity: 0; } }
 @container auracle-grid (min-width: 620px) {
-  .auracle-room { padding: 18px 34px 34px; }
+  .auracle-room { padding: 0 34px 34px; }
+  .auracle-room__crumb { margin-inline: -34px; padding: 17px 34px 12px; }
   .auracle-room__vitals { gap: 10px 38px; }
 }
 .auracle-room__chip { appearance: none; font: inherit; font-size: 12px; display: inline-flex; align-items: center; gap: 7px; padding: 4px 12px; border-radius: 999px; border: 1px solid ${tone.border}; background: transparent; color: ${tone.text2}; cursor: pointer; transition: border-color 150ms ease-out, color 150ms ease-out; }
@@ -179,8 +184,9 @@ export function RoomPage({
       style={{ ...zoomStyle, color: tone.text, font: `13px/1.5 ${tone.font}` }}
     >
       <nav
+        className="auracle-room__crumb"
         data-testid="room-breadcrumb"
-        style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 12 }}
+        style={{ display: 'flex', alignItems: 'center', gap: 8 }}
       >
         <button
           type="button"

@@ -83,6 +83,10 @@ export const tone = {
   danger: '#e5534b',
   caution: '#d4a017',
   font: 'var(--font-family-ui, system-ui, sans-serif)',
+  /** The host's code face, for the few figures that are read as a CODE rather
+   *  than a quantity — a district number, a stage marker. Quantities use
+   *  {@link numeric} on the UI face instead. */
+  mono: 'var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace)',
 } as const;
 
 /** Elevated surface for heroes — one step above a card, so summary

@@ -106,16 +106,7 @@ export type AiActionResult =
  * result — so nothing paraphrases it.
  */
 export function resultLine(result: AiActionResult): string {
-  switch (result.kind) {
-    case 'answered':
-      return result.text;
-    case 'not-wired':
-      return result.note;
-    case 'done':
-      return result.note;
-    case 'failed':
-      return result.note;
-  }
+  return result.kind === 'answered' ? result.text : result.note;
 }
 
 /** An action as the catalog declares it. */
@@ -135,16 +126,9 @@ export interface AiActionDef {
   intent(vitals: GridVitals): ActionIntent | null;
 }
 
-/** An action that is available right now, with the payload it would carry. */
-export interface AiAction {
-  id: string;
-  class: AiActionClass;
-  room: RoomId;
-  label: string;
-  icon: string;
-  keywords?: string[];
-  intent: ActionIntent;
-}
+/** An action that is available right now: its declaration, with the payload it
+ *  would carry resolved from the readings that made it available. */
+export type AiAction = Omit<AiActionDef, 'intent'> & { intent: ActionIntent };
 
 /* ── executors ──────────────────────────────────────────────────────── */
 
@@ -165,11 +149,6 @@ export function registerAiExecutor(operation: string, executor: AiExecutor): () 
   };
 }
 
-/** Whether an operation has something behind it yet. */
-export function isWired(operation: string): boolean {
-  return executors.has(operation);
-}
-
 /** The stub's answer: shaped like every other result, and impossible to read
  *  as a success. */
 function notWired(intent: ActionIntent): AiActionResult {
@@ -187,7 +166,7 @@ function notWired(intent: ActionIntent): AiActionResult {
  * that blew up is a different fact from one that was never installed, and
  * collapsing the two would hide a real break behind "not wired yet".
  */
-export async function executeIntent(intent: ActionIntent): Promise<AiActionResult> {
+async function executeIntent(intent: ActionIntent): Promise<AiActionResult> {
   const executor = executors.get(intent.operation);
   if (!executor) return notWired(intent);
   try {

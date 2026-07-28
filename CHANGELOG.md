@@ -13,16 +13,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 <!-- Changes to existing functionality go here -->
+
+### Fixed
+<!-- Bug fixes go here -->
+
+### Removed
+<!-- Removed features go here -->
+
+## [1.6.3] - 2026-07-28
+
+### Changed
 - Grid: the revealed data wires now read as one schematic. Each flow runs on a
   single shared trunk under the room rank, with short drops on each card's
   centreline, so related edges line up instead of fanning out.
 
 ### Fixed
-<!-- Bug fixes go here -->
 - The chat pane beside a full-screen panel can now be dragged wider or narrower, and closing it from the app menu hands the rest of the window back to the panel, which resizes to whatever is left. Wide surfaces such as the Auracle plan can be given the room they need instead of being stuck beside a pane of one fixed size, and the pane now opens at the same width as the one in Files mode.
-
-### Removed
-<!-- Removed features go here -->
 
 ## [1.6.2] - 2026-07-28
 

@@ -31,11 +31,15 @@
  * nothing when pressed is worse than a label that never claimed it would.
  *
  * A POPULATED BOARD draws its nodes in the layer below — the cards themselves
- * arrive with the node work; this file owns the face they are drawn on.
+ * arrive with the node work; this file owns the face they are drawn on. Two
+ * things it already has to honour: the graph is READ from a store outside React
+ * ({@link boardGraph}, standing in until the real one merges), and layout there
+ * is SPARSE — a card the system materialized may have no position yet, so
+ * nothing here may assume one.
  */
 import { useSyncExternalStore } from 'react';
 import { tint, tone } from '../panelkit';
-import { boardGraph } from './boardGraph';
+import { boardGraph } from './boardGraphPlaceholder';
 import { ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from './gridCanvas';
 import { GRID_ACCENT } from './gridTheme';
 import { TREE_MIN_WIDTH } from './gridWires';

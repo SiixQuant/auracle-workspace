@@ -101,8 +101,11 @@ const STYLE_ID = 'auracle-grid-sheet-styles';
 const RAIL = tone.borderStrong;
 
 /**
- * The plan's natural width — the canvas's own, shared with the Board so both
- * faces are drawn at the same pitch. See {@link CANVAS_WIDTH}.
+ * The plan's natural width, capped so the tree does not stretch into a smear on
+ * a very wide pane, and centred by the fit. Above it the canvas simply has room
+ * to spare around a plan drawn at its best size. Held with the canvas rather
+ * than here, because both of the panel's faces are cut to it — see
+ * {@link CANVAS_WIDTH}.
  */
 const PLAN_MAX_WIDTH = CANVAS_WIDTH;
 

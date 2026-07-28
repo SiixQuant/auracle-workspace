@@ -49,7 +49,7 @@ vi.mock('../../engine/client', async (importOriginal) => ({
 
 import type { ExtensionStorage, PanelHostProps } from '@nimbalyst/extension-sdk';
 import { GridPanel } from '../grid/GridPanel';
-import { boardGraph } from '../grid/boardGraph';
+import { boardGraph } from '../grid/boardGraphPlaceholder';
 import { FACE_KEY, getFace, resetFaceStore, setFace } from '../grid/gridFaceStore';
 import { getActiveRoom, openGridHome, openRoom } from '../grid/gridNav';
 import { closePalette } from '../grid/gridCommands';
@@ -112,6 +112,7 @@ afterEach(() => {
   closePalette();
   openGridHome();
   resetFaceStore();
+  vi.restoreAllMocks();
   gridVitals.reset();
 });
 
@@ -143,6 +144,21 @@ describe('a workspace that has never chosen opens on the Board', () => {
       'appear here as real work produces them'
     );
     expect(screen.getAllByTestId(/^board-ghost-/)).toHaveLength(3);
+  });
+
+  it('drops the ghosts the moment the graph has anything on it', () => {
+    // A card the system materialized, with NO position: layout on the real
+    // graph is sparse, so the shell has to survive a node that has never been
+    // placed. Anything that read coordinates off this would throw here.
+    vi.spyOn(boardGraph, 'getSnapshot').mockReturnValue({
+      nodes: [{ id: 'n1', kind: 'strategy' }],
+      edges: [],
+    });
+
+    render(<GridPanel {...hostProps(workspace().storage)} />);
+
+    expect(screen.getByTestId('auracle-grid-board').getAttribute('data-nodes')).toBe('1');
+    expect(screen.queryByTestId('board-ghosts')).toBeNull();
   });
 
   it('offers the canvas controls the plan offers, under the same name', () => {

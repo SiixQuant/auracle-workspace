@@ -469,12 +469,11 @@ export default function App() {
   const setRailActivePath = useSetAtom(activeWorkspacePathAtom);
   // NOTE: fileTree, sidebarWidth, isNewFileDialogOpen, newFileDirectory, isHistoryDialogOpen moved to EditorMode
   // NOTE: Navigation dialogs (QuickOpen, SessionQuickOpen, PromptQuickOpen, ProjectQuickOpen) are now managed by DialogProvider
-  // NOTE: isAIChatCollapsed, aiChatWidth moved to EditorMode for workspace mode
-  // These are kept for potential single-file mode or agent mode use
-  const [isAIChatCollapsed, setIsAIChatCollapsed] = useState(false);
-  const [aiChatWidth, setAIChatWidth] = useState<number>(350);
+  // NOTE: AI chat width/collapse live in the workspaceLayout atoms; persistence
+  // is owned by useAIChatLayoutPersistence (EditorMode)
   // NOTE: KeyboardShortcutsDialog, DiscordInvitation, FeedbackIntakeDialog, ApiKeyDialog are now managed by DialogProvider
   // NOTE: WindowsClaudeCodeWarning now managed by DialogProvider via useOnboarding hook
+  // Gates the aiPanel session/planning save below until the persisted state has been restored
   const [isAIChatStateLoaded, setIsAIChatStateLoaded] = useState(false);
   // Planning mode for AI sidebar (Claude Code safety). Default ON
   const [aiPlanningModeEnabled, setAIPlanningModeEnabled] = useState<boolean>(true);
@@ -921,11 +920,6 @@ export default function App() {
   // NOTE: useHMRStateRestoration removed - no longer needed now that TabEditor
   // manages all editor state and useTabs persists tabs to localStorage. During HMR, tabs will
   // be restored from localStorage and editors recreated from tab content.
-
-  // Prepare AI chat state loading
-  useEffect(() => {
-    setIsAIChatStateLoaded(false);
-  }, []);
 
   // NOTE: Sidebar width loading moved to EditorMode
 
@@ -1596,7 +1590,9 @@ export default function App() {
     return () => window.removeEventListener('open-ai-session', handleOpenAiSession as unknown as EventListener);
   }, [activeMode]);
 
-  // Save AI Chat state when it changes (but only after initial load)
+  // Save AI panel session/planning state when it changes (but only after initial
+  // load). Pane width/collapse are owned by useAIChatLayoutPersistence in
+  // EditorMode; the main-process deep merge keeps the two writers independent.
   useEffect(() => {
     if (!workspacePath || !workspaceMode || !isAIChatStateLoaded) return;
     if (!window.electronAPI?.invoke) return;
@@ -1604,8 +1600,6 @@ export default function App() {
     const saveAIChatState = async () => {
       try {
         const aiPanelState = {
-          collapsed: isAIChatCollapsed,
-          width: aiChatWidth,
           currentSessionId: currentAISessionId || undefined,
           planningModeEnabled: aiPlanningModeEnabled,
         };
@@ -1619,7 +1613,7 @@ export default function App() {
     };
 
     saveAIChatState();
-  }, [isAIChatCollapsed, aiChatWidth, currentAISessionId, aiPlanningModeEnabled, isAIChatStateLoaded, workspacePath, workspaceMode]);
+  }, [currentAISessionId, aiPlanningModeEnabled, isAIChatStateLoaded, workspacePath, workspaceMode]);
 
   // Handle QuickOpen file selection - delegates to EditorMode and switches mode if needed
   const handleQuickOpenFileSelect = useCallback(async (filePath: string) => {
@@ -1808,8 +1802,6 @@ export default function App() {
     setWorkspaceMode,
     setWorkspacePath,
     setWorkspaceName,
-    setIsAIChatCollapsed,
-    setAIChatWidth,
     setIsAIChatStateLoaded,
     setSessionToLoad,
     setIsKeyboardShortcutsDialogOpen: () => {}, // Unused - KeyboardShortcutsDialog now managed by DialogProvider

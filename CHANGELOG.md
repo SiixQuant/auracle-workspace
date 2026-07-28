@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 <!-- Bug fixes go here -->
+- The AI chat panel now remembers its width and collapsed state across restarts
+  instead of reopening at the default width.
 
 ### Removed
 <!-- Removed features go here -->

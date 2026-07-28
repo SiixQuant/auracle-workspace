@@ -23,6 +23,20 @@
  * verbatim from the shell-lab source of truth (mockups/shell-lab ShellMap) so
  * the shipped sheet and the design agree by construction rather than by eye.
  *
+ * EVERY line this module produces is orthogonal, the leader included. A
+ * diagonal drawn across a schematic reads as a mistake in it, and one drawn the
+ * width of the whole sheet reads as the loudest thing on it — which is why the
+ * annotation's leader now takes the same lane discipline as the wires instead
+ * of cutting the plan in half.
+ *
+ * ## A dash means data
+ * The sheet has two kinds of line and they must never be confused. STRUCTURE —
+ * root to district to room — is a solid faint hairline drawn in CSS by the
+ * cards themselves. DATA is what this module routes, and only data is dashed.
+ * On top of that a quiet wire is not drawn at rest at all ({@link wireVisible}):
+ * eight dashed lines that say nothing are eight lines in the way of the one
+ * that does.
+ *
  * ## Colour comes from the readings, never from here
  * An edge is quiet unless it WATCHES a room, and a watched edge takes that
  * room's health straight from `gridVitals` — the same table the dots, the
@@ -101,6 +115,23 @@ export function wireKind(def: WireDef, vitals: GridVitals): WireKind {
   return def.watch === null ? 'norm' : KIND_FOR_HEALTH[vitals[def.watch].health];
 }
 
+/**
+ * Whether an edge is drawn right now.
+ *
+ * A wire that is merely NOMINAL is not news — it is the plan's own plumbing,
+ * true on every frame of every session — so at rest it is not drawn, and the
+ * sheet is left with only the lines that are saying something. It comes back
+ * the moment a person asks for the flow by resting on a wired card or on the
+ * alert chip, and goes again when they leave: a reveal, not a mode, so there is
+ * no state to get stuck in and no timer to fire after the pointer has gone.
+ *
+ * Anything ABOVE nominal is always drawn. A warning that only appeared on hover
+ * would be a warning nobody saw.
+ */
+export function wireVisible(kind: WireKind, revealed: boolean): boolean {
+  return kind !== 'norm' || revealed;
+}
+
 /** A measured room card, in the sheet's own coordinate space. */
 export interface RoomBox {
   /** Horizontal centre. */
@@ -123,18 +154,33 @@ function px(n: number): number {
 }
 
 /**
- * One lane-disciplined path: down out of the source, along `laneY`, up into the
- * target, with the corners rounded by whatever radius actually fits. A pair of
- * rooms too close together (or a lane too shallow) gets a straight segment
- * rather than a corner drawn tighter than the gap it turns in.
+ * One lane-disciplined path: out of the source to `laneY`, along it, and out
+ * again into the target, with the corners rounded by whatever radius actually
+ * fits. A pair of rooms too close together (or a lane too shallow) gets a
+ * straight segment rather than a corner drawn tighter than the gap it turns in.
+ *
+ * The two vertical legs are signed independently, so the same routing draws
+ * both shapes the sheet needs: a wire that drops out of one card, runs under
+ * the rank and rises into another, and a leader that drops out of the pinned
+ * chip, runs across above the rank and drops into the card it names. Nothing
+ * here is ever diagonal — the only segments produced are horizontal, vertical,
+ * or a quarter-turn between the two.
  */
 export function orthoPath(x1: number, y1: number, x2: number, y2: number, laneY: number): string {
   const dir = x2 > x1 ? 1 : -1;
-  const r = Math.max(0, Math.min(6, Math.abs(x2 - x1) / 2 - 1, (laneY - y1) / 2, (laneY - y2) / 2));
+  // Which way each leg travels to reach (and leave) the lane. A wire arrives
+  // from above and leaves upward; a leader arrives from above and leaves
+  // downward, which is the only difference between the two shapes.
+  const into = laneY >= y1 ? 1 : -1;
+  const outOf = y2 >= laneY ? 1 : -1;
+  const r = Math.max(
+    0,
+    Math.min(6, Math.abs(x2 - x1) / 2 - 1, Math.abs(laneY - y1) / 2, Math.abs(y2 - laneY) / 2)
+  );
   if (r === 0) return `M ${px(x1)} ${px(y1)} L ${px(x2)} ${px(y2)}`;
   return (
-    `M ${px(x1)} ${px(y1)} L ${px(x1)} ${px(laneY - r)} Q ${px(x1)} ${px(laneY)} ${px(x1 + dir * r)} ${px(laneY)}` +
-    ` L ${px(x2 - dir * r)} ${px(laneY)} Q ${px(x2)} ${px(laneY)} ${px(x2)} ${px(laneY - r)} L ${px(x2)} ${px(y2)}`
+    `M ${px(x1)} ${px(y1)} L ${px(x1)} ${px(laneY - into * r)} Q ${px(x1)} ${px(laneY)} ${px(x1 + dir * r)} ${px(laneY)}` +
+    ` L ${px(x2 - dir * r)} ${px(laneY)} Q ${px(x2)} ${px(laneY)} ${px(x2)} ${px(laneY + outOf * r)} L ${px(x2)} ${px(y2)}`
   );
 }
 
@@ -186,16 +232,35 @@ export interface Anchor {
   y: number;
 }
 
+/** How far above the target card the leader's horizontal run sits, and where on
+ *  the card's top edge it lands — right of centre, clear of the title. */
+const LEADER_LANE = 18;
+const LEADER_TAP = 24;
+/** The shortest first leg the leader will take before turning. */
+const LEADER_DROP = 10;
+
 /**
- * The dashed leader from the pinned annotation chip down to the room it names.
+ * The leader from the pinned annotation chip to the room it names, drawn with
+ * the same lane discipline as the wires: down the plan's right edge out of the
+ * chip, across a lane just above the room rank, and down into the target card's
+ * top edge.
+ *
+ * It used to be a single diagonal, on the theory that a diagonal could never be
+ * mistaken for a wire. On a plan the width of a real pane that theory cost more
+ * than it bought: the one line crossing the entire sheet was the first thing
+ * the eye found and the last thing it could follow. Orthogonal, it reads as an
+ * annotation of the schematic rather than a scratch across it, and the dash
+ * pattern is what keeps it distinct from the wires.
+ *
  * Returns an empty string when either end has no box to point at (a chip the
  * narrow tier has hidden, a room the plan has not laid out).
  */
 export function leaderPath(chip: Anchor | null, room: RoomBox | null): string {
   if (!chip || !room) return '';
-  // Out of the chip's lower edge and into the card's upper right: a diagonal,
-  // so it never reads as one of the orthogonal wires.
-  return `M ${px(chip.x)} ${px(chip.y)} L ${px(room.cx + 30)} ${px(room.top - 7)}`;
+  // The lane sits above the card, but never above the chip it leaves: a target
+  // high on the plan gets a short drop rather than a leg doubling back.
+  const laneY = Math.max(chip.y + LEADER_DROP, room.top - LEADER_LANE);
+  return orthoPath(chip.x, chip.y, room.cx + LEADER_TAP, room.top - 3, laneY);
 }
 
 /* ── the sheet's one alert line ─────────────────────────────────────── */

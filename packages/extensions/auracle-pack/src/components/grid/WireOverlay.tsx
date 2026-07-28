@@ -7,6 +7,14 @@
  * with a pulse travelling down it, plus a chip naming the deployment, answers
  * "what is wrong and where" before anything is clicked.
  *
+ * ## What is drawn at rest
+ * Exactly what is worth reading: the edges that are warning or failing, and the
+ * leader from the chip to the room in trouble. A healthy edge is hidden
+ * ({@link wireVisible}) until someone rests on a wired card or on the chip, and
+ * then every edge fades in at once — the flow, on request. On a clear sheet
+ * that leaves nothing drawn but the cards and their solid structural rails; on
+ * a faulted one, a single red wire and a single short leader.
+ *
  * ## Where it draws, and where it does not
  * Only at the FULL TREE tier. Below the sheet's {@link TREE_MIN_WIDTH} container
  * breakpoint the districts stack into a column, so the single room rank the
@@ -24,6 +32,16 @@
  * keep in sync. Re-measured on exactly three things: the plan resizing
  * (ResizeObserver), the readings moving (new vitals), and a district folding
  * ({@link gridFoldStore}). Never on a timer, never on scroll.
+ *
+ * ## The plan is a canvas, and the wires do not care
+ * The sheet pans and zooms its plan with one CSS transform, and this overlay
+ * lives INSIDE the layer that transform is on — so a pan moves the wires and
+ * the cards by the same pixels, and no re-routing is needed for either. The one
+ * thing the transform does touch is the reading: `getBoundingClientRect` hands
+ * back SCALED pixels, so every measured coordinate is divided by the current
+ * scale to get back to the plan-local space the routing (and this SVG's own
+ * viewBox) is written in. That includes the tier gate, which would otherwise
+ * decide a zoomed-out plan had become too narrow to draw.
  *
  * The fold is read through `useSyncExternalStore` rather than a bare
  * subscription on purpose: that way the re-measure is a LAYOUT EFFECT of the
@@ -62,6 +80,7 @@ import {
   layoutWires,
   leaderPath,
   sheetAlert,
+  wireVisible,
   type Anchor,
   type RoomBox,
   type Wire,
@@ -82,10 +101,13 @@ const KINDS: WireKind[] = ['norm', 'warn', 'err'];
 
 const SHEET = `
 .agrid__wires { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: visible; }
-.agrid__wire { fill: none; stroke-width: 1.1; stroke-linecap: round; }
-.agrid__wire[data-kind='norm'] { stroke: ${WIRE_INK.norm}; stroke-dasharray: 3 5; opacity: 0.55; }
+.agrid__wire { fill: none; stroke-width: 1.1; stroke-linecap: round; transition: opacity 140ms ease-out; }
+.agrid__wire[data-kind='norm'] { stroke: ${WIRE_INK.norm}; stroke-dasharray: 3 5; opacity: 0.5; }
 .agrid__wire[data-kind='warn'] { stroke: ${WIRE_INK.warn}; stroke-dasharray: 3 5; stroke-width: 1.3; opacity: 0.85; }
 .agrid__wire[data-kind='err'] { stroke: ${WIRE_INK.err}; stroke-width: 1.5; }
+/* After the kind rules, so the withheld state wins on order at equal weight:
+   a quiet edge is fully transparent (its arrowhead with it) until revealed. */
+.agrid__wire[data-visible='false'] { opacity: 0; }
 .agrid__leader { fill: none; stroke: ${tone.danger}; stroke-width: 1; stroke-dasharray: 4 5; opacity: 0.75; }
 .agrid__pulse { fill: ${tone.danger}; }
 
@@ -103,6 +125,7 @@ const SHEET = `
 
 @media (prefers-reduced-motion: reduce) {
   .agrid__pulse { display: none; }
+  .agrid__wire { transition: none; }
 }
 `;
 
@@ -123,13 +146,18 @@ interface Geometry {
   leader: string;
 }
 
-/** A rect measured against the sheet, or null when there is no layout to read
- *  (jsdom, a hidden element, a card the plan has not placed). */
-function boxOf(el: Element | null, sheet: DOMRect): RoomBox | null {
+/** A rect measured against the sheet and divided back out of the plan's zoom,
+ *  or null when there is no layout to read (jsdom, a hidden element, a card the
+ *  plan has not placed). */
+function boxOf(el: Element | null, sheet: DOMRect, scale: number): RoomBox | null {
   if (!el) return null;
   const r = el.getBoundingClientRect();
   if (r.width === 0 && r.height === 0) return null;
-  return { cx: r.left - sheet.left + r.width / 2, top: r.top - sheet.top, bottom: r.bottom - sheet.top };
+  return {
+    cx: (r.left - sheet.left + r.width / 2) / scale,
+    top: (r.top - sheet.top) / scale,
+    bottom: (r.bottom - sheet.top) / scale,
+  };
 }
 
 /**
@@ -141,7 +169,24 @@ function boxOf(el: Element | null, sheet: DOMRect): RoomBox | null {
  */
 const PLAN_SELECTOR = '.agrid__plan';
 
-export function WireOverlay({ vitals }: { vitals: GridVitals }): JSX.Element {
+export interface WireOverlayProps {
+  vitals: GridVitals;
+  /** The plan layer's current zoom, so measured pixels can be divided back into
+   *  plan-local coordinates. 1 when the sheet is not on a canvas. */
+  scale?: number;
+  /** Whether the quiet edges are being asked for right now. */
+  revealed?: boolean;
+  /** Raised while the pointer rests on the chip — the chip is a wired thing
+   *  too, so resting on it shows the flow it is pointing into. */
+  onReveal?: (revealed: boolean) => void;
+}
+
+export function WireOverlay({
+  vitals,
+  scale = 1,
+  revealed = false,
+  onReveal,
+}: WireOverlayProps): JSX.Element {
   ensureWireStyles();
   const annotRef = useRef<HTMLButtonElement | null>(null);
   const [geometry, setGeometry] = useState<Geometry | null>(null);
@@ -163,8 +208,12 @@ export function WireOverlay({ vitals }: { vitals: GridVitals }): JSX.Element {
       return;
     }
     const box = sheet.getBoundingClientRect();
+    // Plan-local, not screen: a zoomed plan measures smaller than it is, and
+    // the tier gate below would read that as a pane that had got narrower.
+    const width = box.width / scale;
+    const height = box.height / scale;
     // The tier gate, against the same constant the sheet's @container uses.
-    if (box.width < TREE_MIN_WIDTH) {
+    if (width < TREE_MIN_WIDTH) {
       setGeometry(null);
       return;
     }
@@ -175,7 +224,7 @@ export function WireOverlay({ vitals }: { vitals: GridVitals }): JSX.Element {
         ? [...WIRED_ROOMS, alert.room]
         : WIRED_ROOMS;
     for (const id of targets) {
-      const measured = boxOf(sheet.querySelector(`[data-room="${id}"]`), box);
+      const measured = boxOf(sheet.querySelector(`[data-room="${id}"]`), box, scale);
       if (measured) boxes[id] = measured;
     }
 
@@ -184,15 +233,15 @@ export function WireOverlay({ vitals }: { vitals: GridVitals }): JSX.Element {
     // The leader leaves the chip's lower-left, a little in from the corner.
     const anchor: Anchor | null =
       chipBox && (chipBox.width > 0 || chipBox.height > 0)
-        ? { x: chipBox.left - box.left + 12, y: chipBox.bottom - box.top + 2 }
+        ? { x: (chipBox.left - box.left) / scale + 12, y: (chipBox.bottom - box.top) / scale + 2 }
         : null;
     const leader =
       alert.active && alert.room !== null ? leaderPath(anchor, boxes[alert.room] ?? null) : '';
 
-    setGeometry({ width: box.width, height: box.height, wires, faultPath, leader });
+    setGeometry({ width, height, wires, faultPath, leader });
     // `folded` is a dependency rather than a value read here: the cards it
     // hides are simply not found by the query above.
-  }, [alert.active, alert.room, folded, vitals]);
+  }, [alert.active, alert.room, folded, scale, vitals]);
 
   // A LAYOUT effect: the wires are routed against boxes this commit has just
   // laid out, and running after paint would show a frame of stale routing.
@@ -223,6 +272,7 @@ export function WireOverlay({ vitals }: { vitals: GridVitals }): JSX.Element {
         <svg
           className="agrid__wires"
           data-testid="grid-wires"
+          data-reveal={revealed ? 'true' : 'false'}
           width={geometry.width}
           height={geometry.height}
           viewBox={`0 0 ${geometry.width} ${geometry.height}`}
@@ -244,6 +294,11 @@ export function WireOverlay({ vitals }: { vitals: GridVitals }): JSX.Element {
               </marker>
             ))}
           </defs>
+          {/* Every edge is rendered whatever its state; whether it is DRAWN is
+              one attribute, so the visibility rule is a value in the DOM the
+              stylesheet renders rather than a second rule written in CSS. The
+              arrowhead is on the terminal end only — a wire says which way the
+              work flows, not that it flows both ways. */}
           {geometry.wires.map((wire) => (
             <path
               key={wire.key}
@@ -251,6 +306,7 @@ export function WireOverlay({ vitals }: { vitals: GridVitals }): JSX.Element {
               data-testid="grid-wire"
               data-kind={wire.kind}
               data-edge={wire.key}
+              data-visible={wireVisible(wire.kind, revealed) ? 'true' : 'false'}
               d={wire.d}
               markerEnd={`url(#agrid-arrow-${wire.kind})`}
             />
@@ -278,6 +334,8 @@ export function WireOverlay({ vitals }: { vitals: GridVitals }): JSX.Element {
         data-state={alert.active ? 'alert' : 'clear'}
         disabled={!alert.active}
         title={alert.active && alert.roomTitle ? `Open ${alert.roomTitle}` : undefined}
+        onMouseEnter={() => onReveal?.(true)}
+        onMouseLeave={() => onReveal?.(false)}
         // The annotation is a way INTO a room like any other, so it lands
         // through the focused open and carries what the reader was looking at.
         onClick={(event) => {

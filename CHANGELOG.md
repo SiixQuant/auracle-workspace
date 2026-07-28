@@ -16,10 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 <!-- Bug fixes go here -->
-- The Auracle plan's tree no longer disappears into a stacked list on narrower panels: it now shrinks to fit down to much smaller widths, so the floor-plan view survives a side-by-side layout with the chat pane, and only the narrowest panels fall back to the list.
 
 ### Removed
 <!-- Removed features go here -->
+
+## [1.6.2] - 2026-07-28
+
+### Fixed
+- The Auracle plan's tree no longer disappears into a stacked list on narrower panels: it now shrinks to fit down to much smaller widths, so the floor-plan view survives a side-by-side layout with the chat pane, and only the narrowest panels fall back to the list.
 
 ## [1.6.1] - 2026-07-28
 

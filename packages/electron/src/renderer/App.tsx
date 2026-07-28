@@ -6,7 +6,7 @@ import './hooks/useExtensionInputGuard';
 import './store/debug/atomFamilyRegistry';
 
 import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
-import { useAtomValue, useSetAtom } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { usePostHog } from 'posthog-js/react';
 import { logger } from './utils/logger';
 import type { LexicalCommand } from '@nimbalyst/runtime';
@@ -94,6 +94,10 @@ import {
   sessionRegistryAtom,
   historyDialogFileAtom,
 } from './store';
+import {
+  aiChatWidthAtomFamily,
+  aiChatCollapsedAtomFamily,
+} from './store/atoms/workspaceLayout';
 import { initOpenProjects } from './store/atoms/openProjects';
 import { initWorkspaceStatePruner } from './store/workspaceStatePruner';
 import { initActionPromptListeners } from './store/listeners/actionPromptListeners';
@@ -160,6 +164,7 @@ import {
   getPanelById,
   panelToggleSlot,
   panelToggleNext,
+  fullscreenChatPaneWidth,
   PanelContainer,
   electronStorageBackend,
   initializeElectronStorageBackend,
@@ -511,6 +516,21 @@ export default function App() {
 
   // Extension panel AI context (synced from PanelContainer when aiSupported panels are active)
   const extensionPanelAIContext = useAtomValue(extensionPanelAIContextAtom);
+
+  // The AI chat pane that sits beside a fullscreen panel, sized from the SAME
+  // per-workspace layout atoms as the editor's chat pane (NOT the legacy
+  // `aiChatWidth` useState above, which only feeds the workspace-state save).
+  // Sharing the atoms is the point: dragging the pane, or collapsing it from
+  // the app menu — a toggle EditorMode owns and applies while it is mounted
+  // behind the panel — moves the boundary the panel is measured against, so
+  // the panel beside it takes the width back instead of staying sized for a
+  // pane that has moved. Keyed on '' when there is no workspace: no fullscreen
+  // panel renders then, and hooks may not be conditional.
+  const aiChatLayoutKey = workspacePath || '';
+  const [layoutAiChatWidth, setLayoutAiChatWidth] = useAtom(
+    aiChatWidthAtomFamily(aiChatLayoutKey)
+  );
+  const layoutAiChatCollapsed = useAtomValue(aiChatCollapsedAtomFamily(aiChatLayoutKey));
 
   // Workspace state hydration setters
   const setDiffTreeGroupByDirectory = useSetAtom(setDiffTreeGroupByDirectoryAtom);
@@ -2351,20 +2371,35 @@ export default function App() {
                         onClose={() => setActiveExtensionPanel(null)}
                       />
                     </div>
-                    {/* AI Chat Panel (for aiSupported panels) */}
-                    {panel.aiSupported && (
-                      <div
-                        data-layout="extension-ai-chat"
-                        className="w-[400px] min-w-[320px] max-w-[600px] flex flex-col border-l border-nim overflow-hidden"
-                      >
-                        <ChatSidebar
-                          ref={chatSidebarRef}
-                          workspacePath={workspacePath}
-                          documentContext={extensionPanelDocumentContext}
-                          onFileOpen={handleWorkspaceFileSelect}
-                        />
-                      </div>
-                    )}
+                    {/* AI Chat Panel (for aiSupported panels). A flex SIBLING
+                        of the panel, so the panel slot ends exactly where this
+                        pane begins and widens again when the pane is narrowed
+                        or put away — the panel's own resize observer re-reads
+                        the box it is actually shown in. */}
+                    {(() => {
+                      const chatWidth = fullscreenChatPaneWidth(
+                        panel.aiSupported,
+                        layoutAiChatCollapsed,
+                        layoutAiChatWidth
+                      );
+                      if (chatWidth === null) return null;
+                      return (
+                        <div
+                          data-layout="extension-ai-chat"
+                          className="flex flex-col border-l border-nim overflow-hidden"
+                          style={{ width: chatWidth }}
+                        >
+                          <ChatSidebar
+                            ref={chatSidebarRef}
+                            workspacePath={workspacePath}
+                            documentContext={extensionPanelDocumentContext}
+                            onFileOpen={handleWorkspaceFileSelect}
+                            width={chatWidth}
+                            onWidthChange={setLayoutAiChatWidth}
+                          />
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               }

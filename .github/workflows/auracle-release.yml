@@ -12,9 +12,13 @@ name: Auracle IDE release (macOS)
 # Signing gate: signing + notarization activate automatically once the
 # Apple secrets below exist. A production target HARD-FAILS unless the
 # built app and dmg pass Gatekeeper assessment (spctl) and staple
-# validation — an unsigned or unverified production release is impossible,
-# not silent. A staging target may still ship unsigned (a notice is
-# logged) so the install/update path can be rehearsed without credentials.
+# validation — an unsigned or unverified production release cannot happen
+# by accident. Without signing secrets, production requires the explicit
+# allow_unsigned dispatch flag (an owner decision made per run, logged as
+# a warning); with secrets present, a build that fails verification always
+# blocks and the flag cannot override that. A staging target may still
+# ship unsigned (a notice is logged) so the install/update path can be
+# rehearsed without credentials.
 #
 # Credential rotation (owner) — set or replace under Settings > Secrets and
 # variables > Actions, or `gh secret set <NAME> -R SiixQuant/auracle-workspace`:
@@ -46,6 +50,14 @@ on:
           - staging
           - production
         default: staging
+      allow_unsigned:
+        description: >-
+          Ship a production build without signing secrets. Explicit
+          per-dispatch owner decision — installs outside the launcher get
+          the Gatekeeper right-click-open flow. Ignored when signing
+          secrets exist (a broken signed build still hard-fails).
+        type: boolean
+        default: false
 
 concurrency:
   group: auracle-release-${{ github.ref }}
@@ -151,26 +163,35 @@ jobs:
           echo "::notice::dmg notarized and stapled: $DMG"
 
       - name: Verify signing, notarization, and stapling
-        # The gate. A production target can never publish an unsigned or
-        # unverified artifact again; a staging target still ships unsigned for
-        # install rehearsals. This runs before the checksum step so the sha256
-        # is taken over the stapled dmg.
+        # The gate. A production target never publishes an unsigned build by
+        # ACCIDENT: without signing secrets it hard-fails unless the dispatch
+        # carried the explicit allow_unsigned flag (a per-run owner decision).
+        # When signing secrets exist, a build that fails Gatekeeper or staple
+        # validation always blocks — the flag cannot wave through a broken
+        # signed build. Staging still ships unsigned for install rehearsals.
+        # This runs before the checksum step so the sha256 is taken over the
+        # stapled dmg.
         env:
           TARGET: ${{ inputs.target }}
+          ALLOW_UNSIGNED: ${{ inputs.allow_unsigned && 'true' || 'false' }}
           # 'true' only when both a signing certificate and a notarization
           # identity are configured — either alone cannot produce a shippable
           # (signed + notarized) artifact.
           HAS_SIGNING_SECRETS: ${{ (secrets.MACOS_CERTIFICATE != '' && secrets.APPLE_ID != '') && 'true' || 'false' }}
         run: |
           set -uo pipefail
-          CHECKLIST="Provision the Apple Developer ID credentials tracked in SiixQuant/auracle-workspace#93 (Developer ID Application certificate + its export password, plus Apple ID + app-specific password + team id) as the repo secrets MACOS_CERTIFICATE, MACOS_CERTIFICATE_PWD, CSC_NAME, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID, then re-run."
+          CHECKLIST="Provision the Apple Developer ID credentials tracked in SiixQuant/auracle-workspace#93 (Developer ID Application certificate + its export password, plus Apple ID + app-specific password + team id) as the repo secrets MACOS_CERTIFICATE, MACOS_CERTIFICATE_PWD, CSC_NAME, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID, then re-run — or re-dispatch with allow_unsigned to ship without them."
           DMG=$(ls packages/electron/release/*-arm64.dmg | head -1)
           APP=$(ls -d packages/electron/release/mac*/*.app 2>/dev/null | head -1 || true)
 
           if [ "$HAS_SIGNING_SECRETS" != "true" ]; then
-            if [ "$TARGET" = "production" ]; then
+            if [ "$TARGET" = "production" ] && [ "$ALLOW_UNSIGNED" != "true" ]; then
               echo "::error::Refusing to publish an unsigned production build. $CHECKLIST"
               exit 1
+            fi
+            if [ "$TARGET" = "production" ]; then
+              echo "::warning::UNSIGNED production build explicitly allowed by the allow_unsigned dispatch flag. Installs outside the launcher get the Gatekeeper right-click-open flow."
+              exit 0
             fi
             echo "::notice::Signing secrets absent — staging build ships unsigned (permitted). Skipping Gatekeeper and staple checks."
             exit 0

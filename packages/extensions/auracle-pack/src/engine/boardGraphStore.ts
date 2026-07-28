@@ -38,6 +38,8 @@ import {
   canWire,
   emptyBoardGraph,
   findNode,
+  normalizeResearchConfig,
+  normalizeSourceConfig,
   parseBoardGraph,
   planNodeDelete,
   removeEdge,
@@ -112,6 +114,13 @@ export interface OpenOptions {
 }
 
 const DEFAULT_SAVE_DELAY_MS = 400;
+
+const BLANK_SOURCE: BoardSourceConfig = {
+  name: '',
+  connectorKind: '',
+  endpoint: '',
+  payloadType: '',
+};
 
 const CLOSED: BoardSnapshot = {
   workspaceId: '',
@@ -297,13 +306,21 @@ export const boardGraphStore = {
     notify();
   },
 
-  /** Place a source or research card. Returns its id. */
+  /**
+   * Place a source or research card. Returns its id. The configuration is
+   * normalized on the way in, so a caller handing over a fatter object than the
+   * schema (a connector record with a secret in it, say) stores the schema.
+   */
   createNode(input: NewBoardNode): string {
     const id = input.id ?? nextId(input.kind);
     const node: BoardNode =
       input.kind === 'source'
-        ? { id, kind: 'source', source: { ...input.source } }
-        : { id, kind: 'research', research: { ...input.research } };
+        ? { id, kind: 'source', source: normalizeSourceConfig(input.source) ?? BLANK_SOURCE }
+        : {
+            id,
+            kind: 'research',
+            research: normalizeResearchConfig(input.research) ?? { hypothesis: '' },
+          };
     const placed = input.position ? { ...node, position: { ...input.position } } : node;
     mutate(addNode(snapshot.graph, placed));
     return id;

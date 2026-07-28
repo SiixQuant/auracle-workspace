@@ -184,8 +184,14 @@ function parseRef(value: unknown): ArtifactRef | undefined {
   return { kind, id };
 }
 
-/** Field-by-field, so nothing that is not one of these five survives a load. */
-function parseSourceConfig(value: unknown): BoardSourceConfig | undefined {
+/**
+ * Field-by-field, so nothing that is not one of these five survives — on the
+ * way in from storage OR on the way in from a caller. The store runs every
+ * source write through here too, so a config object that happens to carry a
+ * pasted secret cannot even sit in memory, where a context envelope bound for
+ * the agent might otherwise pick it up.
+ */
+export function normalizeSourceConfig(value: unknown): BoardSourceConfig | undefined {
   if (!isRecord(value)) return undefined;
   const config: BoardSourceConfig = {
     name: str(value.name),
@@ -197,7 +203,7 @@ function parseSourceConfig(value: unknown): BoardSourceConfig | undefined {
   return slot ? { ...config, credentialSlot: slot } : config;
 }
 
-function parseResearchConfig(value: unknown): BoardResearchConfig | undefined {
+export function normalizeResearchConfig(value: unknown): BoardResearchConfig | undefined {
   if (!isRecord(value)) return undefined;
   return { hypothesis: str(value.hypothesis) };
 }
@@ -240,10 +246,10 @@ function parseNode(value: unknown): BoardNode | undefined {
   // Config bags are read only for the kind that owns them; a future kind keeps
   // its unknown fields through `extra` instead.
   if (kind === 'source') {
-    const source = parseSourceConfig(value.source);
+    const source = normalizeSourceConfig(value.source);
     if (source) node.source = source;
   } else if (kind === 'research') {
-    const research = parseResearchConfig(value.research);
+    const research = normalizeResearchConfig(value.research);
     if (research) node.research = research;
   }
 
@@ -308,7 +314,7 @@ export function parseBoardGraph(input: unknown): BoardGraph {
   for (const raw of rawEdges) {
     const edge = parseEdge(raw, seenNodes);
     if (!edge || seenEdges.has(edge.id)) continue;
-    const pair = `${edge.from} ${edge.to}`;
+    const pair = `${edge.from} ${edge.to}`;
     if (seenPairs.has(pair)) continue;
     seenEdges.add(edge.id);
     seenPairs.add(pair);
@@ -398,6 +404,16 @@ function replaceNode(graph: BoardGraph, next: BoardNode): BoardGraph {
   return { ...graph, nodes: graph.nodes.map((node) => (node.id === next.id ? next : node)) };
 }
 
+function sameSource(a: BoardSourceConfig, b: BoardSourceConfig): boolean {
+  return (
+    a.name === b.name &&
+    a.connectorKind === b.connectorKind &&
+    a.endpoint === b.endpoint &&
+    a.payloadType === b.payloadType &&
+    a.credentialSlot === b.credentialSlot
+  );
+}
+
 /** What a card's editor may change. Applied by kind; the rest is ignored. */
 export interface BoardNodePatch {
   source?: Partial<BoardSourceConfig>;
@@ -411,10 +427,18 @@ export function updateNode(graph: BoardGraph, nodeId: string, patch: BoardNodePa
 
   let next: BoardNode = node;
   if (patch.source && node.kind === 'source' && node.source) {
-    next = { ...next, source: { ...node.source, ...patch.source } };
+    // Merged, then normalized: a caller's extra field is dropped on the way in
+    // exactly as it would be on the way out of storage.
+    const merged = normalizeSourceConfig({ ...node.source, ...patch.source });
+    // An edit that types the same value back is not a change: it must not
+    // redraw the canvas or arm a save.
+    if (merged && !sameSource(node.source, merged)) next = { ...next, source: merged };
   }
   if (patch.research && node.kind === 'research' && node.research) {
-    next = { ...next, research: { ...node.research, ...patch.research } };
+    const merged = normalizeResearchConfig({ ...node.research, ...patch.research });
+    if (merged && merged.hypothesis !== node.research.hypothesis) {
+      next = { ...next, research: merged };
+    }
   }
   if (patch.label !== undefined) {
     next = patch.label ? { ...next, label: patch.label } : stripLabel(next);

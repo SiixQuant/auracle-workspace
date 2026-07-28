@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { panelToggleSlot, shouldDismissFullscreenPanel } from '../panelRouting';
+import {
+  MIN_AI_CHAT_WIDTH,
+  fullscreenChatPaneWidth,
+  panelToggleSlot,
+  shouldDismissFullscreenPanel,
+} from '../panelRouting';
 import type { RegisteredPanel } from '../PanelRegistry';
 
 /** A registered panel with only the field the router reads. */
@@ -51,5 +56,40 @@ describe('shouldDismissFullscreenPanel keeps a mode switch from landing behind a
   it('does nothing for mode changes with no fullscreen panel up (sidebar panels included)', () => {
     expect(shouldDismissFullscreenPanel('files', 'agent', false)).toBe(false);
     expect(shouldDismissFullscreenPanel('agent', 'files', false)).toBe(false);
+  });
+});
+
+describe('fullscreenChatPaneWidth leaves the panel only the width the chat pane does not take', () => {
+  it('gives the pane the width the workspace layout holds', () => {
+    // The panel slot is the rest of the row, so this number IS the strip the
+    // panel must not be drawn under.
+    expect(fullscreenChatPaneWidth(true, false, 420)).toBe(420);
+  });
+
+  it('hands the whole row back when the pane is collapsed', () => {
+    expect(fullscreenChatPaneWidth(true, true, 420)).toBeNull();
+  });
+
+  it('hands the whole row back for a panel with no AI lane', () => {
+    expect(fullscreenChatPaneWidth(false, false, 420)).toBeNull();
+  });
+
+  it('follows the pane as it is dragged, so the panel resizes with it', () => {
+    expect(fullscreenChatPaneWidth(true, false, 320)).toBe(320);
+    expect(fullscreenChatPaneWidth(true, false, 640)).toBe(640);
+  });
+
+  it('never draws the pane narrower than its own drag floor', () => {
+    expect(fullscreenChatPaneWidth(true, false, 120)).toBe(MIN_AI_CHAT_WIDTH);
+    expect(fullscreenChatPaneWidth(true, false, 0)).toBe(MIN_AI_CHAT_WIDTH);
+  });
+
+  it('falls back to the floor rather than an unusable width', () => {
+    expect(fullscreenChatPaneWidth(true, false, Number.NaN)).toBe(MIN_AI_CHAT_WIDTH);
+    expect(fullscreenChatPaneWidth(true, false, Number.POSITIVE_INFINITY)).toBe(MIN_AI_CHAT_WIDTH);
+  });
+
+  it('rounds to whole pixels so the panel is never left a fractional sliver', () => {
+    expect(fullscreenChatPaneWidth(true, false, 412.4)).toBe(412);
   });
 });

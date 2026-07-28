@@ -97,3 +97,41 @@ export function shouldDismissFullscreenPanel(
 ): boolean {
   return isFullscreenPanelActive && previousMode !== nextMode;
 }
+
+/**
+ * The narrowest the AI chat pane may be drawn. The same floor `ChatSidebar`
+ * clamps its own drag to, kept here so the slot decision and the drag agree on
+ * one number instead of two that can drift.
+ */
+export const MIN_AI_CHAT_WIDTH = 280;
+
+/**
+ * How much of the fullscreen panel row the AI chat pane takes, or `null` when
+ * it takes none of it and must not be rendered at all.
+ *
+ * A fullscreen panel and its chat pane are SIBLINGS in one flex row, so the
+ * panel is only ever given the width the pane leaves behind. That is what lets
+ * a panel measure its own box and trust the answer — an extension that fits
+ * artwork to its pane (the plan sheet scales a fixed-width schematic to its
+ * stage) reads the width it is actually shown in, and re-reads it through its
+ * own resize observer the moment this number moves.
+ *
+ * The width and the collapse both come from the per-workspace layout state the
+ * editor's chat pane already writes (`aiChatWidthAtomFamily` /
+ * `aiChatCollapsedAtomFamily`), so a pane dragged or toggled in files mode is
+ * the same pane at the same width here, and the panel beside it resizes to
+ * match rather than staying sized for a pane that has moved.
+ *
+ * A collapsed pane returns `null` rather than a zero width: a zero-width flex
+ * item still holds its border and its own minimum, so the panel would come up
+ * a hairline short of the row it was told it had.
+ */
+export function fullscreenChatPaneWidth(
+  aiSupported: boolean,
+  collapsed: boolean,
+  width: number
+): number | null {
+  if (!aiSupported || collapsed) return null;
+  if (!Number.isFinite(width)) return MIN_AI_CHAT_WIDTH;
+  return Math.max(MIN_AI_CHAT_WIDTH, Math.round(width));
+}

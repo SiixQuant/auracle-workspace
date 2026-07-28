@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 <!-- Bug fixes go here -->
+- The chat pane beside a full-screen panel can now be dragged wider or narrower, and closing it from the app menu hands the rest of the window back to the panel, which resizes to whatever is left. Wide surfaces such as the Auracle plan can be given the room they need instead of being stuck beside a pane of one fixed size, and the pane now opens at the same width as the one in Files mode.
 
 ### Removed
 <!-- Removed features go here -->

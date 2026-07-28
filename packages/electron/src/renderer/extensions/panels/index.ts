@@ -17,6 +17,7 @@ export {
   panelToggleSlot,
   panelToggleNext,
   buildAliasIndex,
+  fullscreenChatPaneWidth,
   type ExtensionPanelSlot,
 } from './panelRouting';
 

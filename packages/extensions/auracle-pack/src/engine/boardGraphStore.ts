@@ -429,3 +429,21 @@ export const boardGraphStore = {
     notify();
   },
 };
+
+/**
+ * The read side, and nothing else — what the Board's shell binds to.
+ *
+ * The canvas draws the graph; it has no business with the workspace id, the
+ * save state or any of the writes, and a component that only reads should not
+ * re-render when a save finishes. `getSnapshot` hands back the graph itself,
+ * whose reference changes only when the graph does, so it is a
+ * `useSyncExternalStore` source as it stands.
+ */
+export const boardGraph = {
+  subscribe(listener: () => void): () => void {
+    return boardGraphStore.subscribe(listener);
+  },
+  getSnapshot(): BoardGraph {
+    return snapshot.graph;
+  },
+};

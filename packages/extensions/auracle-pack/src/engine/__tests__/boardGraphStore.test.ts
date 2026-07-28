@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { findNode, serializeBoardGraph, type BoardSourceConfig } from '../boardGraph';
-import { boardGraphStore, type BoardSnapshot } from '../boardGraphStore';
+import { boardGraph, boardGraphStore, type BoardSnapshot } from '../boardGraphStore';
 import type { BoardGraphTransport } from '../boardPersistence';
 
 /**
@@ -309,6 +309,30 @@ describe('subscribe and snapshots', () => {
     boardGraphStore.subscribe(listener)();
     boardGraphStore.createNode({ kind: 'research', research: { hypothesis: 'Q' } });
     expect(listener).not.toHaveBeenCalled();
+  });
+
+  it('offers the shell a read-only view of the graph alone', async () => {
+    const { transport } = mockLane();
+    await open(transport);
+    const listener = vi.fn();
+    const unsubscribe = boardGraph.subscribe(listener);
+
+    expect(boardGraph.getSnapshot()).toBe(boardGraphStore.getSnapshot().graph);
+    boardGraphStore.createNode({ kind: 'research', research: { hypothesis: 'Q' } });
+    const drawn = boardGraph.getSnapshot();
+    expect(drawn.nodes).toHaveLength(1);
+    expect(listener).toHaveBeenCalled();
+
+    // A save changes the store's snapshot but not the graph, so a component
+    // that only draws does not re-render on it.
+    await boardGraphStore.flush();
+    expect(boardGraphStore.getSnapshot().status).toBe('idle');
+    expect(boardGraph.getSnapshot()).toBe(drawn);
+
+    const delivered = listener.mock.calls.length;
+    unsubscribe();
+    boardGraphStore.createNode({ kind: 'research', research: { hypothesis: 'R' } });
+    expect(listener).toHaveBeenCalledTimes(delivered);
   });
 
   it('says nothing changed when a write finds no card', async () => {

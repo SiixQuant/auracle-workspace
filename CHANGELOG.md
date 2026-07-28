@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 <!-- Changes to existing functionality go here -->
+- Grid: the revealed data wires now read as one schematic. Each flow runs on a
+  single shared trunk under the room rank, with short drops on each card's
+  centreline, so related edges line up instead of fanning out.
 
 ### Fixed
 <!-- Bug fixes go here -->

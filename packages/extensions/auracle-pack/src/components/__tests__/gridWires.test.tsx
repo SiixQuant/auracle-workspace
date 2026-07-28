@@ -4,9 +4,12 @@
  * Two things are worth pinning, and they are different kinds of claim:
  *
  *  - the ROUTING is a pure function of measured boxes, so it is asserted
- *    directly — the lane a wire runs in, the tap offsets that keep verticals
- *    from colliding, the corner it refuses to round when there is no room, and
- *    the right angles every line (the annotation's leader included) is made of;
+ *    directly, and what is asserted is the SCHEMATIC's own discipline: one
+ *    trunk per flow, every edge in a flow riding the same trunk y, every drop
+ *    on its card's own centreline and through no other card, two bends a path,
+ *    and the right angles every line (the annotation's leader included) is made
+ *    of. Those properties are what stop eight revealed edges reading as a
+ *    tangle, so they are held by test rather than by eye;
  *  - what is DRAWN is a separate claim from what is routed: a quiet edge is
  *    withheld until somebody rests on a wired card or on the chip, and an edge
  *    that is warning or failing is never withheld at all;
@@ -45,6 +48,7 @@ import { GridSheet } from '../grid/GridSheet';
 import { getActiveRoom, openGridHome } from '../grid/gridNav';
 import { gridFoldStore } from '../grid/gridFoldStore';
 import {
+  FLOW_LANE,
   LANES,
   TREE_MIN_WIDTH,
   WIRE_DEFS,
@@ -52,8 +56,10 @@ import {
   leaderPath,
   orthoPath,
   sheetAlert,
+  wireLane,
   wireVisible,
   type RoomBox,
+  type WireFlow,
 } from '../grid/gridWires';
 import { ROOM_IDS, type RoomId } from '../grid/rooms';
 import { alertStore } from '../../engine/alertStore';
@@ -96,6 +102,17 @@ function roomLeft(id: RoomId, shift = 0): number {
 /** Where the routing believes a card's centre is, given the layout above. */
 function boxFor(id: RoomId): RoomBox {
   return { cx: roomLeft(id) + ROOM_W / 2, top: RANK_TOP, bottom: RANK_BOTTOM };
+}
+
+/**
+ * The horizontal span a card occupies in the rank. The routing is never handed
+ * these — a {@link RoomBox} carries a centre and nothing else — so they exist
+ * here only to prove the thing the centre rule buys: that no drop was ever put
+ * down a column belonging to a card the edge has no business touching.
+ */
+function spanFor(id: RoomId): { left: number; right: number } {
+  const left = roomLeft(id);
+  return { left, right: left + ROOM_W };
 }
 
 let restoreRects: (() => void) | null = null;
@@ -189,13 +206,60 @@ function points(d: string): Array<[number, number]> {
 }
 
 /**
- * Whether a path is drawn entirely of horizontal and vertical runs. Every
- * consecutive pair of points — the quadratic corners' control points included —
- * has to share an x or a y; a diagonal shares neither.
+ * The axis of every segment in a path, with consecutive runs of the same axis
+ * collapsed into one. A drop, a trunk run and a drop reads `['v', 'h', 'v']`,
+ * whatever the corners between them are drawn with — a quadratic corner's
+ * control point sits on the leg it leaves and its end point on the leg it
+ * joins, so the corner adds no entry of its own.
+ *
+ * A segment sharing neither coordinate with the one before it is a DIAGONAL,
+ * which this sheet does not have; it is reported rather than thrown away, so
+ * both the shape assertions and the orthogonality one read the same parse.
  */
-function isOrthogonal(d: string): boolean {
+function axes(d: string): string[] {
   const pts = points(d);
-  return pts.every((point, i) => i === 0 || point[0] === pts[i - 1][0] || point[1] === pts[i - 1][1]);
+  const out: string[] = [];
+  for (let i = 1; i < pts.length; i += 1) {
+    const [ax, ay] = pts[i - 1];
+    const [bx, by] = pts[i];
+    if (ax === bx && ay === by) continue;
+    const axis = ax === bx ? 'v' : ay === by ? 'h' : 'diagonal';
+    if (out[out.length - 1] !== axis) out.push(axis);
+  }
+  return out;
+}
+
+/** Turns per path. Drop–run–drop is two; three is the most the sheet allows. */
+function bends(d: string): number {
+  return Math.max(0, axes(d).length - 1);
+}
+
+function isOrthogonal(d: string): boolean {
+  return !axes(d).includes('diagonal');
+}
+
+/** The trunk a path rides: the y of its horizontal run, and the x it travels
+ *  FROM and TO along it — signed, so the direction of travel is readable. */
+function trunkOf(d: string): { y: number; from: number; to: number } | null {
+  const pts = points(d);
+  for (let i = 1; i < pts.length; i += 1) {
+    const [ax, ay] = pts[i - 1];
+    const [bx, by] = pts[i];
+    if (ay === by && ax !== bx) return { y: ay, from: ax, to: bx };
+  }
+  return null;
+}
+
+/** The x of every vertical run in a path — its drop columns, and nothing else. */
+function drops(d: string): number[] {
+  const pts = points(d);
+  const xs: number[] = [];
+  for (let i = 1; i < pts.length; i += 1) {
+    const [ax, ay] = pts[i - 1];
+    const [bx, by] = pts[i];
+    if (ax === bx && ay !== by && !xs.includes(ax)) xs.push(ax);
+  }
+  return xs;
 }
 
 const ALL_BOXES: Partial<Record<RoomId, RoomBox>> = Object.fromEntries(
@@ -250,41 +314,153 @@ function serveDeployments(rows: Deployment[]): void {
   stub.feeds['/deployments'] = rows;
 }
 
-describe('the routing keeps its lanes', () => {
-  it('runs every edge in its declared lane, below the room rank', () => {
+/**
+ * Which edges belong to which flow, written out rather than derived, because
+ * the point of the table is that it is a DECISION: an edge's lane comes from
+ * what the edge means, and a reader who learned the picture yesterday gets the
+ * same picture today. A move between flows has to be made here as well as in
+ * the routing, deliberately.
+ */
+const FLOW_EDGES: Record<WireFlow, string[]> = {
+  pipeline: [
+    'findings-strategies',
+    'strategies-backtest',
+    'backtest-validation',
+    'validation-deploys',
+  ],
+  execution: ['deploys-blotter', 'deploys-incidents'],
+  supply: ['qc-backtest', 'schedules-deploys'],
+};
+
+/** Every edge routed against the full rank, with its declared lane beside it. */
+function routed(): Array<{ key: string; lane: number; d: string }> {
+  const { wires } = layoutWires(ALL_BOXES, quietVitals());
+  return WIRE_DEFS.map((def) => {
+    const key = `${def.from}-${def.to}`;
+    const wire = wires.find((w) => w.key === key);
+    expect(wire).toBeTruthy();
+    return { key, lane: wireLane(def), d: wire!.d };
+  });
+}
+
+describe('the routing is one trunk per flow, with drops off it', () => {
+  it('takes its lane from the flow, never from the edge', () => {
+    expect(FLOW_LANE).toEqual({ pipeline: 1, execution: 2, supply: 3 });
+
+    const grouped: Record<string, string[]> = { pipeline: [], execution: [], supply: [] };
+    for (const def of WIRE_DEFS) grouped[def.flow].push(`${def.from}-${def.to}`);
+    expect(grouped).toEqual(FLOW_EDGES);
+
+    for (const def of WIRE_DEFS) expect(wireLane(def)).toBe(FLOW_LANE[def.flow]);
+  });
+
+  it('lands every edge in a lane on one and the same trunk, below the rank', () => {
+    const byLane = new Map<number, Set<number>>();
+    for (const wire of routed()) {
+      const trunk = trunkOf(wire.d);
+      expect(trunk).toBeTruthy();
+      // The lane hangs below the LOWEST card, never through the rank.
+      expect(trunk!.y).toBe(RANK_BOTTOM + LANES[wire.lane as keyof typeof LANES]);
+      expect(trunk!.y).toBeGreaterThan(RANK_BOTTOM);
+      const seen = byLane.get(wire.lane) ?? new Set<number>();
+      seen.add(trunk!.y);
+      byLane.set(wire.lane, seen);
+    }
+    // One y per lane: the sharing is exact, so two edges on a trunk draw the
+    // same line rather than two lines a pixel apart.
+    expect([...byLane.keys()].sort()).toEqual([1, 2, 3]);
+    for (const ys of byLane.values()) expect(ys.size).toBe(1);
+  });
+
+  it('hangs every drop on its own card centreline', () => {
     const { wires } = layoutWires(ALL_BOXES, quietVitals());
     expect(wires).toHaveLength(WIRE_DEFS.length);
 
     for (const def of WIRE_DEFS) {
-      const wire = wires.find((w) => w.key === `${def.from}-${def.to}`);
-      expect(wire).toBeTruthy();
-      const ys = points(wire!.d).map(([, y]) => y);
-      // The lane hangs below the LOWEST card, never through the rank.
-      expect(Math.max(...ys)).toBe(RANK_BOTTOM + LANES[def.lane]);
-      expect(Math.max(...ys)).toBeGreaterThan(RANK_BOTTOM);
-    }
-  });
-
-  it('taps each endpoint at its own offset, so verticals never collide', () => {
-    const { wires } = layoutWires(ALL_BOXES, quietVitals());
-    for (const def of WIRE_DEFS) {
       const wire = wires.find((w) => w.key === `${def.from}-${def.to}`)!;
       const pts = points(wire.d);
-      expect(pts[0]).toEqual([boxFor(def.from).cx + def.fromOffset, RANK_BOTTOM + 2]);
-      expect(pts[pts.length - 1]).toEqual([boxFor(def.to).cx + def.toOffset, RANK_BOTTOM + 3]);
+      // Out of the source's centre, and into the target's — no per-edge nudge
+      // is left anywhere, which is what lets two edges meeting at a card meet
+      // on one line instead of near one.
+      expect(pts[0]).toEqual([boxFor(def.from).cx, RANK_BOTTOM + 2]);
+      expect(pts[pts.length - 1]).toEqual([boxFor(def.to).cx, RANK_BOTTOM + 3]);
+      expect(drops(wire.d)).toEqual([boxFor(def.from).cx, boxFor(def.to).cx]);
     }
-
-    // Two edges leaving the same room leave from two different columns.
-    const outOfDeploys = WIRE_DEFS.filter((d) => d.from === 'deploys').map((d) => d.fromOffset);
-    expect(new Set(outOfDeploys).size).toBe(outOfDeploys.length);
   });
 
-  it('rounds its corners, and drops the radius when there is no room to turn', () => {
+  it('never puts a drop down a column belonging to another card', () => {
+    for (const wire of routed()) {
+      const [from, to] = wire.key.split('-') as [RoomId, RoomId];
+      for (const x of drops(wire.d)) {
+        for (const id of ROOM_IDS) {
+          if (id === from || id === to) continue;
+          const { left, right } = spanFor(id);
+          expect({ edge: wire.key, id, inside: x > left && x < right }).toEqual({
+            edge: wire.key,
+            id,
+            inside: false,
+          });
+        }
+      }
+    }
+  });
+
+  it('bends exactly twice — a drop, a run, and a drop', () => {
+    for (const wire of routed()) {
+      expect(axes(wire.d)).toEqual(['v', 'h', 'v']);
+      expect(bends(wire.d)).toBeLessThanOrEqual(3);
+      expect(isOrthogonal(wire.d)).toBe(true);
+    }
+  });
+
+  it('leaves no two edges in a lane crossing, or arguing about direction', () => {
+    const all = routed().map((wire) => ({
+      ...wire,
+      trunk: trunkOf(wire.d)!,
+      ys: points(wire.d).map(([, y]) => y),
+    }));
+
+    // A drop STOPS at its own trunk: nothing on the path goes below it. So a
+    // vertical can never pass through a horizontal drawn on the same lane —
+    // which is the whole of the no-crossing guarantee, since every horizontal
+    // in a lane is the same line and every vertical is a card centre.
+    for (const wire of all) expect(Math.max(...wire.ys)).toBe(wire.trunk.y);
+
+    for (const a of all) {
+      for (const b of all) {
+        if (a.key === b.key || a.lane !== b.lane) continue;
+        const overlap =
+          Math.min(Math.max(a.trunk.from, a.trunk.to), Math.max(b.trunk.from, b.trunk.to)) -
+          Math.max(Math.min(a.trunk.from, a.trunk.to), Math.min(b.trunk.from, b.trunk.to));
+        if (overlap <= 0) continue;
+        // Two runs sharing a stretch of trunk travel the same way down it, so
+        // the shared line is never ambiguous about which way the work goes.
+        expect(Math.sign(a.trunk.to - a.trunk.from)).toBe(Math.sign(b.trunk.to - b.trunk.from));
+      }
+    }
+  });
+
+  it('reads left to right along the pipeline', () => {
+    const byKey = new Map(routed().map((wire) => [wire.key, wire]));
+    for (const key of FLOW_EDGES.pipeline) {
+      const trunk = trunkOf(byKey.get(key)!.d)!;
+      expect(trunk.to).toBeGreaterThan(trunk.from);
+    }
+  });
+
+  it('rounds its corners, and squares them when there is no room to turn', () => {
     // A normal turn is drawn with quadratic corners.
     expect(orthoPath(0, 0, 200, 0, 40)).toContain('Q');
-    // Endpoints a pixel apart cannot hold a 6px corner — a straight run is
-    // honest where a rounded one would bulge past both taps.
-    expect(orthoPath(100, 0, 101, 0, 40)).toBe('M 100 0 L 101 0');
+    // Taps a pixel apart cannot hold a 6px corner. The turn is drawn SQUARE:
+    // the straight run this used to fall back to was honest only while both
+    // taps shared a y, and a stray hypotenuse the moment they did not.
+    const tight = orthoPath(100, 0, 101, 1, 40);
+    expect(tight).toBe('M 100 0 L 100 40 L 101 40 L 101 1');
+    expect(isOrthogonal(tight)).toBe(true);
+    expect(bends(tight)).toBe(2);
+    // Two taps in one column need no trunk at all — the drop is the path.
+    expect(orthoPath(100, 0, 100, 50, 40)).toBe('M 100 0 L 100 50');
+    expect(bends(orthoPath(100, 0, 100, 50, 40))).toBe(0);
   });
 
   it('draws only right angles, whichever side of the lane the target is on', () => {
@@ -295,6 +471,7 @@ describe('the routing keeps its lanes', () => {
     const down = orthoPath(600, 40, 200, 300, 280);
     expect(isOrthogonal(down)).toBe(true);
     expect(down).toContain('Q');
+    expect(bends(down)).toBe(2);
     // It leaves the lane going down, not back up the way it came.
     const ys = points(down).map(([, y]) => y);
     expect(ys[ys.length - 1]).toBe(300);
@@ -322,6 +499,10 @@ describe('the alert leader keeps to the lanes', () => {
     const d = leaderPath(CHIP, room);
     expect(isOrthogonal(d)).toBe(true);
     expect(d).toContain('Q');
+    // The same drop–run–drop the wires are made of: the annotation is drawn in
+    // the schematic's own hand, and only its dash pattern sets it apart.
+    expect(axes(d)).toEqual(['v', 'h', 'v']);
+    expect(bends(d)).toBeLessThanOrEqual(3);
   });
 
   it('leaves the chip and lands on the card it names, from above', () => {
@@ -436,15 +617,11 @@ describe('the overlay draws on the full tree only', () => {
     expect(screen.getByTestId('grid-wires')).toBeTruthy();
     const wires = wireElements();
     expect(wires).toHaveLength(8);
+    // Flow by flow, and within a flow in the direction the work travels.
     expect(wires.map((el) => el.getAttribute('data-edge'))).toEqual([
-      'findings-strategies',
-      'strategies-backtest',
-      'backtest-validation',
-      'validation-deploys',
-      'deploys-blotter',
-      'qc-backtest',
-      'deploys-incidents',
-      'schedules-deploys',
+      ...FLOW_EDGES.pipeline,
+      ...FLOW_EDGES.execution,
+      ...FLOW_EDGES.supply,
     ]);
     // Quiet by default: no reading has landed, so nothing is claimed.
     expect(wiresOfKind('norm')).toHaveLength(8);

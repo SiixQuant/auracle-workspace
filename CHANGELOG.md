@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 <!-- Changes to existing functionality go here -->
+- The Auracle plan now keeps its connecting lines out of the way until you rest on a room or on the open alert, points at a failing room with a short right-angled marker instead of a line across the whole screen, lines its four groups up on one grid, and can be dragged, zoomed and re-fitted from controls in the corner.
 
 ### Fixed
 <!-- Bug fixes go here -->

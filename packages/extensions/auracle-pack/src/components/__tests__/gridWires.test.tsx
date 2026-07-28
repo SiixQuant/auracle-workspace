@@ -5,7 +5,11 @@
  *
  *  - the ROUTING is a pure function of measured boxes, so it is asserted
  *    directly — the lane a wire runs in, the tap offsets that keep verticals
- *    from colliding, and the corner it refuses to round when there is no room;
+ *    from colliding, the corner it refuses to round when there is no room, and
+ *    the right angles every line (the annotation's leader included) is made of;
+ *  - what is DRAWN is a separate claim from what is routed: a quiet edge is
+ *    withheld until somebody rests on a wired card or on the chip, and an edge
+ *    that is warning or failing is never withheld at all;
  *  - the LIVE reading is the whole point of the overlay, so the fault edge, the
  *    travelling pulse and the annotation are driven through the real
  *    `gridVitals` store off a stubbed deployments feed, never by handing the
@@ -45,8 +49,10 @@ import {
   TREE_MIN_WIDTH,
   WIRE_DEFS,
   layoutWires,
+  leaderPath,
   orthoPath,
   sheetAlert,
+  wireVisible,
   type RoomBox,
 } from '../grid/gridWires';
 import { ROOM_IDS, type RoomId } from '../grid/rooms';
@@ -138,6 +144,23 @@ function wiresOfKind(kind: string): HTMLElement[] {
   return wireElements().filter((el) => el.getAttribute('data-kind') === kind);
 }
 
+/** The edges actually being drawn — the quiet ones are rendered but withheld. */
+function drawnWires(): HTMLElement[] {
+  return wireElements().filter((el) => el.getAttribute('data-visible') === 'true');
+}
+
+/** Rest the pointer on an element. React synthesises enter/leave from the
+ *  native over/out pair, so both are dispatched. */
+function pointerOnto(el: HTMLElement): void {
+  fireEvent.mouseOver(el);
+  fireEvent.mouseEnter(el);
+}
+
+function pointerOff(el: HTMLElement): void {
+  fireEvent.mouseOut(el);
+  fireEvent.mouseLeave(el);
+}
+
 beforeEach(() => {
   stub.feeds = {};
   gridVitals.reset();
@@ -163,6 +186,16 @@ function points(d: string): Array<[number, number]> {
   return [...d.matchAll(/(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)/g)].map(
     (m) => [Number(m[1]), Number(m[2])] as [number, number]
   );
+}
+
+/**
+ * Whether a path is drawn entirely of horizontal and vertical runs. Every
+ * consecutive pair of points — the quadratic corners' control points included —
+ * has to share an x or a y; a diagonal shares neither.
+ */
+function isOrthogonal(d: string): boolean {
+  const pts = points(d);
+  return pts.every((point, i) => i === 0 || point[0] === pts[i - 1][0] || point[1] === pts[i - 1][1]);
 }
 
 const ALL_BOXES: Partial<Record<RoomId, RoomBox>> = Object.fromEntries(
@@ -254,12 +287,71 @@ describe('the routing keeps its lanes', () => {
     expect(orthoPath(100, 0, 101, 0, 40)).toBe('M 100 0 L 101 0');
   });
 
+  it('draws only right angles, whichever side of the lane the target is on', () => {
+    // Both ends above the lane — the wires' own shape.
+    expect(isOrthogonal(orthoPath(0, 0, 200, 10, 90))).toBe(true);
+    // The target BELOW the lane — the leader's shape, and the one the old
+    // single-direction routing could only draw as a straight diagonal.
+    const down = orthoPath(600, 40, 200, 300, 280);
+    expect(isOrthogonal(down)).toBe(true);
+    expect(down).toContain('Q');
+    // It leaves the lane going down, not back up the way it came.
+    const ys = points(down).map(([, y]) => y);
+    expect(ys[ys.length - 1]).toBe(300);
+    expect(Math.max(...ys)).toBe(300);
+  });
+
   it('routes nothing for a room the plan did not lay out', () => {
     const partial = { ...ALL_BOXES };
     delete partial.blotter;
     const { wires } = layoutWires(partial, quietVitals());
     expect(wires.map((w) => w.key)).not.toContain('deploys-blotter');
     expect(wires).toHaveLength(WIRE_DEFS.length - 1);
+  });
+});
+
+describe('the alert leader keeps to the lanes', () => {
+  /** The pinned chip's lower-left, top-right of a tree-tier plan. */
+  const CHIP = { x: WIDE - 208, y: 42 };
+
+  it('turns at right angles rather than cutting across the sheet', () => {
+    // The whole point of the rewrite: the old leader was one long diagonal
+    // from the chip to the card, and on a real pane it was the loudest line
+    // on the plan.
+    const room = boxFor('deploys');
+    const d = leaderPath(CHIP, room);
+    expect(isOrthogonal(d)).toBe(true);
+    expect(d).toContain('Q');
+  });
+
+  it('leaves the chip and lands on the card it names, from above', () => {
+    const room = boxFor('deploys');
+    const pts = points(leaderPath(CHIP, room));
+    expect(pts[0]).toEqual([CHIP.x, CHIP.y]);
+
+    const [x, y] = pts[pts.length - 1];
+    // Right of the card's centre, clear of the title it would otherwise cross.
+    expect(x).toBeGreaterThan(room.cx);
+    // Stopping ON the top edge, having come down to it — never through the card.
+    expect(y).toBeLessThan(room.top);
+    expect(y).toBeGreaterThan(CHIP.y);
+    expect(Math.max(...pts.map(([, py]) => py))).toBe(y);
+  });
+
+  it('says nothing when either end has no box to point at', () => {
+    expect(leaderPath(null, boxFor('deploys'))).toBe('');
+    expect(leaderPath(CHIP, null)).toBe('');
+  });
+});
+
+describe('a quiet wire is not drawn until it is asked for', () => {
+  it('withholds the nominal edges and never the rest', () => {
+    expect(wireVisible('norm', false)).toBe(false);
+    expect(wireVisible('norm', true)).toBe(true);
+    for (const kind of ['warn', 'err'] as const) {
+      expect(wireVisible(kind, false)).toBe(true);
+      expect(wireVisible(kind, true)).toBe(true);
+    }
   });
 });
 
@@ -359,6 +451,8 @@ describe('the overlay draws on the full tree only', () => {
     for (const wire of wires) {
       expect(wire.getAttribute('marker-end')).toBe('url(#agrid-arrow-norm)');
     }
+    // Routed, but not drawn: eight quiet edges say nothing worth eight lines.
+    expect(drawnWires()).toHaveLength(0);
   });
 
   it('draws nothing below the tier the tree needs', () => {
@@ -413,6 +507,67 @@ describe('the overlay draws on the full tree only', () => {
   });
 });
 
+describe('the flow is revealed on request, and put away again', () => {
+  it('draws the whole flow while a wired room is rested on', () => {
+    render(<GridSheet />);
+    expect(drawnWires()).toHaveLength(0);
+
+    const card = screen.getByTestId('grid-home-room-deploys');
+    expect(card.getAttribute('data-wired')).toBe('true');
+    pointerOnto(card);
+    expect(drawnWires()).toHaveLength(8);
+
+    pointerOff(card);
+    expect(drawnWires()).toHaveLength(0);
+  });
+
+  it('stays quiet for a room no edge touches', () => {
+    render(<GridSheet />);
+    const card = screen.getByTestId('grid-home-room-runway');
+    expect(card.getAttribute('data-wired')).toBe('false');
+
+    pointerOnto(card);
+    expect(drawnWires()).toHaveLength(0);
+  });
+
+  it('reveals from the pinned chip too, since the chip points into the flow', async () => {
+    serveDeployments([deployment(1, 'errored')]);
+    render(<GridSheet />);
+    await settle();
+    expect(drawnWires()).toHaveLength(1);
+
+    const chip = screen.getByTestId('grid-alert');
+    pointerOnto(chip);
+    expect(drawnWires()).toHaveLength(8);
+
+    pointerOff(chip);
+    expect(drawnWires()).toHaveLength(1);
+  });
+
+  it('puts the flow away when a fold takes the card out from under the pointer', async () => {
+    render(<GridSheet />);
+    const card = screen.getByTestId('grid-home-room-deploys');
+    pointerOnto(card);
+    expect(drawnWires()).toHaveLength(8);
+
+    // The card leaves the DOM without ever firing a mouseleave; without a
+    // second way out the sheet would be left drawing every wire for good.
+    await act(async () => {
+      gridFoldStore.set('operate', true);
+    });
+    expect(screen.queryByTestId('grid-home-room-deploys')).toBeNull();
+    expect(drawnWires()).toHaveLength(0);
+  });
+
+  it('keeps a resting room card openable', () => {
+    render(<GridSheet />);
+    const card = screen.getByTestId('grid-home-room-backtest');
+    pointerOnto(card);
+    fireEvent.click(card);
+    expect(getActiveRoom()).toBe('backtest');
+  });
+});
+
 describe('the sheet raises the alarm the readings raise', () => {
   it('reddens the incident edge, pulses it, and pins an annotation', async () => {
     serveDeployments([deployment(1, 'running'), deployment(2, 'errored')]);
@@ -427,14 +582,18 @@ describe('the sheet raises the alarm the readings raise', () => {
     expect(red[0].getAttribute('data-edge')).toBe('deploys-incidents');
     expect(red[0].getAttribute('marker-end')).toBe('url(#agrid-arrow-err)');
     expect(screen.getByTestId('grid-wire-pulse')).toBeTruthy();
+    // At rest, with one fault, the sheet draws exactly one wire — the red one.
+    expect(drawnWires().map((el) => el.getAttribute('data-edge'))).toEqual(['deploys-incidents']);
 
     const chip = screen.getByTestId('grid-alert');
     expect(chip.getAttribute('data-state')).toBe('alert');
     expect(chip.textContent).toContain('1 alert');
     expect(chip.textContent).toContain('gap_fade_r2');
     expect(chip.textContent).toContain('Deployments');
-    // The leader points at the room the chip names.
-    expect(screen.getByTestId('grid-alert-leader')).toBeTruthy();
+    // The leader points at the room the chip names, and does it in right
+    // angles — an annotation of the schematic, not a scratch across it.
+    const leader = screen.getByTestId('grid-alert-leader');
+    expect(isOrthogonal(leader.getAttribute('d') ?? '')).toBe(true);
   });
 
   it('puts the alarm away the moment the deployment recovers', async () => {
@@ -448,6 +607,8 @@ describe('the sheet raises the alarm the readings raise', () => {
 
     expect(wiresOfKind('err')).toHaveLength(0);
     expect(wiresOfKind('norm')).toHaveLength(8);
+    // A recovered sheet draws nothing at all: no fault, no leader, no lines.
+    expect(drawnWires()).toHaveLength(0);
     expect(screen.queryByTestId('grid-wire-pulse')).toBeNull();
     expect(screen.queryByTestId('grid-alert-leader')).toBeNull();
     const chip = screen.getByTestId('grid-alert');

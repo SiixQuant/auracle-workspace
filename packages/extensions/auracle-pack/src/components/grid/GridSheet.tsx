@@ -33,12 +33,41 @@
  * enough to draw it without scrolling sideways. The tree's rails are drawn
  * with border-box pseudo-elements, so the geometry costs no dependency.
  *
+ * ALIGNMENT: the tree tier lays the rank on ONE uniform column grid — a column
+ * unit per room, each district spanning as many units as it has rooms — so
+ * every card in the rank is the same width, every district header sits on its
+ * own rank's centreline, and every connecting stub drops straight down. The
+ * previous proportional-flex rank let a long title set a district's minimum
+ * width, which pushed its neighbours along and bent the whole tree out of true.
+ *
+ * CANVAS: at the tree tier the plan is a layer with one transform on it
+ * ({@link gridCanvas}) inside a stage that clips. Drag empty ground to pan,
+ * wheel to pan, ctrl/cmd-wheel to zoom about the pointer, and the controls in
+ * the corner (or a double-click on empty ground) to return to the fitted view.
+ * Nothing is persisted: every open starts fitted, because a remembered pan
+ * could put a faulted room off screen. Pressing a card is untouched — a drag
+ * only pans when it starts on ground rather than on a control.
+ *
  * WIRES: the full tree tier also carries a wire overlay and one pinned alert
- * ({@link WireOverlay}). Both are that tier's alone — the stacked tiers have no
- * single room rank for the lanes to hang under — so the plan reserves the lane
- * band as bottom padding there and nowhere else.
+ * ({@link WireOverlay}), both INSIDE the transformed layer so a pan or a zoom
+ * moves the wires and the cards they join by exactly the same pixels. Both are
+ * that tier's alone — the stacked tiers have no single room rank for the lanes
+ * to hang under — so the plan reserves the lane band as bottom padding there
+ * and nowhere else. At rest only the edges that are saying something are drawn;
+ * resting on a wired card or on the alert chip reveals the rest of the flow.
  */
-import { useSyncExternalStore, type CSSProperties } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+  type MutableRefObject,
+} from 'react';
 import { gridVitals, type GridVitals, type RoomVital } from '../../engine/gridVitals';
 import { tint, tone } from '../panelkit';
 import { PALETTE_HINT, openPalette } from './gridCommands';
@@ -53,27 +82,71 @@ import {
   roomsNeedingAttention,
   type District,
 } from './districts';
+import {
+  IDENTITY,
+  ZOOM_MAX,
+  ZOOM_MIN,
+  ZOOM_STEP,
+  fitView,
+  isGround,
+  panBy,
+  zoomAt,
+  type View,
+} from './gridCanvas';
 import { gridFoldStore, type FoldedDistricts } from './gridFoldStore';
 import { GRID_ACCENT, GRID_ACCENT_DIM, GRID_ACCENT_SOFT } from './gridTheme';
 import { GridAiStrip } from './GridAiStrip';
-import { TREE_MIN_WIDTH } from './gridWires';
+import { TREE_MIN_WIDTH, WIRED_ROOMS } from './gridWires';
 import { useRoomPeek, type PeekHandlers } from './RoomPeek';
 import { WireOverlay } from './WireOverlay';
 import { ROOMS, ROOM_IDS, type RoomId } from './rooms';
 
 const STYLE_ID = 'auracle-grid-sheet-styles';
 
-/** Rail hairline — one step up from the card border so the tree stays legible
- *  against the canvas without competing with the cards it connects. */
+/**
+ * Rail hairline — one step up from the card border so the tree stays legible
+ * against the canvas without competing with the cards it connects.
+ *
+ * SOLID, always. A dash on this sheet means one thing only, and that is a data
+ * wire; the structure of the tree is not data and never speaks in the same
+ * pattern. Faint, but not fainter: dropped to the card-border weight it stopped
+ * reading as a tree at all once the plan could be zoomed out.
+ */
 const RAIL = tone.borderStrong;
+
+/**
+ * The plan's natural width, capped so the tree does not stretch into a smear on
+ * a very wide pane, and centred by the fit. Above it the canvas simply has room
+ * to spare around a plan drawn at its best size.
+ */
+const PLAN_MAX_WIDTH = 1680;
+
+/** How far one wheel notch zooms. Divisor rather than a step so a trackpad's
+ *  fine deltas zoom smoothly and a mouse's coarse ones still move. */
+const WHEEL_ZOOM_DIVISOR = 260;
+
+/** The rooms an edge touches — resting on one of these reveals the flow. */
+const WIRED = new Set<RoomId>(WIRED_ROOMS);
 
 const SHEET = `
 /* A column so the AI strip can sit along the bottom of the plan and stay
-   there: it is sticky against this sheet's own scroll box, and the plan takes
-   whatever height is left. */
+   there: the stage above it takes whatever height is left, so the strip is
+   always at the foot of the pane whatever the plan is doing inside it. */
 .agrid { min-height: 100%; display: flex; flex-direction: column; }
-.agrid__plan { position: relative; flex: 1 1 auto; display: flex; flex-direction: column; padding: 18px 20px 44px; }
+/* The STAGE is the viewport the plan is seen through. Below the tree tier it is
+   an ordinary scrolling column and the plan sits in it in flow; at the tree
+   tier it clips and the plan becomes a layer with one transform on it. */
+.agrid__stage { position: relative; flex: 1 1 auto; min-height: 0; overflow: auto; }
+.agrid__plan { position: relative; display: flex; flex-direction: column; width: 100%; max-width: ${PLAN_MAX_WIDTH}px; margin: 0 auto; padding: 18px 20px 44px; }
 .agrid__hint { margin: 0 0 14px; font-size: 11.5px; line-height: 1.5; color: ${tone.text3}; }
+/* Pinned to the stage rather than the plan, so the controls that move the plan
+   do not move with it. */
+.agrid__zoom { position: absolute; right: 14px; bottom: 12px; z-index: 7; display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 999px; border: 1px solid ${tone.border}; background: ${tone.surface}; box-shadow: 0 6px 18px rgba(0,0,0,0.35); }
+.agrid__zbtn { appearance: none; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 999px; background: transparent; color: ${tone.text3}; cursor: pointer; transition: background-color 150ms ease-out, color 150ms ease-out; }
+.agrid__zbtn:hover:not(:disabled) { background: ${tone.surface2}; color: ${tone.text}; }
+.agrid__zbtn:disabled { opacity: 0.35; cursor: default; }
+.agrid__zbtn:focus-visible { outline: 2px solid ${GRID_ACCENT}; outline-offset: 1px; }
+.agrid__zbtn .material-symbols-outlined { font-size: 17px; line-height: 1; }
 .agrid__root { position: relative; z-index: 1; appearance: none; font: inherit; text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: 3px; padding: 10px 13px; border-radius: 10px; border: 1px solid ${GRID_ACCENT_DIM}; background: ${GRID_ACCENT_SOFT}; transition: border-color 150ms ease-out, background-color 150ms ease-out; }
 .agrid__root:hover { border-color: ${GRID_ACCENT}; background: ${tone.surface3}; }
 .agrid__root:focus-visible { outline: 2px solid ${GRID_ACCENT}; outline-offset: 1px; }
@@ -86,15 +159,18 @@ const SHEET = `
 .agrid__districts { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
 .agrid__district { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .agrid__label { display: flex; flex-direction: column; gap: 3px; max-width: 100%; min-width: 0; padding: 8px 12px; border-radius: 8px; border: 1px solid ${tone.border}; background: ${tone.surface}; }
-.agrid__ltop { display: flex; align-items: center; gap: 9px; }
-.agrid__num { font-family: ${tone.mono}; font-size: 11px; font-weight: 650; color: ${GRID_ACCENT}; }
-.agrid__name { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.13em; color: ${tone.text2}; white-space: nowrap; }
+.agrid__ltop { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.agrid__num { flex: none; font-family: ${tone.mono}; font-size: 11px; font-weight: 650; color: ${GRID_ACCENT}; }
+.agrid__name { min-width: 0; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.13em; color: ${tone.text2}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .agrid__flag { font-size: 13px; line-height: 1; }
 .agrid__fold { appearance: none; margin-left: auto; flex: none; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: ${tone.text3}; cursor: pointer; transition: background-color 150ms ease-out, color 150ms ease-out; }
 .agrid__fold:hover { background: ${tone.surface2}; color: ${tone.text}; }
 .agrid__fold:focus-visible { outline: 2px solid ${GRID_ACCENT}; outline-offset: 1px; }
 .agrid__fold .material-symbols-outlined { font-size: 17px; line-height: 1; }
-.agrid__sum { font-size: 11px; color: ${tone.text3}; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Width 0 + min-width 100%: the summary fills its label but contributes
+   NOTHING to the plan's intrinsic width, so a district that happens to have a
+   lot to report cannot widen the rank it sits over. */
+.agrid__sum { width: 0; min-width: 100%; font-size: 11px; color: ${tone.text3}; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .agrid__count { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; border: 1px solid ${tone.border}; background: ${tone.surface}; font-size: 11.5px; color: ${tone.text2}; }
 .agrid__cdot { flex: none; width: 6px; height: 6px; border-radius: 50%; }
 .agrid__rooms { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
@@ -122,43 +198,70 @@ const SHEET = `
   .agrid__rooms { grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); }
 }
 
-/* Wide tree: every room grows to its own title before sharing leftovers, so
-   nothing truncates when there is room to spare. The note's width is pinned
-   to the card above (width 0 + min-width 100%), so only the TITLE row sets
-   the card's floor — long notes still truncate. Below this width the compact
-   equal-share layout returns and titles may ellipsize; that trade keeps the
-   tree tier viable down to its breakpoint. */
-@container auracle-grid (min-width: 1460px) {
-  .agrid__slot { flex: 1 1 auto; }
-  .agrid__room { min-width: fit-content; }
-}
-
 @container auracle-grid (min-width: ${TREE_MIN_WIDTH}px) {
-  /* The bottom padding is the LANE BAND: the wire overlay hangs its three
+  /* The plan is a LAYER now: one transform moves it inside the stage, which
+     clips. Everything the wires measure lives in here with it, so a pan or a
+     zoom moves the schematic without disturbing the geometry drawn on it.
+     The bottom padding is the LANE BAND: the wire overlay hangs its three
      lanes below the room rank, and only this tier draws them. */
-  .agrid__plan { align-items: center; padding-top: 22px; padding-bottom: 92px; }
+  .agrid__stage { overflow: hidden; cursor: grab; user-select: none; }
+  .agrid__stage[data-panning='true'] { cursor: grabbing; }
+  .agrid__plan { position: absolute; top: 0; left: 0; margin: 0; transform-origin: 0 0; align-items: center; padding: 22px 20px 92px; }
   .agrid__hint { text-align: center; }
   .agrid__root { width: 218px; }
   .agrid__stem { display: block; height: 18px; }
-  .agrid__districts { flex-direction: row; align-items: flex-start; justify-content: center; gap: 0; margin-top: 0; width: 100%; }
-  .agrid__district { flex: var(--agrid-span, 1) 1 0; align-items: center; gap: 0; position: relative; padding: 18px 10px 0; }
+  /* ONE uniform column grid for the whole rank: a column unit per room, each
+     district spanning as many units as it has rooms (one while folded). That
+     is what makes every card in the rank the same width and puts every
+     district header on its own rank's centreline.
+     minmax(0, Nfr) rather than a bare Nfr: a bare fr track takes its content's
+     min-content as a floor, so one long district name would widen its column
+     and shove every rank to its right out of alignment — which is exactly how
+     the tree came to look bent. */
+  .agrid__districts { display: grid; grid-template-columns: var(--agrid-cols); align-items: start; gap: 0; margin-top: 0; width: 100%; }
+  /* No horizontal padding on a column: the rails run edge to edge so the rank
+     joins up as one unbroken line, and the gutter between cards is the card's
+     own margin instead of a gap in the drawing. */
+  .agrid__district { min-width: 0; align-items: center; gap: 0; position: relative; padding: 18px 0 0; }
   .agrid__district::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: ${RAIL}; }
   .agrid__district:first-child::before { left: 50%; }
   .agrid__district:last-child::before { right: 50%; }
   .agrid__district::after { content: ''; position: absolute; top: 0; left: 50%; width: 1px; height: 18px; background: ${RAIL}; }
-  .agrid__rooms { display: flex; flex-direction: row; align-items: stretch; gap: 0; width: 100%; }
-  .agrid__slot { flex: 1 1 0; position: relative; padding: 16px 5px 0; }
+  /* A grid rather than a flex row, and the reason is intrinsic sizing: a flex
+     row's max-content is the SUM of its cards, so the pitch a wide plan asks
+     for would be the district's AVERAGE card and its longest title would still
+     truncate. A grid of equal fr columns asks for the width of the GREEDIEST
+     card times the number of columns, which is exactly the uniform pitch that
+     fits every title. minmax(0, 1fr) plus min-width: 0 on the slot so a long
+     title stretches the pitch rather than overflowing its column. */
+  .agrid__rooms { display: grid; grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); align-items: stretch; gap: 0; width: 100%; }
+  .agrid__slot { min-width: 0; position: relative; padding: 16px 0 0; }
   .agrid__slot::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: ${RAIL}; }
   .agrid__slot:first-child::before { left: 50%; }
   .agrid__slot:last-child::before { right: 50%; }
   .agrid__slot:only-child::before { display: none; }
   .agrid__slot::after { content: ''; position: absolute; top: 0; left: 50%; width: 1px; height: 16px; background: ${RAIL}; }
+  .agrid__room { margin: 0 5px; }
   /* Centred under the district's rail, which drops straight into it. */
   .agrid__count { align-self: center; }
 }
 
+/* Wide tree: the plan takes its CONTENT's width rather than the pane's, so the
+   uniform column pitch is set by the greediest card and no title truncates when
+   there is room to spare. The canvas then scales the result to the pane, which
+   is what lets the pitch stay uniform while the titles stay whole — the old
+   rule bought the same titles by letting each card size itself, and paid for it
+   with a rank whose columns no longer lined up. The note's width is pinned to
+   the card above (width 0 + min-width 100%), so only the TITLE row asks for
+   room — long notes still truncate. Below this width the plan takes the pane's
+   width and long titles may ellipsize; that trade keeps the tree tier viable
+   down to its breakpoint. */
+@container auracle-grid (min-width: 1460px) {
+  .agrid__plan { width: max-content; min-width: 100%; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .agrid__fold, .agrid__room { transition: none; }
+  .agrid__fold, .agrid__room, .agrid__zbtn { transition: none; }
 }
 `;
 
@@ -170,17 +273,170 @@ function ensureSheetStyles(): void {
   document.head.appendChild(el);
 }
 
+/**
+ * The plan's canvas: what the stage is showing, and every way a person moves it.
+ *
+ * All of it is gated on the TREE tier, measured against the same constant the
+ * sheet's `@container` rule uses — the stacked tiers are a column that scrolls,
+ * and turning that into a pannable plane would take away the scrollbar and give
+ * nothing back.
+ *
+ * The arithmetic lives in {@link gridCanvas} so it can be asserted without a
+ * layout engine; what is left here is measuring, and listening.
+ */
+function useGridCanvas(): {
+  stageRef: MutableRefObject<HTMLDivElement | null>;
+  planRef: MutableRefObject<HTMLDivElement | null>;
+  view: View;
+  engaged: boolean;
+  panning: boolean;
+  onMouseDown: (event: ReactMouseEvent<HTMLElement>) => void;
+  onDoubleClick: (event: ReactMouseEvent<HTMLElement>) => void;
+  zoomBy: (factor: number) => void;
+  fit: () => void;
+} {
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const planRef = useRef<HTMLDivElement | null>(null);
+  const [view, setView] = useState<View>(IDENTITY);
+  const [engaged, setEngaged] = useState(false);
+  const [panning, setPanning] = useState(false);
+  // Read by listeners that are registered once and must not be torn down every
+  // time the view moves.
+  const engagedRef = useRef(false);
+  const viewRef = useRef(view);
+  const drag = useRef<{ x: number; y: number; from: View } | null>(null);
+  // Whether the reader has framed the plan themselves. A plan that changes size
+  // under an untouched view is re-fitted; one somebody has moved is left where
+  // they left it.
+  const touched = useRef(false);
+
+  useEffect(() => {
+    viewRef.current = view;
+  }, [view]);
+
+  const fit = useCallback((): void => {
+    const stage = stageRef.current;
+    const plan = planRef.current;
+    if (!stage || !plan) return;
+    const stageSize = { width: stage.clientWidth, height: stage.clientHeight };
+    const on = stageSize.width >= TREE_MIN_WIDTH;
+    engagedRef.current = on;
+    setEngaged(on);
+    touched.current = false;
+    // offsetWidth/Height, not the client rect: those are the plan's LAYOUT box,
+    // which a transform does not touch — measuring the rect would fold the
+    // current zoom back into the fit that is meant to replace it.
+    setView(on ? fitView({ width: plan.offsetWidth, height: plan.offsetHeight }, stageSize) : IDENTITY);
+  }, []);
+
+  // A layout effect, and re-run on either box moving. The stage changing size
+  // invalidates the framing outright; the plan changing size (a district
+  // folding) re-frames only a view nobody has moved.
+  useLayoutEffect(() => {
+    fit();
+    const stage = stageRef.current;
+    const plan = planRef.current;
+    if (!stage || !plan || typeof ResizeObserver === 'undefined') return;
+    const onStage = new ResizeObserver(() => fit());
+    onStage.observe(stage);
+    const onPlan = new ResizeObserver(() => {
+      if (!touched.current) fit();
+    });
+    onPlan.observe(plan);
+    return () => {
+      onStage.disconnect();
+      onPlan.disconnect();
+    };
+  }, [fit]);
+
+  // Native and NON-PASSIVE: React registers wheel handlers passively at its own
+  // root, where `preventDefault` is ignored — and without it a ctrl-wheel is the
+  // host application's zoom rather than the plan's.
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const onWheel = (event: WheelEvent): void => {
+      if (!engagedRef.current) return;
+      event.preventDefault();
+      touched.current = true;
+      const box = stage.getBoundingClientRect();
+      const px = event.clientX - box.left;
+      const py = event.clientY - box.top;
+      setView((current) =>
+        event.ctrlKey || event.metaKey
+          ? zoomAt(current, Math.exp(-event.deltaY / WHEEL_ZOOM_DIVISOR), px, py)
+          : panBy(current, -event.deltaX, -event.deltaY)
+      );
+    };
+    stage.addEventListener('wheel', onWheel, { passive: false });
+    return () => stage.removeEventListener('wheel', onWheel);
+  }, []);
+
+  // The move and the release are the WINDOW's, so a drag that leaves the stage
+  // keeps panning and a button released outside it still ends the gesture.
+  useEffect(() => {
+    if (!panning) return;
+    const onMove = (event: MouseEvent): void => {
+      const start = drag.current;
+      if (!start) return;
+      touched.current = true;
+      setView(panBy(start.from, event.clientX - start.x, event.clientY - start.y));
+    };
+    const onUp = (): void => {
+      drag.current = null;
+      setPanning(false);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, [panning]);
+
+  // Ground only, primary button only: a press that starts anywhere on a control
+  // belongs to that control, so dragging a room card still opens the room.
+  const onMouseDown = useCallback((event: ReactMouseEvent<HTMLElement>): void => {
+    if (!engagedRef.current || event.button !== 0 || !isGround(event.target)) return;
+    drag.current = { x: event.clientX, y: event.clientY, from: viewRef.current };
+    setPanning(true);
+  }, []);
+
+  const onDoubleClick = useCallback(
+    (event: ReactMouseEvent<HTMLElement>): void => {
+      if (!engagedRef.current || !isGround(event.target)) return;
+      fit();
+    },
+    [fit]
+  );
+
+  /** The controls zoom about the middle of the stage — there is no pointer to
+   *  zoom about, and the middle is what a reader is looking at. */
+  const zoomBy = useCallback((factor: number): void => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    touched.current = true;
+    setView((current) => zoomAt(current, factor, stage.clientWidth / 2, stage.clientHeight / 2));
+  }, []);
+
+  return { stageRef, planRef, view, engaged, panning, onMouseDown, onDoubleClick, zoomBy, fit };
+}
+
 /** One room: icon, title, health dot, and the one line it can currently back. */
 function RoomCard({
   id,
   vital,
   peek,
+  onReveal,
 }: {
   id: RoomId;
   vital: RoomVital;
   peek: PeekHandlers;
+  /** Raised while the pointer rests on a room an edge touches. */
+  onReveal: (revealed: boolean) => void;
 }): JSX.Element {
   const room = ROOMS[id];
+  const wired = WIRED.has(id);
   const label = vital.note
     ? `${room.title} — ${HEALTH_WORD[vital.health]}, ${vital.note}`
     : `${room.title} — ${HEALTH_WORD[vital.health]}`;
@@ -192,13 +448,24 @@ function RoomCard({
         data-testid={`grid-home-room-${id}`}
         data-room={id}
         data-health={vital.health}
+        data-wired={wired ? 'true' : 'false'}
         aria-label={label}
         // No `title`: the peek says the same thing sooner and says more, and a
         // native tooltip firing a second later would land on top of it.
         // The room page zooms out of the card that was pressed, so the press
         // and the arrival read as one gesture rather than a screen swap.
         onClick={(event) => openRoomFocused(id, undefined, zoomOriginFrom(event.currentTarget))}
-        {...peek}
+        // The peek's handlers and the wire reveal answer the same rest on the
+        // same card, so they are composed here rather than spread: one of them
+        // would otherwise quietly replace the other.
+        onMouseEnter={(event) => {
+          peek.onMouseEnter(event);
+          if (wired) onReveal(true);
+        }}
+        onMouseLeave={() => {
+          peek.onMouseLeave();
+          if (wired) onReveal(false);
+        }}
       >
         <span className="agrid__rtop">
           <span className="material-symbols-outlined agrid__rico" aria-hidden>
@@ -239,11 +506,13 @@ function DistrictBlock({
   vitals,
   folded,
   peek,
+  onReveal,
 }: {
   district: District;
   vitals: GridVitals;
   folded: boolean;
   peek: (id: RoomId) => PeekHandlers;
+  onReveal: (revealed: boolean) => void;
 }): JSX.Element {
   const health = districtHealth(district, vitals);
   const bodyId = `agrid-rooms-${district.id}`;
@@ -254,8 +523,6 @@ function DistrictBlock({
       data-district={district.number}
       data-health={health}
       data-folded={folded ? 'true' : 'false'}
-      // A folded district stops claiming its rooms' share of the rank.
-      style={{ '--agrid-span': folded ? 1 : district.rooms.length } as CSSProperties}
     >
       <div className="agrid__label">
         <span className="agrid__ltop">
@@ -313,7 +580,7 @@ function DistrictBlock({
       ) : (
         <div id={bodyId} className="agrid__rooms">
           {district.rooms.map((id) => (
-            <RoomCard key={id} id={id} vital={vitals[id]} peek={peek(id)} />
+            <RoomCard key={id} id={id} vital={vitals[id]} peek={peek(id)} onReveal={onReveal} />
           ))}
         </div>
       )}
@@ -337,53 +604,148 @@ export function GridSheet(): JSX.Element {
   );
   const { handlers, peek } = useRoomPeek(vitals);
   const attention = roomsNeedingAttention(vitals);
+  const canvas = useGridCanvas();
+  // Whether the quiet wires are being asked for. Component state, not a store:
+  // a hover belongs to the pointer that raised it and must not outlive the
+  // mount, let alone the session.
+  const [revealed, setRevealed] = useState(false);
+  // A fold takes cards out of the DOM without their ever firing a mouseleave,
+  // which would strand the reveal on: the same stranding the peek clears for
+  // the same reason.
+  useEffect(() => {
+    setRevealed(false);
+  }, [folded]);
+  // The rank's column template: one unit per room, one for a folded district.
+  const columns = useMemo(
+    () =>
+      DISTRICTS.map(
+        (district) => `minmax(0, ${folded.has(district.id) ? 1 : district.rooms.length}fr)`
+      ).join(' '),
+    [folded]
+  );
 
   return (
     <div className="agrid" data-testid="auracle-grid-home">
-      <div className="agrid__plan">
-        <p className="agrid__hint">
-          The system as a floor plan — every surface, and what it is doing right now.
-        </p>
-        {/* Covers and measures the plan it sits in, so it goes inside it.
-            Draws only at the full tree tier — see WireOverlay. */}
-        <WireOverlay vitals={vitals} />
-        {/* The root node is the command post: pressing it (or the shortcut it
-            advertises) opens the palette, so the top of the plan is also the
-            way into every room without touching the plan at all. A button
-            rather than a heading with a button inside it — the whole node is
-            the target, and a heading may not contain one. */}
-        <button
-          type="button"
-          className="agrid__root"
-          data-testid="grid-root"
-          data-attention={attention}
-          aria-haspopup="dialog"
-          onClick={() => openPalette()}
+      <div
+        ref={canvas.stageRef}
+        className="agrid__stage"
+        data-testid="grid-stage"
+        data-canvas={canvas.engaged ? 'on' : 'off'}
+        data-panning={canvas.panning ? 'true' : 'false'}
+        onMouseDown={canvas.onMouseDown}
+        onDoubleClick={canvas.onDoubleClick}
+      >
+        <div
+          ref={canvas.planRef}
+          className="agrid__plan"
+          data-testid="grid-plan"
+          // Only while the canvas is engaged: below the tree tier the plan is
+          // an ordinary column in an ordinary scroll box, and a transform there
+          // would move a plan that has nowhere to be moved to.
+          style={
+            canvas.engaged
+              ? {
+                  transform: `translate(${canvas.view.x}px, ${canvas.view.y}px) scale(${canvas.view.scale})`,
+                }
+              : undefined
+          }
         >
-          <span className="agrid__rootrow">
-            <span className="agrid__rootname">Auracle</span>
-            <span className="agrid__rootkey" aria-hidden>
-              {PALETTE_HINT}
+          <p className="agrid__hint">
+            The system as a floor plan — every surface, and what it is doing right now.
+          </p>
+          {/* Covers and measures the plan it sits in, so it goes inside it —
+              which is also what keeps it glued to the cards through a pan.
+              Draws only at the full tree tier — see WireOverlay. */}
+          <WireOverlay
+            vitals={vitals}
+            scale={canvas.view.scale}
+            revealed={revealed}
+            onReveal={setRevealed}
+          />
+          {/* The root node is the command post: pressing it (or the shortcut it
+              advertises) opens the palette, so the top of the plan is also the
+              way into every room without touching the plan at all. A button
+              rather than a heading with a button inside it — the whole node is
+              the target, and a heading may not contain one. */}
+          <button
+            type="button"
+            className="agrid__root"
+            data-testid="grid-root"
+            data-attention={attention}
+            aria-haspopup="dialog"
+            onClick={() => openPalette()}
+          >
+            <span className="agrid__rootrow">
+              <span className="agrid__rootname">Auracle</span>
+              <span className="agrid__rootkey" aria-hidden>
+                {PALETTE_HINT}
+              </span>
             </span>
-          </span>
-          <span className="agrid__rootnote">
-            {attention === 0
-              ? `${ROOM_IDS.length} rooms · nothing needs attention`
-              : `${ROOM_IDS.length} rooms · ${attention} ${attention === 1 ? 'needs' : 'need'} attention`}
-          </span>
-        </button>
-        <span className="agrid__stem" aria-hidden />
-        <div className="agrid__districts">
-          {DISTRICTS.map((district) => (
-            <DistrictBlock
-              key={district.id}
-              district={district}
-              vitals={vitals}
-              folded={folded.has(district.id)}
-              peek={handlers}
-            />
-          ))}
+            <span className="agrid__rootnote">
+              {attention === 0
+                ? `${ROOM_IDS.length} rooms · nothing needs attention`
+                : `${ROOM_IDS.length} rooms · ${attention} ${attention === 1 ? 'needs' : 'need'} attention`}
+            </span>
+          </button>
+          <span className="agrid__stem" aria-hidden />
+          <div
+            className="agrid__districts"
+            style={{ '--agrid-cols': columns } as CSSProperties}
+          >
+            {DISTRICTS.map((district) => (
+              <DistrictBlock
+                key={district.id}
+                district={district}
+                vitals={vitals}
+                folded={folded.has(district.id)}
+                peek={handlers}
+                onReveal={setRevealed}
+              />
+            ))}
+          </div>
         </div>
+        {/* Small, pinned to the stage, and only where there is a canvas to
+            drive: below the tree tier the plan scrolls like any other column
+            and there is nothing for these to do. */}
+        {canvas.engaged ? (
+          <div className="agrid__zoom" data-testid="grid-zoom" role="group" aria-label="Plan view">
+            <button
+              type="button"
+              className="agrid__zbtn"
+              data-testid="grid-zoom-out"
+              aria-label="Zoom out"
+              disabled={canvas.view.scale <= ZOOM_MIN}
+              onClick={() => canvas.zoomBy(1 / ZOOM_STEP)}
+            >
+              <span className="material-symbols-outlined" aria-hidden>
+                remove
+              </span>
+            </button>
+            <button
+              type="button"
+              className="agrid__zbtn"
+              data-testid="grid-zoom-fit"
+              aria-label="Fit the plan"
+              onClick={() => canvas.fit()}
+            >
+              <span className="material-symbols-outlined" aria-hidden>
+                fit_screen
+              </span>
+            </button>
+            <button
+              type="button"
+              className="agrid__zbtn"
+              data-testid="grid-zoom-in"
+              aria-label="Zoom in"
+              disabled={canvas.view.scale >= ZOOM_MAX}
+              onClick={() => canvas.zoomBy(ZOOM_STEP)}
+            >
+              <span className="material-symbols-outlined" aria-hidden>
+                add
+              </span>
+            </button>
+          </div>
+        ) : null}
       </div>
       {/* The assistant sits UNDER the plan, not over it: it speaks about what
           the plan is showing, so it must never cover the thing it is naming. */}

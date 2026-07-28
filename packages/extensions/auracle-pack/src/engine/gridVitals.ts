@@ -423,9 +423,39 @@ function republish(): void {
  */
 let generation = 0;
 
+/**
+ * Whether two reads of the registry say the same thing. Compared field by
+ * field, on the fields anything renders: a poll that returns an identical list
+ * hands back a NEW array every time, and adopting it would re-render every
+ * source card on the Board twice a minute for nothing.
+ */
+function sameConnectors(a: Connector[] | null, b: Connector[] | null): boolean {
+  if (a === b) return true;
+  if (a === null || b === null || a.length !== b.length) return false;
+  return a.every((row, i) => {
+    const other = b[i];
+    return (
+      row.id === other.id &&
+      row.display_label === other.display_label &&
+      row.kind === other.kind &&
+      row.status?.state === other.status?.state &&
+      row.status?.detail === other.status?.detail
+    );
+  });
+}
+
 function apply(patch: Partial<VitalSources>, startedAt = generation): void {
   if (startedAt !== generation) return;
+  const previous = sources.connections;
   sources = { ...sources, ...patch };
+  // Identity is the subscription contract for the rows (useSyncExternalStore
+  // compares snapshots by reference, and `engineFeeds` republishes on identity),
+  // so a poll that returned the same registry keeps the array it already had
+  // rather than a fresh copy of the same rows — otherwise every source card on
+  // the Board would re-render twice a minute for nothing.
+  if (sameConnectors(previous, sources.connections)) {
+    sources = { ...sources, connections: previous };
+  }
   republish();
   republishFeeds();
 }
@@ -565,16 +595,35 @@ export interface EngineFeeds {
   strategies: unknown[] | null;
   /** Deployment rows, or null when nothing has been read. */
   deployments: Deployment[] | null;
+  /**
+   * The connector REGISTRY rows. The Connections room needs only the count they
+   * roll up into; the Board's source cards need which provider and how that one
+   * is doing, so the rows ride out here rather than through a second poll — and
+   * a provider therefore cannot read healthy on one face of the panel and
+   * broken on the other. Null means nothing has answered yet, which a card says
+   * as "no reading" rather than as "not linked".
+   */
+  connections: Connector[] | null;
 }
 
-let feeds: EngineFeeds = { strategies: null, deployments: null };
+let feeds: EngineFeeds = { strategies: null, deployments: null, connections: null };
 const feedListeners = new Set<() => void>();
 
 /** Replace the cached view only when a feed's identity moved, so a poll that
- *  changed neither notifies nobody. */
+ *  changed none of them notifies nobody. */
 function republishFeeds(): void {
-  if (feeds.strategies === sources.strategies && feeds.deployments === sources.deployments) return;
-  feeds = { strategies: sources.strategies, deployments: sources.deployments };
+  if (
+    feeds.strategies === sources.strategies &&
+    feeds.deployments === sources.deployments &&
+    feeds.connections === sources.connections
+  ) {
+    return;
+  }
+  feeds = {
+    strategies: sources.strategies,
+    deployments: sources.deployments,
+    connections: sources.connections,
+  };
   for (const listener of feedListeners) listener();
 }
 

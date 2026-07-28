@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 <!-- New features go here -->
+- The Auracle Board grows its own downstream cards as real work produces them, each one hovering to show that run's curve, its headline figures and where the numbers were measured, and opening the full results page on a click.
 - The Auracle Board keeps its cards and the wires between them with the workspace, so a board arranged in one window opens the same way in the next, and removing a card never removes the work it produced.
 - The Auracle panel has a second face: a Board that a new project opens on, with
   the floor plan one click or one keystroke away and the last face you used

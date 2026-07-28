@@ -472,19 +472,32 @@ describe('the sheet asks once for the districts the engine consolidates', () => 
     return vi.mocked(getJson).mock.calls.map((call) => call[0] as string);
   }
 
-  it('reads the one call and nothing per-room while nothing is wrong', async () => {
-    stub.gets['/ui/api/summary'] = summaryBody({ deployments: { total: 2, running: 2, errored: 0 } });
+  it('reads the one call and nothing per-room where nothing is deployed', async () => {
+    stub.gets['/ui/api/summary'] = summaryBody({ deployments: { total: 0, running: 0, errored: 0 } });
     vi.mocked(getJson).mockClear();
 
     await gridVitals.refresh();
 
     const paths = getPaths();
     expect(paths.filter((path) => path.startsWith('/ui/api/summary'))).toHaveLength(1);
-    // No naming read, and none of the per-room routes the one call replaced.
+    // No detail read, and none of the per-room routes the one call replaced.
     expect(paths).not.toContain('/deployments');
     for (const replaced of ['/ui/api/incidents', '/ui/api/schedules', '/ui/api/runway', '/ui/api/research/feed']) {
       expect(paths.some((path) => path.startsWith(replaced))).toBe(false);
     }
+  });
+
+  it('follows a healthy deployment count with exactly one detail read', async () => {
+    // The rows are read whenever anything is deployed, not only when something
+    // broke: the sheet names an errored one from them and the board draws a
+    // card per deployment from them. One read serves both.
+    serveDeployments([deployment(1, 'running'), deployment(2, 'running')]);
+    vi.mocked(getJson).mockClear();
+
+    await gridVitals.refresh();
+
+    expect(getPaths().filter((path) => path === '/deployments')).toHaveLength(1);
+    expect(gridVitals.getSnapshot().deploys).toMatchObject({ health: 'nominal', note: '2 running of 2' });
   });
 
   it('follows a reported fault with exactly one read, to name it', async () => {

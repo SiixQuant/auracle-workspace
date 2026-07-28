@@ -206,7 +206,11 @@ const SHEET = `
      lanes below the room rank, and only this tier draws them. */
   .agrid__stage { overflow: hidden; cursor: grab; user-select: none; }
   .agrid__stage[data-panning='true'] { cursor: grabbing; }
-  .agrid__plan { position: absolute; top: 0; left: 0; margin: 0; transform-origin: 0 0; align-items: center; padding: 22px 20px 92px; }
+  /* The plan does not squeeze to the stage: it lays out at its own ideal
+     width — wide enough that every title fits — and the canvas fit-scales
+     the whole schematic to whatever stage it is given. That is what lets
+     the tree survive containers far narrower than its natural size. */
+  .agrid__plan { position: absolute; top: 0; left: 0; margin: 0; transform-origin: 0 0; align-items: center; padding: 22px 20px 92px; width: max-content; min-width: ${PLAN_MAX_WIDTH}px; max-width: none; }
   .agrid__hint { text-align: center; }
   .agrid__root { width: 218px; }
   .agrid__stem { display: block; height: 18px; }
@@ -256,10 +260,6 @@ const SHEET = `
    room — long notes still truncate. Below this width the plan takes the pane's
    width and long titles may ellipsize; that trade keeps the tree tier viable
    down to its breakpoint. */
-@container auracle-grid (min-width: 1460px) {
-  .agrid__plan { width: max-content; min-width: 100%; }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .agrid__fold, .agrid__room, .agrid__zbtn { transition: none; }
 }

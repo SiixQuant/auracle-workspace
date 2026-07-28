@@ -49,7 +49,7 @@ vi.mock('../../engine/client', async (importOriginal) => ({
 
 import type { ExtensionStorage, PanelHostProps } from '@nimbalyst/extension-sdk';
 import { GridPanel } from '../grid/GridPanel';
-import { boardGraph } from '../grid/boardGraphPlaceholder';
+import { boardGraph } from '../../engine/boardGraphStore';
 import { FACE_KEY, getFace, resetFaceStore, setFace } from '../grid/gridFaceStore';
 import { getActiveRoom, openGridHome, openRoom } from '../grid/gridNav';
 import { closePalette } from '../grid/gridCommands';

@@ -39,7 +39,7 @@
  */
 import { useSyncExternalStore } from 'react';
 import { tint, tone } from '../panelkit';
-import { boardGraph } from './boardGraphPlaceholder';
+import { boardGraph } from '../../engine/boardGraphStore';
 import { ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from './gridCanvas';
 import { GRID_ACCENT } from './gridTheme';
 import { TREE_MIN_WIDTH } from './gridWires';

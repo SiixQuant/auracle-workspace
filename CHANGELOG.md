@@ -13,14 +13,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 <!-- Changes to existing functionality go here -->
-- The Auracle plan now keeps its connecting lines out of the way until you rest on a room or on the open alert, points at a failing room with a short right-angled marker instead of a line across the whole screen, lines its four groups up on one grid, and can be dragged, zoomed and re-fitted from controls in the corner.
 
 ### Fixed
 <!-- Bug fixes go here -->
-- Opening a file or starting a chat from a full-screen panel now brings that file or chat to the front instead of leaving the panel covering it, the session layout buttons no longer offer options that cannot be used yet, and those buttons now read Editor and Chat so they are not mistaken for the Files and Agent modes in the left rail.
 
 ### Removed
 <!-- Removed features go here -->
+
+## [1.6.1] - 2026-07-28
+
+### Changed
+- The Auracle plan now keeps its connecting lines out of the way until you rest on a room or on the open alert, points at a failing room with a short right-angled marker instead of a line across the whole screen, lines its four groups up on one grid, and can be dragged, zoomed and re-fitted from controls in the corner.
+
+### Fixed
+- Opening a file or starting a chat from a full-screen panel now brings that file or chat to the front instead of leaving the panel covering it, the session layout buttons no longer offer options that cannot be used yet, and those buttons now read Editor and Chat so they are not mistaken for the Files and Agent modes in the left rail.
 
 ## [1.6.0] - 2026-07-27
 

@@ -517,14 +517,14 @@ export default function App() {
   const extensionPanelAIContext = useAtomValue(extensionPanelAIContextAtom);
 
   // The AI chat pane that sits beside a fullscreen panel, sized from the SAME
-  // per-workspace layout atoms as the editor's chat pane (NOT the legacy
-  // `aiChatWidth` useState above, which only feeds the workspace-state save).
-  // Sharing the atoms is the point: dragging the pane, or collapsing it from
-  // the app menu — a toggle EditorMode owns and applies while it is mounted
-  // behind the panel — moves the boundary the panel is measured against, so
-  // the panel beside it takes the width back instead of staying sized for a
-  // pane that has moved. Keyed on '' when there is no workspace: no fullscreen
-  // panel renders then, and hooks may not be conditional.
+  // per-workspace layout atoms as the editor's chat pane (seeded and persisted
+  // by useAIChatLayoutPersistence, which EditorMode keeps running while it is
+  // mounted behind the panel). Sharing the atoms is the point: dragging the
+  // pane, or collapsing it from the app menu — a toggle EditorMode owns —
+  // moves the boundary the panel is measured against, so the panel beside it
+  // takes the width back instead of staying sized for a pane that has moved.
+  // Keyed on '' when there is no workspace: no fullscreen panel renders then,
+  // and hooks may not be conditional.
   const aiChatLayoutKey = workspacePath || '';
   const [layoutAiChatWidth, setLayoutAiChatWidth] = useAtom(
     aiChatWidthAtomFamily(aiChatLayoutKey)

@@ -104,12 +104,15 @@ import { ROOMS, ROOM_IDS, type RoomId } from './rooms';
 const STYLE_ID = 'auracle-grid-sheet-styles';
 
 /**
- * Rail hairline. The same weight as a card's own border on purpose: the tree's
- * structure is drawn SOLID and quiet, and a dash on this sheet means one thing
- * only — a data wire. Structure that competes with the wires is structure that
- * has to be read past.
+ * Rail hairline — one step up from the card border so the tree stays legible
+ * against the canvas without competing with the cards it connects.
+ *
+ * SOLID, always. A dash on this sheet means one thing only, and that is a data
+ * wire; the structure of the tree is not data and never speaks in the same
+ * pattern. Faint, but not fainter: dropped to the card-border weight it stopped
+ * reading as a tree at all once the plan could be zoomed out.
  */
-const RAIL = tone.border;
+const RAIL = tone.borderStrong;
 
 /**
  * The plan's natural width, capped so the tree does not stretch into a smear on
@@ -127,8 +130,8 @@ const WIRED = new Set<RoomId>(WIRED_ROOMS);
 
 const SHEET = `
 /* A column so the AI strip can sit along the bottom of the plan and stay
-   there: it is sticky against this sheet's own scroll box, and the stage takes
-   whatever height is left. */
+   there: the stage above it takes whatever height is left, so the strip is
+   always at the foot of the pane whatever the plan is doing inside it. */
 .agrid { min-height: 100%; display: flex; flex-direction: column; }
 /* The STAGE is the viewport the plan is seen through. Below the tree tier it is
    an ordinary scrolling column and the plan sits in it in flow; at the tree
@@ -224,8 +227,15 @@ const SHEET = `
   .agrid__district:first-child::before { left: 50%; }
   .agrid__district:last-child::before { right: 50%; }
   .agrid__district::after { content: ''; position: absolute; top: 0; left: 50%; width: 1px; height: 18px; background: ${RAIL}; }
-  .agrid__rooms { display: flex; flex-direction: row; align-items: stretch; gap: 0; width: 100%; }
-  .agrid__slot { flex: 1 1 0; min-width: 0; position: relative; padding: 16px 0 0; }
+  /* A grid rather than a flex row, and the reason is intrinsic sizing: a flex
+     row's max-content is the SUM of its cards, so the pitch a wide plan asks
+     for would be the district's AVERAGE card and its longest title would still
+     truncate. A grid of equal fr columns asks for the width of the GREEDIEST
+     card times the number of columns, which is exactly the uniform pitch that
+     fits every title. minmax(0, 1fr) plus min-width: 0 on the slot so a long
+     title stretches the pitch rather than overflowing its column. */
+  .agrid__rooms { display: grid; grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); align-items: stretch; gap: 0; width: 100%; }
+  .agrid__slot { min-width: 0; position: relative; padding: 16px 0 0; }
   .agrid__slot::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: ${RAIL}; }
   .agrid__slot:first-child::before { left: 50%; }
   .agrid__slot:last-child::before { right: 50%; }
@@ -599,6 +609,12 @@ export function GridSheet(): JSX.Element {
   // a hover belongs to the pointer that raised it and must not outlive the
   // mount, let alone the session.
   const [revealed, setRevealed] = useState(false);
+  // A fold takes cards out of the DOM without their ever firing a mouseleave,
+  // which would strand the reveal on: the same stranding the peek clears for
+  // the same reason.
+  useEffect(() => {
+    setRevealed(false);
+  }, [folded]);
   // The rank's column template: one unit per room, one for a folded district.
   const columns = useMemo(
     () =>

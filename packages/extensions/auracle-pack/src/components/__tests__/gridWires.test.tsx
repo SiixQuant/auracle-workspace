@@ -544,6 +544,21 @@ describe('the flow is revealed on request, and put away again', () => {
     expect(drawnWires()).toHaveLength(1);
   });
 
+  it('puts the flow away when a fold takes the card out from under the pointer', async () => {
+    render(<GridSheet />);
+    const card = screen.getByTestId('grid-home-room-deploys');
+    pointerOnto(card);
+    expect(drawnWires()).toHaveLength(8);
+
+    // The card leaves the DOM without ever firing a mouseleave; without a
+    // second way out the sheet would be left drawing every wire for good.
+    await act(async () => {
+      gridFoldStore.set('operate', true);
+    });
+    expect(screen.queryByTestId('grid-home-room-deploys')).toBeNull();
+    expect(drawnWires()).toHaveLength(0);
+  });
+
   it('keeps a resting room card openable', () => {
     render(<GridSheet />);
     const card = screen.getByTestId('grid-home-room-backtest');

@@ -225,7 +225,9 @@ const CORNER = 6;
  * and out again into the target, with the corners rounded by whatever radius
  * actually fits.
  *
- * Exactly two bends, always, and they are the only two the sheet ever draws.
+ * Two bends whenever there is a run to make, and never more than two — they are
+ * the only turns the sheet draws anywhere. Two taps already in one column need
+ * no trunk and take none, which is the only case that bends fewer times.
  * The two vertical legs are signed independently, so this one shape serves both
  * things the sheet needs: a wire that drops out of a card, runs under the rank
  * and rises into another, and a leader that drops out of the pinned chip, runs

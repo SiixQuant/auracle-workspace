@@ -51,6 +51,7 @@ import {
 } from './gridAiActions';
 import { repairUndoStore, undoLastRepair } from './gridAiExecutors';
 import { openRoomFocused, zoomOriginFrom } from './gridNav';
+import { TREE_MIN_WIDTH } from './gridWires';
 // The plan's structural accent (see gridTheme): the assistant's mark belongs
 // to the plan's furniture, not to its state. Nothing here carrying state is
 // drawn with it — the fault it names stays on the semantic red.
@@ -88,7 +89,7 @@ const SHEET = `
 .agrid-ai__put--undo:hover:not(:disabled) { color: ${tone.text}; border-color: ${tone.accentDim}; }
 .agrid-ai__undonote { margin: 0; font-size: 11px; line-height: 1.5; color: ${tone.danger}; }
 
-@container auracle-grid (min-width: 1280px) {
+@container auracle-grid (min-width: ${TREE_MIN_WIDTH}px) {
   .agrid-ai { padding-inline: 28px; }
 }
 

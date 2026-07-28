@@ -57,8 +57,14 @@ import { ROOMS, type RoomId } from './rooms';
  * lanes hang under does not exist, and the overlay draws NOTHING — the stacked
  * tiers say the same things through the room dot, the district flag and the
  * root node's count.
+ *
+ * The threshold is not "the width the tree needs to lay out" any more: the
+ * plan lays out at its own fixed width and the canvas fit-scales it to the
+ * stage, so the tree survives far below its natural size. What this gate
+ * really buys is legibility — under it, a fitted tree would be too small to
+ * read and the stacked list says more.
  */
-export const TREE_MIN_WIDTH = 1280;
+export const TREE_MIN_WIDTH = 960;
 
 /** Lane depth in px below the bottom of the room rank. */
 export const LANES = { 1: 20, 2: 34, 3: 48 } as const;

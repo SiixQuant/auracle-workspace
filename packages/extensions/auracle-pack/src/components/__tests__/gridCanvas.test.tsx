@@ -208,6 +208,22 @@ describe('the fit frames the whole plan', () => {
     expect(fitView({ width: 300, height: 200 }, STAGE).scale).toBe(1);
   });
 
+  it('reaches the whole tree at the narrowest tree-tier stage', () => {
+    // The plan lays out at a fixed width (~1720px with padding) and the tree
+    // tier starts at 960px of stage, so the fit the floor must not beat is
+    // avail/1720. A ZOOM_MIN above that clipped both edges of the rank on
+    // narrow panels instead of shrinking the schematic to fit.
+    const plan = { width: 1720, height: 394 };
+    for (const stageWidth of [960, 1000, 1300]) {
+      const stage = { width: stageWidth, height: 850 };
+      const view = fitView(plan, stage);
+      expect(view.scale * plan.width).toBeLessThanOrEqual(
+        stageWidth - FIT_INSET.left - FIT_INSET.right + 0.001
+      );
+      expect(view.scale).toBeGreaterThanOrEqual(ZOOM_MIN);
+    }
+  });
+
   it('keeps the plan clear of the chip and the controls', () => {
     // A plan exactly as tall as the stage still has to scale down: the corner
     // controls and the pinned chip are drawn over it, not beside it.

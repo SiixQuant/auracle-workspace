@@ -40,6 +40,7 @@
 import { useSyncExternalStore } from 'react';
 import { tint, tone } from '../panelkit';
 import { boardGraph } from '../../engine/boardGraphStore';
+import { BoardCardList } from './BoardCards';
 import { ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from './gridCanvas';
 import { GRID_ACCENT } from './gridTheme';
 import { TREE_MIN_WIDTH } from './gridWires';
@@ -202,6 +203,10 @@ export function GridBoard(): JSX.Element {
               : 'What you are working on — the sources, the questions, and what came of them.'}
           </p>
           {empty ? <GhostSlots /> : null}
+          {/* The cards the system writes. Mounted whatever the graph holds:
+              it is the layer that ARMS materialization, so an empty board is
+              exactly the board that most needs it running. */}
+          <BoardCardList graph={graph} />
         </div>
         {/* Small, pinned to the stage, and only where there is a canvas to
             drive — the same rule the Plan follows. */}

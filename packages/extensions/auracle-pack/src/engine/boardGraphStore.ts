@@ -95,8 +95,16 @@ export interface MaterializeInput {
   kind: MaterializedNodeKind;
   /** The artifact this card points at. Copied down to kind and id. */
   ref: ArtifactRef;
-  /** The card the work came from — the provenance wire is drawn from here. */
-  from: string;
+  /**
+   * The card the work came from — the provenance wire is drawn from here.
+   *
+   * OMITTED when nothing on the Board records where the artifact came from: a
+   * strategy file that appeared in discovery without a research card claiming
+   * it is still real, so its card appears UNWIRED rather than not at all, and
+   * the user says what it came out of. A provenance wire is never invented to
+   * make the Board look like a complete story.
+   */
+  from?: string;
   label?: string;
   position?: BoardPosition;
   id?: string;
@@ -381,13 +389,19 @@ export const boardGraphStore = {
    * rather than growing a duplicate every few seconds. The ref is copied down
    * to kind and id, so a caller handing over a whole artifact still stores a
    * reference.
+   *
+   * A re-announcement REFRESHES the card's label (a deployment renamed engine
+   * side renames its card) and can add the provenance wire that was not
+   * knowable the first time. It never rewrites the ref, and it never removes a
+   * wire — the story only ever gains detail.
    */
   materialize(input: MaterializeInput): MaterializeResult {
     if (!input.ref || !input.ref.kind || !input.ref.id) {
       return { ok: false, reason: 'A materialized card needs an artifact reference.' };
     }
-    const parent = findNode(snapshot.graph, input.from);
-    if (!parent) return { ok: false, reason: 'That card is no longer on the Board.' };
+    if (input.from !== undefined && !findNode(snapshot.graph, input.from)) {
+      return { ok: false, reason: 'That card is no longer on the Board.' };
+    }
 
     const ref: ArtifactRef = { kind: input.ref.kind, id: input.ref.id };
     const existing = snapshot.graph.nodes.find(
@@ -400,8 +414,13 @@ export const boardGraphStore = {
       const node: BoardNode = { id: nodeId, kind: input.kind, ref };
       const labelled = input.label ? { ...node, label: input.label } : node;
       next = addNode(next, input.position ? { ...labelled, position: { ...input.position } } : labelled);
+    } else if (input.label && input.label !== existing.label) {
+      next = updateNode(next, nodeId, { label: input.label });
     }
-    if (!next.edges.some((edge) => edge.from === input.from && edge.to === nodeId)) {
+    if (
+      input.from !== undefined &&
+      !next.edges.some((edge) => edge.from === input.from && edge.to === nodeId)
+    ) {
       next = addEdge(next, { id: nextId('trace'), from: input.from, to: nodeId, origin: 'system' });
     }
     mutate(next);

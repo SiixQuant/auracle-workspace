@@ -204,7 +204,7 @@ function poll(jobId: number, gen: number): void {
  *  `source` — so the body alone can't declare it; the hint fills that in.
  *  A source the body DOES declare still wins, so a future source-aware engine
  *  stays authoritative. */
-function normalizeResult(body: BacktestResultBody, sourceHint?: string): BacktestResultData {
+export function normalizeResult(body: BacktestResultBody, sourceHint?: string): BacktestResultData {
   return {
     equity: body.chart?.points ?? [],
     drawdown: body.drawdown?.points ?? [],

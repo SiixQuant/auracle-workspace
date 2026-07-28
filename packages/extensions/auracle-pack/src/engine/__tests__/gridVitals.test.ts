@@ -35,6 +35,7 @@ function sources(patch: Partial<VitalSources> = {}): VitalSources {
   return {
     summary: null,
     errored: null,
+    deployments: null,
     qc: null,
     strategies: null,
     orders: null,

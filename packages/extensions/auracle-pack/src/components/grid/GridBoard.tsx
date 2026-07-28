@@ -10,8 +10,11 @@
  * CANVAS: the same machinery, not a copy of it — {@link useGridCanvas} moves
  * both faces, so a pan, a wheel-zoom, a double-click to refit and the controls
  * in the corner behave identically whichever face is up, and neither can drift
- * from the other. The board lays out at the shared {@link CANVAS_WIDTH} and the
- * fit scales it to whatever stage the host pane gives it.
+ * from the other. Where the two differ is what they hand the fit: the Plan is a
+ * drawing of a known thing and pins itself to a fixed width; the board is
+ * whatever a person put on it, so it takes its content's width and the fit
+ * scales THAT — an empty board therefore sits at 1:1 rather than being shrunk
+ * to fill a frame it never asked for.
  *
  * TIERS: `@container`, never `@media`, for the reason the Plan gives — the
  * panel's width has nothing to do with the window's. Three of them, mobile
@@ -103,10 +106,13 @@ const SHEET = `
      whether the pane is pannable. */
   .aboard__stage { overflow: hidden; cursor: grab; user-select: none; }
   .aboard__stage[data-panning='true'] { cursor: grabbing; }
-  /* The board does not squeeze to the stage: it lays out at its own width and
-     the canvas fit-scales it, which is what keeps a wide board legible in a
-     narrow pane. */
-  .aboard__layer { position: absolute; top: 0; left: 0; margin: 0; transform-origin: 0 0; align-items: center; padding: 22px 20px 44px; width: max-content; min-width: ${CANVAS_WIDTH}px; max-width: none; }
+  /* The board does not squeeze to the stage: it lays out at its CONTENT's
+     width and the canvas fit-scales the result, which is what keeps a board
+     wider than the pane legible — and, just as importantly, keeps a board
+     NARROWER than the pane at 1:1 instead of shrinking an empty state nobody
+     needed shrunk. (The Plan pins itself to a fixed width instead, because its
+     tree genuinely is that wide whatever is on it.) */
+  .aboard__layer { position: absolute; top: 0; left: 0; margin: 0; transform-origin: 0 0; align-items: center; padding: 22px 20px 44px; width: max-content; max-width: none; }
   .aboard__hint { text-align: center; }
   /* Fixed pitch rather than auto-fit: the layer is at its own width here, so
      three equal columns are three equal columns whatever the pane is doing. */

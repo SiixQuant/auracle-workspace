@@ -7,21 +7,40 @@
  * The two are separate because they answer different questions and change for
  * different reasons — a new hand-off adds a chip, not necessarily a wire.
  *
- * ## Bus discipline
- * Straight point-to-point lines between eleven cards read as noise. So the
- * routing is orthogonal and LANE-DISCIPLINED, the way a schematic is drawn:
+ * ## Trunk and drop
+ * Straight point-to-point lines between eleven cards read as noise — and so
+ * does a lane full of near-parallel runs that all say the same thing. So the
+ * routing is a BUS, the way a schematic is drawn:
  *
- *  - every edge leaves the BOTTOM of its room, drops to a horizontal lane, runs
- *    along it, and rises into the bottom of its target;
- *  - the sequential flow (findings → strategies → backtest → validation →
- *    deploys → blotter) shares ONE lane, so it reads as a single bus;
- *  - each crossing edge gets a lane of its own, below the bus;
- *  - a room that several edges tap uses a FIXED x-offset per edge, so two
- *    verticals never land on the same pixel column.
+ *  - each FLOW owns one lane, and one horizontal TRUNK runs in it beneath the
+ *    room rank;
+ *  - an edge is a DROP out of the source card's centre onto that trunk, a run
+ *    along it, and a drop back up into the target's bottom edge. Two bends,
+ *    never more than three, and no diagonal at any of them;
+ *  - two edges on the same trunk SHARE it. Their runs are collinear rather than
+ *    parallel, so a flow through five cards is one line with five drops off it
+ *    instead of four lines stacked under the rank;
+ *  - every drop sits on its own card's centreline. That single rule is what
+ *    makes it impossible for a drop to pass through a neighbouring card, and
+ *    impossible for two edges in one lane to cross — all their horizontals are
+ *    the same line, and all their verticals are card centres.
  *
- * The lane offsets and the per-endpoint taps below are the design's, ported
- * verbatim from the shell-lab source of truth (mockups/shell-lab ShellMap) so
- * the shipped sheet and the design agree by construction rather than by eye.
+ * The flows are the three the sheet has to tell apart: the strategy pipeline to
+ * production, what a live deployment produces, and what supplies either from
+ * outside it. So the lane an edge runs in is a property of what the edge MEANS,
+ * not of the order the table happens to be written in — which is what keeps the
+ * picture stable as edges are added. A new hand-off inside a known flow adds a
+ * drop; it does not add a line across the plan.
+ *
+ * Direction reads left to right along the pipeline, and the arrowhead is on the
+ * TERMINAL drop only. A trunk carries no arrows of its own, so two edges
+ * sharing one can never be read as disagreeing about which way the work goes.
+ *
+ * This replaced a point-to-point routing with a per-edge x-nudge on each tap.
+ * The nudges kept verticals off each other pixel by pixel, but they also meant
+ * no two lines ever quite lined up: revealed together, eight edges read as a
+ * tangle rather than as one system. Sharing the trunk is what buys the picture
+ * back, and centring every drop is what makes the sharing exact.
  *
  * EVERY line this module produces is orthogonal, the leader included. A
  * diagonal drawn across a schematic reads as a mistake in it, and one drawn the
@@ -71,38 +90,77 @@ export const LANES = { 1: 20, 2: 34, 3: 48 } as const;
 
 export type Lane = keyof typeof LANES;
 
+/**
+ * What an edge is ABOUT. Three answers, because the sheet only has three
+ * stories to tell: a strategy's path to production, what a live deployment
+ * produces, and what feeds either of those from outside it.
+ */
+export type WireFlow = 'pipeline' | 'execution' | 'supply';
+
+/**
+ * The lane each flow's trunk runs in — the whole of the lane assignment, in one
+ * table nobody has to reason about per edge.
+ *
+ * Shallowest lane to the flow a reader follows most, deepest to the one that is
+ * only ever plumbing. Because the mapping is by FLOW rather than by edge, an
+ * edge cannot be given a lane by accident, two edges in a flow cannot end up in
+ * different lanes, and the picture a reader learned yesterday is the picture
+ * they get today.
+ */
+export const FLOW_LANE: Record<WireFlow, Lane> = {
+  pipeline: 1,
+  execution: 2,
+  supply: 3,
+};
+
 /** How loudly a wire speaks: quiet, degraded, faulted. */
 export type WireKind = 'norm' | 'warn' | 'err';
 
 export interface WireDef {
   from: RoomId;
   to: RoomId;
-  lane: Lane;
-  /** x nudge on the outgoing tap, so shared rooms fan out rather than stack. */
-  fromOffset: number;
-  /** x nudge on the incoming tap. */
-  toOffset: number;
+  /** Which flow this edge belongs to — and so, which trunk it shares. */
+  flow: WireFlow;
   /** The room whose reading colours this edge. Null = always quiet. */
   watch: RoomId | null;
 }
 
+/** Which lane an edge runs in. Never declared per edge — see {@link FLOW_LANE}. */
+export function wireLane(def: WireDef): Lane {
+  return FLOW_LANE[def.flow];
+}
+
 /**
- * The eight edges the sheet draws. Lane 1 is the sequential bus; lanes 2 and 3
- * carry the edges that cross it.
+ * The eight edges the sheet draws, grouped by the flow that gives each its
+ * lane. Within a flow they are listed in the direction the work travels, which
+ * is also left to right across the rank.
  */
 export const WIRE_DEFS: readonly WireDef[] = [
-  { from: 'findings', to: 'strategies', lane: 1, fromOffset: 0, toOffset: -10, watch: null },
-  { from: 'strategies', to: 'backtest', lane: 1, fromOffset: 10, toOffset: -14, watch: null },
+  // PIPELINE — the path a strategy takes to production. Consecutive rooms in
+  // rank order, so the whole flow is ONE unbroken trunk from the first card to
+  // the last with a drop at each room along it. That single line is the thing a
+  // reader is meant to find first, which is why nothing else is allowed to
+  // share lane 1 and thicken a stretch of it.
+  { from: 'findings', to: 'strategies', flow: 'pipeline', watch: null },
+  { from: 'strategies', to: 'backtest', flow: 'pipeline', watch: null },
   // Amber the moment the certification room is degraded: this is the edge a
   // strategy has to cross to reach a deployment.
-  { from: 'backtest', to: 'validation', lane: 1, fromOffset: 0, toOffset: -8, watch: 'validation' },
-  { from: 'validation', to: 'deploys', lane: 1, fromOffset: 8, toOffset: -16, watch: null },
-  { from: 'deploys', to: 'blotter', lane: 1, fromOffset: -4, toOffset: 0, watch: null },
-  { from: 'qc', to: 'backtest', lane: 2, fromOffset: 0, toOffset: 14, watch: null },
+  { from: 'backtest', to: 'validation', flow: 'pipeline', watch: 'validation' },
+  { from: 'validation', to: 'deploys', flow: 'pipeline', watch: null },
+  // EXECUTION — what a deployment produces once it is live. Both edges leave
+  // the same card, so they leave on the same drop and share the trunk out of
+  // it: a fan-out drawn as a fan-out rather than as two lines saying it twice.
+  { from: 'deploys', to: 'blotter', flow: 'execution', watch: null },
   // The one edge that turns red: a faulted deployment is what produces the
-  // incident, so the wire between them carries the alarm.
-  { from: 'deploys', to: 'incidents', lane: 2, fromOffset: 8, toOffset: 0, watch: 'deploys' },
-  { from: 'schedules', to: 'deploys', lane: 3, fromOffset: 0, toOffset: 20, watch: null },
+  // incident, so the wire between them carries the alarm. It takes its flow's
+  // own trunk — an alarm is not a reason to leave the bus.
+  { from: 'deploys', to: 'incidents', flow: 'execution', watch: 'deploys' },
+  // SUPPLY — what feeds the two flows above from outside them: the library a
+  // backtest draws its strategies from, and the scheduler that decides when a
+  // deployment runs. The deepest lane, and the one a connections or runway
+  // attachment lands in later without any further decision being needed.
+  { from: 'qc', to: 'backtest', flow: 'supply', watch: null },
+  { from: 'schedules', to: 'deploys', flow: 'supply', watch: null },
 ];
 
 /** Every room an edge touches — the only cards the overlay has to measure. */
@@ -159,20 +217,31 @@ function px(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
+/** The radius a turn takes when there is room for it. */
+const CORNER = 6;
+
 /**
- * One lane-disciplined path: out of the source to `laneY`, along it, and out
- * again into the target, with the corners rounded by whatever radius actually
- * fits. A pair of rooms too close together (or a lane too shallow) gets a
- * straight segment rather than a corner drawn tighter than the gap it turns in.
+ * One DROP–RUN–DROP path: down out of the source to `laneY`, along the trunk,
+ * and out again into the target, with the corners rounded by whatever radius
+ * actually fits.
  *
- * The two vertical legs are signed independently, so the same routing draws
- * both shapes the sheet needs: a wire that drops out of one card, runs under
- * the rank and rises into another, and a leader that drops out of the pinned
- * chip, runs across above the rank and drops into the card it names. Nothing
- * here is ever diagonal — the only segments produced are horizontal, vertical,
- * or a quarter-turn between the two.
+ * Exactly two bends, always, and they are the only two the sheet ever draws.
+ * The two vertical legs are signed independently, so this one shape serves both
+ * things the sheet needs: a wire that drops out of a card, runs under the rank
+ * and rises into another, and a leader that drops out of the pinned chip, runs
+ * across above the rank and drops into the card it names.
+ *
+ * Nothing here is ever diagonal. When a corner will not fit — cards nearly in
+ * the same column, or a lane too shallow to turn in — the turn is drawn SQUARE
+ * rather than cut across. That case used to collapse to a single straight
+ * segment between the taps, which is fine when the two taps share a y and is a
+ * stray hypotenuse the moment they do not; the shape is the contract here, and
+ * a schematic with one diagonal in it reads as a schematic with a mistake in it.
  */
 export function orthoPath(x1: number, y1: number, x2: number, y2: number, laneY: number): string {
+  // Same column: the drop IS the path. Sending it down to the trunk and back up
+  // the same line would draw the line over itself and call it a route.
+  if (px(x1) === px(x2)) return `M ${px(x1)} ${px(y1)} L ${px(x1)} ${px(y2)}`;
   const dir = x2 > x1 ? 1 : -1;
   // Which way each leg travels to reach (and leave) the lane. A wire arrives
   // from above and leaves upward; a leader arrives from above and leaves
@@ -181,9 +250,14 @@ export function orthoPath(x1: number, y1: number, x2: number, y2: number, laneY:
   const outOf = y2 >= laneY ? 1 : -1;
   const r = Math.max(
     0,
-    Math.min(6, Math.abs(x2 - x1) / 2 - 1, Math.abs(laneY - y1) / 2, Math.abs(y2 - laneY) / 2)
+    Math.min(CORNER, Math.abs(x2 - x1) / 2 - 1, Math.abs(laneY - y1) / 2, Math.abs(y2 - laneY) / 2)
   );
-  if (r === 0) return `M ${px(x1)} ${px(y1)} L ${px(x2)} ${px(y2)}`;
+  if (r === 0) {
+    return (
+      `M ${px(x1)} ${px(y1)} L ${px(x1)} ${px(laneY)}` +
+      ` L ${px(x2)} ${px(laneY)} L ${px(x2)} ${px(y2)}`
+    );
+  }
   return (
     `M ${px(x1)} ${px(y1)} L ${px(x1)} ${px(laneY - into * r)} Q ${px(x1)} ${px(laneY)} ${px(x1 + dir * r)} ${px(laneY)}` +
     ` L ${px(x2 - dir * r)} ${px(laneY)} Q ${px(x2)} ${px(laneY)} ${px(x2)} ${px(laneY + outOf * r)} L ${px(x2)} ${px(y2)}`
@@ -196,10 +270,22 @@ export interface WireLayout {
   faultPath: string;
 }
 
+/** How far clear of a card's border its drop begins, and ends. The two differ
+ *  so a pair of opposed edges between the same two cards cannot overdraw each
+ *  other exactly — and so the arrowhead lands ON the border rather than under
+ *  the line leaving it. */
+const DROP_OUT = 2;
+const DROP_IN = 3;
+
 /**
- * Route every edge whose two rooms were measured. Lanes hang below the LOWEST
- * card in the rank, so a district whose cards ran to two lines cannot have a
- * wire drawn through it.
+ * Route every edge whose two rooms were measured.
+ *
+ * Every trunk hangs below the LOWEST card in the rank, not below its own two
+ * cards, so a district whose cards ran to two lines cannot have a wire drawn
+ * through it — and so every edge in a lane lands on the SAME trunk y, which is
+ * what makes the sharing exact rather than approximate. The drops are card
+ * centres, untouched by anything per-edge: two edges meeting at a card meet on
+ * one line.
  */
 export function layoutWires(
   boxes: Partial<Record<RoomId, RoomBox>>,
@@ -218,13 +304,11 @@ export function layoutWires(
     if (!a || !b) continue;
     const kind = wireKind(def, vitals);
     const d = orthoPath(
-      a.cx + def.fromOffset,
-      // +2 / +3: the tap starts just clear of the card's border, and the two
-      // ends differ so a bidirectional pair never overdraws itself.
-      a.bottom + 2,
-      b.cx + def.toOffset,
-      b.bottom + 3,
-      rankBottom + LANES[def.lane]
+      a.cx,
+      a.bottom + DROP_OUT,
+      b.cx,
+      b.bottom + DROP_IN,
+      rankBottom + LANES[wireLane(def)]
     );
     wires.push({ key: `${def.from}-${def.to}`, d, kind });
     if (kind === 'err' && faultPath === '') faultPath = d;

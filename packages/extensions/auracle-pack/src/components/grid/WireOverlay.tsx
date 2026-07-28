@@ -298,7 +298,12 @@ export function WireOverlay({
               one attribute, so the visibility rule is a value in the DOM the
               stylesheet renders rather than a second rule written in CSS. The
               arrowhead is on the terminal end only — a wire says which way the
-              work flows, not that it flows both ways. */}
+              work flows, not that it flows both ways, and that is also what
+              lets edges share a trunk without the shared stretch sprouting
+              arrows arguing with each other. Two edges on one trunk are two
+              paths lying on the same line ON PURPOSE ({@link layoutWires}):
+              one element per edge is what keeps `data-edge`, the kind and the
+              reveal per-edge, and the geometry is what makes them a bus. */}
           {geometry.wires.map((wire) => (
             <path
               key={wire.key}

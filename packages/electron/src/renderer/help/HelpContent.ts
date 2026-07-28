@@ -150,14 +150,14 @@ export const HelpContent: Record<string, HelpEntry> = {
   // ============================================================================
 
   'layout-controls': {
-    title: 'Session Layout Modes',
-    body: `View your AI session and files edited together:
+    title: 'Session Layout',
+    body: `Split this session between the conversation and the files it edited:
 
-**Files**: Show only the file editor tabs. Available when you open an edited file in an AI Session.
+**Editor**: Show only the file editor tabs. Appears once the session has a file open.
 
 **Split**: Show both transcript and editor stacked vertically. Drag the divider to adjust.
 
-**Agent**: Show only the conversation transcript.`,
+**Chat**: Show only the conversation transcript.`,
   },
 
   // ============================================================================

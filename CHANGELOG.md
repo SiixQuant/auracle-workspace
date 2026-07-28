@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 <!-- Bug fixes go here -->
+- Opening a file or starting a chat from a full-screen panel now brings that file or chat to the front instead of leaving the panel covering it, the session layout buttons no longer offer options that cannot be used yet, and those buttons now read Editor and Chat so they are not mistaken for the Files and Agent modes in the left rail.
 
 ### Removed
 <!-- Removed features go here -->

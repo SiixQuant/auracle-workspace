@@ -19,6 +19,7 @@ import { useWindowLifecycle } from './hooks/useWindowLifecycle';
 import { useTheme } from './hooks/useTheme';
 import { useConfirmDialog } from './hooks/useConfirmDialog';
 import { useDialogRequestTrigger } from './hooks/useDialogRequestTrigger';
+import { useDismissFullscreenPanelOnModeChange } from './hooks/useDismissFullscreenPanelOnModeChange';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useExtensionKeybindings } from './extensions/commands/useExtensionKeybindings';
 import { useOnboarding } from './hooks/useOnboarding';
@@ -520,6 +521,7 @@ export default function App() {
   // Check if a fullscreen extension panel is active (hides other content modes)
   const activeFullscreenPanel = activeExtensionPanel ? getPanelById(activeExtensionPanel) : null;
   const isFullscreenPanelActive = activeFullscreenPanel?.placement === 'fullscreen';
+  const exitFullscreenPanel = useCallback(() => setActiveExtensionPanel(null), []);
 
   // Window mode - which view is active (files, agent, settings)
   const activeMode = useAtomValue(windowModeAtom);
@@ -538,6 +540,12 @@ export default function App() {
       setActiveMode('files');
     }
   }, [activeMode, developerMode, setActiveMode]);
+
+  // A fullscreen panel covers every mode, so a switch made while one is up is
+  // eclipsed by it — opening a file or handing off a prompt from a panel would
+  // otherwise change nothing the user can see. The gutter and the keyboard
+  // shortcuts clear the panel themselves; this covers the programmatic switches.
+  useDismissFullscreenPanelOnModeChange(activeMode, isFullscreenPanelActive, exitFullscreenPanel);
 
   const openMarketplaceInstallRequest = useCallback((request: { extensionId: string; requestedAt?: string }) => {
     if (!request.extensionId) return;
@@ -1452,7 +1460,7 @@ export default function App() {
     agentModeRef,
     toggleAgentCollapsed,
     isFullscreenPanelActive,
-    exitFullscreenPanel: () => setActiveExtensionPanel(null),
+    exitFullscreenPanel,
   });
 
   // Extension-contributed keybindings (reads from manifests, fires commands via registry)

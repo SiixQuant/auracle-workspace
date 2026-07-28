@@ -10,6 +10,7 @@
  * nothing.
  */
 import type { RegisteredPanel } from './PanelRegistry';
+import type { ContentMode } from '../../types/WindowModeTypes';
 
 /** The host state slot that renders a panel. */
 export type ExtensionPanelSlot = 'panel' | 'bottomPanel';
@@ -72,4 +73,27 @@ export function panelToggleNext(
   const viaAlias = panel.id !== requestedId;
   if (viaAlias) return panel.id;
   return prev === panel.id ? null : panel.id;
+}
+
+/**
+ * Whether a window-mode change must also dismiss the open fullscreen panel.
+ *
+ * A fullscreen panel is drawn OVER every mode, so a mode switch made while one
+ * is up lands behind it and reads as "nothing happened" — a panel that opens a
+ * file, or hands a prompt to the agent, would otherwise leave the user staring
+ * at the panel it came from. The gutter and keyboard paths already clear the
+ * panel on the way through; this lets the host apply the same rule to the
+ * programmatic switches that do not go through either.
+ *
+ * Only a real CHANGE dismisses: re-asserting the current mode (or opening the
+ * panel itself, which does not move the mode) must leave the panel up.
+ * Sidebar-placement panels are not fullscreen and so are never dismissed —
+ * they are designed to sit alongside files mode.
+ */
+export function shouldDismissFullscreenPanel(
+  previousMode: ContentMode,
+  nextMode: ContentMode,
+  isFullscreenPanelActive: boolean
+): boolean {
+  return isFullscreenPanelActive && previousMode !== nextMode;
 }

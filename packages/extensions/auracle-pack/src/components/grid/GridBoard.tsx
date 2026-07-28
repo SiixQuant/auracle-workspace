@@ -103,7 +103,11 @@ const SHEET = `
    is an ordinary scrolling column; at it, it clips and the board becomes a
    layer with one transform on it. */
 .aboard__stage { position: relative; flex: 1 1 auto; min-height: 0; overflow: auto; }
-.aboard__layer { position: relative; display: flex; flex-direction: column; width: 100%; max-width: ${CANVAS_WIDTH}px; margin: 0 auto; padding: 18px 20px 44px; }
+/* BORDER-BOX: the layer is 100% wide AND padded, so without this its own
+   padding pushes 40px of every card past the right edge of a narrow pane —
+   where the stage scrolls rather than the canvas panning, that is content a
+   person has to go looking for. */
+.aboard__layer { position: relative; box-sizing: border-box; display: flex; flex-direction: column; width: 100%; max-width: ${CANVAS_WIDTH}px; margin: 0 auto; padding: 18px 20px 44px; }
 .aboard__hint { margin: 0 0 14px; font-size: 11.5px; line-height: 1.5; color: ${tone.text3}; }
 /* Pinned to the stage rather than the board, so the controls that move the
    board do not move with it. */
@@ -126,10 +130,11 @@ const SHEET = `
 /* DASHED, and the one place on either face a dash does not mean a data wire:
    nothing is here yet, and the outline says so before a word is read. */
 .aboard__ghost { display: flex; flex-direction: column; gap: 5px; min-width: 0; padding: 14px 16px; border-radius: 10px; border: 1px dashed ${tone.borderStrong}; background: ${tint(tone.surface, 55)}; }
-.aboard__ghost:has(.aboard__gbtn:hover) { border-color: ${GRID_ACCENT}; }
 /* The button IS the slot: the ghost was always shaped like the card it makes,
    so the control fills it rather than sitting inside it. */
 .aboard__gbtn { display: flex; flex-direction: column; gap: 5px; min-width: 0; width: 100%; appearance: none; border: 0; padding: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.aboard__gbtn:hover .aboard__gtitle { color: ${tone.text}; }
+.aboard__gbtn:hover .aboard__gico { color: ${GRID_ACCENT}; }
 .aboard__gbtn:focus-visible { outline: 2px solid ${GRID_ACCENT}; outline-offset: 4px; border-radius: 4px; }
 .aboard__gtop { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .aboard__gico { flex: none; font-size: 15px; line-height: 1; color: ${tone.text3}; }
@@ -541,7 +546,7 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
  *  and, for the two moves that are theirs to make, the control that makes it. */
 function GhostSlots({ onPlace }: { onPlace: (kind: 'source' | 'research') => void }): JSX.Element {
   return (
-    <ul className="aboard__ghosts">
+    <ul className="aboard__ghosts" data-testid="board-ghosts">
       {GHOSTS.map((ghost) => {
         const body = (
           <>

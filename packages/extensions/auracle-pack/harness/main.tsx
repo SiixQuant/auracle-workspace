@@ -397,11 +397,85 @@ const connectorDetail = (id: string) => {
   };
 };
 
+// ── the Board's own lane ───────────────────────────────────────────────────
+// Sources the engine has been told about, the vault slots, and the settings
+// pref the Board graph is kept in. The engine routes for the first two do not
+// exist yet (they land in a parallel change); these mocks are what makes the
+// whole on-canvas flow — describe, key, connect, wire — demoable meanwhile.
+//
+// The vault mock deliberately does NOT keep the secret it is sent: it records
+// that the slot is set and drops the value, which is the only behaviour the
+// real one is allowed to have from the client's point of view.
+const MOCK_BOARD_SOURCES: Array<Record<string, unknown>> = [];
+const MOCK_VAULT: Record<string, { name: string; set: boolean; updated_at: string }> = {};
+const MOCK_PREFS: Record<string, unknown> = {};
+
 const ok = (body: unknown) => ({ ok: true, status: 200, body });
 const notFound = { ok: false, status: 404, body: null };
 
-function engineRequest(method: string, path: string): { ok: boolean; status: number; body: unknown } {
+function boardRoute(
+  method: string,
+  p: string,
+  body: unknown
+): { ok: boolean; status: number; body: unknown } | null {
+  const record = (body ?? {}) as Record<string, unknown>;
+
+  if (p === '/ui/api/board/sources') {
+    if (method === 'POST') {
+      const id = String(record.id ?? '');
+      const row = { ...record, state: 'ingesting', last_ingest_at: new Date().toISOString() };
+      const at = MOCK_BOARD_SOURCES.findIndex((source) => source.id === id);
+      if (at >= 0) MOCK_BOARD_SOURCES[at] = row;
+      else MOCK_BOARD_SOURCES.push(row);
+      return ok({ ok: true, source: row });
+    }
+    return ok({ sources: MOCK_BOARD_SOURCES });
+  }
+
+  const removed = p.match(/^\/ui\/api\/board\/sources\/([^/]+)\/delete$/);
+  if (removed) {
+    const id = decodeURIComponent(removed[1]);
+    const at = MOCK_BOARD_SOURCES.findIndex((source) => source.id === id);
+    if (at >= 0) MOCK_BOARD_SOURCES.splice(at, 1);
+    return ok({ ok: true });
+  }
+
+  const cleared = p.match(/^\/ui\/api\/board\/credentials\/([^/]+)\/clear$/);
+  if (cleared) {
+    delete MOCK_VAULT[decodeURIComponent(cleared[1])];
+    return ok({ ok: true });
+  }
+
+  const slot = p.match(/^\/ui\/api\/board\/credentials\/([^/]+)$/);
+  if (slot) {
+    const name = decodeURIComponent(slot[1]);
+    if (method === 'POST') {
+      // The value is read and thrown away — a vault answers with state.
+      MOCK_VAULT[name] = { name, set: true, updated_at: new Date().toISOString() };
+      return ok({ ok: true, slot: MOCK_VAULT[name] });
+    }
+    return MOCK_VAULT[name] ? ok(MOCK_VAULT[name]) : notFound;
+  }
+
+  return null;
+}
+
+function engineRequest(
+  method: string,
+  path: string,
+  body?: unknown
+): { ok: boolean; status: number; body: unknown } {
   const p = String(path);
+  const board = boardRoute(method, p, body);
+  if (board) return board;
+  // The synced settings lane, which is where a Board graph is kept.
+  if (p === '/ui/api/settings') {
+    if (method === 'PUT') {
+      Object.assign(MOCK_PREFS, ((body ?? {}) as { prefs?: Record<string, unknown> }).prefs ?? {});
+      return ok({ ok: true });
+    }
+    return ok({ prefs: MOCK_PREFS });
+  }
   if (/^\/deployments\/\d+\/equity/.test(p)) return ok(MOCK_LIVE_EQUITY);
   if (/^\/deployments\/\d+\/orders/.test(p)) return ok(MOCK_ORDERS);
   if (p === '/deployments') return ok(MOCK_DEPLOYMENTS);
@@ -462,7 +536,7 @@ function engineRequest(method: string, path: string): { ok: boolean; status: num
   invoke: async (channel: string, ...args: unknown[]) => {
     switch (channel) {
       case 'auracle:engine-request':
-        return engineRequest(args[0] as string, args[1] as string);
+        return engineRequest(args[0] as string, args[1] as string, args[2]);
       case 'auracle:engine-config':
         return { engineUrl: 'http://mock', hasKey: true };
       case 'auracle:auth-state':

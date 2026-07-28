@@ -164,13 +164,13 @@ export function deleteSentence(plan: BoardDeletePlan, word: string): string {
   const wires =
     plan.removedEdgeIds.length === 0 ? '' : ` and ${plural(plan.removedEdgeIds.length, 'wire')}`;
   const head = `Removing this ${word.toLowerCase()} takes the card${wires} off the Board.`;
-  if (plan.retainedNodeIds.length === 0) return `${head} Nothing else on the Board depends on it.`;
-  const kept = plural(plan.retainedNodeIds.length, 'card');
-  if (plan.retainedRefs.length === 0) return `${head} ${kept} downstream stay where they are.`;
-  return `${head} ${kept} downstream stay where they are, still pointing at ${plural(
-    plan.retainedRefs.length,
-    'saved result'
-  )}.`;
+  const downstream = plan.retainedNodeIds.length;
+  if (downstream === 0) return `${head} Nothing else on the Board depends on it.`;
+  const kept = `${plural(downstream, 'card')} downstream ${
+    downstream === 1 ? 'stays where it is' : 'stay where they are'
+  }`;
+  if (plan.retainedRefs.length === 0) return `${head} ${kept}.`;
+  return `${head} ${kept}, still pointing at ${plural(plan.retainedRefs.length, 'saved result')}.`;
 }
 
 /** The receipt, after the fact — the same accounting, in the past tense. */

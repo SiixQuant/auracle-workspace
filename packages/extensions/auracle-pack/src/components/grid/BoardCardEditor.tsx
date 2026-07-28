@@ -31,7 +31,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { FloatingPortal, flip, offset, shift, useFloating } from '@floating-ui/react';
+import { FloatingPortal, autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/react';
 import type { BoardDeletePlan, BoardGraph, BoardNode } from '../../engine/boardGraph';
 import { boardGraphStore } from '../../engine/boardGraphStore';
 import { isBuiltInNode } from '../../engine/boardBuiltins';
@@ -140,7 +140,22 @@ export function BoardCardEditor({
     open: true,
     elements: { reference: anchor },
     placement: 'right-start',
-    middleware: [offset(12), flip({ padding: 12 }), shift({ padding: 12 })],
+    // The board underneath can be panned and zoomed while this is open, and the
+    // editor belongs to a CARD rather than to a spot on the screen. autoUpdate
+    // is also what makes the FIRST placement land: the anchor exists before the
+    // editor is measured, so without it the one computed position is the one
+    // taken before there was a box to place.
+    whileElementsMounted: autoUpdate,
+    // Beside the card where there is room, and never off the pane where there
+    // is not: a narrow panel has no space to the right of a card that is nearly
+    // as wide as the panel, and a tall editor on a short one would otherwise
+    // run off the bottom. Both axes shift, so the editor stays reachable
+    // instead of being technically placed somewhere nobody can see.
+    middleware: [
+      offset(12),
+      flip({ padding: 12, crossAxis: true }),
+      shift({ padding: 12, crossAxis: true }),
+    ],
   });
 
   // Escape, and a click on anything that is neither the editor nor the card it
@@ -182,8 +197,11 @@ export function BoardCardEditor({
         style={{
           ...floatingStyles,
           zIndex: 60,
-          width: 320,
-          maxHeight: '80vh',
+          // Narrower than the pane, whatever the pane is: the editor is a
+          // surface a person types into, not a sheet that covers the board.
+          width: 'min(320px, calc(100vw - 24px))',
+          maxHeight: 'min(80vh, 620px)',
+          boxSizing: 'border-box',
           overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',

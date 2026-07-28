@@ -218,8 +218,14 @@ export async function putCredentialSecret(
   }
   const res = await postJson(`${BOARD_CREDENTIALS_PATH}/${encodeURIComponent(slot)}`, { secret });
   if (!res.ok) return { ...refusal(res.status, res.body), slot: null };
-  // Reduced even on success — see readCredentialSlot.
-  const state = readCredentialSlot(res.body, slot) ?? { name: slot, set: true, updatedAt: null };
+  // Reduced even on success — see readCredentialSlot. An accepted write means
+  // the slot holds something, so a reply that simply said ok without restating
+  // the state is read as set rather than as unset: the alternative is a card
+  // reporting "no secret stored" the instant after one was.
+  const stated = readCredentialSlot(res.body, slot);
+  const state: CredentialSlot = stated?.set
+    ? stated
+    : { name: slot, set: true, updatedAt: stated?.updatedAt ?? null };
   return { ok: true, status: res.status, message: null, slot: state };
 }
 

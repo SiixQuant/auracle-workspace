@@ -335,7 +335,11 @@ export function useBoardPeek(): {
     open: anchor !== null,
     elements: { reference: anchor?.el ?? null },
     placement: 'right-start',
-    middleware: [offset(10), flip({ padding: 12 }), shift({ padding: 12 })],
+    middleware: [
+      offset(10),
+      flip({ padding: 12, crossAxis: true }),
+      shift({ padding: 12, crossAxis: true }),
+    ],
   });
 
   const reading = anchor?.reading ?? NEUTRAL_READING;
@@ -352,7 +356,7 @@ export function useBoardPeek(): {
           ...floatingStyles,
           pointerEvents: 'none',
           zIndex: 50,
-          width: 258,
+          width: 'min(258px, calc(100vw - 24px))',
           display: 'flex',
           flexDirection: 'column',
           gap: 5,

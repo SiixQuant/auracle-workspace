@@ -281,7 +281,9 @@ export function GridPanel(props: PanelHostProps): JSX.Element {
       <div className="auracle-grid__view">
         {roomId === null ? (
           face === 'board' ? (
-            <GridBoard />
+            // The host, for the one thing the Board needs from it: which
+            // workspace's graph to open. Everything else it reads is a store.
+            <GridBoard host={props.host} />
           ) : (
             <GridSheet />
           )

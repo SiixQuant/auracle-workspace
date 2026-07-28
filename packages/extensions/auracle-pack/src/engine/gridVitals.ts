@@ -376,6 +376,10 @@ function emptySources(): VitalSources {
 let sources: VitalSources = emptySources();
 let vitals: GridVitals = deriveRooms(sources);
 const listeners = new Set<() => void>();
+/** Subscribers to the connector ROWS rather than to the room readings — see
+ *  {@link gridConnectors}. Counted separately, so a Board watching the rows
+ *  keeps the poll alive on its own and lets it stop when it leaves. */
+const connectorListeners = new Set<() => void>();
 let fastTimer: ReturnType<typeof setInterval> | null = null;
 let slowTimer: ReturnType<typeof setInterval> | null = null;
 let stopGenerationWatch: (() => void) | null = null;
@@ -415,9 +419,39 @@ function republish(): void {
  */
 let generation = 0;
 
+/**
+ * Whether two reads of the registry say the same thing. Compared field by
+ * field, on the fields anything renders: a poll that returns an identical list
+ * hands back a NEW array every time, and adopting it would re-render every
+ * source card on the Board twice a minute for nothing.
+ */
+function sameConnectors(a: Connector[] | null, b: Connector[] | null): boolean {
+  if (a === b) return true;
+  if (a === null || b === null || a.length !== b.length) return false;
+  return a.every((row, i) => {
+    const other = b[i];
+    return (
+      row.id === other.id &&
+      row.display_label === other.display_label &&
+      row.kind === other.kind &&
+      row.status?.state === other.status?.state &&
+      row.status?.detail === other.status?.detail
+    );
+  });
+}
+
 function apply(patch: Partial<VitalSources>, startedAt = generation): void {
   if (startedAt !== generation) return;
+  const previous = sources.connections;
   sources = { ...sources, ...patch };
+  // Identity is the subscription contract for the rows (useSyncExternalStore
+  // compares snapshots by reference), so an unchanged list keeps the array it
+  // already had rather than a fresh copy of the same rows.
+  if (sameConnectors(previous, sources.connections)) {
+    sources = { ...sources, connections: previous };
+  } else {
+    for (const listener of connectorListeners) listener();
+  }
   republish();
 }
 
@@ -507,6 +541,11 @@ function start(): void {
   });
 }
 
+/** Nobody is watching either view, so nothing has to be polled. */
+function idle(): boolean {
+  return listeners.size === 0 && connectorListeners.size === 0;
+}
+
 function stop(): void {
   if (fastTimer !== null) clearInterval(fastTimer);
   if (slowTimer !== null) clearInterval(slowTimer);
@@ -526,7 +565,7 @@ export const gridVitals = {
     start();
     return () => {
       listeners.delete(listener);
-      if (listeners.size === 0) stop();
+      if (idle()) stop();
     };
   },
 
@@ -546,5 +585,33 @@ export const gridVitals = {
     sources = emptySources();
     vitals = deriveRooms(sources);
     for (const listener of listeners) listener();
+    for (const listener of connectorListeners) listener();
+  },
+};
+
+/**
+ * The connector REGISTRY, as its own read view over the poll above.
+ *
+ * The Board's source cards need the rows themselves — which provider, and how
+ * that one is doing — where the Plan's Connections room needs only the count
+ * they roll up into. Both come from the same 30-second read, so a provider
+ * cannot be up on one face of the panel and down on the other, and a Board open
+ * on its own still costs exactly the requests the Plan would have made.
+ *
+ * `null` means nothing has answered yet, and is deliberately not an empty list:
+ * a card must be able to say "no reading" rather than "not linked".
+ */
+export const gridConnectors = {
+  subscribe(listener: () => void): () => void {
+    connectorListeners.add(listener);
+    start();
+    return () => {
+      connectorListeners.delete(listener);
+      if (idle()) stop();
+    };
+  },
+
+  getSnapshot(): Connector[] | null {
+    return sources.connections;
   },
 };

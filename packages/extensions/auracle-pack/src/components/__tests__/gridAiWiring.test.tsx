@@ -91,6 +91,7 @@ import {
 } from '../grid/gridAiActions';
 import { registerAgentHost, repairUndoStore } from '../grid/gridAiExecutors';
 import { openGridHome } from '../grid/gridNav';
+import { setFace } from '../grid/gridFaceStore';
 import type { RoomId } from '../grid/rooms';
 
 const HOST_PROPS = {} as PanelHostProps;
@@ -151,6 +152,9 @@ function postsTo(prefix: string): PostCall[] {
 }
 
 beforeEach(() => {
+  // The panel opens on the BOARD in a workspace that has not chosen a face.
+  // These are the PLAN's tests, so they say so.
+  setFace('plan');
   stub.gets = {};
   stub.getStatus = {};
   stub.replies = {};

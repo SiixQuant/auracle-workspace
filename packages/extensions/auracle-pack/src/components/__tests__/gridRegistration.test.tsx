@@ -6,11 +6,12 @@
  * ships a component nothing can open).
  */
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { panels } from '../../index';
 import { ROOM_IDS, ROOM_LIST } from '../grid/rooms';
 import { openGridHome, openRoom } from '../grid/gridNav';
+import { setFace } from '../grid/gridFaceStore';
 import manifest from '../../../manifest.json';
 
 // The rooms with a built page mount their REAL surface, so the seam has to
@@ -39,6 +40,12 @@ const contributed = (manifest as { contributions: { panels: ManifestPanel[] } })
   .panels;
 
 const host = { panelId: 'com.auracle.pack.grid', extensionId: 'com.auracle.pack' };
+
+beforeEach(() => {
+  // The panel opens on the BOARD in a workspace that has not chosen a face.
+  // These are the PLAN's tests, so they say so.
+  setFace('plan');
+});
 
 afterEach(() => {
   cleanup();

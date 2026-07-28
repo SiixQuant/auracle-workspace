@@ -52,6 +52,7 @@ import {
 } from '../grid/gridAiActions';
 import { closePalette } from '../grid/gridCommands';
 import { getActiveRoom, openGridHome, openRoom } from '../grid/gridNav';
+import { setFace } from '../grid/gridFaceStore';
 import type { RoomId } from '../grid/rooms';
 import { alertStore } from '../../engine/alertStore';
 import { gridVitals } from '../../engine/gridVitals';
@@ -150,6 +151,9 @@ function wire(operation: string, executor: (intent: ActionIntent) => Promise<AiA
 }
 
 beforeEach(() => {
+  // The panel opens on the BOARD in a workspace that has not chosen a face.
+  // These are the PLAN's tests, so they say so.
+  setFace('plan');
   stub.feeds = {};
   gridVitals.reset();
   aiRunStore.reset();

@@ -45,6 +45,7 @@ import { gridVitals } from '../../engine/gridVitals';
 import { focusForOpen, roomAiContext, useRoomAiContext } from '../grid/gridFocus';
 import { listCommands } from '../grid/gridCommands';
 import { PACK_PREFIX, getActiveRoom, openGridHome, openRoomFocused } from '../grid/gridNav';
+import { setFace } from '../grid/gridFaceStore';
 import type { PanelHostLike } from '../aiPanel';
 
 /** The one strategy the engine discovers in these fixtures. */
@@ -88,6 +89,9 @@ function renderGrid(host: PanelHostLike) {
 }
 
 beforeEach(() => {
+  // The panel opens on the BOARD in a workspace that has not chosen a face.
+  // These are the PLAN's tests, so they say so.
+  setFace('plan');
   vi.mocked(getJson).mockImplementation(defaultGetJson as never);
   vi.mocked(getJsonDetailed).mockImplementation(defaultGetJsonDetailed as never);
   gridVitals.reset();

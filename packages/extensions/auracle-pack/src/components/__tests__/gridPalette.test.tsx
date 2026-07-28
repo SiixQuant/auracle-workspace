@@ -39,6 +39,7 @@ import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import { GridPanel } from '../grid/GridPanel';
 import { closePalette, registerCommandProvider } from '../grid/gridCommands';
 import { getActiveRoom, openGridHome } from '../grid/gridNav';
+import { setFace } from '../grid/gridFaceStore';
 import { ROOMS, ROOM_IDS } from '../grid/rooms';
 import { alertStore } from '../../engine/alertStore';
 import { gridVitals } from '../../engine/gridVitals';
@@ -105,6 +106,9 @@ function openFromRoot(): void {
 }
 
 beforeEach(() => {
+  // The panel opens on the BOARD in a workspace that has not chosen a face.
+  // These are the PLAN's tests, so they say so.
+  setFace('plan');
   stub.feeds = {};
   gridVitals.reset();
 });

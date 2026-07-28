@@ -8,6 +8,13 @@
  * subscribe (an editor Deploy racing the Grid's first mount) — subscribing
  * reconciles, so no selection is dropped.
  *
+ * TWO FACES, ONE SURFACE: home is either the Plan (the platform as it is) or
+ * the Board (what a person is working on). The segmented control top-left picks
+ * one; so does the shortcut it advertises. Which one is remembered per
+ * workspace, in {@link gridFaceStore} — and pressing the shortcut from inside a
+ * ROOM flips the face and comes home to it, so the key is never dead where a
+ * room happens to be showing.
+ *
  * Layout responds to the PANEL's width with `@container`, never `@media`: the
  * Grid renders inside a host pane whose width has nothing to do with the
  * window's, so a viewport query would lay it out for a size it never has.
@@ -35,12 +42,34 @@ import './gridAiCommands';
 import { registerAgentHost, unregisterAgentHost } from './gridAiExecutors';
 import { closePalette, isPaletteOpen, subscribePalette, togglePalette } from './gridCommands';
 import { useRoomAiContext } from './gridFocus';
-import { getActiveRoom, subscribeGrid } from './gridNav';
+import { bindFaceStorage, getFace, setFace, subscribeFace, toggleFace, type GridFace } from './gridFaceStore';
+import { getActiveRoom, openGridHome, subscribeGrid } from './gridNav';
+import { GridBoard } from './GridBoard';
 import { GridPalette } from './GridPalette';
 import { GridSheet } from './GridSheet';
+import { GRID_ACCENT } from './gridTheme';
 import { ROOMS, type RoomId } from './rooms';
 
 const STYLE_ID = 'auracle-grid-styles';
+
+/** The faces, in the order they are drawn. */
+const FACES: ReadonlyArray<{ id: GridFace; label: string }> = [
+  { id: 'plan', label: 'Plan' },
+  { id: 'board', label: 'Board' },
+];
+
+/**
+ * How the face shortcut is written on screen — same reading of the platform the
+ * palette hint takes, so the two never disagree about which modifier this
+ * machine uses.
+ *
+ * B for Board, and it is free: the host's own shortcut layer claims E, K, Y, T,
+ * D, U, Shift-K, Alt-W and the digits, the palette claims K here, and no menu
+ * accelerator names it. Nothing in this panel is a rich-text field, so the
+ * combination a text editor would spend on bold has nothing else to do.
+ */
+const FACE_HINT =
+  typeof navigator !== 'undefined' && /^Mac/i.test(navigator.platform ?? '') ? 'Cmd B' : 'Ctrl B';
 
 /**
  * The panel is the @container the sheet's layout tiers are written against —
@@ -55,6 +84,23 @@ const SHEET = `
 .auracle-grid { container-type: inline-size; container-name: auracle-grid; position: relative; overflow: hidden; display: flex; flex-direction: column; }
 .auracle-grid:focus { outline: none; }
 .auracle-grid__view { flex: 1; min-height: 0; overflow: auto; }
+/* The face control sits ABOVE the view rather than over it: floated, it would
+   land on the top-left of whichever face is showing, which at the narrow tiers
+   is where both of them put their first line of type. A row of its own costs
+   the faces a strip of height and covers nothing. */
+.auracle-grid__faces { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 10px 0; }
+/* One track, two segments, the moved one lit — a segmented control rather than
+   two buttons, so the pair reads as one thing with two positions. */
+.auracle-grid__seg { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border-radius: 8px; border: 1px solid ${tone.border}; background: ${tone.surface}; }
+.auracle-grid__face { appearance: none; font: inherit; font-size: 11.5px; font-weight: 600; line-height: 1; padding: 5px 11px; border: 0; border-radius: 6px; background: transparent; color: ${tone.text3}; cursor: pointer; transition: background-color 150ms ease-out, color 150ms ease-out; }
+.auracle-grid__face:hover { color: ${tone.text2}; }
+.auracle-grid__face[aria-pressed='true'] { background: ${tone.surface3}; color: ${tone.text}; }
+.auracle-grid__face:focus-visible { outline: 2px solid ${GRID_ACCENT}; outline-offset: 1px; }
+/* The written shortcut is the first thing to go when the pane is narrow: it is
+   a reminder, not a control, and the segments it explains are still there. */
+.auracle-grid__facekey { display: none; font-family: ${tone.mono}; font-size: 10px; letter-spacing: 0.04em; color: ${tone.text3}; border: 1px solid ${tone.border}; border-radius: 5px; padding: 2px 5px; }
+@container auracle-grid (min-width: 640px) { .auracle-grid__facekey { display: inline-block; } }
+@media (prefers-reduced-motion: reduce) { .auracle-grid__face { transition: none; } }
 `;
 
 function ensureGridStyles(): void {
@@ -78,10 +124,49 @@ function GridRoomView({ roomId, hostProps }: { roomId: RoomId; hostProps: PanelH
   return <Page key={roomId} {...hostProps} />;
 }
 
+/**
+ * The two-position control, and the shortcut written beside it.
+ *
+ * `aria-pressed` rather than a tablist: these are two states of one panel, not
+ * two panels behind tabs, and a tablist would owe the reader `aria-controls`
+ * pointing at a `tabpanel` that does not exist — the faces replace each other
+ * wholesale.
+ */
+function FaceToggle({ face }: { face: GridFace }): JSX.Element {
+  return (
+    <div className="auracle-grid__faces">
+      <div className="auracle-grid__seg" data-testid="grid-face-toggle" role="group" aria-label="Panel face">
+        {FACES.map((entry) => (
+          <button
+            key={entry.id}
+            type="button"
+            className="auracle-grid__face"
+            data-testid={`grid-face-${entry.id}`}
+            data-face={entry.id}
+            aria-pressed={face === entry.id}
+            onClick={() => setFace(entry.id)}
+          >
+            {entry.label}
+          </button>
+        ))}
+      </div>
+      <span className="auracle-grid__facekey" data-testid="grid-face-hint" aria-hidden>
+        {FACE_HINT}
+      </span>
+    </div>
+  );
+}
+
 export function GridPanel(props: PanelHostProps): JSX.Element {
   ensurePanelKitStyles();
   ensureGridStyles();
+  // Bound during render, before the face is read, so the remembered face is the
+  // one that PAINTS rather than the one that replaces a default a frame later.
+  // Idempotent, synchronous, and it seeds nothing a person has already chosen —
+  // see gridFaceStore.
+  bindFaceStorage(props.host?.storage);
   const roomId = useSyncExternalStore(subscribeGrid, getActiveRoom, () => null);
+  const face = useSyncExternalStore(subscribeFace, getFace, getFace);
   const paletteOpen = useSyncExternalStore(subscribePalette, isPaletteOpen, () => false);
   // The approval gate is mounted above the router for the same reason the
   // palette is: a mutation can be raised from the plan, from a room, or from
@@ -105,12 +190,16 @@ export function GridPanel(props: PanelHostProps): JSX.Element {
   }, [props.host]);
 
   /**
-   * The shortcut, scoped to this panel by FOCUS rather than by a manifest
-   * keybinding. The SDK's `contributions.keybindings` is the only keybinding
-   * surface an extension has, and it can address exactly one kind of command:
-   * a panel's auto-registered TOGGLE. It cannot reach an action inside a
-   * panel, and it carries no when-clause, so a declared binding would fire
-   * app-wide and could still not open this palette.
+   * The panel's two shortcuts — the palette, and the face flip — scoped to this
+   * panel by FOCUS rather than by a manifest keybinding. The SDK's
+   * `contributions.keybindings` is the only keybinding surface an extension
+   * has, and it can address exactly one kind of command: a panel's
+   * auto-registered TOGGLE. It cannot reach an action inside a panel, and it
+   * carries no when-clause, so a declared binding would fire app-wide and could
+   * still not open this palette.
+   *
+   * ONE listener for both, because the guards are the same four questions and a
+   * second copy of them is a second thing to get wrong.
    *
    * Capture phase at the window, because the host's own global shortcut layer
    * listens there in capture and calls `stopPropagation()` — a bubble-phase
@@ -126,7 +215,8 @@ export function GridPanel(props: PanelHostProps): JSX.Element {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key?.toLowerCase() !== 'k' || event.altKey || event.shiftKey) return;
+      const key = event.key?.toLowerCase();
+      if ((key !== 'k' && key !== 'b') || event.altKey || event.shiftKey) return;
       if (!event.metaKey && !event.ctrlKey) return;
       const host = hostRef.current;
       if (!host || !host.isConnected) return;
@@ -134,7 +224,15 @@ export function GridPanel(props: PanelHostProps): JSX.Element {
       if (!host.contains(document.activeElement)) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      togglePalette();
+      if (key === 'k') {
+        togglePalette();
+        return;
+      }
+      // The flip comes HOME as well as over: pressed from inside a room the key
+      // would otherwise do nothing visible, having changed a face nobody can
+      // see. One press, one move — "show me the other face".
+      toggleFace();
+      openGridHome();
     };
     window.addEventListener('keydown', onKeyDown, { capture: true });
     return () => window.removeEventListener('keydown', onKeyDown, { capture: true });
@@ -163,6 +261,7 @@ export function GridPanel(props: PanelHostProps): JSX.Element {
       className="auracle-grid"
       data-testid="auracle-grid"
       data-room={roomId ?? 'home'}
+      data-face={face}
       data-palette={paletteOpen ? 'open' : 'closed'}
       data-approval={aiRun.pending ? 'open' : 'closed'}
       // Focusable but not tabbable: a click anywhere on the plan puts focus
@@ -176,8 +275,19 @@ export function GridPanel(props: PanelHostProps): JSX.Element {
         font: `13px/1.5 ${tone.font}`,
       }}
     >
+      {/* Home only. A room page carries its own whole frame, and a face control
+          over it would offer to change something the room is not showing. */}
+      {roomId === null ? <FaceToggle face={face} /> : null}
       <div className="auracle-grid__view">
-        {roomId === null ? <GridSheet /> : <GridRoomView roomId={roomId} hostProps={props} />}
+        {roomId === null ? (
+          face === 'board' ? (
+            <GridBoard />
+          ) : (
+            <GridSheet />
+          )
+        ) : (
+          <GridRoomView roomId={roomId} hostProps={props} />
+        )}
       </div>
       {paletteOpen ? <GridPalette /> : null}
       {aiRun.pending ? (

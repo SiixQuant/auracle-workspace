@@ -19,6 +19,7 @@ import { alertStore } from '../../engine/alertStore';
 import { gridVitals } from '../../engine/gridVitals';
 import { deploymentsBlock, summaryBody } from '../../engine/__tests__/summaryFixture';
 import { openGridHome, openRoom } from '../grid/gridNav';
+import { setFace } from '../grid/gridFaceStore';
 import { WIRED_TO } from '../grid/wiring';
 import { ROOM_IDS, type RoomId } from '../grid/rooms';
 
@@ -94,6 +95,9 @@ function renderGrid(room: RoomId) {
 }
 
 beforeEach(() => {
+  // The panel opens on the BOARD in a workspace that has not chosen a face.
+  // These are the PLAN's tests, so they say so.
+  setFace('plan');
   deployments = [];
   vi.mocked(getJson).mockImplementation(defaultGetJson as never);
   vi.mocked(getJsonDetailed).mockImplementation(defaultGetJsonDetailed as never);

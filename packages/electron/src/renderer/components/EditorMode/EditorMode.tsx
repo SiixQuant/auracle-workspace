@@ -38,6 +38,7 @@ import {
   aiChatWidthAtomFamily,
   aiChatCollapsedAtomFamily,
 } from '../../store/atoms/workspaceLayout';
+import { useAIChatLayoutPersistence } from '../../hooks/useAIChatLayoutPersistence';
 
 export interface EditorModeRef {
   closeActiveTab: () => void;
@@ -110,6 +111,7 @@ const EditorMode = forwardRef<EditorModeRef, EditorModeProps>(function EditorMod
   // project's collapse and width preferences.
   const [isAIChatCollapsed, setIsAIChatCollapsed] = useAtom(aiChatCollapsedAtomFamily(workspacePath));
   const [aiChatWidth, setAIChatWidth] = useAtom(aiChatWidthAtomFamily(workspacePath));
+  useAIChatLayoutPersistence(workspacePath);
 
   // Track active tab for document context (AI needs to know current file)
   // Uses ref to avoid re-rendering EditorMode on every tab switch

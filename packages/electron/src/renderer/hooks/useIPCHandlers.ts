@@ -24,6 +24,7 @@ import {
   menuFindNextCommandAtom,
   menuFindPreviousCommandAtom,
 } from '../store/atoms/menuCommands';
+import { aiChatCollapsedAtomFamily } from '../store/atoms/workspaceLayout';
 
 // Tracker field updates now go through the generic trackerStatus frontmatter format.
 // No hardcoded plan-specific field list needed.
@@ -81,8 +82,8 @@ interface UseIPCHandlersProps {
   // NOTE: setCurrentFilePath/setCurrentFileName removed - now using refs to prevent re-renders
   // NOTE: setIsDirty removed - TabEditor owns dirty state and calls setDocumentEdited directly
   // NOTE: setIsNewFileDialogOpen removed - EditorMode manages dialogs
-  setIsAIChatCollapsed: (collapsed: boolean) => void;
-  setAIChatWidth: (width: number) => void;
+  // NOTE: setIsAIChatCollapsed/setAIChatWidth removed - AI chat layout lives in
+  // the workspaceLayout atoms, seeded/persisted by useAIChatLayoutPersistence
   setIsAIChatStateLoaded: (loaded: boolean) => void;
   setSessionToLoad: (session: { sessionId: string; workspacePath?: string } | null) => void;
   // NOTE: setIsHistoryDialogOpen removed - EditorMode manages dialogs
@@ -143,8 +144,6 @@ export function useIPCHandlers(props: UseIPCHandlersProps) {
     setWorkspaceMode,
     setWorkspacePath,
     setWorkspaceName,
-    setIsAIChatCollapsed,
-    setAIChatWidth,
     setIsAIChatStateLoaded,
     setSessionToLoad,
     setIsKeyboardShortcutsDialogOpen,
@@ -194,8 +193,6 @@ export function useIPCHandlers(props: UseIPCHandlersProps) {
     setWorkspaceName,
     // NOTE: setCurrentFilePath/setCurrentFileName removed - using refs directly
     // NOTE: setIsDirty removed - dirty state is tracked via isDirtyRef to avoid re-renders
-    setIsAIChatCollapsed,
-    setAIChatWidth,
     setIsAIChatStateLoaded,
     setSessionToLoad,
     setIsKeyboardShortcutsDialogOpen,
@@ -225,8 +222,6 @@ export function useIPCHandlers(props: UseIPCHandlersProps) {
     setWorkspaceMode,
     setWorkspacePath,
     setWorkspaceName,
-    setIsAIChatCollapsed,
-    setAIChatWidth,
     setIsAIChatStateLoaded,
     setSessionToLoad,
     setIsKeyboardShortcutsDialogOpen,
@@ -288,14 +283,13 @@ export function useIPCHandlers(props: UseIPCHandlersProps) {
       // NOTE: contentVersion removed - EditorContainer handles remounting via destroy/create
       isInitializedRef.current = false;
 
-      // Restore AI Chat state when opening a workspace
+      // Restore AI panel session/planning state when opening a workspace.
+      // Pane width/collapse are seeded into the workspaceLayout atoms by
+      // useAIChatLayoutPersistence (EditorMode).
       try {
         const workspaceState = await window.electronAPI.invoke('workspace:get-state', data.workspacePath);
         const aiChatState = workspaceState?.aiPanel;
-        // console.log('Restoring AI Chat state for workspace:', aiChatState);
         if (aiChatState) {
-          handlersRef.current.setIsAIChatCollapsed(aiChatState.collapsed);
-          handlersRef.current.setAIChatWidth(aiChatState.width);
           if (handlersRef.current.setAIPlanningMode) {
             handlersRef.current.setAIPlanningMode(aiChatState.planningModeEnabled ?? true);
           }
@@ -462,8 +456,17 @@ export function useIPCHandlers(props: UseIPCHandlersProps) {
         // Set the session to load - AIChat will pick this up
         handlersRef.current.setSessionToLoad(data);
 
-        // Make sure AI Chat is visible
-        handlersRef.current.setIsAIChatCollapsed(false);
+        // Make sure AI Chat is visible: un-collapse the atom the rendered pane
+        // reads, and persist so a later layout seed agrees
+        const chatWorkspacePath = data.workspacePath ?? stateRef.current.workspacePath;
+        if (chatWorkspacePath) {
+          store.set(aiChatCollapsedAtomFamily(chatWorkspacePath), false);
+          window.electronAPI.invoke('workspace:update-state', chatWorkspacePath, {
+            aiPanel: { collapsed: false },
+          }).catch((error: unknown) => {
+            console.error('Failed to persist AI chat visibility:', error);
+          });
+        }
       }));
     }
 

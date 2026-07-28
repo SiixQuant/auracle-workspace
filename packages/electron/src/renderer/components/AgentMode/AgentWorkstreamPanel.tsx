@@ -625,7 +625,7 @@ const WorkstreamHeader: React.FC<{
           </div>
         )}
 
-        {/* Layout controls - shared component with Files/Agent labels */}
+        {/* Layout controls - shared component with Editor/Chat labels */}
         <LayoutControls
           mode={layoutMode}
           hasTabs={hasTabs}

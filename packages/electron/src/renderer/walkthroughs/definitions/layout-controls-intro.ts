@@ -1,9 +1,9 @@
 /**
  * Layout Controls Introduction Walkthrough
  *
- * Explains the session layout modes in agent mode (Agent, Files, Split).
- * Only shows when a file has been opened in the session so that the Files
- * button is enabled, demonstrating the full functionality.
+ * Explains the session layout modes in agent mode (Chat, Editor, Split).
+ * Only shows when a file has been opened in the session so that the Editor
+ * button is present, demonstrating the full functionality.
  */
 
 import type { WalkthroughDefinition } from '../types';
@@ -19,7 +19,7 @@ export const layoutControlsIntro: WalkthroughDefinition = {
   trigger: {
     // Only show in agent mode where layout controls exist
     screen: 'agent',
-    // Only show when the Files button is enabled (meaning a file has been opened)
+    // Only show when the Editor button is usable (meaning a file has been opened)
     condition: () => {
       // Find the layout controls container
       const controls = document.querySelector('[data-testid="layout-controls"]');
@@ -27,17 +27,17 @@ export const layoutControlsIntro: WalkthroughDefinition = {
         return false;
       }
 
-      // Check if the Files button (layout-maximize-editor) is enabled
-      // This indicates that a file has been opened in the session
-      const filesButton = controls.querySelector(
+      // The Editor button (layout-maximize-editor) is only rendered once the
+      // session has opened a file, which is when this tour has all three modes
+      // to point at.
+      const editorButton = controls.querySelector(
         '[data-testid="layout-maximize-editor"]'
       ) as HTMLButtonElement | null;
-      if (!filesButton) {
+      if (!editorButton) {
         return false;
       }
 
-      // Button must not be disabled
-      return !filesButton.disabled;
+      return !editorButton.disabled;
     },
     // Wait for the session to have loaded and files to be opened
     delay: 1500,

@@ -40,8 +40,8 @@
  * ({@link boardGraphStore}) and layout there is SPARSE — a card the system
  * materialized may have no position, so {@link layoutBoard} places it rather
  * than anything here assuming one. A source card's health is the connector
- * registry the pack already polls ({@link gridConnectors}), so the Board and
- * the Connections room can never disagree about a provider.
+ * registry the pack already polls ({@link engineFeeds}), so the Board and the
+ * Connections room can never disagree about a provider.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { CSSProperties } from 'react';
@@ -50,7 +50,8 @@ import { tint, tone } from '../panelkit';
 import type { BoardDeletePlan, BoardNode } from '../../engine/boardGraph';
 import { boardGraph, boardGraphStore } from '../../engine/boardGraphStore';
 import { bootstrapBuiltInSources } from '../../engine/boardBuiltins';
-import { gridConnectors } from '../../engine/gridVitals';
+import { engineFeeds } from '../../engine/gridVitals';
+import { BoardCardList } from './BoardCards';
 import { ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from './gridCanvas';
 import { GRID_ACCENT } from './gridTheme';
 import { TREE_MIN_WIDTH } from './gridWires';
@@ -58,14 +59,8 @@ import { CANVAS_WIDTH, useGridCanvas } from './useGridCanvas';
 import { BoardCard, ensureBoardCardStyles, useBoardPeek, type DropState } from './BoardCard';
 import { BoardCardEditor } from './BoardCardEditor';
 import { BoardWires } from './BoardWires';
-import { layoutBoard, type PlacedCard } from './boardLayout';
-import {
-  keptSentence,
-  NEUTRAL_READING,
-  RESEARCH_READING,
-  sourceReading,
-  type CardReading,
-} from './boardCards';
+import { layoutBoard, userSubgraph, type PlacedCard } from './boardLayout';
+import { keptSentence, RESEARCH_READING, sourceReading, type CardReading } from './boardReadings';
 
 const STYLE_ID = 'auracle-grid-board-styles';
 
@@ -204,11 +199,12 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
     () => boardGraphStore.getSnapshot().status,
     () => boardGraphStore.getSnapshot().status
   );
-  const connectors = useSyncExternalStore(
-    gridConnectors.subscribe,
-    gridConnectors.getSnapshot,
-    gridConnectors.getSnapshot
+  const feeds = useSyncExternalStore(
+    engineFeeds.subscribe,
+    engineFeeds.getSnapshot,
+    engineFeeds.getSnapshot
   );
+  const connectors = feeds.connections;
   const canvas = useGridCanvas();
   const peek = useBoardPeek();
 
@@ -221,7 +217,10 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
   const [notice, setNotice] = useState<Notice | null>(null);
 
   const empty = graph.nodes.length === 0;
-  const layout = useMemo(() => layoutBoard(graph), [graph]);
+  // The PLANE is the half of the graph a person placed. The cards the system
+  // wrote are drawn by their own layer underneath it, so laying them out here
+  // as well would draw every strategy and deployment twice.
+  const layout = useMemo(() => layoutBoard(userSubgraph(graph)), [graph]);
 
   /**
    * The workspace whose Board this is. An install with no workspace open still
@@ -352,11 +351,8 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
     setNotice({ text: keptSentence(plan), kind: 'ok' });
   }, []);
 
-  const readingOf = (node: BoardNode): CardReading => {
-    if (node.kind === 'source') return sourceReading(node.source ?? BLANK_SOURCE, connectors);
-    if (node.kind === 'research') return RESEARCH_READING;
-    return NEUTRAL_READING;
-  };
+  const readingOf = (node: BoardNode): CardReading =>
+    node.kind === 'source' ? sourceReading(node.source ?? BLANK_SOURCE, connectors) : RESEARCH_READING;
 
   const dropOf = (node: BoardNode): DropState => {
     if (wiring === null) return 'none';
@@ -485,6 +481,11 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
               })}
             </div>
           )}
+          {/* The cards the system writes, drawn by their own layer below the
+              plane. Mounted whatever the graph holds, because it is that layer
+              which ARMS materialization: an empty board is exactly the board
+              that most needs it running. */}
+          <BoardCardList graph={graph} />
         </div>
         {/* Small, pinned to the stage, and only where there is a canvas to
             drive — the same rule the Plan follows. */}

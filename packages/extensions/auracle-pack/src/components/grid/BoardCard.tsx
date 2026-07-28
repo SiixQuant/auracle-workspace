@@ -9,7 +9,7 @@
  *
  * ## The dot says the connections feed, and nothing else
  * A source card's reading comes from the connector registry the pack already
- * polls ({@link ./boardCards}), so a provider cannot read healthy here and
+ * polls ({@link ./boardReadings}), so a provider cannot read healthy here and
  * broken in the Connections room. A card whose described source has no live
  * counterpart draws a HOLLOW dot — honest ignorance, not a fault — and says so
  * in words beside it.
@@ -43,18 +43,17 @@ import {
   NEUTRAL_READING,
   type CardHealth,
   type CardReading,
-} from './boardCards';
+} from './boardReadings';
 
-const STYLE_ID = 'auracle-board-card-styles';
+// Distinct from the materialized cards' sheet id: two layers, two
+// stylesheets, and an id collision would silently drop one of them.
+const STYLE_ID = 'auracle-board-usercard-styles';
 
-/** The icon each kind of card wears. Materialized kinds get one neutral mark:
- *  their own cards land with the work that produces them. */
+/** The icon each kind wears. Only the two a person places are drawn here — the
+ *  cards the system writes have their own layer, and their own marks. */
 const CARD_ICONS: Record<string, string> = {
   source: 'database',
   research: 'help',
-  strategy: 'auto_awesome',
-  test: 'fact_check',
-  deploy: 'rocket_launch',
 };
 
 /** What a card is called out loud — the peek's heading and the aria label. */

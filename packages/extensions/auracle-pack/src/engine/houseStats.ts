@@ -71,6 +71,15 @@ const dec = (v: number | null | undefined, digits = 2): string => {
 };
 
 /**
+ * The two figure formatters, for surfaces smaller than the tearsheet — the
+ * Board's metrics peek quotes the same run these cards do, and a peek that
+ * rounded differently would read as a second, disagreeing measurement of one
+ * number. Exported rather than re-implemented for exactly that reason.
+ */
+export const statPercent = pct;
+export const statDecimal = dec;
+
+/**
  * True when the engine's no-losing-days sentinels fired. Reconstructed from
  * worst_day because the endpoint nulls the +inf that profit_factor returned.
  */

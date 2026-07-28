@@ -46,7 +46,7 @@ import {
   type CredentialSlot,
 } from '../../engine/boardSources';
 import { Button, tone } from '../panelkit';
-import { deleteSentence } from './boardCards';
+import { deleteSentence } from './boardReadings';
 import { kindWord } from './BoardCard';
 
 /* ── small parts ─────────────────────────────────────────────────────────── */

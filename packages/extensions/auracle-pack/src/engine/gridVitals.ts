@@ -20,11 +20,12 @@
  * provider would move one and not the other — so this room keeps the same
  * registry read the room itself uses.
  *
- * ## Counts come from the summary; names do not
- * The consolidated payload is counts. When it reports errored deployments the
- * sheet needs to NAME them — the AI strip says which deployment stopped rather
- * than how many — so one detail read follows, and ONLY then. Nothing is
- * errored, nothing extra is fetched: the steady state is a single request.
+ * ## Counts come from the summary; rows do not
+ * The consolidated payload is counts. Two surfaces need more than a count from
+ * the deployments block — the AI strip says which deployment stopped rather
+ * than how many, and the Board draws a card per deployment carrying its own
+ * state — so one detail read follows when the summary reports anything
+ * deployed, and ONLY then. Nothing deployed, nothing extra is fetched.
  *
  * ## Honesty
  * A source that did not answer reads QUIET — no note, no figure — never the
@@ -140,6 +141,12 @@ export interface VitalSources {
    * Null when nothing has been read; empty when nothing is errored.
    */
   errored: string[] | null;
+  /**
+   * The deployment rows themselves, read only when the summary reports that
+   * something is deployed. Null when nothing has been read; empty when the
+   * engine answered and listed nothing.
+   */
+  deployments: Deployment[] | null;
   /** Rooms the consolidated payload has no block for, or counts differently. */
   qc: QcBody | null;
   strategies: unknown[] | null;
@@ -365,6 +372,7 @@ function emptySources(): VitalSources {
   return {
     summary: null,
     errored: null,
+    deployments: null,
     qc: null,
     strategies: null,
     orders: null,
@@ -376,10 +384,6 @@ function emptySources(): VitalSources {
 let sources: VitalSources = emptySources();
 let vitals: GridVitals = deriveRooms(sources);
 const listeners = new Set<() => void>();
-/** Subscribers to the connector ROWS rather than to the room readings — see
- *  {@link gridConnectors}. Counted separately, so a Board watching the rows
- *  keeps the poll alive on its own and lets it stop when it leaves. */
-const connectorListeners = new Set<() => void>();
 let fastTimer: ReturnType<typeof setInterval> | null = null;
 let slowTimer: ReturnType<typeof setInterval> | null = null;
 let stopGenerationWatch: (() => void) | null = null;
@@ -445,14 +449,15 @@ function apply(patch: Partial<VitalSources>, startedAt = generation): void {
   const previous = sources.connections;
   sources = { ...sources, ...patch };
   // Identity is the subscription contract for the rows (useSyncExternalStore
-  // compares snapshots by reference), so an unchanged list keeps the array it
-  // already had rather than a fresh copy of the same rows.
+  // compares snapshots by reference, and `engineFeeds` republishes on identity),
+  // so a poll that returned the same registry keeps the array it already had
+  // rather than a fresh copy of the same rows — otherwise every source card on
+  // the Board would re-render twice a minute for nothing.
   if (sameConnectors(previous, sources.connections)) {
     sources = { ...sources, connections: previous };
-  } else {
-    for (const listener of connectorListeners) listener();
   }
   republish();
+  republishFeeds();
 }
 
 /** A feed's rows, or null when the engine did not answer. A body that answered
@@ -477,10 +482,16 @@ export function erroredNames(rows: Deployment[] | null): string[] | null {
 }
 
 /**
- * The consolidated read and the connection registry, plus the naming read the
- * summary triggers only when it reports a deployment errored. Nothing errored,
+ * The consolidated read and the connection registry, plus the detail read the
+ * summary triggers only when it reports something deployed. Nothing deployed,
  * two requests — the districts, and the connectors the one call counts
  * differently (see the header).
+ *
+ * The trigger is the TOTAL rather than the errored count, because two surfaces
+ * now need the rows and only one of them is about faults: the plan names which
+ * deployment stopped, and the Board draws a card per deployment with its own
+ * state. Widening the same conditional read is what keeps that to one lane —
+ * an install with nothing deployed still pays nothing for either.
  */
 async function readLive(): Promise<void> {
   const startedAt = generation;
@@ -489,15 +500,20 @@ async function readLive(): Promise<void> {
     getJson<{ connections?: Connector[] }>('/ui/api/connections?kind=all'),
   ]);
   const connectors = rowsOf<Connector>(connections, 'connections');
-  if (summary === null || (figure(summary.deployments?.errored) ?? 0) === 0) {
-    apply({ summary, errored: summary === null ? null : [], connections: connectors }, startedAt);
+  if (summary === null || (figure(summary.deployments?.total) ?? 0) === 0) {
+    // A summary that did not answer says nothing about deployments either; one
+    // that answered "none" is an answer, and reads as an empty list.
+    const none = summary === null ? null : [];
+    apply({ summary, errored: none, deployments: none, connections: connectors }, startedAt);
     return;
   }
   const rows = await getJson<Deployment[]>('/deployments');
+  const list = Array.isArray(rows) ? rows : null;
   apply(
     {
       summary,
-      errored: erroredNames(Array.isArray(rows) ? rows : null),
+      errored: erroredNames(list),
+      deployments: list,
       connections: connectors,
     },
     startedAt
@@ -541,9 +557,9 @@ function start(): void {
   });
 }
 
-/** Nobody is watching either view, so nothing has to be polled. */
-function idle(): boolean {
-  return listeners.size === 0 && connectorListeners.size === 0;
+/** The last subscriber of EITHER view stops the lanes — see {@link engineFeeds}. */
+function release(): void {
+  if (listeners.size === 0 && feedListeners.size === 0) stop();
 }
 
 function stop(): void {
@@ -557,6 +573,75 @@ function stop(): void {
   stopRunWatch = null;
 }
 
+/* ── the artifact feeds, as their own read view ─────────────────────── */
+
+/**
+ * The two feeds that carry ARTIFACTS rather than readings: what the engine has
+ * discovered, and what is deployed.
+ *
+ * The sheet derives a sentence per room from these; the Board derives CARDS
+ * from them. Two subjects, one set of requests — this view exposes the rows the
+ * lanes above already fetched instead of opening a second poll for them, which
+ * is the house's poll-collapse rule and the reason the Board adds no traffic of
+ * its own. Subscribing here starts the same lanes and the last subscriber of
+ * either view stops them, so the Board polls while it is open and nothing polls
+ * while the panel is closed.
+ *
+ * `run` is deliberately NOT here: the session's backtest is an in-process store
+ * that answers synchronously, and whoever needs it subscribes to it directly.
+ */
+export interface EngineFeeds {
+  /** Raw discovery rows, or null when the engine has not answered. */
+  strategies: unknown[] | null;
+  /** Deployment rows, or null when nothing has been read. */
+  deployments: Deployment[] | null;
+  /**
+   * The connector REGISTRY rows. The Connections room needs only the count they
+   * roll up into; the Board's source cards need which provider and how that one
+   * is doing, so the rows ride out here rather than through a second poll — and
+   * a provider therefore cannot read healthy on one face of the panel and
+   * broken on the other. Null means nothing has answered yet, which a card says
+   * as "no reading" rather than as "not linked".
+   */
+  connections: Connector[] | null;
+}
+
+let feeds: EngineFeeds = { strategies: null, deployments: null, connections: null };
+const feedListeners = new Set<() => void>();
+
+/** Replace the cached view only when a feed's identity moved, so a poll that
+ *  changed none of them notifies nobody. */
+function republishFeeds(): void {
+  if (
+    feeds.strategies === sources.strategies &&
+    feeds.deployments === sources.deployments &&
+    feeds.connections === sources.connections
+  ) {
+    return;
+  }
+  feeds = {
+    strategies: sources.strategies,
+    deployments: sources.deployments,
+    connections: sources.connections,
+  };
+  for (const listener of feedListeners) listener();
+}
+
+export const engineFeeds = {
+  subscribe(listener: () => void): () => void {
+    feedListeners.add(listener);
+    start();
+    return () => {
+      feedListeners.delete(listener);
+      release();
+    };
+  },
+
+  getSnapshot(): EngineFeeds {
+    return feeds;
+  },
+};
+
 /** Shaped for `useSyncExternalStore`: a cached object, replaced only when a
  *  reading moves, so the sheet re-renders exactly when something changed. */
 export const gridVitals = {
@@ -565,7 +650,7 @@ export const gridVitals = {
     start();
     return () => {
       listeners.delete(listener);
-      if (idle()) stop();
+      release();
     };
   },
 
@@ -585,33 +670,6 @@ export const gridVitals = {
     sources = emptySources();
     vitals = deriveRooms(sources);
     for (const listener of listeners) listener();
-    for (const listener of connectorListeners) listener();
-  },
-};
-
-/**
- * The connector REGISTRY, as its own read view over the poll above.
- *
- * The Board's source cards need the rows themselves — which provider, and how
- * that one is doing — where the Plan's Connections room needs only the count
- * they roll up into. Both come from the same 30-second read, so a provider
- * cannot be up on one face of the panel and down on the other, and a Board open
- * on its own still costs exactly the requests the Plan would have made.
- *
- * `null` means nothing has answered yet, and is deliberately not an empty list:
- * a card must be able to say "no reading" rather than "not linked".
- */
-export const gridConnectors = {
-  subscribe(listener: () => void): () => void {
-    connectorListeners.add(listener);
-    start();
-    return () => {
-      connectorListeners.delete(listener);
-      if (idle()) stop();
-    };
-  },
-
-  getSnapshot(): Connector[] | null {
-    return sources.connections;
+    republishFeeds();
   },
 };

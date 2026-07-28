@@ -16,7 +16,7 @@ import {
   matchConnector,
   oneLine,
   sourceReading,
-} from '../grid/boardCards';
+} from '../grid/boardReadings';
 import type { BoardDeletePlan, BoardSourceConfig } from '../../engine/boardGraph';
 import type { Connector } from '../../engine/model';
 

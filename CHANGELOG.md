@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 <!-- New features go here -->
 - The Auracle Board's sources and questions are cards you set up on the canvas itself: click one to edit every field in place, store its key without the value ever coming back, drag a wire from a source into a question, and see exactly what stays behind before removing anything. Sources that need no key are already on the board the first time it opens.
+- The Auracle Board grows its own downstream cards as real work produces them, each one hovering to show that run's curve, its headline figures and where the numbers were measured, and opening the full results page on a click.
 - The Auracle Board keeps its cards and the wires between them with the workspace, so a board arranged in one window opens the same way in the next, and removing a card never removes the work it produced.
 - The Auracle panel has a second face: a Board that a new project opens on, with
   the floor plan one click or one keystroke away and the last face you used

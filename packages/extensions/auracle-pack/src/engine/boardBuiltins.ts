@@ -17,9 +17,16 @@
  * ## Idempotent twice over
  * Cards take a DERIVED id ({@link builtInNodeId}), so a second pass adds
  * nothing — {@link boardGraphStore.createNode} keeps the card already there.
- * And the whole pass is skipped unless the Board is EMPTY, so seeding can never
- * resurrect a built-in somebody deliberately removed from a Board they have
- * since built on, and never lands a card on top of somebody's work.
+ * And the whole pass is skipped unless the Board holds nothing a PERSON placed,
+ * so seeding can never resurrect a built-in somebody deliberately removed from
+ * a Board they have since built on, and never lands a card on top of their
+ * work.
+ *
+ * The test is user-placed cards rather than cards outright, because the Board
+ * also grows cards NOBODY placed: a strategy the engine discovered can appear
+ * on a first open before the connections feed has answered, and reading that as
+ * "this Board has been worked on" would cost a fresh install its free sources
+ * for good.
  */
 import { KEYLESS_IDS, type Connector } from './model';
 import { boardGraphStore } from './boardGraphStore';
@@ -34,6 +41,11 @@ export function builtInNodeId(connectorId: string): string {
  *  pretending the person typed it. */
 export function isBuiltInNode(nodeId: string): boolean {
   return nodeId.startsWith('source-builtin-');
+}
+
+/** The two kinds a person puts on the Board by hand. */
+function isUserPlaced(node: { kind: string }): boolean {
+  return node.kind === 'source' || node.kind === 'research';
 }
 
 /**
@@ -52,14 +64,14 @@ export function builtInSourceConfig(connector: Connector): BoardSourceConfig {
 
 /**
  * Lay the keyless sources down, once. Returns the ids it created — empty on
- * every pass after the first, on a Board with anything on it, and whenever the
- * engine has not said what it has.
+ * every pass after the first, on a Board with anything a person placed on it,
+ * and whenever the engine has not said what it has.
  */
 export function bootstrapBuiltInSources(connectors: Connector[] | null): string[] {
   if (connectors === null) return [];
   const snapshot = boardGraphStore.getSnapshot();
   if (snapshot.status === 'closed' || snapshot.status === 'loading') return [];
-  if (snapshot.graph.nodes.length > 0) return [];
+  if (snapshot.graph.nodes.some(isUserPlaced)) return [];
 
   const created: string[] = [];
   for (const connector of connectors) {

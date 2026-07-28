@@ -87,12 +87,22 @@ describe('the keyless sources on a first open', () => {
     expect(boardGraphStore.getSnapshot().graph.nodes).toHaveLength(2);
   });
 
-  it('keeps off a Board that already has anything on it', async () => {
+  it('keeps off a Board that already has a card somebody placed', async () => {
     await openBoard();
     boardGraphStore.createNode({ kind: 'research', research: { hypothesis: 'Gaps mean-revert.' } });
 
     expect(bootstrapBuiltInSources(REGISTRY)).toEqual([]);
     expect(boardGraphStore.getSnapshot().graph.nodes).toHaveLength(1);
+  });
+
+  it('still seeds a Board whose only cards the system wrote', async () => {
+    await openBoard();
+    // A strategy the engine discovered can land on a first open before the
+    // registry answers. That is not somebody having worked on this Board, and
+    // reading it as such would cost a fresh install its free sources for good.
+    boardGraphStore.materialize({ kind: 'strategy', ref: { kind: 'strategy', id: 'desk.Atlas' } });
+
+    expect(bootstrapBuiltInSources(REGISTRY)).toHaveLength(2);
   });
 
   it('does not resurrect a built-in somebody removed from a Board they kept working on', async () => {

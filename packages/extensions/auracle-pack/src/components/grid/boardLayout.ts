@@ -53,6 +53,26 @@ export function rankOf(kind: string): BoardRank {
   return 2;
 }
 
+/**
+ * The half of the graph a person PLACED — sources, questions, and the wires
+ * they drew between them.
+ *
+ * The plane draws these; the cards the system wrote have their own layer, and
+ * laying them out here as well would draw every strategy and deployment twice.
+ * Wires are filtered with them: an edge whose far end is not on the plane has
+ * nowhere to land, and drawing one would point at empty ground.
+ */
+export function userSubgraph(graph: BoardGraph): BoardGraph {
+  const nodes = graph.nodes.filter((node) => node.kind === 'source' || node.kind === 'research');
+  if (nodes.length === graph.nodes.length) return graph;
+  const kept = new Set(nodes.map((node) => node.id));
+  return {
+    ...graph,
+    nodes,
+    edges: graph.edges.filter((edge) => kept.has(edge.from) && kept.has(edge.to)),
+  };
+}
+
 export interface PlacedCard {
   id: string;
   kind: string;

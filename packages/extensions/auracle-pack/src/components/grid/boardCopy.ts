@@ -31,6 +31,7 @@
  * them.
  */
 import type { BoardNode } from '../../engine/boardGraph';
+import type { BoardSyncState } from '../../engine/boardPersistence';
 import { isBuiltInNode } from '../../engine/boardBuiltins';
 
 /**
@@ -148,3 +149,25 @@ export const RESEARCH_PLACEHOLDER =
 /** The keyless card, introducing itself in its own editor: nothing was typed
  *  here, and nothing needs to be. */
 export const BUILT_IN_SOURCE_NOTE = 'Came with the engine. No key to set, and nothing to describe.';
+
+/**
+ * The note that shows when the board is not on the engine.
+ *
+ * Nothing is at risk in either case: the board is kept on this machine whatever
+ * the engine does ({@link ../../engine/boardPersistence}), so this note is a
+ * fact about SYNC, not a warning about work. It is written accordingly — no
+ * alarm, no error code, and no instruction a person cannot follow.
+ *
+ * The two readings are genuinely different situations and are not allowed to
+ * collapse into one sentence. An engine older than this build has answered and
+ * said it does not know how to keep a board; the fix is an update, and the note
+ * says where to get it. An engine that has not answered needs nothing but time,
+ * and telling that person to update would send them looking for a problem they
+ * do not have.
+ */
+export const BOARD_SYNC_NOTE: Record<Exclude<BoardSyncState, 'synced'>, string> = {
+  'engine-behind':
+    'This engine is one release behind the IDE, so the board stays on this machine for now. Update the engine from the Auracle launcher and it will sync on its own. Nothing here is lost.',
+  offline:
+    'The engine has not answered yet, so the board stays on this machine for now. It will sync on its own once the engine is up. Nothing here is lost.',
+};

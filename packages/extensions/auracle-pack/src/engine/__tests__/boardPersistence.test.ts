@@ -1,9 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
+  BOARD_GRAPH_LOCAL_KEY,
   BOARD_GRAPH_PREF_KEY,
+  classifySave,
   engineSettingsTransport,
+  readLocalCopy,
   readWorkspaceEntry,
+  writeLocalCopy,
   writeWorkspaceEntry,
 } from '../boardPersistence';
 
@@ -42,6 +46,7 @@ function installLane(prefs: Record<string, unknown> = {}) {
 
 afterEach(() => {
   delete (window as unknown as { electronAPI?: unknown }).electronAPI;
+  window.localStorage.removeItem(BOARD_GRAPH_LOCAL_KEY);
 });
 
 /* ── the pref map ────────────────────────────────────────────────────────── */
@@ -99,7 +104,7 @@ describe('the engine settings transport', () => {
       [BOARD_GRAPH_PREF_KEY]: { 'ws-other': 'other-doc' },
     });
     const saved = await engineSettingsTransport().save('ws-1', '{"version":1}');
-    expect(saved).toBe(true);
+    expect(classifySave(saved)).toBe('synced');
 
     const put = calls.find((call) => call.method === 'PUT');
     expect(put?.path).toBe('/ui/api/settings');
@@ -119,16 +124,105 @@ describe('the engine settings transport', () => {
     expect(JSON.stringify(put?.body)).not.toContain('etag');
   });
 
-  it('says a refused write was refused', async () => {
+  it('says a refused write was refused, in the engine own words', async () => {
     const { state } = installLane({});
     state.refuse = true;
-    expect(await engineSettingsTransport().save('ws-1', '{"version":1}')).toBe(false);
+    expect(await engineSettingsTransport().save('ws-1', '{"version":1}')).toEqual({
+      ok: false,
+      status: 400,
+      message: 'unknown setting',
+    });
   });
 
   it('says a save failed when nothing answered at all', async () => {
     delete (window as unknown as { electronAPI?: unknown }).electronAPI;
     const transport = engineSettingsTransport();
     expect(await transport.load('ws-1')).toBeNull();
-    expect(await transport.save('ws-1', '{}')).toBe(false);
+    expect(await transport.save('ws-1', '{}')).toMatchObject({ ok: false, status: 0 });
+  });
+});
+
+/* ── why a save did not land ─────────────────────────────────────────────── */
+
+/**
+ * The distinction the Board's message is built on. An engine that ANSWERED and
+ * refused this pref key is a build older than this one, and updating it is the
+ * whole fix; anything else — nothing answering, a rejected credential, a
+ * timeout, a server fault — says nothing about which build is installed, and
+ * telling that person to update would send them after a problem they do not
+ * have. So `engine-behind` is claimed narrowly and on purpose.
+ */
+describe('reading why a save did not land', () => {
+  it('reads an accepted write as synced, however it was reported', () => {
+    expect(classifySave(true)).toBe('synced');
+    expect(classifySave({ ok: true, status: 200 })).toBe('synced');
+  });
+
+  it('reads the engine refusing this pref key as an engine one build behind', () => {
+    for (const status of [400, 404, 409, 422]) {
+      expect(classifySave({ ok: false, status, message: 'unknown setting' }), `${status}`).toBe(
+        'engine-behind'
+      );
+    }
+  });
+
+  it('reads nothing answering as offline, never as an old engine', () => {
+    expect(classifySave(false)).toBe('offline');
+    expect(classifySave({ ok: false, status: 0, message: null })).toBe('offline');
+  });
+
+  it('never blames the build for a credential, a timeout or a fault', () => {
+    // Each of these is a client error too, and none of them is about what this
+    // engine knows how to store.
+    for (const status of [401, 402, 403, 407, 408, 423, 425, 429, 500, 502, 503]) {
+      expect(classifySave({ ok: false, status }), `${status}`).toBe('offline');
+    }
+  });
+});
+
+/* ── the local floor ─────────────────────────────────────────────────────── */
+
+/**
+ * The Board tells a person on an older engine that nothing is lost. That is
+ * only true because the document this window wrote is also kept locally, so the
+ * promise and this behaviour have to be checked together.
+ */
+describe('the copy kept on this machine', () => {
+  it('keeps one workspace document and reads it back', () => {
+    writeLocalCopy('ws-1', '{"version":1}');
+    writeLocalCopy('ws-2', '{"version":2}');
+    expect(readLocalCopy('ws-1')).toBe('{"version":1}');
+    expect(readLocalCopy('ws-2')).toBe('{"version":2}');
+    expect(readLocalCopy('ws-none')).toBeNull();
+  });
+
+  it('keeps the document even when the engine refused it', async () => {
+    const { state } = installLane({});
+    state.refuse = true;
+    await engineSettingsTransport().save('ws-1', '{"version":1,"nodes":[]}');
+    expect(readLocalCopy('ws-1')).toBe('{"version":1,"nodes":[]}');
+  });
+
+  it('opens the refused Board again rather than empty', async () => {
+    const { state } = installLane({});
+    state.refuse = true;
+    const transport = engineSettingsTransport();
+    await transport.save('ws-1', '{"version":1,"nodes":[]}');
+
+    // A second window, or the next morning: the engine still holds nothing.
+    expect(await transport.load('ws-1')).toBe('{"version":1,"nodes":[]}');
+  });
+
+  it('lets the engine win whenever the engine has one', async () => {
+    writeLocalCopy('ws-1', '{"stale":true}');
+    installLane({ [BOARD_GRAPH_PREF_KEY]: { 'ws-1': '{"fromEngine":true}' } });
+    expect(await engineSettingsTransport().load('ws-1')).toBe('{"fromEngine":true}');
+  });
+
+  it('shrugs off a store holding something that is not a map', () => {
+    window.localStorage.setItem(BOARD_GRAPH_LOCAL_KEY, 'not json');
+    expect(readLocalCopy('ws-1')).toBeNull();
+    writeLocalCopy('ws-1', '{"version":1}');
+    expect(readLocalCopy('ws-1')).toBe('{"version":1}');
   });
 });

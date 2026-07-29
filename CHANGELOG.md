@@ -16,12 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 <!-- Bug fixes go here -->
-- The Auracle Board no longer leaves a card behind when you start one and think better of it: a source or a question you never typed anything into is taken back as soon as you close it, quietly, while anything you did type is kept. And the line above the board now names the next step at every stage instead of going quiet as soon as cards appear, so a board with sources on it and no question yet says to pose one, and a question left unwritten is pointed at until it has words in it.
-- Extension panel buttons in the left rail now show their help tooltips on hover.
-- The Auracle Board no longer warns you about a problem you do not have. An engine that is a release behind the app, or one that has not started yet, now gets a quiet line saying where the board is being kept and the one thing that would change it, instead of a red notice about not being synced, and the board is kept on your machine either way so nothing is lost while you wait. A new board also opens with research sources only: the engine's own list is used when it serves one, practice trading accounts are never laid down as something to read, and a card you removed is not put back the next time you open the board.
 
 ### Removed
 <!-- Removed features go here -->
+
+## [1.7.1] - 2026-07-29
+
+### Fixed
+- The Auracle Board no longer leaves a card behind when you start one and think better of it: a source or a question you never typed anything into is taken back as soon as you close it, quietly, while anything you did type is kept. And the line above the board now names the next step at every stage instead of going quiet as soon as cards appear, so a board with sources on it and no question yet says to pose one, and a question left unwritten is pointed at until it has words in it.
+- Extension panel buttons in the left rail now show their help tooltips on hover.
+- The Auracle Board no longer warns you about a problem you do not have. An engine that is a release behind the app, or one that has not started yet, now gets a quiet line saying where the board is being kept and the one thing that would change it, instead of a red notice about not being synced, and the board is kept on your machine either way so nothing is lost while you wait. A new board also opens with research sources only: the engine's own list is used when it serves one, practice trading accounts are never laid down as something to read, and a card you removed is not put back the next time you open the board.
 
 ## [1.7.0] - 2026-07-29
 

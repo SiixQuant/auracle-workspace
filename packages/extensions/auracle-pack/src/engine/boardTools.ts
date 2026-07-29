@@ -334,9 +334,10 @@ function planSentence(plan: BoardDeletePlan, tense: 'would' | 'did'): string {
   const refs = plan.retainedRefs.length;
   const artifacts =
     refs === 0 ? '' : `, still pointing at ${refs} saved result${refs === 1 ? '' : 's'}`;
-  return `${head} ${kept} card${kept === 1 ? '' : 's'} downstream ${
-    tense === 'would' ? 'stay' : 'stayed'
-  } where ${kept === 1 ? 'it is' : 'they are'}${artifacts}.`;
+  const stay = tense === 'did' ? 'stayed' : kept === 1 ? 'stays' : 'stay';
+  return `${head} ${kept} card${kept === 1 ? '' : 's'} downstream ${stay} where ${
+    kept === 1 ? 'it is' : 'they are'
+  }${artifacts}.`;
 }
 
 /**

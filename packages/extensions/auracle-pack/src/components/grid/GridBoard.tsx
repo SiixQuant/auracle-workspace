@@ -27,9 +27,17 @@
  * EMPTY STATE: three ghost slots, and they are the onboarding. Two name the
  * only moves a person makes — point it at something to read, ask it something —
  * and they now PERFORM those moves: pressing one lays a card down and opens its
- * editor on the spot. The third says plainly that nothing else on this board is
- * placed by hand, and is a label rather than a control because there is nothing
- * for it to do.
+ * editor on the spot. The third is the model's last step rather than a move:
+ * material gathers on its own and for nothing, a verb spends a session when
+ * somebody chooses to, and the cards downstream of that work place themselves.
+ * It is a label rather than a control because there is nothing for it to do.
+ * The words themselves live in {@link ./boardCopy}.
+ *
+ * AND THE STATE AFTER IT: the ghosts come down the moment the keyless sources
+ * land, which on a connected desk is seconds after the first open — so the line
+ * above the cards has a first-run reading of its own, which introduces those
+ * sources and names the move that is still outstanding. Without it the only
+ * board that ever explained itself would be one with no engine behind it.
  *
  * NOTHING HERE NAVIGATES. Describing a source, keying it, writing a question,
  * wiring two cards together and removing one all happen on this face, in the
@@ -64,34 +72,9 @@ import { layoutBoard, userSubgraph, type PlacedCard } from './boardLayout';
 import { cardVerb, dispatchBoardScan, useBoardResearchLoop, type CardVerb } from './boardScan';
 import { aiRunStore, resultLine } from './gridAiActions';
 import { keptSentence, researchReading, sourceReading, type CardReading } from './boardReadings';
+import { boardHint, GHOSTS, RESEARCH_GHOST, SOURCE_GHOST } from './boardCopy';
 
 const STYLE_ID = 'auracle-grid-board-styles';
-
-/** The three ghosts, in the order a person meets them. The first two are
- *  buttons now: they lay the card down and open it. */
-const GHOSTS = [
-  {
-    id: 'source',
-    icon: 'database',
-    title: 'Connect data',
-    body: 'Point the board at something worth reading — a paper feed, a filings stream, a broker account.',
-    acts: true,
-  },
-  {
-    id: 'research',
-    icon: 'help',
-    title: 'Pose a question',
-    body: 'Write the hypothesis in plain words. What arrives afterwards is read against it, and kept.',
-    acts: true,
-  },
-  {
-    id: 'materialized',
-    icon: 'auto_awesome',
-    title: 'The rest arrives on its own',
-    body: 'Strategies, tests and deployments appear here as real work produces them. Nothing to place by hand.',
-    acts: false,
-  },
-] as const;
 
 const SHEET = `
 /* A column, matching the Plan's frame: the stage takes whatever height is left
@@ -431,15 +414,16 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
               : undefined
           }
         >
-          <p className="aboard__hint">
-            {empty
-              ? 'An empty board. Two moves start it — the rest follows from the work.'
-              : 'What you are working on — the sources, the questions, and what came of them.'}
+          <p className="aboard__hint" data-testid="board-hint">
+            {boardHint(graph.nodes)}
           </p>
           {empty ? (
             <GhostSlots onPlace={place} />
           ) : (
             <div className="aboard__adds">
+              {/* The same two moves under the same two names the ghosts gave
+                  them: a person who read the empty state should not have to
+                  learn a second vocabulary once it is gone. */}
               <button
                 type="button"
                 className="aboard__add"
@@ -447,9 +431,9 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
                 onClick={() => place('source')}
               >
                 <span className="material-symbols-outlined" aria-hidden>
-                  database
+                  {SOURCE_GHOST.icon}
                 </span>
-                Connect data
+                {SOURCE_GHOST.title}
               </button>
               <button
                 type="button"
@@ -458,9 +442,9 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
                 onClick={() => place('research')}
               >
                 <span className="material-symbols-outlined" aria-hidden>
-                  help
+                  {RESEARCH_GHOST.icon}
                 </span>
-                Pose a question
+                {RESEARCH_GHOST.title}
               </button>
             </div>
           )}

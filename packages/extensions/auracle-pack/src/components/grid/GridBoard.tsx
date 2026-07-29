@@ -58,6 +58,7 @@ import { TREE_MIN_WIDTH } from './gridWires';
 import { CANVAS_WIDTH, useGridCanvas } from './useGridCanvas';
 import { BoardCard, ensureBoardCardStyles, useBoardPeek, type DropState } from './BoardCard';
 import { BoardCardEditor } from './BoardCardEditor';
+import { useBoardCardAiContext } from './gridFocus';
 import { BoardWires } from './BoardWires';
 import { layoutBoard, userSubgraph, type PlacedCard } from './boardLayout';
 import { cardVerb, dispatchBoardScan, useBoardResearchLoop, type CardVerb } from './boardScan';
@@ -266,6 +267,11 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
   useEffect(() => {
     if (editing && !graph.nodes.some((node) => node.id === editing.nodeId)) setEditing(null);
   }, [editing, graph]);
+
+  // The selected card, told to the chat: what it is, what feeds it, what came
+  // of it. Selection here IS the open card — there is no second notion of it on
+  // this face — and dropping it clears the envelope again (see gridFocus).
+  useBoardCardAiContext(host, graph, editing?.nodeId ?? null);
 
   const place = useCallback(
     (kind: 'source' | 'research'): void => {

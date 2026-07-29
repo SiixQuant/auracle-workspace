@@ -32,8 +32,15 @@
  * no-op. It is the FLOOR, not the ceiling: the room's mounted body writes its
  * own richer context a moment later and wins, which is why the write is a
  * layout effect (see {@link useRoomAiContext}).
+ *
+ * The Board selects rather than navigates, and it uses the same lane for the
+ * same reason: a selected card publishes its own envelope through
+ * {@link useBoardCardAiContext}, which sits at the ceiling rather than the
+ * floor and clears only what it wrote.
  */
-import { useLayoutEffect } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
+import type { BoardGraph } from '../../engine/boardGraph';
+import { boardNodeContext } from '../../engine/boardEnvelope';
 import { focusContext, focusStore, noteFocusAmbientWrite, type Focus } from '../../engine/focusStore';
 import type { PanelHostLike } from '../aiPanel';
 import type { RoomId } from './rooms';
@@ -102,4 +109,62 @@ export function useRoomAiContext(
     ai.setContext(roomAiContext(room, title ?? room, focusStore.getSnapshot()));
     noteFocusAmbientWrite();
   }, [ai, room, title]);
+}
+
+/**
+ * The Board's half of the same lane: the card a person selected, published as
+ * the ambient document so a conversation about it starts already scoped.
+ *
+ * ## Same mechanics as a room open, three rules deep
+ *  - it goes through `host.ai.setContext`, feature detected exactly as
+ *    {@link useRoomAiContext} does it, so a host with no AI lane is a silent
+ *    no-op and there is no second write path to keep in step;
+ *  - every write is followed by `noteFocusAmbientWrite`, so the debounced
+ *    minimal focus fallback cannot land 600ms later and flatten a document that
+ *    says strictly more (`engine/focusStore`);
+ *  - it is a PASSIVE effect, not a layout one. The room router lays its floor
+ *    down in a layout effect precisely so a body with something richer to say
+ *    can overwrite it; a selected card IS the richer thing, so it lands after.
+ *
+ * ## Deselect clears — and only deselect
+ * The clear is guarded by whether this hook has actually written: mounting the
+ * Board with nothing selected must not wipe a document some other surface put
+ * there, which is the same "never clobber a richer payload" rule the focus
+ * fallback follows. Once a card has been selected, dropping the selection
+ * clears what this hook wrote, because a stale card envelope would have the
+ * chat answering about a card nobody is looking at.
+ *
+ * There is deliberately no clear on unmount, matching every other ambient
+ * writer in the pack (`useAiPanelContext`): the surface that takes the screen
+ * next publishes its own document, and a teardown-time clear would race it.
+ */
+export function useBoardCardAiContext(
+  host: PanelHostLike | undefined,
+  graph: BoardGraph,
+  nodeId: string | null
+): void {
+  const ai = host?.ai;
+  const context = nodeId === null ? null : boardNodeContext(graph, nodeId);
+  // Change detection by VALUE, so the Board can rebuild the envelope on every
+  // render without thrashing the lane — the same trick `useAiPanelContext` uses.
+  const key = context === null ? '' : JSON.stringify(context);
+  const latest = useRef(context);
+  latest.current = context;
+  const wrote = useRef(false);
+
+  useEffect(() => {
+    if (!ai) return;
+    const payload = latest.current;
+    if (payload !== null) {
+      ai.setContext(payload);
+      noteFocusAmbientWrite();
+      wrote.current = true;
+      return;
+    }
+    if (!wrote.current) return;
+    ai.clearContext();
+    wrote.current = false;
+    // Re-run on the serialized value, not on the object identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ai, key]);
 }

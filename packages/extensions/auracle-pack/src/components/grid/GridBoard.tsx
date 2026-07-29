@@ -85,7 +85,7 @@ import { layoutBoard, userSubgraph, type PlacedCard } from './boardLayout';
 import { cardVerb, dispatchBoardScan, useBoardResearchLoop, type CardVerb } from './boardScan';
 import { aiRunStore, resultLine } from './gridAiActions';
 import { keptSentence, researchReading, sourceReading, type CardReading } from './boardReadings';
-import { BOARD_HINT, boardHintState, GHOSTS, RESEARCH_GHOST, SOURCE_GHOST } from './boardCopy';
+import { BOARD_HINT, boardHintState, BOARD_SYNC_NOTE, GHOSTS, RESEARCH_GHOST, SOURCE_GHOST } from './boardCopy';
 
 const STYLE_ID = 'auracle-grid-board-styles';
 
@@ -125,6 +125,10 @@ const SHEET = `
 .aboard__add[data-primary='true']:hover { border-color: transparent; background: ${tone.accentHover}; color: ${tone.accentInk}; }
 .aboard__notice { margin: 0 0 12px; font-size: 11.5px; line-height: 1.5; color: ${tone.text2}; }
 .aboard__notice[data-kind='err'] { color: ${tone.danger}; }
+/* WAITING is not failing. The sync note reports where the board is kept, and
+   the board is never at risk, so it takes the caution tone and never the
+   danger one — red here reads as lost work to somebody on their first run. */
+.aboard__notice[data-kind='wait'] { color: ${tone.caution}; }
 /* The empty state. A list, because that is what it is: the moves, in order. */
 .aboard__ghosts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin: 0; padding: 0; list-style: none; }
 /* DASHED, and the one place on either face a dash does not mean a data wire:
@@ -203,6 +207,13 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
     boardGraphStore.subscribe,
     () => boardGraphStore.getSnapshot().status,
     () => boardGraphStore.getSnapshot().status
+  );
+  // WHY the board is not on the engine, which is a different question from what
+  // the store is doing — see BoardSnapshot.sync.
+  const sync = useSyncExternalStore(
+    boardGraphStore.subscribe,
+    () => boardGraphStore.getSnapshot().sync,
+    () => boardGraphStore.getSnapshot().sync
   );
   const feeds = useSyncExternalStore(
     engineFeeds.subscribe,
@@ -543,11 +554,21 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
               {notice.text}
             </p>
           ) : null}
-          {status === 'error' ? (
-            <p className="aboard__notice" data-testid="board-sync-state" data-kind="err" role="status">
-              Not synced with the engine. The board is safe here; it will save when the engine answers.
+          {/* Not an error, and never drawn as one: the board is kept on this
+              machine whatever the engine does, so this line reports a sync and
+              names the one thing that would change it. The two readings live in
+              boardCopy. */}
+          {sync === 'synced' ? null : (
+            <p
+              className="aboard__notice"
+              data-testid="board-sync-note"
+              data-kind="wait"
+              data-state={sync}
+              role="status"
+            >
+              {BOARD_SYNC_NOTE[sync]}
             </p>
-          ) : null}
+          )}
           {empty ? null : (
             <div
               ref={cardsRef}

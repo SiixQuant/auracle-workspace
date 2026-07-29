@@ -140,8 +140,32 @@ export interface BoardEdge {
 export interface BoardGraph {
   readonly nodes: readonly BoardNode[];
   readonly edges: readonly BoardEdge[];
+  /**
+   * Seeded source cards this Board has been told not to lay down again.
+   *
+   * Removing a card the Board placed for you is an instruction, not an
+   * accident, and the bootstrap has to be able to hear it on the NEXT open as
+   * well as this one — otherwise a Board whose only cards were seeded grows
+   * them back every morning. Ids only, so an entry costs nothing and a build
+   * that has never heard of the field carries it through as an unknown.
+   */
+  readonly retiredSeeds?: readonly string[];
   /** Unknown document-level fields, preserved across a round trip. */
   readonly extra?: Readonly<Record<string, unknown>>;
+}
+
+/**
+ * The id prefix a card the Board seeded carries.
+ *
+ * Lives here rather than with the bootstrap because the DELETE has to
+ * recognize one, and the delete is a pure graph operation — see
+ * {@link applyNodeDelete}. {@link ../boardBuiltins} mints the ids.
+ */
+export const SEEDED_NODE_PREFIX = 'source-builtin-';
+
+/** True for a card the Board laid down rather than a person. */
+export function isSeededNodeId(nodeId: string): boolean {
+  return nodeId.startsWith(SEEDED_NODE_PREFIX);
 }
 
 /** Document version written by this build. Parsing accepts any version. */
@@ -157,7 +181,7 @@ export function emptyBoardGraph(): BoardGraph {
 /* ── parse ───────────────────────────────────────────────────────────────── */
 
 const NODE_KEYS = new Set(['id', 'kind', 'position', 'source', 'research', 'ref', 'label']);
-const DOC_KEYS = new Set(['version', 'nodes', 'edges']);
+const DOC_KEYS = new Set(['version', 'nodes', 'edges', 'retiredSeeds']);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -333,8 +357,23 @@ export function parseBoardGraph(input: unknown): BoardGraph {
     edges.push(edge);
   }
 
+  const retiredSeeds = parseRetiredSeeds(doc.retiredSeeds);
   const extra = collectExtra(doc, DOC_KEYS);
-  return extra ? { nodes, edges, extra } : { nodes, edges };
+  const graph: BoardGraph = { nodes, edges };
+  const withRetired = retiredSeeds ? { ...graph, retiredSeeds } : graph;
+  return extra ? { ...withRetired, extra } : withRetired;
+}
+
+/** The retired list, reduced to non-empty strings with no repeats. */
+function parseRetiredSeeds(value: unknown): readonly string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const ids: string[] = [];
+  for (const raw of value) {
+    const id = str(raw);
+    if (id === '' || ids.includes(id)) continue;
+    ids.push(id);
+  }
+  return ids.length > 0 ? ids : undefined;
 }
 
 /* ── serialize ───────────────────────────────────────────────────────────── */
@@ -381,6 +420,11 @@ export function serializeBoardGraph(graph: BoardGraph): string {
       origin: edge.origin,
     })),
   };
+  // Omitted when empty, so a Board nobody has retired a seed on serializes byte
+  // for byte as it did before this field existed.
+  if (graph.retiredSeeds && graph.retiredSeeds.length > 0) {
+    doc.retiredSeeds = [...graph.retiredSeeds];
+  }
   if (graph.extra) Object.assign(doc, graph.extra);
   return JSON.stringify(doc);
 }
@@ -632,14 +676,32 @@ export function planNodeDelete(graph: BoardGraph, nodeId: string): BoardDeletePl
  * Apply a plan. Only the named card and its own wires go; everything
  * downstream stays where it is, still pointing at engine artifacts that were
  * never this Board's to destroy.
+ *
+ * A card the Board SEEDED is also written into {@link BoardGraph.retiredSeeds}
+ * on the way out. Removing one is a decision, and the bootstrap reads the list
+ * before it lays anything down, so the decision survives the workspace being
+ * closed and opened again.
  */
 export function applyNodeDelete(graph: BoardGraph, plan: BoardDeletePlan): BoardGraph {
   if (plan.removedNodeIds.length === 0) return graph;
   const removedNodes = new Set(plan.removedNodeIds);
   const removedEdges = new Set(plan.removedEdgeIds);
-  return {
+  const next: BoardGraph = {
     ...graph,
     nodes: graph.nodes.filter((node) => !removedNodes.has(node.id)),
     edges: graph.edges.filter((edge) => !removedEdges.has(edge.id)),
   };
+  const retiredSeeds = retireSeeded(graph.retiredSeeds, plan.removedNodeIds);
+  return retiredSeeds ? { ...next, retiredSeeds } : next;
+}
+
+/** The retired list with every seeded id in `removed` on it, or the list
+ *  unchanged when none of them was seeded. */
+function retireSeeded(
+  retired: readonly string[] | undefined,
+  removed: readonly string[]
+): readonly string[] | undefined {
+  const held = retired ?? [];
+  const added = removed.filter((id) => isSeededNodeId(id) && !held.includes(id));
+  return added.length === 0 ? retired : [...held, ...added];
 }

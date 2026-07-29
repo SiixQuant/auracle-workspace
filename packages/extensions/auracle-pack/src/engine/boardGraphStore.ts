@@ -58,11 +58,26 @@ import {
   type BoardSourceConfig,
   type MaterializedNodeKind,
 } from './boardGraph';
-import { engineSettingsTransport, type BoardGraphTransport } from './boardPersistence';
+import {
+  classifySave,
+  engineSettingsTransport,
+  type BoardGraphTransport,
+  type BoardSaveResult,
+  type BoardSyncState,
+} from './boardPersistence';
+
+export type { BoardSyncState } from './boardPersistence';
 
 /**
- * `closed` before a workspace is opened, `error` when the lane refused — the
- * Board says "not synced" rather than dropping the edits or pretending.
+ * Where the Board is in its own lifecycle: `closed` before a workspace is
+ * opened, `error` when the lane refused — the Board keeps the edits rather than
+ * dropping them or pretending they landed.
+ *
+ * WHAT this status does NOT say is WHY, and the why is the whole difference
+ * between a message that asks somebody to update their engine and one that asks
+ * them to wait. That lives in {@link BoardSnapshot.sync}, kept as its own field
+ * so nothing reading the lifecycle has to learn a new vocabulary to keep
+ * working.
  */
 export type BoardStatus = 'closed' | 'loading' | 'idle' | 'saving' | 'error';
 
@@ -71,6 +86,13 @@ export interface BoardSnapshot {
   readonly workspaceId: string;
   readonly graph: BoardGraph;
   readonly status: BoardStatus;
+  /**
+   * Why the Board is or is not on the engine — `synced` whenever there is
+   * nothing to report, which includes a Board that has not been opened yet.
+   * Set together with {@link status} on every lane result, so the two can never
+   * disagree.
+   */
+  readonly sync: BoardSyncState;
   /** Local edits that have not reached the settings lane yet. */
   readonly dirty: boolean;
 }
@@ -135,6 +157,7 @@ const CLOSED: BoardSnapshot = {
   workspaceId: '',
   graph: emptyBoardGraph(),
   status: 'closed',
+  sync: 'synced',
   dirty: false,
 };
 
@@ -192,6 +215,10 @@ async function performSave(): Promise<void> {
   if (json === lastSavedJson) {
     // Nothing changed since the engine last accepted this graph. This is the
     // guard that keeps two windows from writing to each other forever.
+    //
+    // `sync` is deliberately left where it was: no write happened, so nothing
+    // here learned anything about the engine, and an engine that refused the
+    // last one is still the engine that will refuse the next.
     if (snapshot.dirty || snapshot.status === 'saving') set({ dirty: false, status: 'idle' });
     return;
   }
@@ -200,23 +227,25 @@ async function performSave(): Promise<void> {
   const workspaceId = snapshot.workspaceId;
   set({ status: 'saving' });
 
-  let ok = false;
+  let result: BoardSaveResult = false;
   try {
-    ok = await active.save(workspaceId, json);
+    result = await active.save(workspaceId, json);
   } catch {
-    ok = false;
+    // A transport that threw said nothing about which build is installed.
+    result = false;
   }
   // A different workspace opened while this write was in flight — its state is
   // the one on screen now, and this result says nothing about it.
   if (gen !== generation) return;
 
-  if (!ok) {
-    set({ status: 'error', dirty: true });
+  const sync = classifySave(result);
+  if (sync !== 'synced') {
+    set({ status: 'error', sync, dirty: true });
     return;
   }
   lastSavedJson = json;
   const dirty = serializeBoardGraph(snapshot.graph) !== json;
-  set({ status: 'idle', dirty });
+  set({ status: 'idle', sync: 'synced', dirty });
   // Edits landed during the write — carry them out too.
   if (dirty) schedule();
 }
@@ -264,7 +293,13 @@ export const boardGraphStore = {
     cancelTimer();
     transport = nextTransport;
     lastSavedJson = null;
-    snapshot = { workspaceId, graph: emptyBoardGraph(), status: 'loading', dirty: false };
+    snapshot = {
+      workspaceId,
+      graph: emptyBoardGraph(),
+      status: 'loading',
+      sync: 'synced',
+      dirty: false,
+    };
     notify();
 
     let loaded: string | null = null;
@@ -279,7 +314,15 @@ export const boardGraphStore = {
     const graph = parseBoardGraph(loaded);
     // The baseline is what WE would write, not what arrived — see the header.
     lastSavedJson = serializeBoardGraph(graph);
-    snapshot = { workspaceId, graph, status: failed ? 'error' : 'idle', dirty: false };
+    snapshot = {
+      workspaceId,
+      graph,
+      status: failed ? 'error' : 'idle',
+      // A read that never came back says nothing about which build is behind
+      // it, so a failed load is only ever reported as nothing answering.
+      sync: failed ? 'offline' : 'synced',
+      dirty: false,
+    };
     notify();
   },
 
@@ -299,7 +342,7 @@ export const boardGraphStore = {
     try {
       loaded = await active.load(workspaceId);
     } catch {
-      if (gen === generation) set({ status: 'error' });
+      if (gen === generation) set({ status: 'error', sync: 'offline' });
       return;
     }
     if (gen !== generation || snapshot.dirty) return;
@@ -307,11 +350,11 @@ export const boardGraphStore = {
     const graph = parseBoardGraph(loaded);
     const json = serializeBoardGraph(graph);
     if (json === lastSavedJson) {
-      if (snapshot.status !== 'idle') set({ status: 'idle' });
+      if (snapshot.status !== 'idle') set({ status: 'idle', sync: 'synced' });
       return;
     }
     lastSavedJson = json;
-    snapshot = { ...snapshot, graph, status: 'idle', dirty: false };
+    snapshot = { ...snapshot, graph, status: 'idle', sync: 'synced', dirty: false };
     notify();
   },
 

@@ -14,7 +14,7 @@ import { BackgroundTaskIndicator } from '../BackgroundTaskIndicator';
 import { VoiceModeButton } from '../UnifiedAI/VoiceModeButton';
 import { useExtensionGutterButtons, useExtensionBottomPanelButtons } from '../../extensions/panels/usePanels';
 import { useThemeValue } from '../../hooks/useTheme';
-import { HelpTooltip } from '../../help';
+import { HelpTooltip, hasHelpContent } from '../../help';
 import { setActiveSessionAtom } from '../../store';
 import {
   developerModeAtom,
@@ -511,34 +511,50 @@ export const NavigationGutter: React.FC<NavigationGutterProps> = ({
                 });
               };
 
+              // The manifest `tooltip` for this panel is served by HelpContent
+              // under this testid; without the wrapper the entry is unreachable.
+              const testId = `extension-panel-${panel.id}`;
+
               // A panel may contribute its own button (SDK `gutterButton`) when
               // it has state the host cannot know — e.g. a count of open alerts.
-              // It replaces the default icon button; the wrapper keeps the
-              // panel id addressable without adding a box to the flex column.
+              // It replaces the default icon button. The wrapper must be a real
+              // box, not `display: contents`: the help tooltip binds hover to it
+              // and anchors on its rect, and a boxless element has neither. It
+              // mirrors the rail column's layout so a multi-root button keeps
+              // the column's spacing, and collapses when the button renders
+              // nothing so an empty box never holds a gap slot open.
               const CustomButton = panel.gutterButton;
               if (CustomButton) {
                 return (
-                  <div key={panel.id} className="contents" data-panel-id={panel.id}>
-                    <CustomButton isActive={isActive} onActivate={activate} theme={extensionTheme} />
-                  </div>
+                  <HelpTooltip key={panel.id} testId={testId} placement="right">
+                    <div
+                      className="nav-extension-custom-button flex flex-col items-center gap-1 empty:hidden"
+                      data-panel-id={panel.id}
+                      data-testid={testId}
+                    >
+                      <CustomButton isActive={isActive} onActivate={activate} theme={extensionTheme} />
+                    </div>
+                  </HelpTooltip>
                 );
               }
 
               return (
-                <button
-                  key={panel.id}
-                  className={`nav-button relative w-9 h-9 flex items-center justify-center border-none rounded-md cursor-pointer transition-all duration-150 p-0 active:scale-95 focus-visible:outline-2 focus-visible:outline-[var(--nim-primary)] focus-visible:outline-offset-2 ${isActive ? 'active bg-nim-primary text-nim-on-primary hover:bg-nim-primary-hover' : 'bg-transparent text-nim-muted hover:bg-nim-tertiary hover:text-nim'}`}
-                  onClick={activate}
-                  title={panel.label}
-                  aria-label={panel.label}
-                  aria-pressed={isActive}
-                  data-panel-id={panel.id}
-                >
-                  <MaterialSymbol icon={panel.icon} size={20} fill={isActive} />
-                  {panel.isAlpha && (
-                    <AlphaBadge size="dot" className="absolute top-0 right-0.5 pointer-events-none" />
-                  )}
-                </button>
+                <HelpTooltip key={panel.id} testId={testId} placement="right">
+                  <button
+                    className={`nav-button relative w-9 h-9 flex items-center justify-center border-none rounded-md cursor-pointer transition-all duration-150 p-0 active:scale-95 focus-visible:outline-2 focus-visible:outline-[var(--nim-primary)] focus-visible:outline-offset-2 ${isActive ? 'active bg-nim-primary text-nim-on-primary hover:bg-nim-primary-hover' : 'bg-transparent text-nim-muted hover:bg-nim-tertiary hover:text-nim'}`}
+                    onClick={activate}
+                    title={hasHelpContent(testId) ? undefined : panel.label}
+                    aria-label={panel.label}
+                    aria-pressed={isActive}
+                    data-panel-id={panel.id}
+                    data-testid={testId}
+                  >
+                    <MaterialSymbol icon={panel.icon} size={20} fill={isActive} />
+                    {panel.isAlpha && (
+                      <AlphaBadge size="dot" className="absolute top-0 right-0.5 pointer-events-none" />
+                    )}
+                  </button>
+                </HelpTooltip>
               );
             })}
         </div>
@@ -567,38 +583,45 @@ export const NavigationGutter: React.FC<NavigationGutterProps> = ({
         <div className="nav-section nav-extension-panels flex flex-col items-center gap-1 w-full px-1.5 py-1">
           {extensionPanelButtons
             .filter(panel => panel.placement === 'sidebar')
-            .map((panel) => (
-              <button
-                key={panel.id}
-                className={`nav-button relative w-9 h-9 flex items-center justify-center border-none rounded-md cursor-pointer transition-all duration-150 p-0 active:scale-95 focus-visible:outline-2 focus-visible:outline-[var(--nim-primary)] focus-visible:outline-offset-2 ${activeExtensionPanel === panel.id ? 'active bg-nim-primary text-nim-on-primary hover:bg-nim-primary-hover' : 'bg-transparent text-nim-muted hover:bg-nim-tertiary hover:text-nim'}`}
-                onClick={() => {
-                  // Toggle panel: if clicking active panel, deactivate it
-                  const newPanelId = activeExtensionPanel === panel.id ? null : panel.id;
-                  onExtensionPanelChange?.(newPanelId);
-                  // Sidebar panels work alongside files mode
-                  if (newPanelId && contentMode !== 'files') {
-                    onContentModeChange('files');
-                  }
-                  posthog?.capture('extension_panel_toggled', {
-                    panelId: panel.id,
-                    placement: panel.placement,
-                    action: newPanelId ? 'activated' : 'deactivated',
-                  });
-                }}
-                title={panel.label}
-                aria-label={panel.label}
-                data-panel-id={panel.id}
-              >
-                <MaterialSymbol
-                  icon={panel.icon}
-                  size={20}
-                  fill={activeExtensionPanel === panel.id}
-                />
-                {panel.isAlpha && (
-                  <AlphaBadge size="dot" className="absolute top-0 right-0.5 pointer-events-none" />
-                )}
-              </button>
-            ))}
+            .map((panel) => {
+              // Same serving path as the fullscreen buttons: HelpContent
+              // resolves the manifest `tooltip` under this testid.
+              const testId = `extension-panel-${panel.id}`;
+              return (
+                <HelpTooltip key={panel.id} testId={testId} placement="right">
+                  <button
+                    className={`nav-button relative w-9 h-9 flex items-center justify-center border-none rounded-md cursor-pointer transition-all duration-150 p-0 active:scale-95 focus-visible:outline-2 focus-visible:outline-[var(--nim-primary)] focus-visible:outline-offset-2 ${activeExtensionPanel === panel.id ? 'active bg-nim-primary text-nim-on-primary hover:bg-nim-primary-hover' : 'bg-transparent text-nim-muted hover:bg-nim-tertiary hover:text-nim'}`}
+                    onClick={() => {
+                      // Toggle panel: if clicking active panel, deactivate it
+                      const newPanelId = activeExtensionPanel === panel.id ? null : panel.id;
+                      onExtensionPanelChange?.(newPanelId);
+                      // Sidebar panels work alongside files mode
+                      if (newPanelId && contentMode !== 'files') {
+                        onContentModeChange('files');
+                      }
+                      posthog?.capture('extension_panel_toggled', {
+                        panelId: panel.id,
+                        placement: panel.placement,
+                        action: newPanelId ? 'activated' : 'deactivated',
+                      });
+                    }}
+                    title={hasHelpContent(testId) ? undefined : panel.label}
+                    aria-label={panel.label}
+                    data-panel-id={panel.id}
+                    data-testid={testId}
+                  >
+                    <MaterialSymbol
+                      icon={panel.icon}
+                      size={20}
+                      fill={activeExtensionPanel === panel.id}
+                    />
+                    {panel.isAlpha && (
+                      <AlphaBadge size="dot" className="absolute top-0 right-0.5 pointer-events-none" />
+                    )}
+                  </button>
+                </HelpTooltip>
+              );
+            })}
         </div>
       )}
 
@@ -643,7 +666,7 @@ export const NavigationGutter: React.FC<NavigationGutterProps> = ({
                     action: newPanelId ? 'activated' : 'deactivated',
                   });
                 }}
-                title={panel.label}
+                title={hasHelpContent(testId) ? undefined : panel.label}
                 aria-label={panel.label}
                 aria-pressed={isActive}
                 data-testid={testId}

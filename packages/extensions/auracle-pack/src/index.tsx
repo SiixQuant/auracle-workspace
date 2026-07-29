@@ -4,6 +4,7 @@ import { AuracleFlowEditor } from './components/FlowEditor';
 import { GridPanel } from './components/grid/GridPanel';
 import { GridGutterButton } from './components/grid/GridGutterButton';
 import { RunStrategyHeader } from './components/RunStrategyHeader';
+import { boardAiTools } from './aiTools';
 
 export async function activate() {}
 
@@ -33,3 +34,8 @@ export const components = {
   AuracleFlowEditor,
   RunStrategyHeader,
 };
+
+// The agent's hands on the Board: the same store the canvas writes to, reached
+// through the host's tool bridge. Every name here is listed in the manifest's
+// `contributions.aiTools`, which is what the host matches them against.
+export const aiTools = boardAiTools;

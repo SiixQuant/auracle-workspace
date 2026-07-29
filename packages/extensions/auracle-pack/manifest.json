@@ -12,6 +12,16 @@
   },
   "contributions": {
     "hostComponents": ["AuracleStatusChip"],
+    "aiTools": [
+      "board_list",
+      "board_create_card",
+      "board_update_card",
+      "board_wire",
+      "board_unwire",
+      "board_delete_card",
+      "board_read_outputs",
+      "board_scan_card"
+    ],
     "customEditors": [
       {
         "filePatterns": ["*.flow.json"],

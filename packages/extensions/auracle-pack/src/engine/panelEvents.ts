@@ -65,10 +65,42 @@ export interface ValidationCompletedEvent {
   };
 }
 
+/** What a board tool did to the graph. */
+export type BoardVerb = 'create' | 'update' | 'wire' | 'unwire' | 'delete';
+
+/**
+ * A board card or wire was changed by a TOOL — the agent operating the Board
+ * rather than a person on the canvas.
+ *
+ * This is a report, not an audit log, and the distinction is worth stating: the
+ * durable, engine-side journal of board actions is a separate change, and until
+ * it lands this lane is what says out loud that the agent moved something. It
+ * is best-effort by construction (a host without `notifyChange` hears nothing)
+ * and every policy decision about it stays host-side, as with every other event
+ * here.
+ *
+ * The payload names the VERB and the card it acted on. It never carries a
+ * configuration, because a configuration is exactly the thing a credential
+ * would be hiding in — and an event stream is a poor place to discover that.
+ */
+export interface BoardMutatedEvent {
+  type: 'board.mutated';
+  /** The node id acted on, or the edge id for a wire verb. */
+  subject: string;
+  payload: {
+    verb: BoardVerb;
+    /** The card's kind, when the verb had one. */
+    kind?: string;
+    /** Who did it. Always the agent: a person's edits go through the canvas. */
+    actor: 'agent';
+  };
+}
+
 export type PanelEvent =
   | BacktestFinishedEvent
   | DeployFailedEvent
-  | ValidationCompletedEvent;
+  | ValidationCompletedEvent
+  | BoardMutatedEvent;
 
 /** Wrap a typed event in the versioned envelope the host routes. */
 export function toEnvelope(event: PanelEvent): PanelChangeEnvelope {
@@ -110,6 +142,18 @@ export function deployFailedEvent(args: {
     type: 'deploy.failed',
     subject: args.subject,
     payload: { strategy: args.strategy, state: args.state },
+  };
+}
+
+export function boardMutatedEvent(args: {
+  subject: string;
+  verb: BoardVerb;
+  kind?: string;
+}): BoardMutatedEvent {
+  return {
+    type: 'board.mutated',
+    subject: args.subject,
+    payload: { verb: args.verb, ...(args.kind ? { kind: args.kind } : {}), actor: 'agent' },
   };
 }
 

@@ -17,9 +17,9 @@
  * ## Why the face is a button and the verbs are not inside it
  * Clicking a card opens its editor, so the face has to be a real button: a div
  * with a click handler is not reachable from a keyboard and announces nothing.
- * The verbs (the wire handle, the scan slot) sit in a row BELOW that button
- * rather than inside it, because a button inside a button is invalid markup and
- * browsers resolve it by dropping one of them.
+ * The verbs (the wire handle, the scan verb and its badge) sit in a row BELOW
+ * that button rather than inside it, because a button inside a button is
+ * invalid markup and browsers resolve it by dropping one of them.
  *
  * ## Geometry comes from the layout, never from CSS
  * At the canvas tier a card is absolutely positioned at coordinates
@@ -36,6 +36,7 @@ import { tint, tone } from '../panelkit';
 import { HEALTH_COLOR } from './districts';
 import { GRID_ACCENT, GRID_ACCENT_DIM } from './gridTheme';
 import { CARD_HEIGHT, CARD_WIDTH, type PlacedCard } from './boardLayout';
+import type { CardVerb } from './boardScan';
 import { TREE_MIN_WIDTH } from './gridWires';
 import {
   cardNote,
@@ -93,6 +94,14 @@ const SHEET = `
 .acard__verb:focus-visible { outline: 2px solid ${GRID_ACCENT}; outline-offset: 1px; }
 .acard__verb .material-symbols-outlined { font-size: 13px; line-height: 1; }
 .acard__count { margin-left: auto; font-size: 10.5px; color: ${tone.text3}; white-space: nowrap; }
+/* The badge rides ON the verb, because the number is what the verb is about:
+   it is how much there is to read, and pressing it is what reads it. The
+   accent is STRUCTURE here in the same sense as elsewhere — this is the one
+   control on the card with something waiting behind it. */
+.acard__badge { display: inline-flex; align-items: center; justify-content: center; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 999px; font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums; background: ${tint(GRID_ACCENT, 22)}; color: ${GRID_ACCENT}; }
+/* A stall somebody has to know about, said in words on the card rather than
+   left as a verb that quietly does nothing. */
+.acard__flag { margin: 0 12px 10px; font-size: 10.5px; line-height: 1.45; color: ${tone.caution}; }
 
 @container auracle-grid (min-width: 640px) {
   .aboard__cards { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
@@ -131,9 +140,16 @@ export interface BoardCardProps {
   wires: number;
   editing: boolean;
   drop: DropState;
+  /** How a question card's verb reads: which word it wears, how much is
+   *  waiting behind it, and whether the budget has stopped the loop. Null on
+   *  every card that carries no verb. */
+  verb?: CardVerb | null;
+  /** A dispatch for this card is out. */
+  scanning?: boolean;
   onOpen: (node: BoardNode, anchor: HTMLElement) => void;
   onWireStart: (nodeId: string) => void;
   onWireEnd: (nodeId: string) => void;
+  onScan?: (nodeId: string) => void;
   onPeek: (node: BoardNode, anchor: HTMLElement) => void;
   onPeekEnd: () => void;
 }
@@ -143,6 +159,11 @@ function wireCount(n: number, kind: string): string {
   return n === 1 ? '1 wire' : `${n} wires`;
 }
 
+/** The paused-by-budget sentence — one line, in the same words the editor and
+ *  the card's own label use, so nobody has to reconcile two phrasings. */
+export const BUDGET_PAUSED_LINE =
+  'Automatic synthesis is paused: the monthly dispatch budget is spent.';
+
 export function BoardCard({
   node,
   card,
@@ -150,15 +171,31 @@ export function BoardCard({
   wires,
   editing,
   drop,
+  verb,
+  scanning = false,
   onOpen,
   onWireStart,
   onWireEnd,
+  onScan,
   onPeek,
   onPeekEnd,
 }: BoardCardProps): JSX.Element {
   const title = cardTitle(node);
   const note = cardNote(node);
   const icon = CARD_ICONS[node.kind] ?? 'crop_square';
+  const waiting = verb && verb.newMaterial !== null && verb.newMaterial > 0 ? verb.newMaterial : 0;
+  // Everything the verb row says, on the face's own label: the badge is a
+  // number in a pill and the paused line sits below the buttons, and a screen
+  // reader gets neither by reading the card's heading.
+  const label = [
+    `${kindWord(node.kind)}: ${title}`,
+    reading.word,
+    waiting > 0 ? `${waiting} new ${waiting === 1 ? 'item' : 'items'} waiting` : null,
+    verb?.paused ? BUDGET_PAUSED_LINE.replace(/\.$/, '') : null,
+    'Configure',
+  ]
+    .filter((part): part is string => part !== null)
+    .join('. ');
 
   return (
     <div
@@ -180,7 +217,7 @@ export function BoardCard({
         type="button"
         className="acard__face"
         data-testid={`board-card-face-${node.id}`}
-        aria-label={`${kindWord(node.kind)}: ${title}. ${reading.word}. Configure`}
+        aria-label={label}
         onClick={(event) => onOpen(node, event.currentTarget.parentElement ?? event.currentTarget)}
       >
         <span className="acard__top">
@@ -224,24 +261,47 @@ export function BoardCard({
             Wire
           </button>
         ) : null}
-        {node.kind === 'research' ? (
+        {node.kind === 'research' && verb ? (
           <button
             type="button"
             className="acard__verb"
             data-testid={`board-scan-${node.id}`}
-            disabled
-            title="wires to the engine in a later change"
+            data-kind={verb.kind}
+            // Only a card with nothing written on it, and a card whose dispatch
+            // is already out. A PAUSED budget does not disable it: the cap stops
+            // the loop from spending on its own, not a person asking for their
+            // own evidence.
+            disabled={!verb.ready || scanning}
+            title={
+              verb.ready
+                ? 'Open an agent session on the evidence gathered for this question'
+                : 'Write the question first'
+            }
+            onClick={(event) => {
+              event.stopPropagation();
+              onScan?.(node.id);
+            }}
           >
             <span className="material-symbols-outlined" aria-hidden>
               travel_explore
             </span>
-            Scan
+            {verb.label}
+            {waiting > 0 ? (
+              <span className="acard__badge" data-testid={`board-material-${node.id}`} aria-hidden>
+                {waiting}
+              </span>
+            ) : null}
           </button>
         ) : null}
         <span className="acard__count" data-testid={`board-card-wires-${node.id}`}>
           {wireCount(wires, node.kind)}
         </span>
       </div>
+      {verb?.paused ? (
+        <p className="acard__flag" data-testid={`board-budget-paused-${node.id}`}>
+          {BUDGET_PAUSED_LINE}
+        </p>
+      ) : null}
     </div>
   );
 }

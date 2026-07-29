@@ -60,7 +60,9 @@ import { BoardCard, ensureBoardCardStyles, useBoardPeek, type DropState } from '
 import { BoardCardEditor } from './BoardCardEditor';
 import { BoardWires } from './BoardWires';
 import { layoutBoard, userSubgraph, type PlacedCard } from './boardLayout';
-import { keptSentence, RESEARCH_READING, sourceReading, type CardReading } from './boardReadings';
+import { cardVerb, dispatchBoardScan, useBoardResearchLoop, type CardVerb } from './boardScan';
+import { aiRunStore, resultLine } from './gridAiActions';
+import { keptSentence, researchReading, sourceReading, type CardReading } from './boardReadings';
 
 const STYLE_ID = 'auracle-grid-board-styles';
 
@@ -207,6 +209,10 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
   const connectors = feeds.connections;
   const canvas = useGridCanvas();
   const peek = useBoardPeek();
+  // The research loop — standing questions and, for the cards that armed it,
+  // the automatic pass — runs exactly as long as the Board is on screen.
+  useBoardResearchLoop();
+  const ai = useSyncExternalStore(aiRunStore.subscribe, aiRunStore.getSnapshot, aiRunStore.getSnapshot);
 
   const cardsRef = useRef<HTMLDivElement | null>(null);
   const [editing, setEditing] = useState<{ nodeId: string; anchor: HTMLElement } | null>(null);
@@ -351,8 +357,34 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
     setNotice({ text: keptSentence(plan), kind: 'ok' });
   }, []);
 
+  /** A question card's verb, from the counters and the allowance the shared
+   *  lane already carries. Null for every card that has no verb. */
+  const verbOf = (node: BoardNode): CardVerb | null =>
+    node.kind === 'research' ? cardVerb(node, feeds.material, feeds.budget) : null;
+
   const readingOf = (node: BoardNode): CardReading =>
-    node.kind === 'source' ? sourceReading(node.source ?? BLANK_SOURCE, connectors) : RESEARCH_READING;
+    node.kind === 'source'
+      ? sourceReading(node.source ?? BLANK_SOURCE, connectors)
+      : researchReading(verbOf(node)?.newMaterial ?? null);
+
+  /** Press the verb on one card. The lane runs one action at a time, so a press
+   *  that lands on a busy lane says so rather than appearing to do nothing. */
+  const scanCard = useCallback(
+    (nodeId: string): void => {
+      const node = graph.nodes.find((row) => row.id === nodeId);
+      if (!node) return;
+      const verb = cardVerb(node, feeds.material, feeds.budget);
+      setNotice(null);
+      void dispatchBoardScan(graph, nodeId, verb.kind, verb.newMaterial ?? 0).then((result) => {
+        setNotice(
+          result === null
+            ? { text: 'Something else is already running. Try again in a moment.', kind: 'ok' }
+            : { text: resultLine(result), kind: result.kind === 'failed' ? 'err' : 'ok' }
+        );
+      });
+    },
+    [feeds.budget, feeds.material, graph]
+  );
 
   const dropOf = (node: BoardNode): DropState => {
     if (wiring === null) return 'none';
@@ -471,9 +503,12 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
                     wires={wireCountOf(node.id)}
                     editing={editing?.nodeId === node.id}
                     drop={dropOf(node)}
+                    verb={verbOf(node)}
+                    scanning={ai.running?.id === `board-scan-${node.id}`}
                     onOpen={openCard}
                     onWireStart={startWire}
                     onWireEnd={endWire}
+                    onScan={scanCard}
                     onPeek={(target, el) => peek.open(target, el, reading)}
                     onPeekEnd={peek.close}
                   />

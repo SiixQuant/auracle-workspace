@@ -79,6 +79,15 @@ export interface BoardSourceConfig {
 /** A research card's configuration: the question, in the user's words. */
 export interface BoardResearchConfig {
   hypothesis: string;
+  /**
+   * Whether the standing loop may dispatch synthesis for this card on its own.
+   *
+   * OFF unless somebody turned it on, and stored per card rather than per
+   * workspace, because the thing it authorizes costs money: a dispatch is an
+   * agent session against the monthly allowance. Absent means off, so a card
+   * written by an older build — or by hand — can never arrive already spending.
+   */
+  autoSynthesize?: boolean;
 }
 
 /**
@@ -205,7 +214,10 @@ export function normalizeSourceConfig(value: unknown): BoardSourceConfig | undef
 
 export function normalizeResearchConfig(value: unknown): BoardResearchConfig | undefined {
   if (!isRecord(value)) return undefined;
-  return { hypothesis: str(value.hypothesis) };
+  const config: BoardResearchConfig = { hypothesis: str(value.hypothesis) };
+  // Only a literal true authorizes automatic spend. Anything else — absent, a
+  // string, a truthy number somebody hand-edited in — is off.
+  return value.autoSynthesize === true ? { ...config, autoSynthesize: true } : config;
 }
 
 function collectExtra(
@@ -340,7 +352,13 @@ function serializeNode(node: BoardNode): Record<string, unknown> {
     if (node.source.credentialSlot) source.credentialSlot = node.source.credentialSlot;
     out.source = source;
   }
-  if (node.research) out.research = { hypothesis: node.research.hypothesis };
+  if (node.research) {
+    const research: Record<string, unknown> = { hypothesis: node.research.hypothesis };
+    // Written only when on, so a Board nobody has armed serializes byte for
+    // byte as it did before this field existed.
+    if (node.research.autoSynthesize) research.autoSynthesize = true;
+    out.research = research;
+  }
   if (node.ref) out.ref = { kind: node.ref.kind, id: node.ref.id };
   if (node.label) out.label = node.label;
   if (node.extra) Object.assign(out, node.extra);
@@ -414,6 +432,10 @@ function sameSource(a: BoardSourceConfig, b: BoardSourceConfig): boolean {
   );
 }
 
+function sameResearch(a: BoardResearchConfig, b: BoardResearchConfig): boolean {
+  return a.hypothesis === b.hypothesis && (a.autoSynthesize ?? false) === (b.autoSynthesize ?? false);
+}
+
 /** What a card's editor may change. Applied by kind; the rest is ignored. */
 export interface BoardNodePatch {
   source?: Partial<BoardSourceConfig>;
@@ -436,7 +458,7 @@ export function updateNode(graph: BoardGraph, nodeId: string, patch: BoardNodePa
   }
   if (patch.research && node.kind === 'research' && node.research) {
     const merged = normalizeResearchConfig({ ...node.research, ...patch.research });
-    if (merged && merged.hypothesis !== node.research.hypothesis) {
+    if (merged && !sameResearch(node.research, merged)) {
       next = { ...next, research: merged };
     }
   }

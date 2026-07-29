@@ -20,6 +20,10 @@
  * provider would move one and not the other — so this room keeps the same
  * registry read the room itself uses.
  *
+ * The Board's research counters are a fifth, and the strictest: they are read
+ * only while a question is actually registered with the engine, so an install
+ * that has never posed one pays nothing at all for them.
+ *
  * ## Counts come from the summary; rows do not
  * The consolidated payload is counts. Two surfaces need more than a count from
  * the deployments block — the AI strip says which deployment stopped rather
@@ -52,6 +56,13 @@
  */
 import { getJson, onConnectGeneration } from './client';
 import { backtestStore, type BacktestSnapshot } from './backtestStore';
+import {
+  readMaterialCounters,
+  readSynthesisBudget,
+  type MaterialCounter,
+  type SynthesisBudget,
+} from './boardResearch';
+import { hasStandingQueries } from './boardStandingQueries';
 import { DEPLOY_FAILED_STATE, type Deployment } from './live';
 import { isConnected, type Connector } from './model';
 import type { BlotterOrder } from './monitors';
@@ -152,6 +163,14 @@ export interface VitalSources {
   strategies: unknown[] | null;
   orders: BlotterOrder[] | null;
   connections: Connector[] | null;
+  /**
+   * The Board's new-material counters, read only while a question is actually
+   * registered. Null when nothing has been read; empty when the engine answered
+   * and counted nothing.
+   */
+  material: MaterialCounter[] | null;
+  /** The synthesis allowance, read on the same condition. */
+  budget: SynthesisBudget | null;
   /** Always present: an in-process store, not a fetch. */
   run: BacktestSnapshot;
 }
@@ -377,6 +396,8 @@ function emptySources(): VitalSources {
     strategies: null,
     orders: null,
     connections: null,
+    material: null,
+    budget: null,
     run: backtestStore.getSnapshot(),
   };
 }
@@ -444,10 +465,43 @@ function sameConnectors(a: Connector[] | null, b: Connector[] | null): boolean {
   });
 }
 
+/**
+ * Whether two counter reads say the same thing. The same identity rule the
+ * registry follows and for the same reason: a poll that counted the same
+ * material hands back a new array every 30 seconds, and adopting it would
+ * re-render every question card on the Board for nothing.
+ */
+function sameCounters(a: MaterialCounter[] | null, b: MaterialCounter[] | null): boolean {
+  if (a === b) return true;
+  if (a === null || b === null || a.length !== b.length) return false;
+  return a.every((row, i) => {
+    const other = b[i];
+    return (
+      row.nodeId === other.nodeId &&
+      row.newMaterial === other.newMaterial &&
+      row.asOf === other.asOf
+    );
+  });
+}
+
+function sameBudget(a: SynthesisBudget | null, b: SynthesisBudget | null): boolean {
+  if (a === b) return true;
+  if (a === null || b === null) return false;
+  return a.cap === b.cap && a.spent === b.spent && a.paused === b.paused;
+}
+
 function apply(patch: Partial<VitalSources>, startedAt = generation): void {
   if (startedAt !== generation) return;
   const previous = sources.connections;
+  const previousMaterial = sources.material;
+  const previousBudget = sources.budget;
   sources = { ...sources, ...patch };
+  if (sameCounters(previousMaterial, sources.material)) {
+    sources = { ...sources, material: previousMaterial };
+  }
+  if (sameBudget(previousBudget, sources.budget)) {
+    sources = { ...sources, budget: previousBudget };
+  }
   // Identity is the subscription contract for the rows (useSyncExternalStore
   // compares snapshots by reference, and `engineFeeds` republishes on identity),
   // so a poll that returned the same registry keeps the array it already had
@@ -498,6 +552,7 @@ async function readLive(): Promise<void> {
   const [summary, connections] = await Promise.all([
     getJson<SummaryBody>(SUMMARY_PATH),
     getJson<{ connections?: Connector[] }>('/ui/api/connections?kind=all'),
+    readBoardResearch(startedAt),
   ]);
   const connectors = rowsOf<Connector>(connections, 'connections');
   if (summary === null || (figure(summary.deployments?.total) ?? 0) === 0) {
@@ -518,6 +573,22 @@ async function readLive(): Promise<void> {
     },
     startedAt
   );
+}
+
+/**
+ * The Board's research readings, on the same lane and under the same rule the
+ * deployment detail read follows: asked for ONLY when there is something to ask
+ * about. A workspace with no question registered pays nothing, and a Board that
+ * is not open registers nothing, so this costs exactly what it is used for.
+ *
+ * It rides here rather than in a poll of its own because the badge a person
+ * watches accumulate has to move on the cadence they are already being shown,
+ * and because a second loop would keep running after the Board closed.
+ */
+async function readBoardResearch(startedAt: number): Promise<void> {
+  if (!hasStandingQueries()) return;
+  const [material, budget] = await Promise.all([readMaterialCounters(), readSynthesisBudget()]);
+  apply({ material, budget }, startedAt);
 }
 
 /** The three rooms the consolidated payload carries no block for. */
@@ -604,9 +675,27 @@ export interface EngineFeeds {
    * as "no reading" rather than as "not linked".
    */
   connections: Connector[] | null;
+  /**
+   * How much new material each watched question has gathered. Null until the
+   * engine answers — which a card draws as no badge rather than as a zero,
+   * because "nothing has arrived" and "nobody has counted" are different things
+   * to tell somebody waiting on evidence.
+   */
+  material: MaterialCounter[] | null;
+  /**
+   * The synthesis allowance, so a card can say plainly that the month's
+   * dispatches are spent instead of appearing to do nothing.
+   */
+  budget: SynthesisBudget | null;
 }
 
-let feeds: EngineFeeds = { strategies: null, deployments: null, connections: null };
+let feeds: EngineFeeds = {
+  strategies: null,
+  deployments: null,
+  connections: null,
+  material: null,
+  budget: null,
+};
 const feedListeners = new Set<() => void>();
 
 /** Replace the cached view only when a feed's identity moved, so a poll that
@@ -615,7 +704,9 @@ function republishFeeds(): void {
   if (
     feeds.strategies === sources.strategies &&
     feeds.deployments === sources.deployments &&
-    feeds.connections === sources.connections
+    feeds.connections === sources.connections &&
+    feeds.material === sources.material &&
+    feeds.budget === sources.budget
   ) {
     return;
   }
@@ -623,6 +714,8 @@ function republishFeeds(): void {
     strategies: sources.strategies,
     deployments: sources.deployments,
     connections: sources.connections,
+    material: sources.material,
+    budget: sources.budget,
   };
   for (const listener of feedListeners) listener();
 }

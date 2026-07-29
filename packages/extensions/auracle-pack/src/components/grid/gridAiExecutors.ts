@@ -72,6 +72,15 @@ export function unregisterAgentHost(host: PanelHostLike | undefined): void {
   if (agentHost === host) agentHost = undefined;
 }
 
+/**
+ * The host on file, for the other draft-class verbs that dispatch through this
+ * same lane from their own modules. Read at CALL time rather than captured, so
+ * a panel that mounted after them still hands them the live one.
+ */
+export function agentSessionHost(): PanelHostLike | undefined {
+  return agentHost;
+}
+
 /* ── the undo the last repair left behind ───────────────────────────── */
 
 /** A repair that landed, and every journal entry that reverses it. */

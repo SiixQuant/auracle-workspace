@@ -410,6 +410,31 @@ const MOCK_BOARD_SOURCES: Array<Record<string, unknown>> = [];
 const MOCK_VAULT: Record<string, { name: string; set: boolean; updated_at: string }> = {};
 const MOCK_PREFS: Record<string, unknown> = {};
 
+// The research loop's half of the same contract. A registered question starts
+// GATHERING immediately — one mock item every few seconds — which is what makes
+// the badge, the distinct Synthesize label and the auto pass all demoable in a
+// single sitting. Dispatching resets that count and spends one of the month's
+// allowance, and the allowance pauses itself when it runs out, so the
+// paused-by-budget state can be reached without editing anything.
+const MOCK_QUESTIONS: Record<string, { hypothesis: string; since: number }> = {};
+const MOCK_BUDGET = { cap: 20, spent: 17 };
+/** How fast the harness pretends material arrives, and how much can pile up. */
+const MOCK_GATHER_MS = 6000;
+const MOCK_GATHER_MAX = 9;
+
+function mockCounters(): Array<Record<string, unknown>> {
+  const now = Date.now();
+  return Object.entries(MOCK_QUESTIONS).map(([node_id, row]) => ({
+    node_id,
+    new_material: Math.min(MOCK_GATHER_MAX, Math.floor((now - row.since) / MOCK_GATHER_MS)),
+    as_of: new Date(now).toISOString(),
+  }));
+}
+
+function mockBudget(): Record<string, unknown> {
+  return { ...MOCK_BUDGET, paused: MOCK_BUDGET.spent >= MOCK_BUDGET.cap };
+}
+
 const ok = (body: unknown) => ({ ok: true, status: 200, body });
 const notFound = { ok: false, status: 404, body: null };
 
@@ -437,6 +462,40 @@ function boardRoute(
     const id = decodeURIComponent(removed[1]);
     const at = MOCK_BOARD_SOURCES.findIndex((source) => source.id === id);
     if (at >= 0) MOCK_BOARD_SOURCES.splice(at, 1);
+    return ok({ ok: true });
+  }
+
+  // Counters first: the id patterns below would otherwise swallow this path.
+  if (p === '/ui/api/board/questions/counters') return ok({ counters: mockCounters() });
+
+  if (p === '/ui/api/board/budget') return ok(mockBudget());
+
+  if (p === '/ui/api/board/synthesis' && method === 'POST') {
+    MOCK_BUDGET.spent = Math.min(MOCK_BUDGET.cap, MOCK_BUDGET.spent + 1);
+    return ok({ ok: true, budget: mockBudget() });
+  }
+
+  if (p === '/ui/api/board/questions' && method === 'POST') {
+    const id = String(record.node_id ?? '');
+    // Re-registering an EDITED question keeps whatever it has gathered: the
+    // engine is watching the same card, not a new one.
+    MOCK_QUESTIONS[id] = {
+      hypothesis: String(record.hypothesis ?? ''),
+      since: MOCK_QUESTIONS[id]?.since ?? Date.now(),
+    };
+    return ok({ ok: true });
+  }
+
+  const withdrawn = p.match(/^\/ui\/api\/board\/questions\/([^/]+)\/delete$/);
+  if (withdrawn) {
+    delete MOCK_QUESTIONS[decodeURIComponent(withdrawn[1])];
+    return ok({ ok: true });
+  }
+
+  const counted = p.match(/^\/ui\/api\/board\/questions\/([^/]+)\/counter\/reset$/);
+  if (counted) {
+    const id = decodeURIComponent(counted[1]);
+    if (MOCK_QUESTIONS[id]) MOCK_QUESTIONS[id].since = Date.now();
     return ok({ ok: true });
   }
 

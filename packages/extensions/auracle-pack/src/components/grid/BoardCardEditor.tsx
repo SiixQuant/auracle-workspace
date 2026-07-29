@@ -29,12 +29,14 @@
  * something. There is no way to read a stored secret back through this surface,
  * because there is no way to read one back at all.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { CSSProperties } from 'react';
 import { FloatingPortal, autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/react';
 import type { BoardDeletePlan, BoardGraph, BoardNode } from '../../engine/boardGraph';
 import { boardGraphStore } from '../../engine/boardGraphStore';
 import { isBuiltInNode } from '../../engine/boardBuiltins';
+import type { SynthesisBudget } from '../../engine/boardResearch';
+import { engineFeeds } from '../../engine/gridVitals';
 import {
   clearCredentialSecret,
   credentialSlotState,
@@ -47,7 +49,9 @@ import {
 } from '../../engine/boardSources';
 import { Button, tone } from '../panelkit';
 import { deleteSentence } from './boardReadings';
-import { kindWord } from './BoardCard';
+import { BUDGET_PAUSED_LINE, kindWord } from './BoardCard';
+import { cardVerb, dispatchBoardScan } from './boardScan';
+import { resultLine } from './gridAiActions';
 
 /* ── small parts ─────────────────────────────────────────────────────────── */
 
@@ -241,7 +245,7 @@ export function BoardCardEditor({
         </header>
 
         {node.kind === 'source' ? <SourceFields node={node} /> : null}
-        {node.kind === 'research' ? <ResearchFields node={node} /> : null}
+        {node.kind === 'research' ? <ResearchFields node={node} graph={graph} /> : null}
         {node.kind !== 'source' && node.kind !== 'research' ? (
           <StatusLine
             testId="board-editor-readonly"
@@ -494,8 +498,50 @@ function CredentialSection({
 
 /* ── research ────────────────────────────────────────────────────────────── */
 
-function ResearchFields({ node }: { node: BoardNode }): JSX.Element {
+/** What the counter says, in a sentence. Null and zero are different answers
+ *  and are worded differently: nobody has counted, versus nothing arrived. */
+function materialLine(newMaterial: number | null): string {
+  if (newMaterial === null) return 'Nothing counted yet — the engine has not reported on this question.';
+  if (newMaterial === 0) return 'Nothing new since the last look.';
+  return `${newMaterial} new ${newMaterial === 1 ? 'item' : 'items'} since the last look.`;
+}
+
+/** The allowance, in the engine's own figures wherever it stated them. */
+function budgetLine(budget: SynthesisBudget | null): string {
+  if (budget === null) return 'The engine has not reported a dispatch budget.';
+  if (budget.paused) return BUDGET_PAUSED_LINE;
+  if (budget.cap === null || budget.spent === null) return 'Each run spends one dispatch.';
+  return `${budget.spent} of ${budget.cap} dispatches used this month.`;
+}
+
+function ResearchFields({ node, graph }: { node: BoardNode; graph: BoardGraph }): JSX.Element {
   const hypothesis = node.research?.hypothesis ?? '';
+  const feeds = useSyncExternalStore(
+    engineFeeds.subscribe,
+    engineFeeds.getSnapshot,
+    engineFeeds.getSnapshot
+  );
+  const verb = cardVerb(node, feeds.material, feeds.budget);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<{ text: string; kind: 'ok' | 'err' | 'quiet' } | null>(null);
+
+  const dispatch = async (): Promise<void> => {
+    setBusy(true);
+    setNote(null);
+    const result = await dispatchBoardScan(graph, node.id, verb.kind, verb.newMaterial ?? 0);
+    setBusy(false);
+    if (result === null) {
+      // The lane runs one action at a time on purpose; saying so is better
+      // than a press that appears to have done nothing.
+      setNote({ text: 'Something else is already running. Try again in a moment.', kind: 'quiet' });
+      return;
+    }
+    setNote({
+      text: resultLine(result),
+      kind: result.kind === 'failed' ? 'err' : result.kind === 'done' ? 'ok' : 'quiet',
+    });
+  };
+
   return (
     <>
       <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -512,20 +558,62 @@ function ResearchFields({ node }: { node: BoardNode }): JSX.Element {
           }
         />
       </label>
-      {/* The verb this card will eventually carry, present and honest about
-          not being wired yet — the later change drops its handler in here and
-          on the card's own row, and nothing around it has to move. */}
+
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <Button
           variant="ghost"
           testId="board-editor-scan"
-          disabled
-          title="wires to the engine in a later change"
+          busy={busy}
+          disabled={!verb.ready}
+          onClick={() => void dispatch()}
         >
-          Scan for evidence
+          {verb.kind === 'synthesize' ? 'Synthesize the new material' : 'Scan for evidence'}
         </Button>
-        <StatusLine testId="board-editor-scan-note" kind="quiet" text="Wires to the engine in a later change." />
       </div>
+      <StatusLine testId="board-editor-material" kind="quiet" text={materialLine(verb.newMaterial)} />
+      {note ? <StatusLine testId="board-editor-scan-note" kind={note.kind} text={note.text} /> : null}
+
+      {/* The one setting on this card that costs money on its own, so it is
+          off unless somebody turns it on, and it cannot be turned on while the
+          engine says there is nothing left to spend. */}
+      <section
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+          padding: '8px 10px',
+          borderRadius: 8,
+          border: `1px solid ${tone.border}`,
+          background: tone.surface,
+        }}
+      >
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+          <input
+            type="checkbox"
+            data-testid="board-editor-auto"
+            checked={verb.auto}
+            disabled={verb.paused || !verb.ready}
+            style={{ marginTop: 2, accentColor: tone.text2 }}
+            onChange={(event) =>
+              boardGraphStore.updateNode(node.id, {
+                research: { autoSynthesize: event.target.checked },
+              })
+            }
+          />
+          <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={LABEL}>Synthesize new material on its own</span>
+            <span style={{ fontSize: 11, lineHeight: 1.45, color: tone.text3 }}>
+              Each run opens one agent session and spends one dispatch. With this off, watching
+              this question costs nothing.
+            </span>
+          </span>
+        </label>
+        <StatusLine
+          testId="board-editor-budget"
+          kind={verb.paused ? 'err' : 'quiet'}
+          text={budgetLine(feeds.budget)}
+        />
+      </section>
     </>
   );
 }

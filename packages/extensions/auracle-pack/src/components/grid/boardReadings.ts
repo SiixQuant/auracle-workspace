@@ -92,12 +92,26 @@ export function sourceReading(
 }
 
 /**
- * A research card has no feed to read, and says so. It is drawn with the same
- * hollow dot a sourceless source gets, which is the truthful mark for a card
- * whose state nothing has measured yet — and the state the scan verb will
- * eventually move.
+ * A research card nothing has counted for yet. Drawn with the same hollow dot a
+ * sourceless source gets, which is the truthful mark for a card whose state
+ * nothing has measured.
  */
 export const RESEARCH_READING: CardReading = { health: 'unknown', word: 'not scanned yet' };
+
+/**
+ * How a question card reads once the engine is watching it.
+ *
+ * The dot FILLS IN when there is a real count behind it — the same promise a
+ * source card makes when its provider starts answering — and stays hollow while
+ * nobody has counted. A count of zero is a reading, not an absence: the engine
+ * looked and nothing new had arrived, which is a different sentence from "we
+ * have not asked".
+ */
+export function researchReading(newMaterial: number | null): CardReading {
+  if (newMaterial === null) return RESEARCH_READING;
+  if (newMaterial <= 0) return { health: 'nominal', word: 'watching' };
+  return { health: 'nominal', word: `${newMaterial} new` };
+}
 
 /** A neutral reading for a card this build has no opinion about. */
 export const NEUTRAL_READING: CardReading = { health: 'unknown', word: 'on the board' };

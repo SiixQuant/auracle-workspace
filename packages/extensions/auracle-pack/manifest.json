@@ -90,7 +90,7 @@
         "placement": "fullscreen",
         "order": 68,
         "aiSupported": true,
-        "tooltip": "Every Auracle surface in one plan: research, strategies, backtests, validation, deployments, and the live floor.",
+        "tooltip": "Two faces of one panel. **Board** is what you are working on: the sources you connected, the questions you asked, and what came of them. **Plan** is every Auracle surface in one floor plan: research, strategies, backtests, validation, deployments, and the live floor.\n\nSwitch with the Plan and Board control at the top left, or press Cmd B (Ctrl B on Windows and Linux).\n\nEvery card is configured on the canvas itself, so nothing you set up here navigates away.",
         "aliases": [
           "backtest",
           "strategy-lab",

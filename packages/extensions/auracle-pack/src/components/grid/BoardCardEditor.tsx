@@ -48,6 +48,7 @@ import {
   type CredentialSlot,
 } from '../../engine/boardSources';
 import { Button, tone } from '../panelkit';
+import { BUILT_IN_SOURCE_NOTE, RESEARCH_PLACEHOLDER } from './boardCopy';
 import { deleteSentence } from './boardReadings';
 import { BUDGET_PAUSED_LINE, kindWord } from './BoardCard';
 import { cardVerb, dispatchBoardScan } from './boardScan';
@@ -353,7 +354,7 @@ function SourceFields({ node }: { node: BoardNode }): JSX.Element {
           Connect
         </Button>
         {isBuiltInNode(node.id) ? (
-          <StatusLine testId="board-editor-builtin" kind="quiet" text="Keyless — ready as it is." />
+          <StatusLine testId="board-editor-builtin" kind="quiet" text={BUILT_IN_SOURCE_NOTE} />
         ) : null}
       </div>
       {connectState ? (
@@ -552,7 +553,10 @@ function ResearchFields({ node, graph }: { node: BoardNode; graph: BoardGraph })
           rows={5}
           style={{ ...INPUT, resize: 'vertical', lineHeight: 1.5 }}
           value={hypothesis}
-          placeholder="What do you think is true, and what would show it?"
+          // The prompt AND an example of a question this board can read
+          // something against: measurable, and carrying the thing that would
+          // show it. See boardCopy.
+          placeholder={RESEARCH_PLACEHOLDER}
           onChange={(event) =>
             boardGraphStore.updateNode(node.id, { research: { hypothesis: event.target.value } })
           }

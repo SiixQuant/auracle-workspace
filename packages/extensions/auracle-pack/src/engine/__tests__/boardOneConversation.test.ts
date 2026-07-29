@@ -20,11 +20,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 
+/** Every write the pack made to the engine, so the accounting a scan settles
+ *  with can be counted and audited like any other payload. */
+const engineWrites = vi.hoisted(() => [] as Array<{ path: string; body: unknown }>);
+
 vi.mock('../client', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   getJson: vi.fn(async () => null),
   getJsonDetailed: vi.fn(async () => ({ ok: false, status: 0, body: null })),
-  postJson: vi.fn(async () => ({ ok: false, status: 0, body: null })),
+  postJson: vi.fn(async (path: string, body: unknown) => {
+    engineWrites.push({ path, body });
+    return { ok: true, status: 200, body: { ok: true, recorded: true } };
+  }),
   putJson: vi.fn(async () => ({ ok: false, status: 0, body: null })),
   onConnectGeneration: vi.fn(() => () => {}),
 }));
@@ -36,6 +43,7 @@ import type { PanelHostLike } from '../../components/aiPanel';
 import { boardNodeContext } from '../boardEnvelope';
 import { boardGraphStore } from '../boardGraphStore';
 import type { BoardGraphTransport } from '../boardPersistence';
+import { BOARD_COUNTERS_PATH, BOARD_SYNTHESIS_PATH } from '../boardResearch';
 import { SECRET_PROBE, secretFindings } from './boardSecretProbe';
 
 /* ── the harness ─────────────────────────────────────────────────────────── */
@@ -100,6 +108,7 @@ let host: PanelHostLike | undefined;
 beforeEach(async () => {
   seen.length = 0;
   saved.length = 0;
+  engineWrites.length = 0;
   await boardGraphStore.open('/work/desk', { transport: lane, saveDelayMs: 10_000 });
 });
 
@@ -253,6 +262,57 @@ describe('one request stands a research lane up', () => {
   });
 });
 
+/* ── the dispatch is accounted for, whichever door it came through ───────── */
+
+describe('a scan started from the conversation is settled', () => {
+  async function question(): Promise<string> {
+    const research = await call('board_create_card', {
+      kind: 'research',
+      config: { hypothesis: 'Do late filings predict drift?' },
+    });
+    return (research.data as { node_id: string }).node_id;
+  }
+
+  it('records the dispatch once and puts the counter back once', async () => {
+    const { host: agent } = agentHost();
+    host = agent;
+    registerAgentHost(agent);
+    const nodeId = await question();
+    engineWrites.length = 0;
+
+    const scan = await call('board_scan_card', { node_id: nodeId });
+    expect(scan.success).toBe(true);
+
+    // The same account the card's own verb gives: one ledger entry, one
+    // counter put back. A tool call is a person asking, so it is recorded as
+    // manual — the engine runs those over the cap rather than refusing them.
+    expect(engineWrites).toEqual([
+      {
+        path: BOARD_SYNTHESIS_PATH,
+        body: { node_id: nodeId, trigger: 'manual', detail: 'scan' },
+      },
+      { path: `${BOARD_COUNTERS_PATH}/${nodeId}/reset`, body: undefined },
+    ]);
+  });
+
+  it('spends nothing when the hand-off never opened', async () => {
+    const refused: PanelHostLike = {
+      launchAgentSession: vi.fn(async () => ({ ok: false as const, error: 'no model is connected' })),
+    };
+    host = refused;
+    registerAgentHost(refused);
+    const nodeId = await question();
+    engineWrites.length = 0;
+
+    const scan = await call('board_scan_card', { node_id: nodeId });
+
+    expect(scan.success).toBe(false);
+    // No session, so no dispatch happened: nothing is recorded, nothing is
+    // consumed, and the material is still waiting for whoever looks next.
+    expect(engineWrites).toEqual([]);
+  });
+});
+
 /* ── the audit ───────────────────────────────────────────────────────────── */
 
 describe('the audit', () => {
@@ -297,6 +357,9 @@ describe('the audit', () => {
     const graph = boardGraphStore.getSnapshot().graph;
     for (const node of graph.nodes) watch(`envelope ${node.id}`, boardNodeContext(graph, node.id));
     watch('saved document', saved);
+    // And the accounting the scan settled with, which is a payload the agent's
+    // own call produced even though the agent never sees the reply.
+    watch('engine writes', engineWrites);
 
     const findings = seen.flatMap((entry) => secretFindings(entry.label, entry.payload));
     expect(findings).toEqual([]);

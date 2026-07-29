@@ -30,6 +30,13 @@
  * {@link autoSynthesisPlan}, which returns an empty list for every card whose
  * toggle is off and for every budget that has not affirmatively said there is
  * room. With auto off, the loop below sends nothing, ever.
+ *
+ * WHO ASKED travels with the dispatch, because the engine spends the two
+ * differently: the loop is refused outright once the month is gone, while a
+ * person's press runs and is recorded as over budget. Both go through the one
+ * executor, so the answer rides in the intent alongside the rest of the payload
+ * and {@link settleBoardDispatch} — the same three steps the agent's own scan
+ * tool settles with — hands it to the engine's ledger.
  */
 import { useEffect } from 'react';
 import type { BoardGraph, BoardNode } from '../../engine/boardGraph';
@@ -40,7 +47,9 @@ import {
   type MaterialCounter,
   type SynthesisBudget,
   type SynthesisKind,
+  type SynthesisTrigger,
 } from '../../engine/boardResearch';
+import type { BoardWriteResult } from '../../engine/boardSources';
 import { startStandingQueries } from '../../engine/boardStandingQueries';
 import { engineFeeds, gridVitals } from '../../engine/gridVitals';
 import {
@@ -62,6 +71,9 @@ const FIELD = {
   question: 'Question',
   source: 'Source',
   material: 'New material',
+  /** Who asked — a press, or the standing loop. The engine treats the two
+   *  differently, so the executor has to be able to say which this was. */
+  trigger: 'Trigger',
 } as const;
 
 /* ── the card's scope (pure) ─────────────────────────────────────────── */
@@ -112,16 +124,18 @@ function plural(n: number, one: string, many = `${one}s`): string {
 
 /**
  * The payload, field by field. Everything a surface or an executor needs is
- * here, and nothing else is: the card, the question, the wired source names,
- * and how much has arrived.
+ * here, and nothing else is: the card, who asked, the question, the wired
+ * source names, and how much has arrived.
  */
 export function boardScanIntent(
   scope: ScanScope,
   kind: SynthesisKind,
-  newMaterial: number
+  newMaterial: number,
+  trigger: SynthesisTrigger
 ): ActionIntent {
   const fields = [
     { label: FIELD.card, value: scope.nodeId },
+    { label: FIELD.trigger, value: trigger },
     { label: FIELD.question, value: scope.hypothesis },
     ...scope.sources.map((name) => ({ label: FIELD.source, value: name })),
     ...(newMaterial > 0
@@ -145,7 +159,8 @@ export function boardScanIntent(
 export function boardScanAction(
   scope: ScanScope,
   kind: SynthesisKind,
-  newMaterial: number
+  newMaterial: number,
+  trigger: SynthesisTrigger
 ): AiAction {
   return {
     id: `board-scan-${scope.nodeId}`,
@@ -154,7 +169,7 @@ export function boardScanAction(
     label: SCAN_WORD[kind],
     icon: 'travel_explore',
     keywords: ['scan', 'synthesize', 'evidence', 'question', 'board'],
-    intent: boardScanIntent(scope, kind, newMaterial),
+    intent: boardScanIntent(scope, kind, newMaterial, trigger),
   };
 }
 
@@ -178,6 +193,17 @@ export function scopeOfIntent(intent: ActionIntent): ScanScope {
 /** Whether this dispatch is a first look or a look over accumulated material. */
 export function kindOfIntent(intent: ActionIntent): SynthesisKind {
   return fieldValue(intent, FIELD.material) === '' ? 'scan' : 'synthesize';
+}
+
+/**
+ * Who asked. Anything that is not the standing loop saying so is read as a
+ * PERSON: the engine refuses an automatic dispatch over the cap, and an intent
+ * that lost its field would then have a press refused on the loop's behalf. The
+ * loop is already stopped client-side by {@link autoSynthesisPlan}, so the
+ * asymmetry costs nothing and keeps the cap off the one path it may not block.
+ */
+export function triggerOfIntent(intent: ActionIntent): SynthesisTrigger {
+  return fieldValue(intent, FIELD.trigger) === 'auto' ? 'auto' : 'manual';
 }
 
 /**
@@ -211,6 +237,36 @@ export function scanPrompt(intent: ActionIntent): string {
   return lines.filter((line): line is string => line !== null).join('\n');
 }
 
+/* ── settling a dispatch ─────────────────────────────────────────────── */
+
+/**
+ * What follows a dispatch that actually opened: the engine is told, the
+ * material that dispatch consumed stops counting as unseen, and the lane the
+ * badge is drawn from re-reads.
+ *
+ * One function because there are two doors into the same event — the card's
+ * verb and the agent's `board_scan_card` tool — and two orderings of these
+ * three steps would be two different accounts of one dispatch. It is called
+ * only AFTER a session has opened: a hand-off that failed records nothing,
+ * consumes nothing and spends nothing.
+ *
+ * The engine's reply comes back rather than being swallowed, refusal included:
+ * a spent month turns an automatic dispatch away with the figures that turned
+ * it away, and the re-read below then carries the same verdict onto the card.
+ */
+export async function settleBoardDispatch(
+  nodeId: string,
+  kind: SynthesisKind,
+  trigger: SynthesisTrigger
+): Promise<BoardWriteResult & { budget: SynthesisBudget | null }> {
+  const recorded = await recordSynthesis({ nodeId, kind, trigger });
+  await resetMaterialCounter(nodeId);
+  // Re-read on the lane that is already running rather than opening one of our
+  // own: the badge clears when the engine says the counter is back to nothing.
+  void gridVitals.refresh();
+  return recorded;
+}
+
 /* ── the executor ────────────────────────────────────────────────────── */
 
 registerAiExecutor(BOARD_SCAN_OPERATION, async (intent) => {
@@ -238,18 +294,9 @@ registerAiExecutor(BOARD_SCAN_OPERATION, async (intent) => {
     return { kind: 'failed', note: launched.error ?? 'The agent hand-off failed.' };
   }
 
-  // The dispatch happened, so the engine is told — this is the call that moves
-  // the budget — and the material it consumed stops counting as unseen.
-  const recorded = await recordSynthesis({
-    nodeId: scope.nodeId,
-    kind,
-    hypothesis: scope.hypothesis,
-    sources: scope.sources,
-  });
-  await resetMaterialCounter(scope.nodeId);
-  // Re-read on the lane that is already running rather than opening one of our
-  // own: the badge clears when the engine says the counter is back to nothing.
-  void gridVitals.refresh();
+  // The dispatch happened, so it is settled: the engine is told, the material
+  // it consumed stops counting as unseen, and the badge re-reads.
+  const recorded = await settleBoardDispatch(scope.nodeId, kind, triggerOfIntent(intent));
 
   const opened =
     'Agent session started with the evidence prompt. Review it and send it — nothing has been written yet.';
@@ -367,8 +414,10 @@ export async function runAutoSynthesis(): Promise<void> {
     const scope = scanScope(graph, step.nodeId);
     if (!scope) continue;
     dispatched.add(mark);
+    // The loop asking, not a person — which is what the engine refuses once the
+    // month is spent, and the whole of the deliberate-spend promise.
     const result = await requestAiAction(
-      boardScanAction(scope, 'synthesize', step.newMaterial)
+      boardScanAction(scope, 'synthesize', step.newMaterial, 'auto')
     );
     // The lane was busy, so nothing was sent — and this reading is still
     // waiting, so it must stay eligible for the next pass.
@@ -413,7 +462,10 @@ export function resetAutoSynthesis(): void {
  *
  * A PAUSED budget does not block this. The cap stops the loop from spending on
  * its own; a person asking for their own evidence is told the state and allowed
- * to decide, which is the difference between a guard and a wall.
+ * to decide, which is the difference between a guard and a wall. That is why
+ * this path is MANUAL all the way down to the engine's record: the engine runs
+ * a manual dispatch over the cap and marks it over budget rather than refusing
+ * it, and it can only do that if it is told a person asked.
  */
 export function dispatchBoardScan(
   graph: BoardGraph,
@@ -423,5 +475,5 @@ export function dispatchBoardScan(
 ): Promise<AiActionResult | null> {
   const scope = scanScope(graph, nodeId);
   if (!scope) return Promise.resolve(null);
-  return requestAiAction(boardScanAction(scope, kind, newMaterial));
+  return requestAiAction(boardScanAction(scope, kind, newMaterial, 'manual'));
 }

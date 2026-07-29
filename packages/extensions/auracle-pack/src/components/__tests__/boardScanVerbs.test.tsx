@@ -14,6 +14,9 @@
  *    neither does the prompt that goes to the agent session.
  *  - A DISPATCH CONSUMES WHAT IT READ. The engine is told, the counter is put
  *    back, and the badge clears on the next read rather than optimistically.
+ *  - AND IT SAYS WHO ASKED. A press is recorded as manual and the standing
+ *    loop's pass as auto, because the engine spends the two differently: it
+ *    refuses the loop once the month is gone and runs the press anyway.
  *  - AN EXHAUSTED BUDGET IS VISIBLE. It says so on the card and it gates the
  *    toggle — the one thing this feature may never do is stall quietly.
  *  - AND IT IS STILL A DRAFT. Scan and synthesize open a prefilled session; no
@@ -28,13 +31,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 
 const stub = vi.hoisted(() => ({
-  /** Exact-path reads. Exact rather than prefixed on purpose: the counters
-   *  route lives UNDER the questions route, and a prefix match would serve one
-   *  where the other was asked for. */
+  /** Exact-path reads, so a route is only served where it was asked for. */
   gets: {} as Record<string, unknown>,
   posts: [] as Array<{ path: string; body: unknown }>,
   /** How much the engine currently counts for the one question under test. */
   material: 0,
+  /**
+   * What the engine answers a dispatch record with. Default: it recorded. Set
+   * to a refusal to play the month running out mid-loop.
+   */
+  synthesis: null as { ok: boolean; status: number; body: unknown } | null,
 }));
 
 vi.mock('../../engine/client', async (importOriginal) => ({
@@ -49,11 +55,13 @@ vi.mock('../../engine/client', async (importOriginal) => ({
   ),
   postJson: vi.fn(async (path: string, body: unknown) => {
     stub.posts.push({ path, body });
-    // The engine's own behaviour, mocked at the one point it matters: a reset
+    // The engine's own behaviour, mocked at the two points that matter: a reset
     // puts the count back, so the badge clears because the ENGINE says it is
-    // back to nothing rather than because the surface assumed so.
-    if (path.endsWith('/counter/reset')) stub.material = 0;
-    return { ok: true, status: 200, body: { ok: true } };
+    // back to nothing rather than because the surface assumed so...
+    if (path.endsWith('/reset')) stub.material = 0;
+    // ...and a dispatch record answers however the case under test needs.
+    if (path === '/ui/api/board/synthesis' && stub.synthesis !== null) return stub.synthesis;
+    return { ok: true, status: 200, body: { ok: true, recorded: true } };
   }),
   putJson: vi.fn(async () => ({ ok: true, status: 200, body: null })),
   connectCheck: vi.fn(async () => null),
@@ -66,7 +74,11 @@ import { GridPanel } from '../grid/GridPanel';
 import { getJsonDetailed } from '../../engine/client';
 import { boardGraphStore } from '../../engine/boardGraphStore';
 import type { BoardGraphTransport } from '../../engine/boardPersistence';
-import { BOARD_QUESTIONS_PATH, BOARD_SYNTHESIS_PATH } from '../../engine/boardResearch';
+import {
+  BOARD_COUNTERS_PATH,
+  BOARD_QUESTIONS_PATH,
+  BOARD_SYNTHESIS_PATH,
+} from '../../engine/boardResearch';
 import { flushStandingQueries, resetStandingQueries } from '../../engine/boardStandingQueries';
 import { gridVitals } from '../../engine/gridVitals';
 import { aiRunStore } from '../grid/gridAiActions';
@@ -78,7 +90,9 @@ import { closePalette } from '../grid/gridCommands';
 /* ── fixtures ────────────────────────────────────────────────────────────── */
 
 const SECRET_SLOT = 'desk_bars_key';
-const COUNTERS_PATH = `${BOARD_QUESTIONS_PATH}/counters`;
+/** Every badge on the board comes off the question list — see the engine's API
+ *  and {@link ../../engine/boardResearch}. There is no counters list to read. */
+const QUESTIONS_PATH = BOARD_QUESTIONS_PATH;
 const BUDGET_PATH = '/ui/api/board/budget';
 
 const lane: BoardGraphTransport = {
@@ -123,23 +137,44 @@ async function poll(): Promise<void> {
   });
 }
 
-/** What the engine currently counts and allows. */
+/** What the engine currently counts and allows, in the engine's own shapes. */
 function engineSays(options: {
   nodeId: string;
   material?: number;
-  cap?: number | null;
-  spent?: number | null;
+  cap?: number;
+  used?: number;
+  unlimited?: boolean;
   paused?: boolean;
 }): void {
   stub.material = options.material ?? 0;
-  stub.gets[COUNTERS_PATH] = {
-    get counters() {
-      return [{ node_id: options.nodeId, new_material: stub.material, as_of: '2026-07-28T10:00:00Z' }];
+  stub.gets[QUESTIONS_PATH] = {
+    get questions() {
+      return [
+        {
+          node_id: options.nodeId,
+          hypothesis: 'Overnight gaps mean-revert.',
+          sources: [],
+          threshold: 1,
+          enabled: true,
+          new_material: stub.material,
+          last_match_at: '2026-07-28T09:40:00Z',
+          last_scored_at: '2026-07-28T10:00:00Z',
+          last_reset_at: null,
+          created_at: '2026-07-20T08:00:00Z',
+        },
+      ];
     },
   };
+  const cap = options.cap ?? 20;
+  const used = options.used ?? 3;
+  const unlimited = options.unlimited ?? false;
   stub.gets[BUDGET_PATH] = {
-    cap: options.cap ?? 20,
-    spent: options.spent ?? 3,
+    period: '2026-07',
+    unit: 'agent_sessions',
+    cap,
+    unlimited,
+    used,
+    remaining: unlimited ? null : Math.max(0, cap - used),
     paused: options.paused ?? false,
   };
 }
@@ -175,13 +210,16 @@ function synthesisPosts(): Array<Record<string, unknown>> {
 }
 
 function resetPosts(): string[] {
-  return stub.posts.filter((call) => call.path.endsWith('/counter/reset')).map((call) => call.path);
+  return stub.posts
+    .filter((call) => call.path.startsWith(BOARD_COUNTERS_PATH))
+    .map((call) => call.path);
 }
 
 beforeEach(async () => {
   stub.gets = {};
   stub.posts = [];
   stub.material = 0;
+  stub.synthesis = null;
   launch = vi.fn(async () => ({ ok: true, sessionId: 's-1' }));
   vi.mocked(getJsonDetailed).mockClear();
   gridVitals.reset();
@@ -216,9 +254,9 @@ describe('what a question card counts', () => {
 
     // A Board with nothing on it costs nothing: the route is there to be read,
     // and the lane does not read it.
-    expect(stub.gets[COUNTERS_PATH]).toBeDefined();
+    expect(stub.gets[QUESTIONS_PATH]).toBeDefined();
     const asked = vi.mocked(getJsonDetailed).mock.calls.map((call) => call[0]);
-    expect(asked).not.toContain(COUNTERS_PATH);
+    expect(asked).not.toContain(QUESTIONS_PATH);
     expect(asked).not.toContain(BUDGET_PATH);
   });
 
@@ -283,13 +321,10 @@ describe('with auto-synthesize on, the loop acts once per reading', () => {
     await poll();
 
     expect(launch).toHaveBeenCalledTimes(1);
+    // The loop asked, and the record says so: this is the dispatch the engine
+    // refuses once the month is gone.
     expect(synthesisPosts()).toEqual([
-      {
-        node_id: id,
-        kind: 'synthesize',
-        hypothesis: 'Overnight gaps mean-revert.',
-        sources: [],
-      },
+      { node_id: id, trigger: 'auto', detail: 'synthesize' },
     ]);
 
     await poll();
@@ -300,7 +335,7 @@ describe('with auto-synthesize on, the loop acts once per reading', () => {
 
   it('stays put while the budget is paused, and says so on the card', async () => {
     const id = seedResearch('Overnight gaps mean-revert.', true);
-    engineSays({ nodeId: id, material: 6, cap: 20, spent: 20, paused: true });
+    engineSays({ nodeId: id, material: 6, cap: 20, used: 20, paused: true });
     await paint();
     await watch();
     await poll();
@@ -313,10 +348,52 @@ describe('with auto-synthesize on, the loop acts once per reading', () => {
     );
   });
 
+  it('takes a refused dispatch as the engine stating the month is gone', async () => {
+    // The month runs out between the read the loop acted on and the record it
+    // then made: the engine turns the automatic dispatch away with the figures
+    // that turned it away, and the card takes its state from those.
+    const id = seedResearch('Overnight gaps mean-revert.', true);
+    engineSays({ nodeId: id, material: 4, cap: 20, used: 19 });
+    stub.synthesis = {
+      ok: false,
+      status: 429,
+      body: {
+        detail: 'the monthly dispatch budget is spent',
+        recorded: false,
+        budget: { cap: 20, unlimited: false, used: 20, remaining: 0, paused: true },
+      },
+    };
+    await paint();
+    await watch();
+    await poll();
+
+    expect(launch).toHaveBeenCalledTimes(1);
+    expect(synthesisPosts()).toEqual([{ node_id: id, trigger: 'auto', detail: 'synthesize' }]);
+    // The outcome says the session opened AND that the engine did not record
+    // it, in the engine's own words. A refusal that read as a clean dispatch
+    // would be the surface inventing a spend nobody made.
+    const note = aiRunStore.getSnapshot().outcome?.result;
+    expect(note).toMatchObject({ kind: 'done' });
+    expect(note && 'note' in note ? note.note : '').toContain('Agent session started');
+    expect(note && 'note' in note ? note.note : '').toContain(
+      'the monthly dispatch budget is spent'
+    );
+
+    // And the next read of the allowance — the one the settlement asked for —
+    // now says paused, so the card stops offering to spend on its own.
+    engineSays({ nodeId: id, material: 4, cap: 20, used: 20, paused: true });
+    await poll();
+
+    expect(screen.getByTestId(`board-budget-paused-${id}`).textContent).toContain(
+      'the monthly dispatch budget is spent'
+    );
+    expect(launch).toHaveBeenCalledTimes(1);
+  });
+
   it('will not spend against a budget the engine has not stated', async () => {
     const id = seedResearch('Overnight gaps mean-revert.', true);
-    stub.gets[COUNTERS_PATH] = {
-      counters: [{ node_id: id, new_material: 5, as_of: '2026-07-28T10:00:00Z' }],
+    stub.gets[QUESTIONS_PATH] = {
+      questions: [{ node_id: id, new_material: 5, last_scored_at: '2026-07-28T10:00:00Z' }],
     };
     // No budget route answers at all.
     await paint();
@@ -342,14 +419,10 @@ describe('pressing the verb', () => {
       fireEvent.click(screen.getByTestId(`board-scan-${id}`));
     });
 
-    expect(synthesisPosts()).toEqual([
-      {
-        node_id: id,
-        kind: 'scan',
-        hypothesis: 'Do overnight gaps revert?',
-        sources: ['Yahoo Finance'],
-      },
-    ]);
+    // A press is a MANUAL dispatch, and the ledger entry is only that: the card,
+    // who asked, which look. The question and the source names are the prompt's
+    // business, and they are checked there.
+    expect(synthesisPosts()).toEqual([{ node_id: id, trigger: 'manual', detail: 'scan' }]);
 
     // The prompt is handed to an agent session, so it is held to the same rule.
     const prompt = launch.mock.calls[0][0] as unknown as string;
@@ -400,7 +473,7 @@ describe('pressing the verb', () => {
     await act(async () => {
       fireEvent.click(screen.getByTestId(`board-scan-${id}`));
     });
-    expect(resetPosts()).toEqual([`${BOARD_QUESTIONS_PATH}/${id}/counter/reset`]);
+    expect(resetPosts()).toEqual([`${BOARD_COUNTERS_PATH}/${id}/reset`]);
 
     await poll();
 
@@ -430,7 +503,7 @@ describe('pressing the verb', () => {
 describe('the card editor', () => {
   it('gates the auto toggle on an exhausted budget, and says which', async () => {
     const id = seedResearch();
-    engineSays({ nodeId: id, material: 2, cap: 20, spent: 20, paused: true });
+    engineSays({ nodeId: id, material: 2, cap: 20, used: 20, paused: true });
     await paint();
     await watch();
     await poll();
@@ -465,6 +538,23 @@ describe('the card editor', () => {
     expect(screen.getByTestId('board-editor-budget').textContent).toBe(
       '3 of 20 dispatches used this month.'
     );
+  });
+
+  it('counts no limit as no limit rather than as a limit of nothing', async () => {
+    const id = seedResearch();
+    // An install with no cap: the engine says so twice over, and neither zero
+    // may end up in a sentence as a figure.
+    engineSays({ nodeId: id, material: 0, cap: 0, used: 6, unlimited: true });
+    await paint();
+    await watch();
+    await poll();
+
+    fireEvent.click(screen.getByTestId(`board-card-face-${id}`));
+
+    expect(screen.getByTestId('board-editor-budget').textContent).toBe(
+      'Each run spends one dispatch.'
+    );
+    expect((screen.getByTestId('board-editor-auto') as HTMLInputElement).disabled).toBe(false);
   });
 
   it('says what has arrived in words, and tells silence from nothing', async () => {

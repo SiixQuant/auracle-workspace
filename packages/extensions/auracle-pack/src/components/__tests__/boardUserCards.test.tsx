@@ -245,14 +245,24 @@ describe('a source card reads the connections feed', () => {
     );
   });
 
-  it('gives a question the same neutral mark and the verb it will grow into', async () => {
+  it('gives a question the neutral mark until something has counted for it', async () => {
     const id = seedResearch();
     await paint();
 
+    // Nothing has been counted, so the dot claims nothing and the verb offers
+    // the first look rather than a synthesis of material nobody measured.
     expect(screen.getByTestId(`board-card-dot-${id}`).getAttribute('data-health')).toBe('unknown');
     const scan = screen.getByTestId(`board-scan-${id}`) as HTMLButtonElement;
-    expect(scan.disabled).toBe(true);
-    expect(scan.getAttribute('title')).toBe('wires to the engine in a later change');
+    expect(scan.disabled).toBe(false);
+    expect(scan.textContent).toContain('Scan');
+    expect(screen.queryByTestId(`board-material-${id}`)).toBeNull();
+  });
+
+  it('will not send a question nobody has written', async () => {
+    const id = boardGraphStore.createNode({ kind: 'research', research: { hypothesis: '' } });
+    await paint();
+
+    expect((screen.getByTestId(`board-scan-${id}`) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('raises the peek on a rest, and says more than the card had room for', async () => {

@@ -49,6 +49,7 @@ vi.mock('../../engine/client', async (importOriginal) => ({
 
 import type { ExtensionStorage, PanelHostProps } from '@nimbalyst/extension-sdk';
 import { GridPanel } from '../grid/GridPanel';
+import { GHOSTS } from '../grid/boardCopy';
 import { boardGraph } from '../../engine/boardGraphStore';
 import { FACE_KEY, getFace, resetFaceStore, setFace } from '../grid/gridFaceStore';
 import { getActiveRoom, openGridHome, openRoom } from '../grid/gridNav';
@@ -138,11 +139,11 @@ describe('a workspace that has never chosen opens on the Board', () => {
     expect(screen.getByTestId('board-ghosts')).toBeTruthy();
     // The two moves a person makes, and the promise that nothing else is
     // theirs to place.
-    expect(screen.getByTestId('board-ghost-source').textContent).toContain('Connect data');
-    expect(screen.getByTestId('board-ghost-research').textContent).toContain('Pose a question');
-    expect(screen.getByTestId('board-ghost-materialized').textContent).toContain(
-      'appear here as real work produces them'
-    );
+    // The words themselves are pinned in boardOnboarding.test.tsx; what this
+    // asserts is that the shell draws all three of them.
+    for (const ghost of GHOSTS) {
+      expect(screen.getByTestId(`board-ghost-${ghost.id}`).textContent).toContain(ghost.title);
+    }
     expect(screen.getAllByTestId(/^board-ghost-/)).toHaveLength(3);
   });
 

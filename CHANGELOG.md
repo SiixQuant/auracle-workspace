@@ -10,6 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 <!-- New features go here -->
+
+### Changed
+<!-- Changes to existing functionality go here -->
+
+### Fixed
+<!-- Bug fixes go here -->
+
+### Removed
+<!-- Removed features go here -->
+
+## [1.7.0] - 2026-07-29
+
+### Added
 - The Auracle panel now has a second face for research: a Board where you connect a source, write the question you want it read against, and let the material gather at no cost until you choose to have it read. Every card is set up on the canvas itself, and the floor plan is still one keystroke away.
 - A question on the Auracle Board now gathers evidence on its own: it carries a badge counting what has arrived since you last looked, a verb that opens an agent session on exactly that material, and an optional per-question switch to have it done for you. Gathering costs nothing — only pressing the verb does — and when the month's allowance runs out the card says so instead of quietly stopping.
 - The assistant works the Auracle Board alongside you: selecting a card tells the chat what it is, what feeds it and what came out of it, so you can ask about it without explaining it first, and one request can stand a research lane up end to end — the source card, the question, the wire between them, and the scan. It reads and edits the same board you do, and a key is the one thing it can neither read nor set: only you can put one in a card.
@@ -20,17 +33,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the floor plan one click or one keystroke away and the last face you used
   remembered per project.
 
-### Changed
-<!-- Changes to existing functionality go here -->
-
-### Fixed
-<!-- Bug fixes go here -->
-- The AI chat panel now remembers its width and collapsed state across restarts
-  instead of reopening at the default width.
-
-### Removed
-<!-- Removed features go here -->
-
 ## [1.6.3] - 2026-07-28
 
 ### Changed
@@ -40,6 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - The chat pane beside a full-screen panel can now be dragged wider or narrower, and closing it from the app menu hands the rest of the window back to the panel, which resizes to whatever is left. Wide surfaces such as the Auracle plan can be given the room they need instead of being stuck beside a pane of one fixed size, and the pane now opens at the same width as the one in Files mode.
+- The AI chat panel now remembers its width and collapsed state across restarts
+  instead of reopening at the default width.
 
 ## [1.6.2] - 2026-07-28
 

@@ -215,6 +215,10 @@ async function performSave(): Promise<void> {
   if (json === lastSavedJson) {
     // Nothing changed since the engine last accepted this graph. This is the
     // guard that keeps two windows from writing to each other forever.
+    //
+    // `sync` is deliberately left where it was: no write happened, so nothing
+    // here learned anything about the engine, and an engine that refused the
+    // last one is still the engine that will refuse the next.
     if (snapshot.dirty || snapshot.status === 'saving') set({ dirty: false, status: 'idle' });
     return;
   }

@@ -395,6 +395,46 @@ export function findEdge(graph: BoardGraph, edgeId: string): BoardEdge | undefin
   return graph.edges.find((edge) => edge.id === edgeId);
 }
 
+/**
+ * Whether a card a person placed still holds nothing a person put there.
+ *
+ * The Board lays a card down BEFORE anything has been typed into it — the add
+ * row's whole point is that the editor opens on a real card rather than on a
+ * form that might become one — which means a card can exist for a moment
+ * carrying no work at all. This is the test for that moment, and the reason it
+ * is a pure function on the node rather than a flag on the UI: what counts as
+ * work is a property of the card's schema, so a field added to
+ * {@link BoardSourceConfig} later has exactly one place to be accounted for.
+ *
+ * ANY user-entered value makes a card real, including one that looks
+ * incidental: a slot name with no secret behind it yet, a connector kind chosen
+ * but not pointed anywhere. Erring the other way would silently discard
+ * somebody's half-finished card, which is the one outcome worse than leaving an
+ * empty one on the board.
+ *
+ * Cards the SYSTEM wrote are never blank in this sense: they carry a reference
+ * to real work and nobody typed them, so there is nothing here to judge.
+ */
+export function isBlankUserCard(node: BoardNode): boolean {
+  if (node.kind === 'source') {
+    const source = node.source;
+    if (!source) return true;
+    return [
+      source.name,
+      source.connectorKind,
+      source.endpoint,
+      source.payloadType,
+      source.credentialSlot ?? '',
+    ].every((field) => field.trim() === '');
+  }
+  if (node.kind === 'research') {
+    const research = node.research;
+    if (!research) return true;
+    return (research.hypothesis ?? '').trim() === '' && research.autoSynthesize !== true;
+  }
+  return false;
+}
+
 /** Every card downstream of `nodeId`, following wires out, transitively. */
 export function downstreamNodeIds(graph: BoardGraph, nodeId: string): string[] {
   const seen = new Set<string>();

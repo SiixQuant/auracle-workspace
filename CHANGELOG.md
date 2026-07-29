@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 <!-- Bug fixes go here -->
+- The Auracle Board no longer leaves a card behind when you start one and think better of it: a source or a question you never typed anything into is taken back as soon as you close it, quietly, while anything you did type is kept. And the line above the board now names the next step at every stage instead of going quiet as soon as cards appear, so a board with sources on it and no question yet says to pose one, and a question left unwritten is pointed at until it has words in it.
 
 ### Removed
 <!-- Removed features go here -->

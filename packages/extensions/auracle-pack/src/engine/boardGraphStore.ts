@@ -38,6 +38,7 @@ import {
   canWire,
   emptyBoardGraph,
   findNode,
+  isBlankUserCard,
   normalizeResearchConfig,
   normalizeSourceConfig,
   parseBoardGraph,
@@ -337,6 +338,33 @@ export const boardGraphStore = {
   /** Edit a card in place. Fields that do not belong to its kind are ignored. */
   updateNode(nodeId: string, patch: BoardNodePatch): void {
     mutate(updateNode(snapshot.graph, nodeId, patch));
+  },
+
+  /**
+   * Take back a card nobody typed into.
+   *
+   * This is the other half of laying a card down before it has been described:
+   * the add row creates the card first so the editor has something real to open
+   * on, and if that editor closes with nothing in it the card has to go again,
+   * or every abandoned click leaves an unnamed card on the Board for good.
+   *
+   * DELIBERATELY NARROW, because it is the one delete that asks nobody: it
+   * refuses a card carrying any typed field ({@link isBlankUserCard}) and
+   * refuses a card with a wire on it, since a wire is a decision somebody made
+   * about a card even if they never named it. Anything it declines is removed
+   * the ordinary way, with the confirm that says what stays behind.
+   *
+   * Returns whether the card went, so a caller can tell "taken back" from
+   * "kept" without re-deriving the rule.
+   */
+  discardBlankNode(nodeId: string): boolean {
+    const node = findNode(snapshot.graph, nodeId);
+    if (!node || !isBlankUserCard(node)) return false;
+    if (snapshot.graph.edges.some((edge) => edge.from === nodeId || edge.to === nodeId)) {
+      return false;
+    }
+    mutate(applyNodeDelete(snapshot.graph, planNodeDelete(snapshot.graph, nodeId)));
+    return true;
   },
 
   /**

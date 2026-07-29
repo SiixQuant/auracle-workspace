@@ -35,9 +35,22 @@
  *
  * AND THE STATE AFTER IT: the ghosts come down the moment the keyless sources
  * land, which on a connected desk is seconds after the first open — so the line
- * above the cards has a first-run reading of its own, which introduces those
- * sources and names the move that is still outstanding. Without it the only
- * board that ever explained itself would be one with no engine behind it.
+ * above the cards is a STATE MACHINE over what the board is missing rather than
+ * a caption ({@link boardHintState}): sources with no question named, a question
+ * with no words in it, and only then the neutral working line. Without it the
+ * only board that ever explained itself would be one with no engine behind it,
+ * and the person who most needs the next move named — cards in front of them,
+ * no idea what to do with them — would be the one it went quiet on. The chip
+ * that performs the outstanding move is dressed as the answer while it is the
+ * answer, so the sentence and the button always agree.
+ *
+ * AND NOTHING ABANDONED: a card is laid down BEFORE it is described, because
+ * the editor has to open on something real. That is only honest if the reverse
+ * holds too, so a card this session placed and nobody typed into is taken back
+ * when its editor closes, however it closes — the close button, Escape, a click
+ * elsewhere, the next move, or the face going away. Silently, because there is
+ * nothing to lose and nothing a confirm could tell them. A card carrying one
+ * typed field is work and keeps every ordinary protection.
  *
  * NOTHING HERE NAVIGATES. Describing a source, keying it, writing a question,
  * wiring two cards together and removing one all happen on this face, in the
@@ -72,7 +85,7 @@ import { layoutBoard, userSubgraph, type PlacedCard } from './boardLayout';
 import { cardVerb, dispatchBoardScan, useBoardResearchLoop, type CardVerb } from './boardScan';
 import { aiRunStore, resultLine } from './gridAiActions';
 import { keptSentence, researchReading, sourceReading, type CardReading } from './boardReadings';
-import { boardHint, GHOSTS, RESEARCH_GHOST, SOURCE_GHOST } from './boardCopy';
+import { BOARD_HINT, boardHintState, GHOSTS, RESEARCH_GHOST, SOURCE_GHOST } from './boardCopy';
 
 const STYLE_ID = 'auracle-grid-board-styles';
 
@@ -104,6 +117,12 @@ const SHEET = `
 .aboard__add:hover { border-color: ${tone.borderStrong}; color: ${tone.text}; }
 .aboard__add:focus-visible { outline: 2px solid ${GRID_ACCENT}; outline-offset: 1px; }
 .aboard__add .material-symbols-outlined { font-size: 14px; line-height: 1; }
+/* The move that is outstanding, dressed in the pack's own primary language —
+   the launcher's filled pill, tokens unchanged. Keyed on the BOARD's state
+   rather than on which control it is, so at most one chip is ever wearing it
+   and only while it is the answer to what the board is missing. */
+.aboard__add[data-primary='true'] { border-color: transparent; background: ${tone.accent}; color: ${tone.accentInk}; font-weight: 600; box-shadow: inset 0 1px 0 rgba(255,255,255,0.14); }
+.aboard__add[data-primary='true']:hover { border-color: transparent; background: ${tone.accentHover}; color: ${tone.accentInk}; }
 .aboard__notice { margin: 0 0 12px; font-size: 11.5px; line-height: 1.5; color: ${tone.text2}; }
 .aboard__notice[data-kind='err'] { color: ${tone.danger}; }
 /* The empty state. A list, because that is what it is: the moves, in order. */
@@ -202,6 +221,18 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
   const [editing, setEditing] = useState<{ nodeId: string; anchor: HTMLElement } | null>(null);
   /** A card just laid down, whose editor opens as soon as it is on screen. */
   const [pending, setPending] = useState<string | null>(null);
+  /**
+   * The cards this session laid down that nobody has typed into yet.
+   *
+   * A card is only ever taken back if it is in here: the add row creates it
+   * before it has been described, so an editor closed on an untouched one is an
+   * abandoned click rather than work. A card that already existed when the
+   * Board opened is somebody's, blank or not, and is only removed the ordinary
+   * way, through the confirm that says what stays behind.
+   */
+  const fresh = useRef<Set<string>>(new Set());
+  /** The close, reachable from the teardown below before it is defined. */
+  const closeRef = useRef<() => void>(() => {});
   const [wiring, setWiring] = useState<string | null>(null);
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -226,6 +257,10 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
     // lane: the debounce is measured in hundreds of milliseconds and a closing
     // panel does not wait them out.
     return () => {
+      // The editor leaves with the face, so it leaves the way it does anywhere
+      // else — taking an untouched card with it. Before the flush, so the
+      // removal is in the graph the flush carries out.
+      closeRef.current();
       void boardGraphStore.flush();
     };
   }, [workspaceId]);
@@ -246,27 +281,66 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
     setPending(null);
   }, [pending, graph]);
 
-  // A card that left the Board takes its editor with it.
+  // A card that left the Board takes its editor with it. Read through the
+  // updater rather than off this render, because the card may have left in the
+  // same pass that opened an editor on a different one.
   useEffect(() => {
-    if (editing && !graph.nodes.some((node) => node.id === editing.nodeId)) setEditing(null);
-  }, [editing, graph]);
+    setEditing((current) =>
+      current && !graph.nodes.some((node) => node.id === current.nodeId) ? null : current
+    );
+  }, [graph]);
 
   // The selected card, told to the chat: what it is, what feeds it, what came
   // of it. Selection here IS the open card — there is no second notion of it on
   // this face — and dropping it clears the envelope again (see gridFocus).
   useBoardCardAiContext(host, graph, editing?.nodeId ?? null);
 
+  /** The open card, readable from a handler without making every callback
+   *  depend on it. */
+  const openRef = useRef<string | null>(null);
+  openRef.current = editing?.nodeId ?? null;
+
+  /**
+   * Leave a card, and take it back if this session laid it down and nobody ever
+   * typed into it.
+   *
+   * Silent, and deliberately: the confirm on the delete button exists to say
+   * what a removal leaves behind, and an untouched card leaves nothing behind
+   * to say. Asking would be asking somebody to approve undoing their own
+   * mis-click. The store keeps the rule (see `discardBlankNode`); this only
+   * decides that the card is one of ours to take back, and stops treating it as
+   * fresh either way — a card that survived one close is the person's from then
+   * on, whatever they later empty out of it.
+   */
+  const leave = useCallback((nodeId: string | null): void => {
+    if (nodeId === null || !fresh.current.has(nodeId)) return;
+    fresh.current.delete(nodeId);
+    boardGraphStore.discardBlankNode(nodeId);
+  }, []);
+
+  /** Close whatever is open, reaping it if it was never written into. */
+  const closeEditor = useCallback((): void => {
+    const open = openRef.current;
+    setEditing(null);
+    leave(open);
+  }, [leave]);
+  closeRef.current = closeEditor;
+
   const place = useCallback(
     (kind: 'source' | 'research'): void => {
       peek.close();
       setNotice(null);
+      // Whatever was open is being left for this new card, so it is left
+      // properly: an untouched one does not survive the next move either.
+      closeEditor();
       const id =
         kind === 'source'
           ? boardGraphStore.createNode({ kind: 'source', source: { ...BLANK_SOURCE } })
           : boardGraphStore.createNode({ kind: 'research', research: { hypothesis: '' } });
+      fresh.current.add(id);
       setPending(id);
     },
-    [peek]
+    [closeEditor, peek]
   );
 
   /* ── the wire gesture ──────────────────────────────────────────────────
@@ -334,11 +408,18 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
       peek.close();
       // A second press on the card already open closes it — the same control,
       // the same meaning, both ways.
-      setEditing((current) =>
-        current?.nodeId === node.id ? null : { nodeId: node.id, anchor }
-      );
+      const open = openRef.current;
+      if (open === node.id) {
+        closeEditor();
+        return;
+      }
+      setEditing({ nodeId: node.id, anchor });
+      // Moving to another card leaves the last one, which is a close like any
+      // other: an untouched card does not stay behind because the pointer went
+      // somewhere else.
+      leave(open);
     },
-    [peek]
+    [closeEditor, leave, peek]
   );
 
   const onDeleted = useCallback((plan: BoardDeletePlan): void => {
@@ -386,6 +467,10 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
 
   const editingNode = editing ? graph.nodes.find((node) => node.id === editing.nodeId) : undefined;
   const ghostLine = ghostPath(wiring, layout.cards, ghost);
+  // What the board is missing, which is both what the line says and which of
+  // the two chips is dressed as the answer. One reading, so the sentence and
+  // the button can never point at different moves.
+  const hintState = boardHintState(graph.nodes);
 
   return (
     <div className="aboard" data-testid="auracle-grid-board" data-nodes={graph.nodes.length}>
@@ -414,8 +499,8 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
               : undefined
           }
         >
-          <p className="aboard__hint" data-testid="board-hint">
-            {boardHint(graph.nodes)}
+          <p className="aboard__hint" data-testid="board-hint" data-state={hintState}>
+            {BOARD_HINT[hintState]}
           </p>
           {empty ? (
             <GhostSlots onPlace={place} />
@@ -435,10 +520,15 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
                 </span>
                 {SOURCE_GHOST.title}
               </button>
+              {/* Filled only while the board has something to read and nothing
+                  to read it against: that is the one situation where a person
+                  can be stuck with cards in front of them and no idea what the
+                  next move is. Everywhere else both chips are peers. */}
               <button
                 type="button"
                 className="aboard__add"
                 data-testid="board-add-research"
+                data-primary={hintState === 'askQuestion' ? 'true' : 'false'}
                 onClick={() => place('research')}
               >
                 <span className="material-symbols-outlined" aria-hidden>
@@ -559,7 +649,7 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
           node={editingNode}
           graph={graph}
           anchor={editing.anchor}
-          onClose={() => setEditing(null)}
+          onClose={closeEditor}
           onDeleted={onDeleted}
         />
       ) : null}

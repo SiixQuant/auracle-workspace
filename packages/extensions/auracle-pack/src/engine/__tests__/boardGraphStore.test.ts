@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { findNode, serializeBoardGraph, type BoardSourceConfig } from '../boardGraph';
+import { findNode, parseBoardGraph, serializeBoardGraph, type BoardSourceConfig } from '../boardGraph';
 import { boardGraph, boardGraphStore, type BoardSnapshot } from '../boardGraphStore';
-import type { BoardGraphTransport } from '../boardPersistence';
+import type { BoardGraphTransport, BoardSaveResult } from '../boardPersistence';
 
 /**
  * A settings lane in memory: one stored document per workspace, with the call
@@ -16,6 +16,9 @@ function mockLane(seed: Record<string, string> = {}) {
     savedWorkspaces: [] as string[],
     accept: true,
     throwOnLoad: false,
+    /** What a refused write answers with. A bare false is a transport that
+     *  knows only that it did not land. */
+    refusal: false as BoardSaveResult,
   };
   const transport: BoardGraphTransport = {
     async load(workspaceId: string) {
@@ -26,7 +29,7 @@ function mockLane(seed: Record<string, string> = {}) {
     async save(workspaceId: string, json: string) {
       state.saves += 1;
       state.savedWorkspaces.push(workspaceId);
-      if (!state.accept) return false;
+      if (!state.accept) return state.refusal;
       state.docs[workspaceId] = json;
       return true;
     },
@@ -239,6 +242,128 @@ describe('a write only happens when something changed', () => {
     expect(boardGraphStore.getSnapshot().status).toBe('idle');
     expect(boardGraphStore.getSnapshot().dirty).toBe(false);
     expect(state.saves).toBe(2);
+  });
+});
+
+/* ── why a Board is not on the engine ────────────────────────────────────── */
+
+/**
+ * The store carries the REASON alongside the state, because the two lead to
+ * different sentences on screen: an engine that answered and refused this
+ * build's setting is asking to be updated, and everything else is asking to be
+ * waited for. Getting that backwards is how a first run reported lost work.
+ */
+describe('the store says why, not only that', () => {
+  it('is synced before a workspace is even open', () => {
+    expect(boardGraphStore.getSnapshot().sync).toBe('synced');
+  });
+
+  it('calls the engine one build behind when it answered and refused the key', async () => {
+    const { transport, state } = mockLane();
+    await open(transport);
+    state.accept = false;
+    state.refusal = { ok: false, status: 400, message: 'unknown setting: board_graph' };
+    boardGraphStore.createNode({ kind: 'research', research: { hypothesis: 'Q' } });
+    await boardGraphStore.flush();
+
+    expect(boardGraphStore.getSnapshot().sync).toBe('engine-behind');
+    expect(boardGraphStore.getSnapshot().status).toBe('error');
+    expect(boardGraphStore.getSnapshot().dirty).toBe(true);
+  });
+
+  it('calls a timeout or a rejected credential offline, never an old engine', async () => {
+    for (const status of [0, 401, 408, 503]) {
+      const { transport, state } = mockLane();
+      await open(transport);
+      state.accept = false;
+      state.refusal = { ok: false, status };
+      boardGraphStore.createNode({ kind: 'research', research: { hypothesis: 'Q' } });
+      await boardGraphStore.flush();
+
+      expect(boardGraphStore.getSnapshot().sync, `${status}`).toBe('offline');
+      boardGraphStore.reset();
+    }
+  });
+
+  it('calls a transport that threw offline', async () => {
+    const { transport } = mockLane();
+    await open(transport);
+    const throwing: BoardGraphTransport = {
+      load: transport.load,
+      async save() {
+        throw new Error('lane unreachable');
+      },
+    };
+    await boardGraphStore.open('ws-throw', { transport: throwing, saveDelayMs: 1000 });
+    boardGraphStore.createNode({ kind: 'research', research: { hypothesis: 'Q' } });
+    await boardGraphStore.flush();
+
+    expect(boardGraphStore.getSnapshot().sync).toBe('offline');
+  });
+
+  it('calls a load that never came back offline rather than guessing at a build', async () => {
+    const { transport, state } = mockLane();
+    state.throwOnLoad = true;
+    await open(transport);
+
+    expect(boardGraphStore.getSnapshot().sync).toBe('offline');
+  });
+
+  it('clears the reason the moment a write lands', async () => {
+    const { transport, state } = mockLane();
+    await open(transport);
+    state.accept = false;
+    state.refusal = { ok: false, status: 422, message: 'unknown setting' };
+    boardGraphStore.createNode({ kind: 'research', research: { hypothesis: 'Q' } });
+    await boardGraphStore.flush();
+    expect(boardGraphStore.getSnapshot().sync).toBe('engine-behind');
+
+    state.accept = true;
+    await boardGraphStore.flush();
+
+    expect(boardGraphStore.getSnapshot().sync).toBe('synced');
+    expect(boardGraphStore.getSnapshot().status).toBe('idle');
+  });
+
+  it('keeps a plain yes or no working, so a transport with nothing to add needs none of this', async () => {
+    const { transport, state } = mockLane();
+    await open(transport);
+    state.accept = false;
+    boardGraphStore.createNode({ kind: 'research', research: { hypothesis: 'Q' } });
+    await boardGraphStore.flush();
+
+    expect(boardGraphStore.getSnapshot().sync).toBe('offline');
+  });
+});
+
+/* ── retiring a seeded card ──────────────────────────────────────────────── */
+
+describe('a card the Board placed and somebody removed', () => {
+  it('is written into the document so the next open does not put it back', async () => {
+    const { transport, state } = mockLane();
+    await open(transport);
+    boardGraphStore.createNode({
+      kind: 'source',
+      id: 'source-builtin-yfinance',
+      source: { name: 'Yahoo Finance', connectorKind: 'feed', endpoint: 'yfinance', payloadType: 'bars' },
+    });
+    await boardGraphStore.flush();
+
+    boardGraphStore.deleteNode('source-builtin-yfinance');
+    await boardGraphStore.flush();
+
+    expect(parseBoardGraph(state.docs['ws-1']).retiredSeeds).toEqual(['source-builtin-yfinance']);
+  });
+
+  it('records nothing for a card a person placed themselves', async () => {
+    const { transport, state } = mockLane();
+    await open(transport);
+    const id = boardGraphStore.createNode({ kind: 'source', source: SOURCE });
+    boardGraphStore.deleteNode(id);
+    boardGraphStore.createNode({ kind: 'research', research: { hypothesis: 'Q' } });
+    await boardGraphStore.flush();
+
+    expect(state.docs['ws-1']).not.toContain('retiredSeeds');
   });
 });
 

@@ -523,3 +523,44 @@ describe('deleting a card never destroys an artifact', () => {
     expect(downstreamNodeIds(cyclic, 'res-1')).toEqual(['str-1']);
   });
 });
+
+/* ── retired seeds ───────────────────────────────────────────────────────── */
+
+/**
+ * A card the Board laid down for you and you took off again. The list has to
+ * ride the document, because the question it answers — "was this removed on
+ * purpose?" — is asked on the NEXT open, in a window that saw none of it.
+ */
+describe('a seeded card that was removed stays removed', () => {
+  const seeded: BoardNode = {
+    id: 'source-builtin-yfinance',
+    kind: 'source',
+    source: { name: 'Yahoo Finance', connectorKind: 'feed', endpoint: 'yfinance', payloadType: 'bars' },
+  };
+  const board: BoardGraph = { nodes: [seeded, researchNode], edges: [] };
+
+  it('is written down when it is deleted, and the card a person placed is not', () => {
+    const afterSeed = applyNodeDelete(board, planNodeDelete(board, seeded.id));
+    expect(afterSeed.retiredSeeds).toEqual([seeded.id]);
+
+    const afterOwn = applyNodeDelete(board, planNodeDelete(board, researchNode.id));
+    expect(afterOwn.retiredSeeds).toBeUndefined();
+  });
+
+  it('is not written twice when the same card is seeded and removed again', () => {
+    const once = applyNodeDelete(board, planNodeDelete(board, seeded.id));
+    const again = addNode(once, seeded);
+    const twice = applyNodeDelete(again, planNodeDelete(again, seeded.id));
+    expect(twice.retiredSeeds).toEqual([seeded.id]);
+  });
+
+  it('survives the round trip through the stored document', () => {
+    const retired = applyNodeDelete(board, planNodeDelete(board, seeded.id));
+    expect(parseBoardGraph(serializeBoardGraph(retired))).toEqual(retired);
+  });
+
+  it('costs a Board that has retired nothing not one byte', () => {
+    expect(serializeBoardGraph(board)).not.toContain('retiredSeeds');
+    expect(serializeBoardGraph({ ...board, retiredSeeds: [] })).toBe(serializeBoardGraph(board));
+  });
+});

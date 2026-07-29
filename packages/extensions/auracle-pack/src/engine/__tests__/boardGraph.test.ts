@@ -10,6 +10,7 @@ import {
   downstreamNodeIds,
   emptyBoardGraph,
   findNode,
+  isBlankUserCard,
   parseBoardGraph,
   planNodeDelete,
   removeEdge,
@@ -346,6 +347,78 @@ describe('pure graph writes', () => {
     });
     expect(removeEdge(wired, 'e1').edges).toHaveLength(0);
     expect(removeEdge(wired, 'nope')).toBe(wired);
+  });
+});
+
+/* ── a card nobody typed into ────────────────────────────────────────────── */
+
+/**
+ * The test that decides whether a card is work or a mis-click.
+ *
+ * It is asserted field by field on purpose. This predicate is the only thing
+ * standing between an abandoned click and somebody's half-written card, and it
+ * fails in one direction silently: a field it forgets to look at is work that
+ * gets thrown away without a word. So every field the schema has is pinned
+ * here, and the count of them is pinned too, which is what makes a NEW field
+ * added to the configuration fail this file rather than lose data quietly.
+ */
+describe('whether a card holds anything a person put there', () => {
+  const blankSource: BoardNode = {
+    id: 'src-blank',
+    kind: 'source',
+    source: { name: '', connectorKind: '', endpoint: '', payloadType: '' },
+  };
+  const blankResearch: BoardNode = { id: 'res-blank', kind: 'research', research: { hypothesis: '' } };
+
+  it('calls a freshly placed card of either kind blank', () => {
+    expect(isBlankUserCard(blankSource)).toBe(true);
+    expect(isBlankUserCard(blankResearch)).toBe(true);
+    // And a card whose configuration never arrived at all.
+    expect(isBlankUserCard({ id: 'x', kind: 'source' })).toBe(true);
+    expect(isBlankUserCard({ id: 'y', kind: 'research' })).toBe(true);
+  });
+
+  it('treats whitespace as nothing, in both kinds', () => {
+    expect(isBlankUserCard({ ...blankSource, source: { ...blankSource.source!, name: '   ' } })).toBe(
+      true
+    );
+    expect(isBlankUserCard({ ...blankResearch, research: { hypothesis: '\n  \n' } })).toBe(true);
+  });
+
+  it.each([
+    ['name', { name: 'Desk filings' }],
+    ['connectorKind', { connectorKind: 'http_api' }],
+    ['endpoint', { endpoint: 'https://example.invalid/filings' }],
+    ['payloadType', { payloadType: 'filings' }],
+    ['credentialSlot', { credentialSlot: 'filings_key' }],
+  ])('a source carrying only %s is not blank', (_field, patch) => {
+    expect(isBlankUserCard({ ...blankSource, source: { ...blankSource.source!, ...patch } })).toBe(
+      false
+    );
+  });
+
+  it('looks at every field a source configuration has', () => {
+    // The list above is the whole schema. A field added to the configuration
+    // without a case here would be work this predicate cannot see.
+    expect(Object.keys(sourceNode.source ?? {}).sort()).toEqual([
+      'connectorKind',
+      'credentialSlot',
+      'endpoint',
+      'name',
+      'payloadType',
+    ]);
+  });
+
+  it('a question with words in it, or with the switch thrown, is not blank', () => {
+    expect(isBlankUserCard(researchNode)).toBe(false);
+    expect(isBlankUserCard({ ...blankResearch, research: { hypothesis: '', autoSynthesize: true } })).toBe(
+      false
+    );
+  });
+
+  it('never calls a card the system wrote blank', () => {
+    expect(isBlankUserCard(strategyNode)).toBe(false);
+    expect(isBlankUserCard({ id: 'dep-1', kind: 'deploy' })).toBe(false);
   });
 });
 

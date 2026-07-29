@@ -68,8 +68,16 @@ export const SOURCE_GHOST = GHOSTS[0];
 export const RESEARCH_GHOST = GHOSTS[1];
 
 /**
- * The line above the board. Three states, because a first-time board is three
- * different situations and one sentence for all of them would be wrong twice.
+ * The line above the board. One state per situation a board can be stuck in,
+ * because a single sentence for all of them would be wrong in every one but
+ * the last.
+ *
+ * The three middle lines exist for the same reason: on a board with cards but
+ * no question, the neutral working line is not merely bland, it is the point at
+ * which the surface stops teaching. A person who has sources and has never
+ * posed a question is exactly the person who needs the next move named, and
+ * they are the one the old two-state line went quiet on the moment a card
+ * landed.
  */
 export const BOARD_HINT = {
   /** Nothing at all: the ghosts are showing and they carry the model. */
@@ -79,24 +87,51 @@ export const BOARD_HINT = {
    *  nobody has done yet. */
   firstRun:
     'These sources came with the engine and need no key. Pose a question next, and what they carry is read against it as it arrives, at no cost.',
+  /** Sources, and nothing to read them against. The same next move the first
+   *  run names, without the claim about where the sources came from: by now
+   *  some of them are the person's own. */
+  askQuestion:
+    'The sources are on the board. Pose a question next: write what you think is true, and everything that arrives afterwards is read against it, at no cost.',
+  /** A question card was placed and never written. The move is not a new card,
+   *  it is finishing the one already there, in the words its own field uses. */
+  finishQuestion:
+    'A question on the board is still unwritten. Open the card and say what you think is true, and what would show it.',
   /** A board somebody has worked. */
   working: 'What you are working on: the sources, the questions, and what came of them.',
 } as const;
 
+/** Which line a board gets, and, for the surfaces that dress the next move
+ *  differently, which situation it is in. */
+export type BoardHintState = keyof typeof BOARD_HINT;
+
 /**
- * Which of the three lines this board gets.
+ * Which situation this board is in, read off the cards themselves.
  *
- * The middle case is the one worth stating: a board holding NOTHING but the
+ * Two of these are worth stating outright. A board holding NOTHING but the
  * cards the bootstrap laid down has not been worked, however many cards are on
  * it, and telling that person "what you are working on" would be describing
- * their board back to them before they had one.
+ * their board back to them before they had one. And a board with sources and no
+ * question is not working either: nothing is being read against anything, which
+ * is a thing the line can say and no card on the board can.
+ *
+ * The order is the order a person moves through them, and it is load-bearing:
+ * each case is the earliest step still outstanding, so the line always names
+ * the FIRST thing missing rather than the last thing noticed.
  */
-export function boardHint(nodes: readonly BoardNode[]): string {
-  if (nodes.length === 0) return BOARD_HINT.empty;
-  if (nodes.every((node) => node.kind === 'source' && isBuiltInNode(node.id))) {
-    return BOARD_HINT.firstRun;
+export function boardHintState(nodes: readonly BoardNode[]): BoardHintState {
+  if (nodes.length === 0) return 'empty';
+  if (nodes.every((node) => node.kind === 'source' && isBuiltInNode(node.id))) return 'firstRun';
+
+  const questions = nodes.filter((node) => node.kind === 'research');
+  if (questions.length === 0) {
+    // Only when there is something to read: a board of nothing but cards the
+    // system wrote has no sources to point at and no advice worth giving.
+    return nodes.some((node) => node.kind === 'source') ? 'askQuestion' : 'working';
   }
-  return BOARD_HINT.working;
+  if (questions.some((node) => (node.research?.hypothesis ?? '').trim() === '')) {
+    return 'finishQuestion';
+  }
+  return 'working';
 }
 
 /**

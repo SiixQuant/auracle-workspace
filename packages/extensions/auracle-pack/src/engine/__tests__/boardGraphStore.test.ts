@@ -449,6 +449,78 @@ describe('wiring cards together', () => {
   });
 });
 
+/* ── taking back a card nobody typed into ────────────────────────────────── */
+
+/**
+ * The one delete that asks nobody, and the two things that make that safe: it
+ * only ever removes a card carrying nothing, and it refuses a card somebody
+ * made a decision about by wiring it.
+ */
+describe('discarding a card nobody typed into', () => {
+  const BLANK = { name: '', connectorKind: '', endpoint: '', payloadType: '' };
+
+  it('takes back a blank card of either kind', async () => {
+    const { transport } = mockLane();
+    await open(transport);
+    const sourceId = boardGraphStore.createNode({ kind: 'source', source: BLANK });
+    const researchId = boardGraphStore.createNode({ kind: 'research', research: { hypothesis: '' } });
+
+    expect(boardGraphStore.discardBlankNode(sourceId)).toBe(true);
+    expect(boardGraphStore.discardBlankNode(researchId)).toBe(true);
+    expect(boardGraphStore.getSnapshot().graph.nodes).toEqual([]);
+  });
+
+  it('keeps a card carrying so much as one typed field', async () => {
+    const { transport } = mockLane();
+    await open(transport);
+    const named = boardGraphStore.createNode({
+      kind: 'source',
+      source: { ...BLANK, name: 'Desk filings' },
+    });
+    const written = boardGraphStore.createNode({
+      kind: 'research',
+      research: { hypothesis: 'Filings drift.' },
+    });
+
+    expect(boardGraphStore.discardBlankNode(named)).toBe(false);
+    expect(boardGraphStore.discardBlankNode(written)).toBe(false);
+    expect(boardGraphStore.getSnapshot().graph.nodes).toHaveLength(2);
+  });
+
+  it('keeps a blank card somebody wired, because a wire is a decision', async () => {
+    const { transport } = mockLane();
+    await open(transport);
+    const sourceId = boardGraphStore.createNode({ kind: 'source', source: SOURCE });
+    const researchId = boardGraphStore.createNode({ kind: 'research', research: { hypothesis: '' } });
+    boardGraphStore.wire(sourceId, researchId);
+
+    expect(boardGraphStore.discardBlankNode(researchId)).toBe(false);
+    expect(findNode(boardGraphStore.getSnapshot().graph, researchId)).toBeDefined();
+  });
+
+  it('says no to a card that is not there, and changes nothing', async () => {
+    const { transport } = mockLane();
+    await open(transport);
+    const before = boardGraphStore.getSnapshot();
+
+    expect(boardGraphStore.discardBlankNode('never-existed')).toBe(false);
+    expect(boardGraphStore.getSnapshot()).toBe(before);
+  });
+
+  it('carries the removal out to the lane like any other edit', async () => {
+    const { transport, state } = mockLane();
+    await open(transport);
+    const sourceId = boardGraphStore.createNode({ kind: 'source', source: BLANK });
+    await boardGraphStore.flush();
+    expect(state.docs['ws-1']).toContain(sourceId);
+
+    boardGraphStore.discardBlankNode(sourceId);
+    await boardGraphStore.flush();
+
+    expect(state.docs['ws-1']).not.toContain(sourceId);
+  });
+});
+
 /* ── materialize ─────────────────────────────────────────────────────────── */
 
 describe('cards that appear from real work', () => {

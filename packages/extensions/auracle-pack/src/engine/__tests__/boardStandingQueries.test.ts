@@ -60,8 +60,13 @@ const lane: BoardGraphTransport = {
   },
 };
 
+/** The registrations, by method as well as by path: the questions route also
+ *  ANSWERS with every question and its count, and a filter that read a badge
+ *  read as a registration would count requests nobody made. */
 function registrations(): unknown[] {
-  return calls.filter((call) => call.path === BOARD_QUESTIONS_PATH).map((call) => call.body);
+  return calls
+    .filter((call) => call.method === 'POST' && call.path === BOARD_QUESTIONS_PATH)
+    .map((call) => call.body);
 }
 
 function withdrawals(): string[] {

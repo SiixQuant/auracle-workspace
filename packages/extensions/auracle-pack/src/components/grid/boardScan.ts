@@ -252,7 +252,7 @@ export function scanPrompt(intent: ActionIntent): string {
  *
  * The engine's reply comes back rather than being swallowed, refusal included:
  * a spent month turns an automatic dispatch away with the figures that turned
- * it away, and the refresh above then carries the same verdict onto the card.
+ * it away, and the re-read below then carries the same verdict onto the card.
  */
 export async function settleBoardDispatch(
   nodeId: string,

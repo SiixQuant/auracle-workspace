@@ -410,29 +410,75 @@ const MOCK_BOARD_SOURCES: Array<Record<string, unknown>> = [];
 const MOCK_VAULT: Record<string, { name: string; set: boolean; updated_at: string }> = {};
 const MOCK_PREFS: Record<string, unknown> = {};
 
-// The research loop's half of the same contract. A registered question starts
-// GATHERING immediately — one mock item every few seconds — which is what makes
-// the badge, the distinct Synthesize label and the auto pass all demoable in a
-// single sitting. Dispatching resets that count and spends one of the month's
-// allowance, and the allowance pauses itself when it runs out, so the
-// paused-by-budget state can be reached without editing anything.
-const MOCK_QUESTIONS: Record<string, { hypothesis: string; since: number }> = {};
-const MOCK_BUDGET = { cap: 20, spent: 17 };
+// The research loop's half of the same lane, in the ENGINE's shapes: a question
+// row carries its own count (there is no counters list — the badge is read off
+// the question list), a counter is put back through the counters route, and the
+// budget states `used` against a cap that may be `unlimited`.
+//
+// A registered question starts GATHERING immediately — one mock item every few
+// seconds — which is what makes the badge, the distinct Synthesize label and the
+// auto pass all demoable in a single sitting. Dispatching resets that count and
+// spends one of the month's allowance, and once the allowance is gone the engine
+// REFUSES an automatic dispatch (429, with the budget that refused it) while
+// still running one a person asked for and marking it over budget. Both states
+// are reachable without editing anything.
+interface MockQuestion {
+  hypothesis: string;
+  since: number;
+  enabled: boolean;
+  sources: string[];
+  threshold: number;
+  created_at: string;
+  last_reset_at: string | null;
+}
+
+const MOCK_QUESTIONS: Record<string, MockQuestion> = {};
+const MOCK_BUDGET = { cap: 20, used: 17 };
 /** How fast the harness pretends material arrives, and how much can pile up. */
 const MOCK_GATHER_MS = 6000;
 const MOCK_GATHER_MAX = 9;
 
-function mockCounters(): Array<Record<string, unknown>> {
-  const now = Date.now();
-  return Object.entries(MOCK_QUESTIONS).map(([node_id, row]) => ({
+function mockMaterial(row: MockQuestion): number {
+  return Math.min(MOCK_GATHER_MAX, Math.floor((Date.now() - row.since) / MOCK_GATHER_MS));
+}
+
+/** One question as the engine states it — registration and count together. */
+function mockQuestion(node_id: string): Record<string, unknown> {
+  const row = MOCK_QUESTIONS[node_id];
+  const material = mockMaterial(row);
+  const now = new Date().toISOString();
+  return {
     node_id,
-    new_material: Math.min(MOCK_GATHER_MAX, Math.floor((now - row.since) / MOCK_GATHER_MS)),
-    as_of: new Date(now).toISOString(),
-  }));
+    hypothesis: row.hypothesis,
+    sources: row.sources,
+    threshold: row.threshold,
+    enabled: row.enabled,
+    new_material: material,
+    last_match_at: material > 0 ? now : null,
+    last_scored_at: now,
+    last_reset_at: row.last_reset_at,
+    created_at: row.created_at,
+  };
 }
 
 function mockBudget(): Record<string, unknown> {
-  return { ...MOCK_BUDGET, paused: MOCK_BUDGET.spent >= MOCK_BUDGET.cap };
+  const { cap, used } = MOCK_BUDGET;
+  const unlimited = cap <= 0;
+  const now = new Date();
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  return {
+    period: start.toISOString().slice(0, 7),
+    period_start: start.toISOString(),
+    resets_at: next.toISOString(),
+    unit: 'agent_sessions',
+    cap,
+    unlimited,
+    used,
+    remaining: unlimited ? null : Math.max(0, cap - used),
+    // The engine's own verdict, not the surface's arithmetic.
+    paused: !unlimited && used >= cap,
+  };
 }
 
 const ok = (body: unknown) => ({ ok: true, status: 200, body });
@@ -465,38 +511,92 @@ function boardRoute(
     return ok({ ok: true });
   }
 
-  // Counters first: the id patterns below would otherwise swallow this path.
-  if (p === '/ui/api/board/questions/counters') return ok({ counters: mockCounters() });
-
   if (p === '/ui/api/board/budget') return ok(mockBudget());
 
   if (p === '/ui/api/board/synthesis' && method === 'POST') {
-    MOCK_BUDGET.spent = Math.min(MOCK_BUDGET.cap, MOCK_BUDGET.spent + 1);
-    return ok({ ok: true, budget: mockBudget() });
+    const trigger = String(record.trigger ?? 'auto');
+    const before = mockBudget();
+    const over = before.paused === true;
+    // The month is spent and nobody asked by hand: refused, and NOTHING is
+    // recorded. The refusal carries the whole budget, so the surface can say
+    // why without going back to ask.
+    if (over && trigger === 'auto') {
+      return {
+        ok: false,
+        status: 429,
+        body: {
+          detail: 'the monthly dispatch budget is spent',
+          recorded: false,
+          over_budget: true,
+          budget: before,
+        },
+      };
+    }
+    MOCK_BUDGET.used += 1;
+    return ok({
+      ok: true,
+      recorded: true,
+      // A person asking over the cap is run and MARKED, never refused.
+      over_budget: over,
+      budget: mockBudget(),
+      dispatch: {
+        node_id: String(record.node_id ?? ''),
+        trigger,
+        detail: String(record.detail ?? ''),
+      },
+    });
   }
 
-  if (p === '/ui/api/board/questions' && method === 'POST') {
-    const id = String(record.node_id ?? '');
-    // Re-registering an EDITED question keeps whatever it has gathered: the
-    // engine is watching the same card, not a new one.
-    MOCK_QUESTIONS[id] = {
-      hypothesis: String(record.hypothesis ?? ''),
-      since: MOCK_QUESTIONS[id]?.since ?? Date.now(),
-    };
-    return ok({ ok: true });
+  if (p === '/ui/api/board/questions') {
+    if (method === 'POST') {
+      const id = String(record.node_id ?? '');
+      // Re-registering an EDITED question keeps whatever it has gathered: the
+      // engine is watching the same card, not a new one.
+      const held = MOCK_QUESTIONS[id];
+      MOCK_QUESTIONS[id] = {
+        hypothesis: String(record.hypothesis ?? ''),
+        since: held?.since ?? Date.now(),
+        enabled: true,
+        sources: Array.isArray(record.sources) ? (record.sources as string[]) : (held?.sources ?? []),
+        threshold: typeof record.threshold === 'number' ? record.threshold : (held?.threshold ?? 1),
+        created_at: held?.created_at ?? new Date().toISOString(),
+        last_reset_at: held?.last_reset_at ?? null,
+      };
+      return ok({ ok: true, question: mockQuestion(id) });
+    }
+    // The badge for a whole board, in one read: every question, with its count.
+    return ok({ questions: Object.keys(MOCK_QUESTIONS).map(mockQuestion) });
   }
 
   const withdrawn = p.match(/^\/ui\/api\/board\/questions\/([^/]+)\/delete$/);
   if (withdrawn) {
-    delete MOCK_QUESTIONS[decodeURIComponent(withdrawn[1])];
-    return ok({ ok: true });
+    const id = decodeURIComponent(withdrawn[1]);
+    const deleted = Boolean(MOCK_QUESTIONS[id]);
+    delete MOCK_QUESTIONS[id];
+    return ok({ ok: true, deleted });
   }
 
-  const counted = p.match(/^\/ui\/api\/board\/questions\/([^/]+)\/counter\/reset$/);
+  const counted = p.match(/^\/ui\/api\/board\/counters\/([^/]+)\/reset$/);
   if (counted) {
     const id = decodeURIComponent(counted[1]);
-    if (MOCK_QUESTIONS[id]) MOCK_QUESTIONS[id].since = Date.now();
-    return ok({ ok: true });
+    const row = MOCK_QUESTIONS[id];
+    const cleared = row ? mockMaterial(row) : 0;
+    const at = new Date().toISOString();
+    if (row) {
+      row.since = Date.now();
+      row.last_reset_at = at;
+    }
+    return ok({
+      node_id: id,
+      new_material: 0,
+      as_of: at,
+      registered: Boolean(row),
+      enabled: row?.enabled ?? false,
+      hypothesis: row?.hypothesis ?? '',
+      last_match_at: null,
+      last_reset_at: row ? at : null,
+      cleared,
+    });
   }
 
   const cleared = p.match(/^\/ui\/api\/board\/credentials\/([^/]+)\/clear$/);

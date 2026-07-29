@@ -43,6 +43,7 @@ import {
   flushBoard,
   type BoardToolOutcome,
 } from './engine/boardTools';
+import { settleBoardDispatch } from './components/grid/boardScan';
 import { agentSessionHost } from './components/grid/gridAiExecutors';
 
 /** Turn one outcome into what the host hands the agent. */
@@ -147,15 +148,20 @@ export function boardScanPrompt(nodeId: string): string | null {
 /**
  * Start a scan for a research card.
  *
- * TODO(#132): the card's own Scan verb and its `boardResearch` client are being
- * built alongside this change, and that verb is the single path a scan should
- * take — one lane the canvas button and this tool both call, so the two can
- * never start a scan two different ways. Until it lands this tool dispatches
- * through the agent-session lane the pack already has
- * ({@link ../components/grid/gridAiExecutors}), which is honest about what it
- * did: a session is opened with the prompt in it, and no scan has run until the
- * agent is sent. When #132 lands, replace the body below with a call to that
- * verb and keep this tool's name and schema exactly as they are.
+ * A scan started from the conversation is the same event as a scan started from
+ * the card, so it SETTLES the same way: the dispatch is recorded on the engine's
+ * ledger and the material it consumed stops counting as unseen, through the one
+ * function the card's verb uses ({@link ../components/grid/boardScan}). Two
+ * doors, one account of what happened — otherwise a person could scan from the
+ * chat all month and watch a badge that never cleared beside a budget that
+ * never moved.
+ *
+ * It settles as a MANUAL dispatch: a tool call is somebody asking for their own
+ * evidence in as many words, and the engine runs those over the cap rather than
+ * refusing them. What it does not do is claim more than it did — a session is
+ * opened with the prompt in it, and no scan has run until the agent is sent.
+ *
+ * A hand-off that never opened settles NOTHING: no record, no reset, no spend.
  */
 async function dispatchScan(nodeId: string): Promise<ExtensionToolResult> {
   const prompt = boardScanPrompt(nodeId);
@@ -175,6 +181,7 @@ async function dispatchScan(nodeId: string): Promise<ExtensionToolResult> {
   if (!outcome.ok) {
     return { success: false, error: outcome.error ?? 'The scan hand-off failed.' };
   }
+  await settleBoardDispatch(nodeId, 'scan', 'manual');
   return {
     success: true,
     // Dispatch, not delivery — the same wording the pack's other hand-off uses,

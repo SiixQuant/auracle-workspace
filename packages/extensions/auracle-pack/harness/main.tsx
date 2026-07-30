@@ -635,6 +635,43 @@ function engineRequest(
     }
     return ok({ prefs: MOCK_PREFS });
   }
+  // Live-quote snapshot. The STREAM is a native EventSource the invoke bridge
+  // cannot mock, so in the harness the card's EventSource fails against the mock
+  // origin and degrades to this snapshot — which is itself a fair demonstration
+  // of the fallback path. Prices are deterministic per symbol.
+  if (p.startsWith('/ui/api/quotes/snapshot')) {
+    const query = p.split('?')[1] ?? '';
+    let refs: Array<Record<string, unknown>> = [];
+    try {
+      const raw = new URLSearchParams(query).get('ref');
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(parsed)) refs = parsed as Array<Record<string, unknown>>;
+    } catch {
+      refs = [];
+    }
+    const quotes = refs.map((ref, index) => {
+      const symbol = String(ref.symbol ?? '');
+      const base = 80 + ((symbol.charCodeAt(0) || 65) % 60) + index;
+      return {
+        symbol,
+        sec_type: ref.sec_type ?? 'STK',
+        last: base + 0.25,
+        bid: base + 0.2,
+        ask: base + 0.31,
+        bid_size: 100,
+        ask_size: 140,
+        volume: 12_500,
+        ts: new Date().toISOString(),
+        quality: 'realtime',
+        market_data_type: 1,
+        expiry: ref.expiry,
+        strike: ref.strike,
+        right: ref.right,
+        currency: ref.currency,
+      };
+    });
+    return ok({ quotes });
+  }
   if (/^\/deployments\/\d+\/equity/.test(p)) return ok(MOCK_LIVE_EQUITY);
   if (/^\/deployments\/\d+\/orders/.test(p)) return ok(MOCK_ORDERS);
   if (p === '/deployments') return ok(MOCK_DEPLOYMENTS);

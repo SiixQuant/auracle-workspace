@@ -51,9 +51,9 @@ export function isBuiltInNode(nodeId: string): boolean {
   return isSeededNodeId(nodeId);
 }
 
-/** The two kinds a person puts on the Board by hand. */
+/** The kinds a person puts on the Board by hand. */
 function isUserPlaced(node: { kind: string }): boolean {
-  return node.kind === 'source' || node.kind === 'research';
+  return node.kind === 'source' || node.kind === 'research' || node.kind === 'quote';
 }
 
 /**

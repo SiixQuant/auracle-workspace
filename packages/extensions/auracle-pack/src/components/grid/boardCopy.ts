@@ -69,6 +69,18 @@ export const SOURCE_GHOST = GHOSTS[0];
 export const RESEARCH_GHOST = GHOSTS[1];
 
 /**
+ * The live-quote move, offered on the add row beside the two above. It is
+ * additive and deliberately not a fourth onboarding ghost: the empty state
+ * teaches the connect-ask-watch model, and a live quote is a thing you reach
+ * for once you are working, not the shape of the board you are about to build.
+ */
+export const QUOTE_ADD = {
+  id: 'quote',
+  icon: 'monitoring',
+  title: 'Watch a live quote',
+} as const;
+
+/**
  * The line above the board. One state per situation a board can be stuck in,
  * because a single sentence for all of them would be wrong in every one but
  * the last.

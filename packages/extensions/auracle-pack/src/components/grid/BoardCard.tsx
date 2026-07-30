@@ -61,6 +61,7 @@ const CARD_ICONS: Record<string, string> = {
 const KIND_WORD: Record<string, string> = {
   source: 'Source',
   research: 'Question',
+  quote: 'Live quote',
 };
 
 export function kindWord(kind: string): string {

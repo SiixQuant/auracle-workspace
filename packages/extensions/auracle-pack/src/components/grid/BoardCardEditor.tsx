@@ -33,6 +33,15 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import type { CSSProperties } from 'react';
 import { FloatingPortal, autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/react';
 import type { BoardDeletePlan, BoardGraph, BoardNode } from '../../engine/boardGraph';
+import {
+  missingQualifiers,
+  QUALIFIER_FIELDS,
+  SEC_TYPE_LABEL,
+  SEC_TYPES,
+  type ContractRef,
+  type QualifierField,
+  type SecType,
+} from '../../engine/liveQuotes';
 import { boardGraphStore } from '../../engine/boardGraphStore';
 import { isBuiltInNode } from '../../engine/boardBuiltins';
 import type { SynthesisBudget } from '../../engine/boardResearch';
@@ -247,7 +256,8 @@ export function BoardCardEditor({
 
         {node.kind === 'source' ? <SourceFields node={node} /> : null}
         {node.kind === 'research' ? <ResearchFields node={node} graph={graph} /> : null}
-        {node.kind !== 'source' && node.kind !== 'research' ? (
+        {node.kind === 'quote' ? <QuoteFields node={node} /> : null}
+        {node.kind !== 'source' && node.kind !== 'research' && node.kind !== 'quote' ? (
           <StatusLine
             testId="board-editor-readonly"
             kind="quiet"
@@ -619,6 +629,250 @@ function ResearchFields({ node, graph }: { node: BoardNode; graph: BoardGraph })
         />
       </section>
     </>
+  );
+}
+
+/* ── live quote ──────────────────────────────────────────────────────────── */
+
+const BLANK_CONTRACT: ContractRef = { symbol: '', secType: 'STK' };
+
+/** A contract with every qualifier that does not belong to its type dropped —
+ *  so switching an option to a stock leaves no orphaned strike behind, in the
+ *  graph or on the wire. */
+function cleanContract(contract: ContractRef): ContractRef {
+  const allowed = new Set<QualifierField['key']>(
+    (QUALIFIER_FIELDS[contract.secType] ?? []).map((field) => field.key)
+  );
+  const out: ContractRef = { symbol: contract.symbol, secType: contract.secType };
+  if (allowed.has('expiry') && contract.expiry) out.expiry = contract.expiry;
+  if (allowed.has('strike') && typeof contract.strike === 'number') out.strike = contract.strike;
+  if (allowed.has('right') && contract.right) out.right = contract.right;
+  if (allowed.has('exchange') && contract.exchange) out.exchange = contract.exchange;
+  if (allowed.has('currency') && contract.currency) out.currency = contract.currency;
+  if (allowed.has('multiplier') && contract.multiplier) out.multiplier = contract.multiplier;
+  return out;
+}
+
+/**
+ * The whole of configuring a live-quote card, on the canvas — a name, and the
+ * SET of contracts it watches, each with the extra fields its type needs. Every
+ * edit is a write straight through the store, exactly like the source card: no
+ * Save button, no local draft, and the card behind the editor restreams the
+ * moment the set changes.
+ */
+function QuoteFields({ node }: { node: BoardNode }): JSX.Element {
+  const quote = node.quote ?? { contracts: [] };
+  const contracts = quote.contracts;
+
+  const writeContracts = (next: ContractRef[]): void => {
+    boardGraphStore.updateNode(node.id, { quote: { contracts: next } });
+  };
+  const patchContract = (index: number, patch: Partial<ContractRef>): void => {
+    writeContracts(contracts.map((row, i) => (i === index ? cleanContract({ ...row, ...patch }) : row)));
+  };
+
+  return (
+    <>
+      <EditorField
+        label="Name"
+        testId="board-editor-quote-name"
+        value={quote.name ?? ''}
+        placeholder="What you call this card (optional)"
+        onChange={(value) => boardGraphStore.updateNode(node.id, { quote: { name: value } })}
+      />
+      {contracts.length === 0 ? (
+        <StatusLine
+          testId="board-editor-quote-hint"
+          kind="quiet"
+          text="Add a contract to watch. A card can hold several."
+        />
+      ) : null}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }} data-testid="board-editor-quote-contracts">
+        {contracts.map((contract, index) => (
+          <ContractEditor
+            key={index}
+            index={index}
+            contract={contract}
+            onPatch={patchContract}
+            onRemove={() => writeContracts(contracts.filter((_, i) => i !== index))}
+          />
+        ))}
+      </div>
+      <div>
+        <Button
+          variant="ghost"
+          testId="board-editor-quote-add"
+          onClick={() => writeContracts([...contracts, { ...BLANK_CONTRACT }])}
+        >
+          Add contract
+        </Button>
+      </div>
+    </>
+  );
+}
+
+function ContractEditor({
+  index,
+  contract,
+  onPatch,
+  onRemove,
+}: {
+  index: number;
+  contract: ContractRef;
+  onPatch: (index: number, patch: Partial<ContractRef>) => void;
+  onRemove: () => void;
+}): JSX.Element {
+  const fields = QUALIFIER_FIELDS[contract.secType] ?? [];
+  const missing = missingQualifiers(contract);
+  const state =
+    contract.symbol.trim() === ''
+      ? 'Name a symbol to watch.'
+      : missing.length > 0
+        ? `Needs ${missing.join(', ')}.`
+        : 'Ready to stream.';
+
+  return (
+    <section
+      data-testid={`board-editor-quote-contract-${index}`}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+        padding: '8px 10px',
+        borderRadius: 8,
+        border: `1px solid ${tone.border}`,
+        background: tone.surface,
+      }}
+    >
+      <div style={{ display: 'flex', gap: 6 }}>
+        <input
+          className="apk-input"
+          style={{ ...INPUT, flex: 2 }}
+          data-testid={`board-editor-quote-symbol-${index}`}
+          value={contract.symbol}
+          placeholder="Symbol"
+          aria-label="Symbol"
+          onChange={(event) => onPatch(index, { symbol: event.target.value })}
+        />
+        <select
+          className="apk-input"
+          style={{ ...INPUT, flex: 1, cursor: 'pointer' }}
+          data-testid={`board-editor-quote-sectype-${index}`}
+          value={contract.secType}
+          aria-label="Instrument type"
+          onChange={(event) => onPatch(index, { secType: event.target.value as SecType })}
+        >
+          {SEC_TYPES.map((secType) => (
+            <option key={secType} value={secType}>
+              {SEC_TYPE_LABEL[secType]}
+            </option>
+          ))}
+        </select>
+      </div>
+      {fields.length > 0 ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 6 }}>
+          {fields.map((field) => (
+            <QualifierInput
+              key={field.key}
+              index={index}
+              field={field}
+              contract={contract}
+              onPatch={onPatch}
+            />
+          ))}
+        </div>
+      ) : null}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <StatusLine testId={`board-editor-quote-state-${index}`} kind="quiet" text={state} />
+        <Button variant="quiet" testId={`board-editor-quote-remove-${index}`} onClick={onRemove}>
+          Remove
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+function QualifierInput({
+  index,
+  field,
+  contract,
+  onPatch,
+}: {
+  index: number;
+  field: QualifierField;
+  contract: ContractRef;
+  onPatch: (index: number, patch: Partial<ContractRef>) => void;
+}): JSX.Element {
+  const testId = `board-editor-quote-${field.key}-${index}`;
+  const labelStyle = { display: 'flex', flexDirection: 'column', gap: 3 } as const;
+  const caption = (
+    <span style={{ fontSize: 10.5, color: tone.text3 }}>
+      {field.label}
+      {field.required ? '' : ' (optional)'}
+    </span>
+  );
+
+  if (field.kind === 'right') {
+    return (
+      <label style={labelStyle}>
+        {caption}
+        <select
+          className="apk-input"
+          style={{ ...INPUT, cursor: 'pointer' }}
+          data-testid={testId}
+          value={contract.right ?? ''}
+          onChange={(event) =>
+            onPatch(index, { right: event.target.value === '' ? undefined : (event.target.value as 'C' | 'P') })
+          }
+        >
+          <option value="">—</option>
+          <option value="C">Call</option>
+          <option value="P">Put</option>
+        </select>
+      </label>
+    );
+  }
+
+  if (field.kind === 'number') {
+    const value = typeof contract.strike === 'number' ? String(contract.strike) : '';
+    return (
+      <label style={labelStyle}>
+        {caption}
+        <input
+          className="apk-input"
+          style={INPUT}
+          data-testid={testId}
+          inputMode="decimal"
+          value={value}
+          placeholder={field.placeholder}
+          onChange={(event) => {
+            const raw = event.target.value.trim();
+            if (raw === '') {
+              onPatch(index, { strike: undefined });
+              return;
+            }
+            const parsed = Number(raw);
+            // A non-numeric keystroke is ignored rather than clearing the strike.
+            if (Number.isFinite(parsed)) onPatch(index, { strike: parsed });
+          }}
+        />
+      </label>
+    );
+  }
+
+  const textValue = (contract[field.key] as string | undefined) ?? '';
+  return (
+    <label style={labelStyle}>
+      {caption}
+      <input
+        className="apk-input"
+        style={INPUT}
+        data-testid={testId}
+        value={textValue}
+        placeholder={field.placeholder}
+        onChange={(event) => onPatch(index, { [field.key]: event.target.value } as Partial<ContractRef>)}
+      />
+    </label>
   );
 }
 

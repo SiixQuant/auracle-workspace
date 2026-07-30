@@ -78,6 +78,7 @@ import { GRID_ACCENT } from './gridTheme';
 import { TREE_MIN_WIDTH } from './gridWires';
 import { CANVAS_WIDTH, useGridCanvas } from './useGridCanvas';
 import { BoardCard, ensureBoardCardStyles, useBoardPeek, type DropState } from './BoardCard';
+import { QuoteCard, ensureQuoteCardStyles } from './QuoteCard';
 import { BoardCardEditor } from './BoardCardEditor';
 import { useBoardCardAiContext } from './gridFocus';
 import { BoardWires } from './BoardWires';
@@ -85,7 +86,7 @@ import { layoutBoard, userSubgraph, type PlacedCard } from './boardLayout';
 import { cardVerb, dispatchBoardScan, useBoardResearchLoop, type CardVerb } from './boardScan';
 import { aiRunStore, resultLine } from './gridAiActions';
 import { keptSentence, researchReading, sourceReading, type CardReading } from './boardReadings';
-import { BOARD_HINT, boardHintState, BOARD_SYNC_NOTE, GHOSTS, RESEARCH_GHOST, SOURCE_GHOST } from './boardCopy';
+import { BOARD_HINT, boardHintState, BOARD_SYNC_NOTE, GHOSTS, QUOTE_ADD, RESEARCH_GHOST, SOURCE_GHOST } from './boardCopy';
 
 const STYLE_ID = 'auracle-grid-board-styles';
 
@@ -198,6 +199,7 @@ interface Notice {
 export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
   ensureBoardStyles();
   ensureBoardCardStyles();
+  ensureQuoteCardStyles();
   const graph = useSyncExternalStore(
     boardGraph.subscribe,
     boardGraph.getSnapshot,
@@ -338,16 +340,20 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
   closeRef.current = closeEditor;
 
   const place = useCallback(
-    (kind: 'source' | 'research'): void => {
+    (kind: 'source' | 'research' | 'quote'): void => {
       peek.close();
       setNotice(null);
       // Whatever was open is being left for this new card, so it is left
       // properly: an untouched one does not survive the next move either.
       closeEditor();
-      const id =
-        kind === 'source'
-          ? boardGraphStore.createNode({ kind: 'source', source: { ...BLANK_SOURCE } })
-          : boardGraphStore.createNode({ kind: 'research', research: { hypothesis: '' } });
+      let id: string;
+      if (kind === 'source') {
+        id = boardGraphStore.createNode({ kind: 'source', source: { ...BLANK_SOURCE } });
+      } else if (kind === 'research') {
+        id = boardGraphStore.createNode({ kind: 'research', research: { hypothesis: '' } });
+      } else {
+        id = boardGraphStore.createNode({ kind: 'quote', quote: { contracts: [] } });
+      }
       fresh.current.add(id);
       setPending(id);
     },
@@ -547,6 +553,19 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
                 </span>
                 {RESEARCH_GHOST.title}
               </button>
+              {/* The third move, additive: watch a live quote. A card a person
+                  places, streaming on the canvas, released when it comes off. */}
+              <button
+                type="button"
+                className="aboard__add"
+                data-testid="board-add-quote"
+                onClick={() => place('quote')}
+              >
+                <span className="material-symbols-outlined" aria-hidden>
+                  {QUOTE_ADD.icon}
+                </span>
+                {QUOTE_ADD.title}
+              </button>
             </div>
           )}
           {notice ? (
@@ -594,6 +613,21 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
               {layout.cards.map((card) => {
                 const node = graph.nodes.find((row) => row.id === card.id);
                 if (!node) return null;
+                // The live-quote card runs its own stream and draws its own body,
+                // so it is its own component beside the shared one.
+                if (node.kind === 'quote') {
+                  return (
+                    <QuoteCard
+                      key={node.id}
+                      node={node}
+                      card={card}
+                      editing={editing?.nodeId === node.id}
+                      drop={dropOf(node)}
+                      onOpen={openCard}
+                      onWireEnd={endWire}
+                    />
+                  );
+                }
                 const reading = readingOf(node);
                 return (
                   <BoardCard

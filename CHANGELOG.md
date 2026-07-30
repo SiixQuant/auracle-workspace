@@ -10,7 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 <!-- New features go here -->
-- The Auracle Board can now watch live market quotes. Drop a live-quote card on the canvas and name the instruments you want, from a stock, ETF or index to a fully specified option, future or FX pair, and each one streams its last price and bid/ask with a quality badge that says plainly whether it is live, delayed or frozen. A delayed quote is always labelled delayed and never shown as live. If the stream drops, the card keeps figures flowing by falling back to periodic snapshots instead of freezing, and it releases the feed the moment you remove the card or leave the Board. Everything the card needs is set on the canvas itself, and it sits alongside your existing sources and questions without changing them.
 
 ### Changed
 <!-- Changes to existing functionality go here -->
@@ -20,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 <!-- Removed features go here -->
+
+## [1.8.0] - 2026-07-29
+
+### Added
+- The Auracle Board can now watch live market quotes. Drop a live-quote card on the canvas and name the instruments you want, from a stock, ETF or index to a fully specified option, future or FX pair, and each one streams its last price and bid/ask with a quality badge that says plainly whether it is live, delayed or frozen. A delayed quote is always labelled delayed and never shown as live. If the stream drops, the card keeps figures flowing by falling back to periodic snapshots instead of freezing, and it releases the feed the moment you remove the card or leave the Board. Everything the card needs is set on the canvas itself, and it sits alongside your existing sources and questions without changing them.
 
 ## [1.7.1] - 2026-07-29
 

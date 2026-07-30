@@ -122,14 +122,36 @@ export function oneLine(text: string, limit = 68): string {
   return flat.length <= limit ? flat : `${flat.slice(0, limit - 1).trimEnd()}…`;
 }
 
-/** The card's heading. Never blank: an unnamed card still has to be findable. */
-export function cardTitle(node: BoardNode): string {
-  if (node.kind === 'source') return oneLine(node.source?.name ?? '', 34) || 'Unnamed source';
+/**
+ * How much of a heading a card shows before its own clamp takes over — two
+ * lines' worth at the card's width.
+ *
+ * It used to be one line's worth, cut here in JavaScript. That is what made a
+ * sixty-character symbol arrive already ruined: the string was shortened before
+ * the card ever laid it out, so the card had nothing left to wrap. The cut
+ * belongs to the CSS clamp, which knows how wide the box actually is; this is
+ * only the ceiling that keeps an unbounded name out of the DOM.
+ */
+const TITLE_LIMIT = 64;
+
+function heading(node: BoardNode, limit: number): string {
+  if (node.kind === 'source') return oneLine(node.source?.name ?? '', limit) || 'Unnamed source';
   if (node.kind === 'research') {
     const first = (node.research?.hypothesis ?? '').split('\n')[0] ?? '';
-    return oneLine(first, 34) || 'A question, unwritten';
+    return oneLine(first, limit) || 'A question, unwritten';
   }
-  return oneLine(node.label ?? '', 34) || node.ref?.kind || node.kind;
+  return oneLine(node.label ?? '', limit) || node.ref?.kind || node.kind;
+}
+
+/** The card's heading. Never blank: an unnamed card still has to be findable. */
+export function cardTitle(node: BoardNode): string {
+  return heading(node, TITLE_LIMIT);
+}
+
+/** The same heading with nothing cut out of it — what the clamped title on a
+ *  card carries, so the whole name stays reachable from the card itself. */
+export function cardFullTitle(node: BoardNode): string {
+  return heading(node, Number.POSITIVE_INFINITY);
 }
 
 /**

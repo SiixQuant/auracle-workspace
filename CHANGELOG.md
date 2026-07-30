@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 <!-- Changes to existing functionality go here -->
+- The Auracle Board is laid out to be read. Your work now runs left to right across the canvas under quiet headings — the sources you pointed it at, the questions you asked, and everything that came out of answering them — and the cards the system writes for you sit in a balanced block of columns instead of one long strip down the middle. The canvas itself carries a faint surface texture so it no longer reads as empty space, cards are lifted off it with a little more light along their top edge, and a card's name is set larger than the line beneath it so the two are told apart at a glance. A name too long for its card now wraps to two lines and finishes with an ellipsis, with the whole of it available on hover, and the accent colour is reserved for the card you have open so there is exactly one thing drawing the eye.
 
 ### Fixed
 <!-- Bug fixes go here -->

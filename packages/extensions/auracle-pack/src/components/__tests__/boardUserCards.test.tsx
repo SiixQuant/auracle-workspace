@@ -208,6 +208,45 @@ describe('a card says what it is', () => {
   });
 });
 
+describe('the board reads as a pipeline', () => {
+  it('captions each rank that has a card in it, in order', async () => {
+    seedSource();
+    seedResearch();
+    await paint();
+
+    expect(screen.getByTestId('board-column-0').textContent).toBe('Sources');
+    expect(screen.getByTestId('board-column-1').textContent).toBe('Questions');
+  });
+
+  it('captions nothing for a rank with nothing in it', async () => {
+    seedSource();
+    await paint();
+
+    expect(screen.getByTestId('board-column-0')).toBeTruthy();
+    expect(screen.queryByTestId('board-column-1')).toBeNull();
+  });
+
+  it('names the last column where the system writes its cards', async () => {
+    boardGraphStore.materialize({
+      kind: 'strategy',
+      ref: { kind: 'strategy', id: '9' },
+      label: 'Gap reversion',
+    });
+    await paint();
+
+    expect(screen.getByTestId('board-section-materialized').textContent).toBe('Materialized');
+  });
+
+  it('keeps a clamped name whole on the element that carries it', async () => {
+    const long = 'ContinuousCashOverlayFiltersForAStaticGrowthDefensiveSleeve';
+    const id = seedSource({ name: long });
+    await paint();
+
+    // The card shows two lines and an ellipsis; nothing may lose the name.
+    expect(screen.getByTestId(`board-card-title-${id}`).getAttribute('title')).toBe(long);
+  });
+});
+
 describe('a source card reads the connections feed', () => {
   it('goes healthy when the registry says its counterpart is up', async () => {
     const id = seedSource();

@@ -109,6 +109,19 @@ const MOCK_STRATEGIES = {
     { path: 'strategies.desk.atlas.AtlasMomentum', kind: 'class', doc: '12-1 momentum, vol-scaled' },
     { path: 'strategies.desk.fundpair.FundPair', kind: 'class', doc: '60/40 blend' },
     { path: 'strategies.desk.signals.backtest_meanrev', kind: 'function', doc: 'mean-reversion signal' },
+    // Two real-length symbols, kept here on purpose: a discovered class name is
+    // routinely longer than a card is wide, and the Board's title clamp is only
+    // demonstrable against one.
+    {
+      path: 'strategies.desk.overlay.ContinuousCashOverlayFiltersForAStaticGrowthDefensiveSleeve',
+      kind: 'class',
+      doc: 'cash overlay on a static sleeve',
+    },
+    {
+      path: 'strategies.desk.tail.ReSGAALargeTailRiskModelForLearningValueAtRiskAndDrawdown',
+      kind: 'class',
+      doc: 'tail-risk learner',
+    },
   ],
   // Additive discovery field: files discovery saw but dropped, with reasons.
   excluded: [

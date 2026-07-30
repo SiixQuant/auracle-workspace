@@ -48,7 +48,10 @@ export type BoardRank = 0 | 1 | 2;
  * would make the Board lie about what is on it.
  */
 export function rankOf(kind: string): BoardRank {
-  if (kind === 'source') return 0;
+  // Sources and live-quote cards are both inputs a person points the board at,
+  // so they share the top rank; questions sit under them, and everything the
+  // system materialized below both.
+  if (kind === 'source' || kind === 'quote') return 0;
   if (kind === 'research') return 1;
   return 2;
 }
@@ -63,7 +66,9 @@ export function rankOf(kind: string): BoardRank {
  * nowhere to land, and drawing one would point at empty ground.
  */
 export function userSubgraph(graph: BoardGraph): BoardGraph {
-  const nodes = graph.nodes.filter((node) => node.kind === 'source' || node.kind === 'research');
+  const nodes = graph.nodes.filter(
+    (node) => node.kind === 'source' || node.kind === 'research' || node.kind === 'quote'
+  );
   if (nodes.length === graph.nodes.length) return graph;
   const kept = new Set(nodes.map((node) => node.id));
   return {

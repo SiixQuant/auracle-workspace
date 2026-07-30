@@ -37,14 +37,15 @@
  * not for known fields in the wrong place — preserving those would reopen the
  * reference-only hole from the other side.
  */
+import { isSecType, type ContractRef } from './liveQuotes';
 
 /** The kinds this build knows. Any other string is a future kind, preserved. */
-export const BOARD_NODE_KINDS = ['source', 'research', 'strategy', 'test', 'deploy'] as const;
+export const BOARD_NODE_KINDS = ['source', 'research', 'quote', 'strategy', 'test', 'deploy'] as const;
 
 export type BoardNodeKind = (typeof BOARD_NODE_KINDS)[number];
 
 /** The kinds a user places by hand. */
-export type UserNodeKind = 'source' | 'research';
+export type UserNodeKind = 'source' | 'research' | 'quote';
 
 /** The kinds the system writes when work materializes an artifact. */
 export type MaterializedNodeKind = 'strategy' | 'test' | 'deploy';
@@ -74,6 +75,22 @@ export interface BoardSourceConfig {
   payloadType: string;
   /** Vault SLOT NAME. Never a value, never a masked preview of one. */
   credentialSlot?: string;
+}
+
+/**
+ * A live-quote card's configuration: an optional name, and the SET of contracts
+ * it watches (OQ2 — a card is a small watchlist, not a single symbol).
+ *
+ * Like {@link BoardSourceConfig}, this holds only what a person typed. There is
+ * no quote data here and no engine line: a quote is live market data that lives
+ * on the stream, fetched while the card is on the canvas, never stored — so a
+ * saved Board carries the intent to watch, not a stale price.
+ */
+export interface BoardQuoteConfig {
+  /** Display name the user gave the card. Optional — the symbols name it. */
+  name?: string;
+  /** The contracts this card watches. */
+  contracts: ContractRef[];
 }
 
 /** A research card's configuration: the question, in the user's words. */
@@ -112,6 +129,8 @@ export interface BoardNode {
   readonly source?: BoardSourceConfig;
   /** Set on `research` cards only. */
   readonly research?: BoardResearchConfig;
+  /** Set on `quote` cards only. */
+  readonly quote?: BoardQuoteConfig;
   /** Set on materialized (and future) cards only — a reference, never a copy. */
   readonly ref?: ArtifactRef;
   /** Short display label for a materialized card. */
@@ -180,7 +199,7 @@ export function emptyBoardGraph(): BoardGraph {
 
 /* ── parse ───────────────────────────────────────────────────────────────── */
 
-const NODE_KEYS = new Set(['id', 'kind', 'position', 'source', 'research', 'ref', 'label']);
+const NODE_KEYS = new Set(['id', 'kind', 'position', 'source', 'research', 'quote', 'ref', 'label']);
 const DOC_KEYS = new Set(['version', 'nodes', 'edges', 'retiredSeeds']);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -244,6 +263,50 @@ export function normalizeResearchConfig(value: unknown): BoardResearchConfig | u
   return value.autoSynthesize === true ? { ...config, autoSynthesize: true } : config;
 }
 
+function optionalNum(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+/**
+ * One contract, reduced field by field — the same rule the source config
+ * follows, so nothing a caller tacked on survives. A contract keeps its slot as
+ * long as its type is one this build knows: the symbol may still be empty while
+ * a person is typing, and dropping a half-filled row out from under the cursor
+ * is the one behaviour worse than leaving it. Symbol is stored AS TYPED (spaces
+ * and case), and only upper-cased on the way to the wire, so editing does not
+ * fight the keyboard.
+ */
+export function normalizeContract(value: unknown): ContractRef | undefined {
+  if (!isRecord(value)) return undefined;
+  const secTypeRaw = str(value.secType);
+  if (!isSecType(secTypeRaw)) return undefined;
+  const contract: ContractRef = { symbol: str(value.symbol), secType: secTypeRaw };
+  const expiry = optionalStr(value.expiry);
+  if (expiry) contract.expiry = expiry;
+  const strike = optionalNum(value.strike);
+  if (strike !== undefined) contract.strike = strike;
+  const right = str(value.right);
+  if (right === 'C' || right === 'P') contract.right = right;
+  const exchange = optionalStr(value.exchange);
+  if (exchange) contract.exchange = exchange;
+  const currency = optionalStr(value.currency);
+  if (currency) contract.currency = currency;
+  const multiplier = optionalStr(value.multiplier);
+  if (multiplier) contract.multiplier = multiplier;
+  return contract;
+}
+
+export function normalizeQuoteConfig(value: unknown): BoardQuoteConfig | undefined {
+  if (!isRecord(value)) return undefined;
+  const rawContracts = Array.isArray(value.contracts) ? value.contracts : [];
+  const contracts = rawContracts
+    .map(normalizeContract)
+    .filter((contract): contract is ContractRef => contract !== undefined);
+  const name = optionalStr(value.name);
+  const config: BoardQuoteConfig = { contracts };
+  return name ? { name, contracts } : config;
+}
+
 function collectExtra(
   value: Record<string, unknown>,
   known: Set<string>
@@ -271,6 +334,7 @@ function parseNode(value: unknown): BoardNode | undefined {
     position?: BoardPosition;
     source?: BoardSourceConfig;
     research?: BoardResearchConfig;
+    quote?: BoardQuoteConfig;
     ref?: ArtifactRef;
     label?: string;
     extra?: Record<string, unknown>;
@@ -287,10 +351,13 @@ function parseNode(value: unknown): BoardNode | undefined {
   } else if (kind === 'research') {
     const research = normalizeResearchConfig(value.research);
     if (research) node.research = research;
+  } else if (kind === 'quote') {
+    const quote = normalizeQuoteConfig(value.quote);
+    if (quote) node.quote = quote;
   }
 
-  // Sources and research cards own no artifact, so a ref on one is dropped.
-  if (kind !== 'source' && kind !== 'research') {
+  // The kinds a person places own no artifact, so a ref on one is dropped.
+  if (kind !== 'source' && kind !== 'research' && kind !== 'quote') {
     const ref = parseRef(value.ref);
     if (ref) node.ref = ref;
   }
@@ -378,6 +445,19 @@ function parseRetiredSeeds(value: unknown): readonly string[] | undefined {
 
 /* ── serialize ───────────────────────────────────────────────────────────── */
 
+/** One contract, key order fixed and empty qualifiers omitted, so an unchanged
+ *  quote card serializes byte for byte and writes nothing new. */
+function serializeContract(contract: ContractRef): Record<string, unknown> {
+  const out: Record<string, unknown> = { symbol: contract.symbol, secType: contract.secType };
+  if (contract.expiry) out.expiry = contract.expiry;
+  if (typeof contract.strike === 'number') out.strike = contract.strike;
+  if (contract.right) out.right = contract.right;
+  if (contract.exchange) out.exchange = contract.exchange;
+  if (contract.currency) out.currency = contract.currency;
+  if (contract.multiplier) out.multiplier = contract.multiplier;
+  return out;
+}
+
 function serializeNode(node: BoardNode): Record<string, unknown> {
   const out: Record<string, unknown> = { id: node.id, kind: node.kind };
   if (node.position) out.position = { x: node.position.x, y: node.position.y };
@@ -397,6 +477,11 @@ function serializeNode(node: BoardNode): Record<string, unknown> {
     // byte as it did before this field existed.
     if (node.research.autoSynthesize) research.autoSynthesize = true;
     out.research = research;
+  }
+  if (node.quote) {
+    const quote: Record<string, unknown> = { contracts: node.quote.contracts.map(serializeContract) };
+    if (node.quote.name) quote.name = node.quote.name;
+    out.quote = quote;
   }
   if (node.ref) out.ref = { kind: node.ref.kind, id: node.ref.id };
   if (node.label) out.label = node.label;
@@ -476,6 +561,23 @@ export function isBlankUserCard(node: BoardNode): boolean {
     if (!research) return true;
     return (research.hypothesis ?? '').trim() === '' && research.autoSynthesize !== true;
   }
+  if (node.kind === 'quote') {
+    const quote = node.quote;
+    if (!quote) return true;
+    // A name, or ANY contract carrying a typed field, is work. A row a person
+    // added but never filled (a bare default sec_type, nothing else) is not.
+    if ((quote.name ?? '').trim() !== '') return false;
+    return !quote.contracts.some(
+      (contract) =>
+        contract.symbol.trim() !== '' ||
+        !!contract.expiry ||
+        typeof contract.strike === 'number' ||
+        !!contract.right ||
+        !!contract.currency ||
+        !!contract.exchange ||
+        !!contract.multiplier
+    );
+  }
   return false;
 }
 
@@ -520,10 +622,32 @@ function sameResearch(a: BoardResearchConfig, b: BoardResearchConfig): boolean {
   return a.hypothesis === b.hypothesis && (a.autoSynthesize ?? false) === (b.autoSynthesize ?? false);
 }
 
+function sameContract(a: ContractRef, b: ContractRef): boolean {
+  return (
+    a.symbol === b.symbol &&
+    a.secType === b.secType &&
+    a.expiry === b.expiry &&
+    a.strike === b.strike &&
+    a.right === b.right &&
+    a.exchange === b.exchange &&
+    a.currency === b.currency &&
+    a.multiplier === b.multiplier
+  );
+}
+
+function sameQuote(a: BoardQuoteConfig, b: BoardQuoteConfig): boolean {
+  return (
+    (a.name ?? '') === (b.name ?? '') &&
+    a.contracts.length === b.contracts.length &&
+    a.contracts.every((contract, index) => sameContract(contract, b.contracts[index]))
+  );
+}
+
 /** What a card's editor may change. Applied by kind; the rest is ignored. */
 export interface BoardNodePatch {
   source?: Partial<BoardSourceConfig>;
   research?: Partial<BoardResearchConfig>;
+  quote?: Partial<BoardQuoteConfig>;
   label?: string;
 }
 
@@ -545,6 +669,10 @@ export function updateNode(graph: BoardGraph, nodeId: string, patch: BoardNodePa
     if (merged && !sameResearch(node.research, merged)) {
       next = { ...next, research: merged };
     }
+  }
+  if (patch.quote && node.kind === 'quote' && node.quote) {
+    const merged = normalizeQuoteConfig({ ...node.quote, ...patch.quote });
+    if (merged && !sameQuote(node.quote, merged)) next = { ...next, quote: merged };
   }
   if (patch.label !== undefined) {
     next = patch.label ? { ...next, label: patch.label } : stripLabel(next);

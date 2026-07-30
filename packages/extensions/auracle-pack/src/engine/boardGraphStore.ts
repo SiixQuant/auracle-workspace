@@ -39,6 +39,7 @@ import {
   emptyBoardGraph,
   findNode,
   isBlankUserCard,
+  normalizeQuoteConfig,
   normalizeResearchConfig,
   normalizeSourceConfig,
   parseBoardGraph,
@@ -54,6 +55,7 @@ import {
   type BoardNode,
   type BoardNodePatch,
   type BoardPosition,
+  type BoardQuoteConfig,
   type BoardResearchConfig,
   type BoardSourceConfig,
   type MaterializedNodeKind,
@@ -109,6 +111,12 @@ export type NewBoardNode =
   | {
       kind: 'research';
       research: BoardResearchConfig;
+      position?: BoardPosition;
+      id?: string;
+    }
+  | {
+      kind: 'quote';
+      quote: BoardQuoteConfig;
       position?: BoardPosition;
       id?: string;
     };
@@ -365,14 +373,14 @@ export const boardGraphStore = {
    */
   createNode(input: NewBoardNode): string {
     const id = input.id ?? nextId(input.kind);
-    const node: BoardNode =
-      input.kind === 'source'
-        ? { id, kind: 'source', source: normalizeSourceConfig(input.source) ?? BLANK_SOURCE }
-        : {
-            id,
-            kind: 'research',
-            research: normalizeResearchConfig(input.research) ?? { hypothesis: '' },
-          };
+    let node: BoardNode;
+    if (input.kind === 'source') {
+      node = { id, kind: 'source', source: normalizeSourceConfig(input.source) ?? BLANK_SOURCE };
+    } else if (input.kind === 'research') {
+      node = { id, kind: 'research', research: normalizeResearchConfig(input.research) ?? { hypothesis: '' } };
+    } else {
+      node = { id, kind: 'quote', quote: normalizeQuoteConfig(input.quote) ?? { contracts: [] } };
+    }
     const placed = input.position ? { ...node, position: { ...input.position } } : node;
     mutate(addNode(snapshot.graph, placed));
     return id;

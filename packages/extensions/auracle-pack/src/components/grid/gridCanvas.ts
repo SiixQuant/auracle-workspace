@@ -65,6 +65,21 @@ export const ZOOM_MAX = 1.5;
 /** One press of a zoom control. */
 export const ZOOM_STEP = 1.2;
 
+/**
+ * How far the FIT is allowed to blow a small plan up to fill its frame.
+ *
+ * A plan that fits with room to spare used to be drawn at 1:1 and centred,
+ * which left a sparse board — a first run, two sources and a question — as a
+ * postage stamp in the middle of a pane, with more empty canvas than board. So
+ * the fit now scales UP as well as down, and this is the ceiling it stops at.
+ *
+ * Chosen by eye rather than derived: at 1.4 a card's type reads as a deliberate
+ * larger setting of the same drawing, and above it the schematic starts to look
+ * like a zoomed screenshot. It is deliberately UNDER {@link ZOOM_MAX} so a
+ * filled-out view still has a step of manual zoom left in it.
+ */
+export const FIT_MAX = 1.4;
+
 /** The plan at rest in the corner, unscaled — what an unmeasurable stage gets. */
 export const IDENTITY: View = { x: 0, y: 0, scale: 1 };
 
@@ -106,22 +121,34 @@ export function panBy(view: View, dx: number, dy: number): View {
 }
 
 /**
- * The whole plan, centred in the stage — the view every open starts at and the
- * one the fit control returns to.
+ * The whole plan, FRAMED — the view every open starts at and the one the fit
+ * control returns to. Centred both ways, and scaled to take up the room it has
+ * been given rather than only the room it happens to need.
  *
- * It never zooms IN to fill the stage: a plan smaller than its viewport is
- * drawn at 1:1 and CENTRED, which is what puts an end to the tree hanging off
- * the top of a tall pane with dead space under it. It does zoom out, as far as
- * the band allows; a plan too big for even that is left clipped and pannable
- * rather than shrunk to illegibility.
+ * It scales in BOTH directions. Down as far as the band allows, for a plan too
+ * big for the stage — one too big for even that is left clipped and pannable
+ * rather than shrunk to illegibility. And up, as far as {@link FIT_MAX}, for a
+ * plan with room to spare: a sparse board or a short tree drawn at 1:1 in a
+ * large pane is a stamp on an empty canvas, and the emptiness reads as
+ * something missing rather than as space. Whichever edge runs out first decides,
+ * so a plan that fills the frame one way is never blown past it the other.
+ *
+ * The ceiling is on the FIT only. It is the starting scale, not a limit on the
+ * reader: the zoom controls, the wheel and the pan carry on into the full
+ * {@link ZOOM_MIN}–{@link ZOOM_MAX} band from wherever the fit put them.
  */
-export function fitView(plan: Size, stage: Size, inset: Inset = FIT_INSET): View {
+export function fitView(
+  plan: Size,
+  stage: Size,
+  inset: Inset = FIT_INSET,
+  ceiling: number = FIT_MAX
+): View {
   const availWidth = stage.width - inset.left - inset.right;
   const availHeight = stage.height - inset.top - inset.bottom;
   if (plan.width <= 0 || plan.height <= 0 || availWidth <= 0 || availHeight <= 0) {
     return IDENTITY;
   }
-  const scale = clampScale(Math.min(1, availWidth / plan.width, availHeight / plan.height));
+  const scale = clampScale(Math.min(ceiling, availWidth / plan.width, availHeight / plan.height));
   return {
     x: inset.left + (availWidth - plan.width * scale) / 2,
     y: inset.top + (availHeight - plan.height * scale) / 2,

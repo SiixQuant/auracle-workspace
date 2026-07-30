@@ -42,6 +42,7 @@ import { GridSheet } from '../grid/GridSheet';
 import { getActiveRoom, openGridHome } from '../grid/gridNav';
 import {
   FIT_INSET,
+  FIT_MAX,
   IDENTITY,
   ZOOM_MAX,
   ZOOM_MIN,
@@ -199,13 +200,36 @@ describe('the fit frames the whole plan', () => {
     expect(STAGE.height - FIT_INSET.bottom - (view.y + PLAN.height)).toBeCloseTo(free.height / 2, 6);
   });
 
-  it('zooms out for a plan too big for the stage, and never zooms in', () => {
+  it('zooms out for a plan too big for the stage', () => {
     const wide = fitView({ width: 2000, height: 600 }, STAGE);
     expect(wide.scale).toBeLessThan(1);
     expect(wide.scale).toBeCloseTo((STAGE.width - FIT_INSET.left - FIT_INSET.right) / 2000, 6);
+  });
 
-    // Room to spare is not a reason to blow the schematic up.
-    expect(fitView({ width: 300, height: 200 }, STAGE).scale).toBe(1);
+  it('fills the frame with a plan that has room to spare, up to the ceiling', () => {
+    // A sparse board: comfortably inside the frame both ways, and drawn at 1:1
+    // it was a stamp in the middle of an empty pane. The fit takes it up until
+    // one edge runs out or the ceiling stops it.
+    const roomy = fitView({ width: 300, height: 200 }, STAGE);
+    expect(roomy.scale).toBe(FIT_MAX);
+
+    // Whichever edge runs out FIRST decides — filling one way must never push
+    // the plan past the frame the other way.
+    const tall = fitView({ width: 300, height: 560 }, STAGE);
+    const availHeight = STAGE.height - FIT_INSET.top - FIT_INSET.bottom;
+    expect(tall.scale).toBeCloseTo(availHeight / 560, 6);
+    expect(tall.scale).toBeLessThan(FIT_MAX);
+    expect(560 * tall.scale).toBeLessThanOrEqual(availHeight + 0.001);
+
+    // And a plan already filling its frame is left where it is.
+    expect(fitView(PLAN, STAGE).scale).toBe(1);
+  });
+
+  it('leaves the reader a step of zoom past a filled fit', () => {
+    // The ceiling is the STARTING scale, not the band: a board the fit filled
+    // must still answer the zoom control.
+    expect(FIT_MAX).toBeLessThan(ZOOM_MAX);
+    expect(zoomAt({ x: 0, y: 0, scale: FIT_MAX }, ZOOM_STEP, 0, 0).scale).toBeGreaterThan(FIT_MAX);
   });
 
   it('reaches the whole tree at the narrowest tree-tier stage', () => {

@@ -50,9 +50,11 @@ import { engineFeeds, type Health } from '../../engine/gridVitals';
 import { statDecimal } from '../../engine/houseStats';
 import { DEPLOY_FAILED_STATE, isActive, stateLabel, type Deployment } from '../../engine/live';
 import { tint, tone } from '../panelkit';
+import { LABEL_BAND, RANK_LABEL } from './boardLayout';
 import { HEALTH_COLOR, HEALTH_WORD } from './districts';
 import { openRoomFocused, subscribeGrid, zoomOriginFrom } from './gridNav';
 import { GRID_ACCENT } from './gridTheme';
+import { TREE_MIN_WIDTH } from './gridWires';
 
 const STYLE_ID = 'auracle-board-card-styles';
 
@@ -78,29 +80,62 @@ const PEEK_WIDTH = 244;
 const SPARK_WIDTH = 220;
 const SPARK_HEIGHT = 40;
 
+/** One column of the materialized block on the plane. Narrower than a card in
+ *  the ranks, because these carry a name and one line and nothing else. */
+const MATERIALIZED_COLUMN = 232;
+
+/** Where a third column earns its place: a pane wide enough that two would
+ *  leave the block reading as a stripe again. */
+const WIDE_BOARD_WIDTH = 1400;
+
 /** Matches the plan's rest-before-it-answers pause exactly. */
 export const BOARD_PEEK_DELAY_MS = 230;
 
+/** The label band, matched to the plane's {@link LABEL_BAND} so the three
+ *  section headings sit on one line across the whole board. */
 const SHEET = `
-.abrd__cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin: 10px 0 0; padding: 0; list-style: none; }
+.abrd__group { display: flex; flex-direction: column; min-width: 0; margin-top: 12px; }
+.abrd__label { display: flex; align-items: flex-end; height: ${LABEL_BAND}px; margin: 0; padding-bottom: 7px; font-size: 9.5px; font-weight: 600; line-height: 1; letter-spacing: 0.09em; text-transform: uppercase; color: ${tone.text3}; }
+.abrd__cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin: 0; padding: 0; list-style: none; }
 .abrd__slot { display: flex; min-width: 0; }
-.abrd__card { appearance: none; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; text-align: left; font: inherit; cursor: pointer; padding: 9px 12px; border-radius: 9px; border: 1px solid ${tone.border}; background: ${tone.surface}; transition: border-color 150ms ease-out, background-color 150ms ease-out; }
+/* Same material as a card on the plane: one step of surface off the ground and
+   a top edge a shade brighter, so both layers read as one board. */
+.abrd__card { appearance: none; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; text-align: left; font: inherit; cursor: pointer; padding: 11px 13px; border-radius: 7px; border: 1px solid ${tone.border}; border-top-color: ${tone.borderStrong}; background: ${tone.surface2}; transition: border-color 150ms ease-out, background-color 150ms ease-out; }
 .abrd__card[data-health='degraded'] { border-color: ${tint(tone.caution, 45)}; }
 .abrd__card[data-health='fault'] { border-color: ${tint(tone.danger, 55)}; }
-.abrd__card:hover { background: ${tone.surface2}; }
-.abrd__card[data-health='nominal']:hover { border-color: ${tint(GRID_ACCENT, 55)}; }
+/* Neutral: a hover is where the pointer is, not where the eye should go. The
+   accent is spent on the focus ring alone here — these cards have no open
+   state of their own, because nothing on one is editable. */
+.abrd__card:hover { background: ${tone.surface3}; border-color: ${tone.borderStrong}; }
 .abrd__card:focus-visible { outline: 2px solid ${GRID_ACCENT}; outline-offset: 1px; }
-.abrd__top { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.abrd__ico { font-size: 14px; line-height: 1; flex: none; color: ${tone.text3}; }
+.abrd__top { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+.abrd__ico { font-size: 14px; line-height: 1; flex: none; margin-top: 3px; color: ${tone.text3}; }
 .abrd__card[data-health='degraded'] .abrd__ico { color: ${tone.caution}; }
 .abrd__card[data-health='fault'] .abrd__ico { color: ${tone.danger}; }
-.abrd__title { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; color: ${tone.text}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.abrd__dot { flex: none; width: 6px; height: 6px; border-radius: 50%; }
-.abrd__note { width: 0; min-width: 100%; font-size: 11px; color: ${tone.text3}; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A discovered symbol can be sixty characters of unbroken CamelCase, which is
+   why this clamps to two lines and breaks anywhere rather than trusting a word
+   boundary that is not there. The whole name stays on the title attribute. */
+.abrd__title { flex: 1; min-width: 0; font-size: 14px; font-weight: 500; line-height: 1.3; color: ${tone.text}; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.abrd__dot { flex: none; margin-top: 5px; width: 6px; height: 6px; border-radius: 50%; }
+.abrd__note { width: 0; min-width: 100%; font-size: 11px; font-weight: 400; color: ${tone.text3}; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .abrd__card[data-health='fault'] .abrd__note { color: ${tone.danger}; }
 
 @container auracle-grid (min-width: 640px) {
   .abrd__cards { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+}
+
+@container auracle-grid (min-width: ${TREE_MIN_WIDTH}px) {
+  /* On the plane the group is the pipeline's LAST column, so it sits at the
+     top of its own band and its label lines up with the ranks' captions.
+     A fixed pitch, not \`auto-fit\`: the layer above lays out at max-content, and
+     an auto-fit track in a shrink-to-fit box collapses to a single column —
+     which is exactly the tall stripe this block is meant not to be. */
+  .abrd__group { margin-top: 0; }
+  .abrd__cards { grid-template-columns: repeat(2, ${MATERIALIZED_COLUMN}px); gap: 12px; }
+}
+
+@container auracle-grid (min-width: ${WIDE_BOARD_WIDTH}px) {
+  .abrd__cards { grid-template-columns: repeat(3, ${MATERIALIZED_COLUMN}px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -409,7 +444,11 @@ function BoardCard({
           <span className="material-symbols-outlined abrd__ico" aria-hidden>
             {CARD_ICONS[node.kind] ?? 'auto_awesome'}
           </span>
-          <span className="abrd__title">{title}</span>
+          {/* Clamped to two lines on the card; whole on the pointer, and whole
+              again on the button's own aria-label above. */}
+          <span className="abrd__title" title={title}>
+            {title}
+          </span>
           <span
             aria-hidden
             className="abrd__dot"
@@ -533,8 +572,14 @@ export function BoardCardList({ graph }: { graph: BoardGraph }): JSX.Element | n
 
   return (
     <>
-      <ul className="abrd__cards" data-testid="board-cards">
-        {cards.map((node) => (
+      {/* The pipeline's last column, captioned like the ranks before it: the
+          board reads sources, questions, and then what came of them. */}
+      <section className="abrd__group" data-testid="board-materialized">
+        <h3 className="abrd__label" data-testid="board-section-materialized">
+          {RANK_LABEL[2]}
+        </h3>
+        <ul className="abrd__cards" data-testid="board-cards">
+          {cards.map((node) => (
           <BoardCard
             key={node.id}
             node={node}
@@ -557,8 +602,9 @@ export function BoardCardList({ graph }: { graph: BoardGraph }): JSX.Element | n
             }}
             onLeave={clear}
           />
-        ))}
-      </ul>
+          ))}
+        </ul>
+      </section>
       {anchored ? (
         <FloatingPortal>
           <div

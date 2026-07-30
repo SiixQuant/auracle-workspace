@@ -82,13 +82,17 @@ import { QuoteCard, ensureQuoteCardStyles } from './QuoteCard';
 import { BoardCardEditor } from './BoardCardEditor';
 import { useBoardCardAiContext } from './gridFocus';
 import { BoardWires } from './BoardWires';
-import { layoutBoard, userSubgraph, type PlacedCard } from './boardLayout';
+import { BOARD_PAD, layoutBoard, RANK_GAP, userSubgraph, type PlacedCard } from './boardLayout';
 import { cardVerb, dispatchBoardScan, useBoardResearchLoop, type CardVerb } from './boardScan';
 import { aiRunStore, resultLine } from './gridAiActions';
 import { keptSentence, researchReading, sourceReading, type CardReading } from './boardReadings';
 import { BOARD_HINT, boardHintState, BOARD_SYNC_NOTE, GHOSTS, QUOTE_ADD, RESEARCH_GHOST, SOURCE_GHOST } from './boardCopy';
 
 const STYLE_ID = 'auracle-grid-board-styles';
+
+/** How far apart the canvas texture's dots sit. Close enough to read as a
+ *  surface, wide enough that it never becomes a rule. */
+const DOT_PITCH = 13;
 
 const SHEET = `
 /* A column, matching the Plan's frame: the stage takes whatever height is left
@@ -103,6 +107,9 @@ const SHEET = `
    where the stage scrolls rather than the canvas panning, that is content a
    person has to go looking for. */
 .aboard__layer { position: relative; box-sizing: border-box; display: flex; flex-direction: column; width: 100%; max-width: ${CANVAS_WIDTH}px; margin: 0 auto; padding: 18px 20px 44px; }
+/* Plane and materialized block together. A column below the canvas tier (the
+   pane is a scrolling list there); the pipeline's own row at it. */
+.aboard__board { display: flex; flex-direction: column; min-width: 0; }
 .aboard__hint { margin: 0 0 14px; font-size: 11.5px; line-height: 1.5; color: ${tone.text3}; }
 /* Pinned to the stage rather than the board, so the controls that move the
    board do not move with it. */
@@ -159,6 +166,15 @@ const SHEET = `
      whether the pane is pannable. */
   .aboard__stage { overflow: hidden; cursor: grab; user-select: none; }
   .aboard__stage[data-panning='true'] { cursor: grabbing; }
+  /* A SURFACE, not a void. One dot every ${DOT_PITCH}px, a hair off the
+     background — enough that the plane has a floor and a pan has something to
+     move against, far too little to read as graph paper. It belongs to the
+     STAGE rather than to the layer, so it holds still under a zoom instead of
+     scaling into moire. */
+  .aboard__stage { background-image: radial-gradient(${tint(tone.text3, 16)} 1px, transparent 1px); background-size: ${DOT_PITCH}px ${DOT_PITCH}px; }
+  /* THE PIPELINE, left to right: the ranks a person placed, then what came out
+     of them. Top-aligned so the three section labels sit on one line. */
+  .aboard__board { flex-direction: row; align-items: flex-start; gap: ${RANK_GAP - BOARD_PAD}px; }
   /* The board does not squeeze to the stage: it lays out at its CONTENT's
      width and the canvas fit-scales the result, which is what keeps a board
      wider than the pane legible — and, just as importantly, keeps a board
@@ -588,74 +604,90 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
               {BOARD_SYNC_NOTE[sync]}
             </p>
           )}
-          {empty ? null : (
-            <div
-              ref={cardsRef}
-              className="aboard__cards"
-              data-testid="board-cards"
-              style={
-                {
-                  '--aboard-w': `${layout.width}px`,
-                  '--aboard-h': `${layout.height}px`,
-                } as CSSProperties
-              }
-            >
-              {/* The overlay is only true on the plane — see the file header. */}
-              {canvas.engaged ? (
-                <BoardWires
-                  wires={layout.wires}
-                  width={layout.width}
-                  height={layout.height}
-                  ghost={ghostLine}
-                  onCut={cutWire}
-                />
-              ) : null}
-              {layout.cards.map((card) => {
-                const node = graph.nodes.find((row) => row.id === card.id);
-                if (!node) return null;
-                // The live-quote card runs its own stream and draws its own body,
-                // so it is its own component beside the shared one.
-                if (node.kind === 'quote') {
+          {/* The pipeline: the ranks a person placed, then the cards the system
+              wrote, side by side at the canvas tier and stacked below it. */}
+          <div className="aboard__board" data-testid="board-pipeline">
+            {empty ? null : (
+              <div
+                ref={cardsRef}
+                className="aboard__cards"
+                data-testid="board-cards"
+                style={
+                  {
+                    '--aboard-w': `${layout.width}px`,
+                    '--aboard-h': `${layout.height}px`,
+                  } as CSSProperties
+                }
+              >
+                {/* One quiet caption per rank that has a card in it, at the
+                    coordinates the layout reserved for it. */}
+                {layout.columns.map((column) => (
+                  <span
+                    key={column.rank}
+                    className="aboard__col"
+                    data-testid={`board-column-${column.rank}`}
+                    style={{ left: column.x, width: column.width }}
+                  >
+                    {column.label}
+                  </span>
+                ))}
+                {/* The overlay is only true on the plane — see the file header. */}
+                {canvas.engaged ? (
+                  <BoardWires
+                    wires={layout.wires}
+                    width={layout.width}
+                    height={layout.height}
+                    ghost={ghostLine}
+                    onCut={cutWire}
+                  />
+                ) : null}
+                {layout.cards.map((card) => {
+                  const node = graph.nodes.find((row) => row.id === card.id);
+                  if (!node) return null;
+                  // The live-quote card runs its own stream and draws its own body,
+                  // so it is its own component beside the shared one.
+                  if (node.kind === 'quote') {
+                    return (
+                      <QuoteCard
+                        key={node.id}
+                        node={node}
+                        card={card}
+                        editing={editing?.nodeId === node.id}
+                        drop={dropOf(node)}
+                        onOpen={openCard}
+                        onWireEnd={endWire}
+                      />
+                    );
+                  }
+                  const reading = readingOf(node);
                   return (
-                    <QuoteCard
+                    <BoardCard
                       key={node.id}
                       node={node}
                       card={card}
+                      reading={reading}
+                      wires={wireCountOf(node.id)}
                       editing={editing?.nodeId === node.id}
                       drop={dropOf(node)}
+                      verb={verbOf(node)}
+                      scanning={ai.running?.id === `board-scan-${node.id}`}
                       onOpen={openCard}
+                      onWireStart={startWire}
                       onWireEnd={endWire}
+                      onScan={scanCard}
+                      onPeek={(target, el) => peek.open(target, el, reading)}
+                      onPeekEnd={peek.close}
                     />
                   );
-                }
-                const reading = readingOf(node);
-                return (
-                  <BoardCard
-                    key={node.id}
-                    node={node}
-                    card={card}
-                    reading={reading}
-                    wires={wireCountOf(node.id)}
-                    editing={editing?.nodeId === node.id}
-                    drop={dropOf(node)}
-                    verb={verbOf(node)}
-                    scanning={ai.running?.id === `board-scan-${node.id}`}
-                    onOpen={openCard}
-                    onWireStart={startWire}
-                    onWireEnd={endWire}
-                    onScan={scanCard}
-                    onPeek={(target, el) => peek.open(target, el, reading)}
-                    onPeekEnd={peek.close}
-                  />
-                );
-              })}
-            </div>
-          )}
-          {/* The cards the system writes, drawn by their own layer below the
-              plane. Mounted whatever the graph holds, because it is that layer
-              which ARMS materialization: an empty board is exactly the board
-              that most needs it running. */}
-          <BoardCardList graph={graph} />
+                })}
+              </div>
+            )}
+            {/* The cards the system writes, drawn by their own layer beside the
+                plane. Mounted whatever the graph holds, because it is that layer
+                which ARMS materialization: an empty board is exactly the board
+                that most needs it running. */}
+            <BoardCardList graph={graph} />
+          </div>
         </div>
         {/* Small, pinned to the stage, and only where there is a canvas to
             drive — the same rule the Plan follows. */}
@@ -758,9 +790,9 @@ function GhostSlots({ onPlace }: { onPlace: (kind: 'source' | 'research') => voi
 
 /**
  * The line that follows the pointer while a wire is being drawn — from the
- * bottom of the card it started on to wherever the pointer is. Straight rather
- * than routed: it is a gesture in progress, not a wire yet, and routing it
- * through a trunk would claim a destination nobody has chosen.
+ * trailing edge of the card it started on to wherever the pointer is. Straight
+ * rather than routed: it is a gesture in progress, not a wire yet, and routing
+ * it through a trunk would claim a destination nobody has chosen.
  */
 function ghostPath(
   from: string | null,
@@ -770,5 +802,5 @@ function ghostPath(
   if (from === null || point === null) return null;
   const card = cards.find((row) => row.id === from);
   if (!card) return null;
-  return { x1: card.x + card.width / 2, y1: card.y + card.height, x2: point.x, y2: point.y };
+  return { x1: card.x + card.width, y1: card.y + card.height / 2, x2: point.x, y2: point.y };
 }

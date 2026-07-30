@@ -35,10 +35,11 @@ import type { BoardNode } from '../../engine/boardGraph';
 import { tint, tone } from '../panelkit';
 import { HEALTH_COLOR } from './districts';
 import { GRID_ACCENT, GRID_ACCENT_DIM } from './gridTheme';
-import { CARD_HEIGHT, CARD_WIDTH, type PlacedCard } from './boardLayout';
+import { CARD_HEIGHT, CARD_WIDTH, LABEL_BAND, type PlacedCard } from './boardLayout';
 import type { CardVerb } from './boardScan';
 import { TREE_MIN_WIDTH } from './gridWires';
 import {
+  cardFullTitle,
   cardNote,
   cardTitle,
   NEUTRAL_READING,
@@ -70,24 +71,43 @@ export function kindWord(kind: string): string {
 
 const SHEET = `
 .aboard__cards { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
-.acard { display: flex; flex-direction: column; min-width: 0; border-radius: 10px; border: 1px solid ${tone.border}; background: ${tone.surface}; transition: border-color 150ms ease-out, box-shadow 150ms ease-out; }
-.acard:hover { border-color: ${tone.borderStrong}; }
+/* THE SECTION LABEL over a rank's column. Quiet by construction — small,
+   tracked, in the dimmest text tier — because it is a caption on a group, not
+   a thing to read. Only the plane can position it: below the canvas tier the
+   cards flow and the coordinate it sits at points at nothing. */
+.aboard__col { display: none; }
+/* MATERIAL: a card is lifted off the ground rather than outlined on it. One
+   step of surface, and a top edge a shade brighter than the other three, as if
+   the light came from above the board. No shadow and no gradient — the lift is
+   the point, not the effect. */
+.acard { display: flex; flex-direction: column; min-width: 0; border-radius: 7px; border: 1px solid ${tone.border}; border-top-color: ${tone.borderStrong}; background: ${tone.surface2}; transition: border-color 150ms ease-out, box-shadow 150ms ease-out, background-color 150ms ease-out; }
+.acard:hover { border-color: ${tone.borderStrong}; background: ${tone.surface3}; }
 /* Open, or the far end of a wire being drawn: the accent is STRUCTURE — which
-   card this gesture is about — never a reading. */
+   card this gesture is about — never a reading. These two states, the focus
+   ring and the waiting badge are the whole of the accent's licence on this
+   face; a hover is neutral, because everything the pointer crosses is not
+   something the eye should be sent to. */
 .acard[data-editing='true'] { border-color: ${GRID_ACCENT_DIM}; box-shadow: 0 0 0 3px ${tint(GRID_ACCENT, 10)}; }
 .acard[data-drop='ok'] { border-color: ${GRID_ACCENT}; }
 .acard[data-drop='no'] { opacity: 0.45; }
 .acard__face { display: flex; flex-direction: column; gap: 5px; min-width: 0; padding: 12px 14px 8px; appearance: none; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
-.acard__face:focus-visible { outline: 2px solid ${GRID_ACCENT}; outline-offset: 2px; border-radius: 10px; }
-.acard__top { display: flex; align-items: center; gap: 9px; min-width: 0; }
-.acard__ico { flex: none; font-size: 15px; line-height: 1; color: ${tone.text3}; }
-.acard__title { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; color: ${tone.text}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.acard__dot { flex: none; width: 7px; height: 7px; border-radius: 50%; }
+.acard__face:focus-visible { outline: 2px solid ${GRID_ACCENT}; outline-offset: 2px; border-radius: 7px; }
+/* Top-aligned, because a title is allowed two lines and a mark centred against
+   a box that changes height would drift. */
+.acard__top { display: flex; align-items: flex-start; gap: 9px; min-width: 0; }
+.acard__ico { flex: none; margin-top: 2px; font-size: 15px; line-height: 1; color: ${tone.text3}; }
+/* TWO LINES, then an ellipsis — and \`anywhere\` because the names that overrun
+   are single unbroken words, which no ordinary wrap would ever break. The full
+   name is on the element's own title and in the peek. */
+.acard__title { flex: 1; min-width: 0; font-size: 14px; font-weight: 500; line-height: 1.3; color: ${tone.text}; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.acard__dot { flex: none; margin-top: 5px; width: 7px; height: 7px; border-radius: 50%; }
 .acard__dot[data-health='unknown'] { background: transparent; box-shadow: inset 0 0 0 1.5px ${tone.text3}; }
 .acard__dot[data-health='nominal'] { background: ${HEALTH_COLOR.nominal}; }
 .acard__dot[data-health='degraded'] { background: ${HEALTH_COLOR.degraded}; }
 .acard__dot[data-health='fault'] { background: ${HEALTH_COLOR.fault}; }
-.acard__note { font-size: 11.5px; line-height: 1.45; color: ${tone.text3}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Metadata, a full tier below the title in size, weight and ink — the whole of
+   the hierarchy this card needs. */
+.acard__note { font-size: 11px; font-weight: 400; line-height: 1.45; color: ${tone.text3}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .acard__verbs { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 0 12px 10px; }
 .acard__verb { display: inline-flex; align-items: center; gap: 5px; appearance: none; font: inherit; font-size: 11px; padding: 3px 8px; border-radius: 999px; border: 1px solid ${tone.border}; background: transparent; color: ${tone.text2}; cursor: pointer; }
 .acard__verb:hover:not(:disabled) { border-color: ${tone.borderStrong}; color: ${tone.text}; }
@@ -113,6 +133,8 @@ const SHEET = `
      takes the arrangement's own extent so the canvas has something to fit. */
   .aboard__cards { display: block; width: var(--aboard-w); height: var(--aboard-h); }
   .acard { position: absolute; width: ${CARD_WIDTH}px; height: ${CARD_HEIGHT}px; }
+  /* The band the layout reserved above each column's first card. */
+  .aboard__col { position: absolute; top: 0; display: flex; align-items: flex-end; height: ${LABEL_BAND}px; padding-bottom: 7px; font-size: 9.5px; font-weight: 600; line-height: 1; letter-spacing: 0.09em; text-transform: uppercase; color: ${tone.text3}; pointer-events: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -225,7 +247,13 @@ export function BoardCard({
           <span className="material-symbols-outlined acard__ico" aria-hidden>
             {icon}
           </span>
-          <span className="acard__title" data-testid={`board-card-title-${node.id}`}>
+          {/* The clamp keeps a long name to two lines; the title attribute is
+              where the whole of it stays reachable without one. */}
+          <span
+            className="acard__title"
+            data-testid={`board-card-title-${node.id}`}
+            title={cardFullTitle(node)}
+          >
             {title}
           </span>
           <span

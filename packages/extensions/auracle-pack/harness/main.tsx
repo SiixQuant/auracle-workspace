@@ -6,6 +6,10 @@
  */
 import { StrictMode, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
+// The face the host bundles. Imported on its own (not via NimbalystTheme.css)
+// because the harness owns its Hermes palette as literals and must not pick up
+// the theme's colour tables — it only needs the @font-face rules.
+import '../../../runtime/src/editor/themes/fonts/fonts.css';
 import { ValidationPanel } from '../src/components/ValidationPanel';
 import { LiveAlgorithmsPanel, DeployWizardView } from '../src/components/LivePanel';
 import type { DeploySnapshot } from '../src/engine/deploy';
@@ -783,7 +787,13 @@ function engineRequest(
 /* ── host shell stubs. The pack owns its Hermes palette as literals now;
       only the UI font var and the charcoal canvas matter here. ─────────── */
 const r = document.documentElement.style;
-r.setProperty('--font-family-ui', '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif');
+// Mirrors the host's tokens (NimbalystTheme.css) so harness screenshots show
+// the face the product actually ships, not the OS default.
+r.setProperty(
+  '--font-family-ui',
+  '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif'
+);
+r.setProperty('--font-mono', '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace');
 document.body.style.cssText = 'margin:0;background:#0b0c0e;min-height:100vh';
 
 // ── deploy wizard states (pre-bound happy / non-deployable / picker+exclusions) ──

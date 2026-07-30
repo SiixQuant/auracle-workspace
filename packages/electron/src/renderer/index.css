@@ -21,9 +21,16 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  /* Defers to the bundled face via the shared token (NimbalystTheme.css) so
+     the host chrome and the panels cannot drift onto different fonts. This
+     used to repeat the system stack literally, which is exactly how they
+     drifted apart before. */
+  font-family: var(--font-family-ui);
+  /* The bundled face is variable and covers 100–900, so every weight the UI
+     asks for is a real drawn weight. Turning synthesis off means a weight we
+     somehow fail to load renders visibly wrong rather than being faked into
+     a smeared approximation. */
+  font-synthesis: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden;

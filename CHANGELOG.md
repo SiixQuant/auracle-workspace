@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 <!-- Changes to existing functionality go here -->
+- Auracle now has a typeface of its own instead of borrowing whichever font the machine happened to supply. Every surface the app draws itself — panels, menus, labels, buttons and the figures in every table — is set in Geist, which ships inside the app, so the interface reads the same on macOS, Windows and Linux and comes up in the right face immediately without fetching anything over the network. Panels and the window around them are now guaranteed to be the same font as each other; until now the two could resolve to different faces on the same screen. Numbers in a column sit on a common width so they line up digit for digit, and the face used for figures and code marks its zero so it cannot be read as a capital O. Weights are drawn rather than faked, so a bold label is genuinely bold. The font you have chosen for the code editor itself is untouched — this changes the app's own chrome only.
 
 ### Fixed
 <!-- Bug fixes go here -->

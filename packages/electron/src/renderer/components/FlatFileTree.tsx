@@ -501,7 +501,9 @@ export function FlatFileTree({
     dragImage.style.border = '1px solid #e5e7eb';
     dragImage.style.borderRadius = '4px';
     dragImage.style.fontSize = '13px';
-    dragImage.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+    // Token, not a literal stack: the drag ghost is chrome and must not be the
+    // one thing on screen still rendering in the OS font.
+    dragImage.style.fontFamily = 'var(--font-family-ui)';
     dragImage.style.color = '#1f2937';
     dragImage.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
     dragImage.style.zIndex = '10000';

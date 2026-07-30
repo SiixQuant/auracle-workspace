@@ -1,0 +1,33 @@
+/**
+ * Bundled UI typeface — @font-face only, no tokens and no colour.
+ *
+ * Kept apart from NimbalystTheme.css so surfaces that need the face but not
+ * the theme's colour tables (the auracle-pack dev harness, which owns its own
+ * palette) can import just this and still render the real product font.
+ *
+ * See ./README.md for version, licence, payload and digit metrics.
+ *
+ * These are variable fonts: one file spans weight 100–900, so font-weight is
+ * declared as the full range. A single value here would make the browser treat
+ * the file as one weight and synthesise the others.
+ *
+ * Only the upright faces are bundled — no UI chrome is italic, and callers set
+ * font-synthesis: none, so italics would render upright rather than be faked.
+ * Add the italic files here if that changes.
+ */
+
+@font-face {
+  font-family: 'Geist';
+  src: url('./Geist-Variable.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('./GeistMono-Variable.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}

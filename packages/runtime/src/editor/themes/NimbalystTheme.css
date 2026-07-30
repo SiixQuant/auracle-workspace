@@ -20,15 +20,26 @@
  * - Tailwind: bg-nim, text-nim, border-nim, etc.
  */
 
+/* The app's own UI typeface, bundled rather than borrowed from the OS, so the
+   chrome renders the same on every platform and needs no network. The faces
+   resolve to files the bundler emits alongside this stylesheet, which is what
+   makes them work under file:// in a packaged build.
+   See ./fonts/README.md for version, licence, payload and digit metrics. */
+@import './fonts/fonts.css';
+
 /* ===== DEFAULT VALUES (Light Theme Fallbacks) ===== */
 :root {
   /* Fonts — theme-independent, so they live outside the colour tables.
-     auracle-pack panels read --font-family-ui (panelkit.tsx `tone.font`).
-     Nothing used to define it, so every panel silently fell back to
-     system-ui while the host chrome ran on the stack below — the two
-     surfaces could resolve to different faces on the same screen. */
-  --font-family-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+     auracle-pack panels read --font-family-ui (panelkit.tsx `tone.font`) and
+     --font-mono (`tone.mono`). Neither used to be defined, so panels silently
+     fell back to system-ui while the host chrome ran on its own hardcoded
+     stack — the two surfaces could resolve to different faces on the same
+     screen. Both tokens now name the bundled face, with the old system stacks
+     kept behind it so text still renders if a font file ever fails to load. */
+  --font-family-ui: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
+    'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Backgrounds */
   --nim-bg: #ffffff;

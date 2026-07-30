@@ -233,10 +233,12 @@ describe('the fit frames the whole plan', () => {
   });
 
   it('reaches the whole tree at the narrowest tree-tier stage', () => {
-    // The plan lays out at a fixed width (~1720px with padding) and the tree
-    // tier starts at 960px of stage, so the fit the floor must not beat is
-    // avail/1720. A ZOOM_MIN above that clipped both edges of the rank on
-    // narrow panels instead of shrinking the schematic to fit.
+    // The floor has to clear the fit that the WIDEST thing either face can put
+    // on the canvas asks for at the narrowest stage the tier allows — 960px of
+    // stage, less the insets. The Plan's own four columns are far under that
+    // now, but the Board takes its content's width and a crowded one is not,
+    // so the number held here is deliberately generous. A ZOOM_MIN above the
+    // fit clips both edges instead of shrinking the drawing to fit.
     const plan = { width: 1720, height: 394 };
     for (const stageWidth of [960, 1000, 1300]) {
       const stage = { width: stageWidth, height: 850 };

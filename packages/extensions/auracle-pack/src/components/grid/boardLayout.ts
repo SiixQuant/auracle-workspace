@@ -23,14 +23,19 @@
  * because the plane is absolutely positioned: a band the layout did not know
  * about would put every label on top of a card.
  *
- * ## Wires take the Plan's bus discipline
- * Same rules as {@link ./gridWires}, for the same reason: point-to-point lines
- * between a dozen cards read as a tangle. An edge leaves its source card's
- * centreline, runs along the ONE trunk shared by every edge crossing that rank
- * gap, and arrives at the target's leading edge. Two bends, no diagonal, and
- * edges that share a gap share a line rather than fanning out beside it. Every
- * departure sits on a card's centreline, which is what makes it impossible for
- * two edges in one gap to cross.
+ * ## The bus both faces are drawn with
+ * Point-to-point lines between a dozen cards read as a tangle. So an edge leaves
+ * its source card's centreline, runs along the ONE trunk shared by every edge
+ * crossing that gap, and arrives at the target's leading edge. Two bends, no
+ * diagonal, and edges that share a gap share a line rather than fanning out
+ * beside it. Every departure sits on a card's centreline, which is what makes it
+ * impossible for two edges in one gap to cross.
+ *
+ * {@link busPath} and {@link trunkBetween} are that discipline as arithmetic,
+ * and the Plan's own routing ({@link ./gridWires}) is written on them too — the
+ * two faces draw one bus in one hand rather than two systems that merely look
+ * alike. What each face still owns is WHERE its gaps are: the Board's are the
+ * gaps between its ranks, the Plan's are the gutters between its group columns.
  */
 import type { BoardEdge, BoardGraph, BoardNode } from '../../engine/boardGraph';
 
@@ -188,22 +193,41 @@ export function columnsOf(cards: readonly PlacedCard[]): BoardColumn[] {
 }
 
 /**
- * The trunk every edge crossing one rank gap shares: halfway between the
- * trailing edge of the column before the gap and the leading edge of the one
- * after it. Derived from the BOXES rather than from the rank grid, so a card
- * somebody dragged still has its wires meet the same line as its neighbours' —
- * the sharing is the point, and a per-edge midpoint would quietly give it up.
+ * The trunk every edge crossing one gap shares: halfway between the trailing
+ * edges of what sits before the gap and the leading edges of what sits after
+ * it. Derived from the BOXES rather than from a grid, so a card somebody
+ * dragged still has its wires meet the same line as its neighbours' — the
+ * sharing is the point, and a per-edge midpoint would quietly give it up.
+ *
+ * `gap` is the fallback pitch, used when the two sides touch or overlap (so
+ * there is no measurable channel) and when there is nothing on the far side at
+ * all — the case a face hits when an edge doubles back beside a single column
+ * rather than crossing to another one.
  */
-function trunkFor(before: PlacedCard[], after: PlacedCard[]): number {
-  const right = Math.max(...before.map((card) => card.x + card.width));
-  const left = Math.min(...after.map((card) => card.x));
-  return left > right ? right + (left - right) / 2 : right + RANK_GAP / 2;
+export function trunkBetween(
+  beforeRight: readonly number[],
+  afterLeft: readonly number[],
+  gap: number
+): number {
+  const right = Math.max(...beforeRight);
+  if (afterLeft.length === 0) return right + gap / 2;
+  const left = Math.min(...afterLeft);
+  return left > right ? right + (left - right) / 2 : right + gap / 2;
 }
 
-function pathOf(x1: number, y1: number, x2: number, y2: number, trunk: number): string {
-  // A run straight across to the target needs no hop and no bends: drawing the
-  // trunk hop anyway would put two right angles on a straight line.
+/**
+ * One leave–trunk–arrive path. Both faces' wires are made of this and nothing
+ * else, which is what keeps a wire on the Plan and a wire on the Board the same
+ * drawn object.
+ *
+ * Two degenerate cases collapse rather than draw a turn that is not there: a
+ * run straight across to a target on the same line needs no hop, and a run
+ * straight along the trunk itself (both ends already on it) is one segment.
+ * Drawing the full shape anyway would put two right angles on a straight line.
+ */
+export function busPath(x1: number, y1: number, x2: number, y2: number, trunk: number): string {
   if (y1 === y2) return `M ${x1} ${y1} H ${x2}`;
+  if (x1 === trunk && x2 === trunk) return `M ${x1} ${y1} V ${y2}`;
   return `M ${x1} ${y1} H ${trunk} V ${y2} H ${x2}`;
 }
 
@@ -229,7 +253,16 @@ export function layoutBoard(graph: BoardGraph): BoardLayoutResult {
   }
 
   const trunks = new Map<string, number>();
-  for (const [group, bucket] of groups) trunks.set(group, trunkFor(bucket.before, bucket.after));
+  for (const [group, bucket] of groups) {
+    trunks.set(
+      group,
+      trunkBetween(
+        bucket.before.map((card) => card.x + card.width),
+        bucket.after.map((card) => card.x),
+        RANK_GAP
+      )
+    );
+  }
 
   const wires: BoardWirePath[] = drawable.map(({ edge, from, to, group }) => {
     const x1 = from.x + from.width;
@@ -242,7 +275,7 @@ export function layoutBoard(graph: BoardGraph): BoardLayoutResult {
       from: edge.from,
       to: edge.to,
       origin: edge.origin,
-      d: pathOf(x1, y1, x2, y2, trunk),
+      d: busPath(x1, y1, x2, y2, trunk),
       cutX: trunk,
       cutY: (y1 + y2) / 2,
     };

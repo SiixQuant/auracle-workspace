@@ -28,17 +28,23 @@
  * LAYOUT: `@container`, never `@media`. The Grid renders inside a host pane
  * whose width has nothing to do with the window's. Three tiers, written
  * mobile-first: a single stacked column by default; rooms in a row under each
- * district once there is room for them; and the full tree — root on top,
- * districts in a rank, rooms ranked under each — only when the pane is wide
- * enough to draw it without scrolling sideways. The tree's rails are drawn
- * with border-box pseudo-elements, so the geometry costs no dependency.
+ * district once there is room for them; and the full plan — root on top, the
+ * four districts side by side, each one's rooms stacked in a COLUMN under its
+ * own header — only when the pane is wide enough to draw it without scrolling
+ * sideways. The rails are drawn with border-box pseudo-elements, so the
+ * geometry costs no dependency.
  *
- * ALIGNMENT: the tree tier lays the rank on ONE uniform column grid — a column
- * unit per room, each district spanning as many units as it has rooms — so
- * every card in the rank is the same width, every district header sits on its
- * own rank's centreline, and every connecting stub drops straight down. The
- * previous proportional-flex rank let a long title set a district's minimum
- * width, which pushed its neighbours along and bent the whole tree out of true.
+ * ALIGNMENT: the plan tier gives every district ONE column of equal width and
+ * stacks its rooms down it. That is what makes the grouping the headers declare
+ * an actual property of the layout: a room is under the group it belongs to
+ * rather than somewhere along a rank of eleven. It also buys every card most of
+ * a column's width, so a room's name is written out rather than truncated, and
+ * it turns the plan from a strip into a block that has some height to it.
+ *
+ * The rank of eleven this replaced put every room at the same depth, which was
+ * the point — but at any real pane width eleven cards in a row is a crush, and
+ * scaling the crush up only makes it bigger. Uniform depth is kept: every room
+ * is exactly one step under its district, and no room is buried.
  *
  * CANVAS: at the tree tier the plan is a layer with one transform on it
  * ({@link gridCanvas}) inside a stage that clips. Drag empty ground to pan,
@@ -48,21 +54,16 @@
  * could put a faulted room off screen. Pressing a card is untouched — a drag
  * only pans when it starts on ground rather than on a control.
  *
- * WIRES: the full tree tier also carries a wire overlay and one pinned alert
+ * WIRES: the full plan tier also carries a wire overlay and one pinned alert
  * ({@link WireOverlay}), both INSIDE the transformed layer so a pan or a zoom
  * moves the wires and the cards they join by exactly the same pixels. Both are
- * that tier's alone — the stacked tiers have no single room rank for the lanes
- * to hang under — so the plan reserves the lane band as bottom padding there
- * and nowhere else. At rest only the edges that are saying something are drawn;
- * resting on a wired card or on the alert chip reveals the rest of the flow.
+ * that tier's alone — the stacked tiers have no group columns for the trunks to
+ * stand between — so the plan reserves the gutters ({@link GROUP_GAP}) and the
+ * leader's channel ({@link LEADER_CHANNEL}) there and nowhere else. At rest only
+ * the edges that are saying something are drawn; resting on a wired card or on
+ * the alert chip reveals the rest of the flow.
  */
-import {
-  useEffect,
-  useMemo,
-  useState,
-  useSyncExternalStore,
-  type CSSProperties,
-} from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { gridVitals, type GridVitals, type RoomVital } from '../../engine/gridVitals';
 import { tint, tone } from '../panelkit';
 import { PALETTE_HINT, openPalette } from './gridCommands';
@@ -82,7 +83,7 @@ import { CANVAS_WIDTH, useGridCanvas } from './useGridCanvas';
 import { gridFoldStore, type FoldedDistricts } from './gridFoldStore';
 import { GRID_ACCENT, GRID_ACCENT_DIM, GRID_ACCENT_SOFT } from './gridTheme';
 import { GridAiStrip } from './GridAiStrip';
-import { TREE_MIN_WIDTH, WIRED_ROOMS } from './gridWires';
+import { GROUP_GAP, LEADER_CHANNEL, TREE_MIN_WIDTH, WIRED_ROOMS } from './gridWires';
 import { useRoomPeek, type PeekHandlers } from './RoomPeek';
 import { WireOverlay } from './WireOverlay';
 import { ROOMS, ROOM_IDS, type RoomId } from './rooms';
@@ -101,13 +102,35 @@ const STYLE_ID = 'auracle-grid-sheet-styles';
 const RAIL = tone.borderStrong;
 
 /**
- * The plan's natural width, capped so the tree does not stretch into a smear on
- * a very wide pane, and centred by the fit. Above it the canvas simply has room
- * to spare around a plan drawn at its best size. Held with the canvas rather
- * than here, because both of the panel's faces are cut to it — see
+ * The plan's ceiling below the canvas tier, so the stacked sheet does not
+ * stretch into a smear on a very wide pane. Held with the canvas rather than
+ * here, because both of the panel's faces are cut to it — see
  * {@link CANVAS_WIDTH}.
  */
 const PLAN_MAX_WIDTH = CANVAS_WIDTH;
+
+/**
+ * How wide the plan lays itself out ON THE CANVAS, before the fit scales it.
+ *
+ * Four group columns rather than one rank of eleven, so the width the drawing
+ * asks for is a quarter of what it was — and the fit, which scales UP as well as
+ * down, takes it back to filling the pane at a size where the type is BIGGER
+ * than the crushed rank ever managed. Chosen so a column carries a room card of
+ * about the Board's own card width: the two faces are drawn at one pitch, and a
+ * room's name fits on one line at every reading size.
+ */
+const PLAN_TREE_WIDTH = 1080;
+
+/** The room column's indent inside its group, and where the group's spine is
+ *  drawn in it — the rail sits in the indent, the stub crosses the rest. */
+const ROOM_INDENT = 18;
+const SPINE_X = 8;
+
+/** Between two rooms stacked in one group column. Also the length of the bridge
+ *  each card's rail runs back up through, so the spine is unbroken — and the
+ *  room a wire between two neighbours has to be drawn in, which is why it is
+ *  not the tightest gap that would still read as a group. */
+const ROOM_STEP = 16;
 
 /** The rooms an edge touches — resting on one of these reveals the flow. */
 const WIRED = new Set<RoomId>(WIRED_ROOMS);
@@ -186,64 +209,51 @@ const SHEET = `
   /* The plan is a LAYER now: one transform moves it inside the stage, which
      clips. Everything the wires measure lives in here with it, so a pan or a
      zoom moves the schematic without disturbing the geometry drawn on it.
-     The bottom padding is the LANE BAND: the wire overlay hangs its three
-     lanes below the room rank, and only this tier draws them. */
+     The right padding is the LEADER'S CHANNEL: the alert's leader comes down
+     the plan's own margin, so the margin has to be wide enough to hold it and
+     clear of the last column's cards. Symmetric, because the fit centres the
+     plan by its BOX and a strip along one edge is an offset it cannot see. */
   .agrid__stage { overflow: hidden; cursor: grab; user-select: none; }
   .agrid__stage[data-panning='true'] { cursor: grabbing; }
   /* The plan does not squeeze to the stage: it lays out at its own ideal
-     width — wide enough that every title fits — and the canvas fit-scales
-     the whole schematic to whatever stage it is given. That is what lets
-     the tree survive containers far narrower than its natural size. */
-  .agrid__plan { position: absolute; top: 0; left: 0; margin: 0; transform-origin: 0 0; align-items: center; padding: 22px 20px 92px; width: max-content; min-width: ${PLAN_MAX_WIDTH}px; max-width: none; }
+     width — four columns wide enough that every name fits — and the canvas
+     fit-scales the whole schematic to whatever stage it is given, up as well
+     as down. That is what lets the plan survive containers far narrower than
+     its natural size AND fill ones with room to spare. */
+  .agrid__plan { position: absolute; top: 0; left: 0; margin: 0; transform-origin: 0 0; align-items: center; padding: 24px ${LEADER_CHANNEL * 2}px 30px; width: max-content; min-width: ${PLAN_TREE_WIDTH}px; max-width: none; }
   .agrid__hint { text-align: center; }
   .agrid__root { width: 218px; }
   .agrid__stem { display: block; height: 18px; }
-  /* ONE uniform column grid for the whole rank: a column unit per room, each
-     district spanning as many units as it has rooms (one while folded). That
-     is what makes every card in the rank the same width and puts every
-     district header on its own rank's centreline.
-     minmax(0, Nfr) rather than a bare Nfr: a bare fr track takes its content's
+  /* ONE column per district, all of them equal, with the gutter between them
+     wide enough for the wires' trunks to stand in ({@link GROUP_GAP}).
+     minmax(0, 1fr) rather than a bare 1fr: a bare fr track takes its content's
      min-content as a floor, so one long district name would widen its column
-     and shove every rank to its right out of alignment — which is exactly how
-     the tree came to look bent. */
-  .agrid__districts { display: grid; grid-template-columns: var(--agrid-cols); align-items: start; gap: 0; margin-top: 0; width: 100%; }
-  /* No horizontal padding on a column: the rails run edge to edge so the rank
-     joins up as one unbroken line, and the gutter between cards is the card's
-     own margin instead of a gap in the drawing. */
-  .agrid__district { min-width: 0; align-items: center; gap: 0; position: relative; padding: 18px 0 0; }
+     and shove every column to its right out of alignment. */
+  .agrid__districts { display: grid; grid-template-columns: repeat(${DISTRICTS.length}, minmax(0, 1fr)); align-items: start; gap: 0 ${GROUP_GAP}px; margin-top: 0; width: 100%; }
+  /* The rank rail runs across the tops of the four columns and drops a stub
+     into each header — the one horizontal in the drawing, and what says the
+     four groups are four parts of one plan. */
+  .agrid__district { min-width: 0; align-items: stretch; gap: 0; position: relative; padding: 18px 0 0; }
   .agrid__district::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: ${RAIL}; }
   .agrid__district:first-child::before { left: 50%; }
   .agrid__district:last-child::before { right: 50%; }
   .agrid__district::after { content: ''; position: absolute; top: 0; left: 50%; width: 1px; height: 18px; background: ${RAIL}; }
-  /* A grid rather than a flex row, and the reason is intrinsic sizing: a flex
-     row's max-content is the SUM of its cards, so the pitch a wide plan asks
-     for would be the district's AVERAGE card and its longest title would still
-     truncate. A grid of equal fr columns asks for the width of the GREEDIEST
-     card times the number of columns, which is exactly the uniform pitch that
-     fits every title. minmax(0, 1fr) plus min-width: 0 on the slot so a long
-     title stretches the pitch rather than overflowing its column. */
-  .agrid__rooms { display: grid; grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); align-items: stretch; gap: 0; width: 100%; }
-  .agrid__slot { min-width: 0; position: relative; padding: 16px 0 0; }
-  .agrid__slot::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: ${RAIL}; }
-  .agrid__slot:first-child::before { left: 50%; }
-  .agrid__slot:last-child::before { right: 50%; }
-  .agrid__slot:only-child::before { display: none; }
-  .agrid__slot::after { content: ''; position: absolute; top: 0; left: 50%; width: 1px; height: 16px; background: ${RAIL}; }
-  .agrid__room { margin: 0 5px; }
-  /* Centred under the district's rail, which drops straight into it. */
-  .agrid__count { align-self: center; }
+  /* THE GROUP'S ROOMS, stacked under its header. The spine runs down the
+     indent and each card is joined to it by a stub at its own centreline, so
+     the group reads as a bracketed list however many rooms it holds and
+     however tall the cards run. */
+  .agrid__rooms { display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-flow: row; align-items: stretch; gap: ${ROOM_STEP}px; margin-top: ${ROOM_STEP}px; width: 100%; }
+  .agrid__slot { min-width: 0; position: relative; padding: 0 0 0 ${ROOM_INDENT}px; }
+  /* Up through the gap to the card above (or to the header, for the first),
+     and down to this card's own centreline — which is where the stub leaves. */
+  .agrid__slot::before { content: ''; position: absolute; left: ${SPINE_X}px; top: -${ROOM_STEP}px; height: calc(50% + ${ROOM_STEP}px); width: 1px; background: ${RAIL}; }
+  .agrid__slot::after { content: ''; position: absolute; left: ${SPINE_X}px; top: 50%; width: ${ROOM_INDENT - SPINE_X}px; height: 1px; background: ${RAIL}; }
+  .agrid__room { margin: 0; }
+  /* Under the header rather than under a rail: a folded group has no spine to
+     hang the chip off. */
+  .agrid__count { align-self: flex-start; margin-top: ${ROOM_STEP}px; }
 }
 
-/* Wide tree: the plan takes its CONTENT's width rather than the pane's, so the
-   uniform column pitch is set by the greediest card and no title truncates when
-   there is room to spare. The canvas then scales the result to the pane, which
-   is what lets the pitch stay uniform while the titles stay whole — the old
-   rule bought the same titles by letting each card size itself, and paid for it
-   with a rank whose columns no longer lined up. The note's width is pinned to
-   the card above (width 0 + min-width 100%), so only the TITLE row asks for
-   room — long notes still truncate. Below this width the plan takes the pane's
-   width and long titles may ellipsize; that trade keeps the tree tier viable
-   down to its breakpoint. */
 @media (prefers-reduced-motion: reduce) {
   .agrid__fold, .agrid__room, .agrid__zbtn { transition: none; }
 }
@@ -450,14 +460,6 @@ export function GridSheet(): JSX.Element {
   useEffect(() => {
     setRevealed(false);
   }, [folded]);
-  // The rank's column template: one unit per room, one for a folded district.
-  const columns = useMemo(
-    () =>
-      DISTRICTS.map(
-        (district) => `minmax(0, ${folded.has(district.id) ? 1 : district.rooms.length}fr)`
-      ).join(' '),
-    [folded]
-  );
 
   return (
     <div className="agrid" data-testid="auracle-grid-home">
@@ -523,10 +525,7 @@ export function GridSheet(): JSX.Element {
             </span>
           </button>
           <span className="agrid__stem" aria-hidden />
-          <div
-            className="agrid__districts"
-            style={{ '--agrid-cols': columns } as CSSProperties}
-          >
+          <div className="agrid__districts">
             {DISTRICTS.map((district) => (
               <DistrictBlock
                 key={district.id}

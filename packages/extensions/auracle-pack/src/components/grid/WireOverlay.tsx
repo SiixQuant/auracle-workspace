@@ -17,9 +17,9 @@
  *
  * ## Where it draws, and where it does not
  * Only at the FULL TREE tier. Below the sheet's {@link TREE_MIN_WIDTH} container
- * breakpoint the districts stack into a column, so the single room rank the
- * lanes hang under does not exist and there is nothing coherent to route; the
- * overlay measures its own width against the same constant the sheet's
+ * breakpoint the districts stack into one running column, so the group columns
+ * the trunks stand between do not exist and there is nothing coherent to route;
+ * the overlay measures its own width against the same constant the sheet's
  * `@container` rule uses and draws nothing under it. The pinned chip is hidden
  * by that same query. The stacked tiers are not left silent — they carry the
  * identical readings on the room dot, the district flag and the root node's
@@ -75,8 +75,8 @@ import { gridFoldStore } from './gridFoldStore';
 import { GRID_ACCENT } from './gridTheme';
 import { openRoomFocused, zoomOriginFrom } from './gridNav';
 import {
+  LEADER_CHANNEL,
   TREE_MIN_WIDTH,
-  WIRED_ROOMS,
   layoutWires,
   leaderPath,
   sheetAlert,
@@ -86,7 +86,7 @@ import {
   type Wire,
   type WireKind,
 } from './gridWires';
-import type { RoomId } from './rooms';
+import { ROOM_IDS, type RoomId } from './rooms';
 
 const STYLE_ID = 'auracle-grid-wires-styles';
 
@@ -153,11 +153,11 @@ function boxOf(el: Element | null, sheet: DOMRect, scale: number): RoomBox | nul
   if (!el) return null;
   const r = el.getBoundingClientRect();
   if (r.width === 0 && r.height === 0) return null;
-  return {
-    cx: (r.left - sheet.left + r.width / 2) / scale,
-    top: (r.top - sheet.top) / scale,
-    bottom: (r.bottom - sheet.top) / scale,
-  };
+  const left = (r.left - sheet.left) / scale;
+  const top = (r.top - sheet.top) / scale;
+  const right = (r.right - sheet.left) / scale;
+  const bottom = (r.bottom - sheet.top) / scale;
+  return { left, right, top, bottom, cx: (left + right) / 2, cy: (top + bottom) / 2 };
 }
 
 /**
@@ -218,12 +218,11 @@ export function WireOverlay({
       return;
     }
 
+    // EVERY room, not only the wired ones: the routing decides whether a run
+    // down a group's column would pass through a third card, and a card it was
+    // never handed is a card it cannot see itself drawing through.
     const boxes: Partial<Record<RoomId, RoomBox>> = {};
-    const targets: readonly RoomId[] =
-      alert.room !== null && !WIRED_ROOMS.includes(alert.room)
-        ? [...WIRED_ROOMS, alert.room]
-        : WIRED_ROOMS;
-    for (const id of targets) {
+    for (const id of ROOM_IDS) {
       const measured = boxOf(sheet.querySelector(`[data-room="${id}"]`), box, scale);
       if (measured) boxes[id] = measured;
     }
@@ -236,7 +235,9 @@ export function WireOverlay({
         ? { x: (chipBox.left - box.left) / scale + 12, y: (chipBox.bottom - box.top) / scale + 2 }
         : null;
     const leader =
-      alert.active && alert.room !== null ? leaderPath(anchor, boxes[alert.room] ?? null) : '';
+      alert.active && alert.room !== null
+        ? leaderPath(anchor, boxes[alert.room] ?? null, width - LEADER_CHANNEL / 2)
+        : '';
 
     setGeometry({ width, height, wires, faultPath, leader });
     // `folded` is a dependency rather than a value read here: the cards it

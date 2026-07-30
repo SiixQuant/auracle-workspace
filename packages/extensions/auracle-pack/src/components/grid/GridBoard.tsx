@@ -11,13 +11,21 @@
  * both faces, so a pan, a wheel-zoom, a double-click to refit and the controls
  * in the corner behave identically whichever face is up, and neither can drift
  * from the other. Where the two differ is what they hand the fit: the Plan is a
- * drawing of a known thing and pins itself to a fixed width; the board is
- * whatever a person put on it, so it takes its content's width and the fit
- * scales THAT — in both directions, so a sparse board is taken UP to fill the
- * pane rather than left as a stamp in the middle of it, and a crowded one is
- * still brought down whole. The composition it scales is one centred stack: the
- * layer is as wide as its widest part and centres the rest on it, so the
- * sentence, the chips and the pipeline share one spine (see the sheet).
+ * drawing of a known thing and lays out at the width its four group columns
+ * ask for; the board is whatever a person put on it, so it takes its content's
+ * width and the fit scales THAT — in both directions, so a sparse board is
+ * taken UP to fill the pane rather than left as a stamp in the middle of it,
+ * and a crowded one is still brought down whole. The composition it scales is
+ * one centred stack: the layer is as wide as its widest part and centres the
+ * rest on it, so the sentence, the chips and the pipeline share one spine (see
+ * the sheet).
+ *
+ * SHAPE: what the board hands the fit also depends on the FRAME. A pipeline is
+ * a wide thing, and a wide thing in a tall pane leaves two voids; so on a frame
+ * that is tall for it the pipeline wraps onto a second band — the ranks above,
+ * what the system wrote below — and the block the fit is given is square enough
+ * to use the height. Reading order is untouched by the wrap: left to right, and
+ * then down. See the `auracle-board` container in the sheet below.
  *
  * TIERS: `@container`, never `@media`, for the reason the Plan gives — the
  * panel's width has nothing to do with the window's. Three of them, mobile
@@ -116,6 +124,12 @@ const SHEET = `
    is an ordinary scrolling column; at it, it clips and the board becomes a
    layer with one transform on it. */
 .aboard__stage { position: relative; flex: 1 1 auto; min-height: 0; overflow: auto; }
+/* THE FRAME is the pane's own shape, published as a container so the board can
+   answer it. Below the canvas tier it has no box at all — the layer is a child
+   of the scrolling stage and nothing here may interpose — so it is only a
+   container where it is also absolutely sized (see the canvas tier), which is
+   the one arrangement in which size containment can never collapse it. */
+.aboard__frame { display: contents; }
 /* BORDER-BOX: the layer is 100% wide AND padded, so without this its own
    padding pushes 40px of every card past the right edge of a narrow pane —
    where the stage scrolls rather than the canvas panning, that is content a
@@ -212,6 +226,27 @@ const SHEET = `
   /* Fixed pitch rather than auto-fit: the layer is at its own width here, so
      three equal columns are three equal columns whatever the pane is doing. */
   .aboard__ghosts { grid-template-columns: repeat(3, 300px); gap: 14px; }
+  /* The pane's shape, as a container the board can answer. inset:0 on an
+     absolutely positioned box, so its size comes from the stage and never from
+     what is inside it — which is what makes \`container-type: size\` safe here
+     and nowhere else on this face. */
+  .aboard__frame { display: block; position: absolute; inset: 0; container-type: size; container-name: auracle-board; }
+}
+
+/* A TALL FRAME. Filling the width of a short pane with one left-to-right
+   pipeline is the right answer — that is the shape of the work — but the same
+   row in a pane as tall as it is wide leaves two large voids above and below.
+   So the pipeline WRAPS, the way a line of text does: the plane keeps its ranks
+   side by side and the materialized band comes down underneath it. Reading
+   order survives exactly — sources, questions, then what came of them, left to
+   right and then down — and the block the fit is given is square enough to use
+   the height it has been offered.
+
+   The threshold is the FRAME's own proportion rather than a width, because this
+   is a two-dimensional question: a wide pane keeps the single row it was always
+   drawn for whatever its width, and only a pane with height going spare wraps. */
+@container auracle-board (max-aspect-ratio: 4 / 3) {
+  .aboard__board { flex-direction: column; align-items: center; gap: ${STEP * 2}px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -543,182 +578,186 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
         onMouseDown={canvas.onMouseDown}
         onDoubleClick={canvas.onDoubleClick}
       >
-        <div
-          ref={canvas.planRef}
-          className="aboard__layer"
-          data-testid="board-layer"
-          // Only while the canvas is engaged: below the tier the board is an
-          // ordinary column in an ordinary scroll box, and a transform there
-          // would move something that has nowhere to be moved to.
-          style={
-            canvas.engaged
-              ? {
-                  transform: `translate(${canvas.view.x}px, ${canvas.view.y}px) scale(${canvas.view.scale})`,
-                }
-              : undefined
-          }
-        >
-          <p className="aboard__hint" data-testid="board-hint" data-state={hintState}>
-            {BOARD_HINT[hintState]}
-          </p>
-          {empty ? (
-            <GhostSlots onPlace={place} />
-          ) : (
-            <div className="aboard__adds">
-              {/* The same two moves under the same two names the ghosts gave
-                  them: a person who read the empty state should not have to
-                  learn a second vocabulary once it is gone. */}
-              <button
-                type="button"
-                className="aboard__add"
-                data-testid="board-add-source"
-                onClick={() => place('source')}
-              >
-                <span className="material-symbols-outlined" aria-hidden>
-                  {SOURCE_GHOST.icon}
-                </span>
-                {SOURCE_GHOST.title}
-              </button>
-              {/* Filled only while the board has something to read and nothing
-                  to read it against: that is the one situation where a person
-                  can be stuck with cards in front of them and no idea what the
-                  next move is. Everywhere else both chips are peers. */}
-              <button
-                type="button"
-                className="aboard__add"
-                data-testid="board-add-research"
-                data-primary={hintState === 'askQuestion' ? 'true' : 'false'}
-                onClick={() => place('research')}
-              >
-                <span className="material-symbols-outlined" aria-hidden>
-                  {RESEARCH_GHOST.icon}
-                </span>
-                {RESEARCH_GHOST.title}
-              </button>
-              {/* The third move, additive: watch a live quote. A card a person
-                  places, streaming on the canvas, released when it comes off. */}
-              <button
-                type="button"
-                className="aboard__add"
-                data-testid="board-add-quote"
-                onClick={() => place('quote')}
-              >
-                <span className="material-symbols-outlined" aria-hidden>
-                  {QUOTE_ADD.icon}
-                </span>
-                {QUOTE_ADD.title}
-              </button>
-            </div>
-          )}
-          {notice ? (
-            <p className="aboard__notice" data-testid="board-notice" data-kind={notice.kind} role="status">
-              {notice.text}
+        {/* The frame publishes the pane's shape as a container; it draws
+            nothing and, below the canvas tier, is not even a box. */}
+        <div className="aboard__frame" data-testid="board-frame">
+          <div
+            ref={canvas.planRef}
+            className="aboard__layer"
+            data-testid="board-layer"
+            // Only while the canvas is engaged: below the tier the board is an
+            // ordinary column in an ordinary scroll box, and a transform there
+            // would move something that has nowhere to be moved to.
+            style={
+              canvas.engaged
+                ? {
+                    transform: `translate(${canvas.view.x}px, ${canvas.view.y}px) scale(${canvas.view.scale})`,
+                  }
+                : undefined
+            }
+          >
+            <p className="aboard__hint" data-testid="board-hint" data-state={hintState}>
+              {BOARD_HINT[hintState]}
             </p>
-          ) : null}
-          {/* Not an error, and never drawn as one: the board is kept on this
-              machine whatever the engine does, so this line reports a sync and
-              names the one thing that would change it. The two readings live in
-              boardCopy. */}
-          {sync === 'synced' ? null : (
-            <p
-              className="aboard__notice"
-              data-testid="board-sync-note"
-              data-kind="wait"
-              data-state={sync}
-              role="status"
-            >
-              {BOARD_SYNC_NOTE[sync]}
-            </p>
-          )}
-          {/* The pipeline: the ranks a person placed, then the cards the system
-              wrote, side by side at the canvas tier and stacked below it. */}
-          <div className="aboard__board" data-testid="board-pipeline">
-            {/* The PLANE is drawn only when it holds something. An empty one is
-                a zero-width box, and a zero-width box in a gapped row is still
-                worth a gap: the materialized block was being pushed half a rank
-                to the right of the sentence above it, on exactly the board — no
-                sources, no questions, cards the system wrote — where the
-                composition is emptiest and a drift is most visible. */}
-            {layout.cards.length === 0 ? null : (
-              <div
-                ref={cardsRef}
-                className="aboard__cards"
-                data-testid="board-cards"
-                style={
-                  {
-                    '--aboard-w': `${layout.width}px`,
-                    '--aboard-h': `${layout.height}px`,
-                  } as CSSProperties
-                }
-              >
-                {/* One quiet caption per rank that has a card in it, at the
-                    coordinates the layout reserved for it. */}
-                {layout.columns.map((column) => (
-                  <span
-                    key={column.rank}
-                    className="aboard__col"
-                    data-testid={`board-column-${column.rank}`}
-                    style={{ left: column.x, width: column.width }}
-                  >
-                    {column.label}
+            {empty ? (
+              <GhostSlots onPlace={place} />
+            ) : (
+              <div className="aboard__adds">
+                {/* The same two moves under the same two names the ghosts gave
+                    them: a person who read the empty state should not have to
+                    learn a second vocabulary once it is gone. */}
+                <button
+                  type="button"
+                  className="aboard__add"
+                  data-testid="board-add-source"
+                  onClick={() => place('source')}
+                >
+                  <span className="material-symbols-outlined" aria-hidden>
+                    {SOURCE_GHOST.icon}
                   </span>
-                ))}
-                {/* The overlay is only true on the plane — see the file header. */}
-                {canvas.engaged ? (
-                  <BoardWires
-                    wires={layout.wires}
-                    width={layout.width}
-                    height={layout.height}
-                    ghost={ghostLine}
-                    onCut={cutWire}
-                  />
-                ) : null}
-                {layout.cards.map((card) => {
-                  const node = graph.nodes.find((row) => row.id === card.id);
-                  if (!node) return null;
-                  // The live-quote card runs its own stream and draws its own body,
-                  // so it is its own component beside the shared one.
-                  if (node.kind === 'quote') {
+                  {SOURCE_GHOST.title}
+                </button>
+                {/* Filled only while the board has something to read and nothing
+                    to read it against: that is the one situation where a person
+                    can be stuck with cards in front of them and no idea what the
+                    next move is. Everywhere else both chips are peers. */}
+                <button
+                  type="button"
+                  className="aboard__add"
+                  data-testid="board-add-research"
+                  data-primary={hintState === 'askQuestion' ? 'true' : 'false'}
+                  onClick={() => place('research')}
+                >
+                  <span className="material-symbols-outlined" aria-hidden>
+                    {RESEARCH_GHOST.icon}
+                  </span>
+                  {RESEARCH_GHOST.title}
+                </button>
+                {/* The third move, additive: watch a live quote. A card a person
+                    places, streaming on the canvas, released when it comes off. */}
+                <button
+                  type="button"
+                  className="aboard__add"
+                  data-testid="board-add-quote"
+                  onClick={() => place('quote')}
+                >
+                  <span className="material-symbols-outlined" aria-hidden>
+                    {QUOTE_ADD.icon}
+                  </span>
+                  {QUOTE_ADD.title}
+                </button>
+              </div>
+            )}
+            {notice ? (
+              <p className="aboard__notice" data-testid="board-notice" data-kind={notice.kind} role="status">
+                {notice.text}
+              </p>
+            ) : null}
+            {/* Not an error, and never drawn as one: the board is kept on this
+                machine whatever the engine does, so this line reports a sync and
+                names the one thing that would change it. The two readings live in
+                boardCopy. */}
+            {sync === 'synced' ? null : (
+              <p
+                className="aboard__notice"
+                data-testid="board-sync-note"
+                data-kind="wait"
+                data-state={sync}
+                role="status"
+              >
+                {BOARD_SYNC_NOTE[sync]}
+              </p>
+            )}
+            {/* The pipeline: the ranks a person placed, then the cards the system
+                wrote, side by side at the canvas tier and stacked below it. */}
+            <div className="aboard__board" data-testid="board-pipeline">
+              {/* The PLANE is drawn only when it holds something. An empty one is
+                  a zero-width box, and a zero-width box in a gapped row is still
+                  worth a gap: the materialized block was being pushed half a rank
+                  to the right of the sentence above it, on exactly the board — no
+                  sources, no questions, cards the system wrote — where the
+                  composition is emptiest and a drift is most visible. */}
+              {layout.cards.length === 0 ? null : (
+                <div
+                  ref={cardsRef}
+                  className="aboard__cards"
+                  data-testid="board-cards"
+                  style={
+                    {
+                      '--aboard-w': `${layout.width}px`,
+                      '--aboard-h': `${layout.height}px`,
+                    } as CSSProperties
+                  }
+                >
+                  {/* One quiet caption per rank that has a card in it, at the
+                      coordinates the layout reserved for it. */}
+                  {layout.columns.map((column) => (
+                    <span
+                      key={column.rank}
+                      className="aboard__col"
+                      data-testid={`board-column-${column.rank}`}
+                      style={{ left: column.x, width: column.width }}
+                    >
+                      {column.label}
+                    </span>
+                  ))}
+                  {/* The overlay is only true on the plane — see the file header. */}
+                  {canvas.engaged ? (
+                    <BoardWires
+                      wires={layout.wires}
+                      width={layout.width}
+                      height={layout.height}
+                      ghost={ghostLine}
+                      onCut={cutWire}
+                    />
+                  ) : null}
+                  {layout.cards.map((card) => {
+                    const node = graph.nodes.find((row) => row.id === card.id);
+                    if (!node) return null;
+                    // The live-quote card runs its own stream and draws its own body,
+                    // so it is its own component beside the shared one.
+                    if (node.kind === 'quote') {
+                      return (
+                        <QuoteCard
+                          key={node.id}
+                          node={node}
+                          card={card}
+                          editing={editing?.nodeId === node.id}
+                          drop={dropOf(node)}
+                          onOpen={openCard}
+                          onWireEnd={endWire}
+                        />
+                      );
+                    }
+                    const reading = readingOf(node);
                     return (
-                      <QuoteCard
+                      <BoardCard
                         key={node.id}
                         node={node}
                         card={card}
+                        reading={reading}
+                        wires={wireCountOf(node.id)}
                         editing={editing?.nodeId === node.id}
                         drop={dropOf(node)}
+                        verb={verbOf(node)}
+                        scanning={ai.running?.id === `board-scan-${node.id}`}
                         onOpen={openCard}
+                        onWireStart={startWire}
                         onWireEnd={endWire}
+                        onScan={scanCard}
+                        onPeek={(target, el) => peek.open(target, el, reading)}
+                        onPeekEnd={peek.close}
                       />
                     );
-                  }
-                  const reading = readingOf(node);
-                  return (
-                    <BoardCard
-                      key={node.id}
-                      node={node}
-                      card={card}
-                      reading={reading}
-                      wires={wireCountOf(node.id)}
-                      editing={editing?.nodeId === node.id}
-                      drop={dropOf(node)}
-                      verb={verbOf(node)}
-                      scanning={ai.running?.id === `board-scan-${node.id}`}
-                      onOpen={openCard}
-                      onWireStart={startWire}
-                      onWireEnd={endWire}
-                      onScan={scanCard}
-                      onPeek={(target, el) => peek.open(target, el, reading)}
-                      onPeekEnd={peek.close}
-                    />
-                  );
-                })}
-              </div>
-            )}
-            {/* The cards the system writes, drawn by their own layer beside the
-                plane. Mounted whatever the graph holds, because it is that layer
-                which ARMS materialization: an empty board is exactly the board
-                that most needs it running. */}
-            <BoardCardList graph={graph} />
+                  })}
+                </div>
+              )}
+              {/* The cards the system writes, drawn by their own layer beside the
+                  plane. Mounted whatever the graph holds, because it is that layer
+                  which ARMS materialization: an empty board is exactly the board
+                  that most needs it running. */}
+              <BoardCardList graph={graph} />
+            </div>
           </div>
         </div>
         {/* Small, pinned to the stage, and only where there is a canvas to

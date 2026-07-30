@@ -423,6 +423,28 @@ const MOCK_BOARD_SOURCES: Array<Record<string, unknown>> = [];
 const MOCK_VAULT: Record<string, { name: string; set: boolean; updated_at: string }> = {};
 const MOCK_PREFS: Record<string, unknown> = {};
 
+// A board somebody has actually worked on, behind `&board=demo`. The default
+// harness board is EMPTY on purpose (it is the onboarding), and an empty plane
+// is exactly the board on which the pipeline's own composition cannot be seen.
+if (new URLSearchParams(location.search).get('board') === 'demo') {
+  MOCK_PREFS.board_graph = {
+    '': {
+      nodes: [
+        { id: 'src-bars', kind: 'source', source: { name: 'Daily bars', connectorKind: 'yfinance', endpoint: '', payloadType: 'bars' } },
+        { id: 'src-papers', kind: 'source', source: { name: 'arXiv q-fin feed', connectorKind: 'http', endpoint: 'https://arxiv.org', payloadType: 'papers' } },
+        { id: 'src-macro', kind: 'source', source: { name: 'Macro release calendar', connectorKind: 'http', endpoint: 'https://example.test', payloadType: 'json' } },
+        { id: 'q-vol', kind: 'research', research: { hypothesis: 'Does vol-scaling a momentum signal lift its Sharpe out of sample?' } },
+        { id: 'q-rev', kind: 'research', research: { hypothesis: 'Do overnight moves in liquid futures reverse intraday?' } },
+      ],
+      edges: [
+        { id: 'e1', from: 'src-bars', to: 'q-vol', origin: 'user' },
+        { id: 'e2', from: 'src-papers', to: 'q-vol', origin: 'user' },
+        { id: 'e3', from: 'src-macro', to: 'q-rev', origin: 'user' },
+      ],
+    },
+  };
+}
+
 // The research loop's half of the same lane, in the ENGINE's shapes: a question
 // row carries its own count (there is no counters list — the badge is read off
 // the question list), a counter is put back through the counters route, and the

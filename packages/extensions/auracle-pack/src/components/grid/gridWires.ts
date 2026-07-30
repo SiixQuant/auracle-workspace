@@ -7,46 +7,56 @@
  * The two are separate because they answer different questions and change for
  * different reasons — a new hand-off adds a chip, not necessarily a wire.
  *
- * ## Trunk and drop
+ * ## Trunk and gutter
  * Straight point-to-point lines between eleven cards read as noise — and so
- * does a lane full of near-parallel runs that all say the same thing. So the
- * routing is a BUS, the way a schematic is drawn:
+ * does a channel full of near-parallel runs that all say the same thing. So the
+ * routing is a BUS, the way a schematic is drawn, and it is the SAME bus the
+ * Board is drawn with: {@link busPath} and {@link trunkBetween} come from
+ * {@link ./boardLayout}, so neither face has a routing of its own to drift.
  *
- *  - each FLOW owns one lane, and one horizontal TRUNK runs in it beneath the
- *    room rank;
- *  - an edge is a DROP out of the source card's centre onto that trunk, a run
- *    along it, and a drop back up into the target's bottom edge. Two bends,
- *    never more than three, and no diagonal at any of them;
- *  - two edges on the same trunk SHARE it. Their runs are collinear rather than
- *    parallel, so a flow through five cards is one line with five drops off it
- *    instead of four lines stacked under the rank;
- *  - every drop sits on its own card's centreline. That single rule is what
- *    makes it impossible for a drop to pass through a neighbouring card, and
- *    impossible for two edges in one lane to cross — all their horizontals are
- *    the same line, and all their verticals are card centres.
+ * The plan lays each district out as a COLUMN of rooms under its own header, so
+ * the channels a trunk can run in are the GUTTERS between those columns:
+ *
+ *  - an edge crossing from one group to the next leaves its source card's
+ *    trailing edge on that card's centreline, runs to the trunk standing in the
+ *    gutter between the two columns, travels along it, and arrives at the
+ *    target's leading edge. Two bends, no diagonal;
+ *  - an edge between two rooms in the SAME column drops straight down (or
+ *    climbs straight up) the shared centreline when nothing stands between
+ *    them — the shortest honest line, and the one that makes a group's own
+ *    sequence obvious. When a card is in the way it steps out into the channel
+ *    beside the column instead, and comes back into the target's trailing edge:
+ *    a wire is never drawn through a card;
+ *  - each FLOW owns one LANE, and a lane is an offset across the gutter, so two
+ *    flows crossing the same gutter stand beside each other rather than on top
+ *    of each other. Two edges in ONE flow crossing one gutter share their trunk
+ *    exactly — collinear rather than parallel;
+ *  - every departure and every arrival sits on its own card's centreline. That
+ *    single rule is what makes it impossible for a run to pass through a
+ *    neighbouring card and for two edges in one lane to cross.
  *
  * The flows are the three the sheet has to tell apart: the strategy pipeline to
  * production, what a live deployment produces, and what supplies either from
  * outside it. So the lane an edge runs in is a property of what the edge MEANS,
  * not of the order the table happens to be written in — which is what keeps the
- * picture stable as edges are added. A new hand-off inside a known flow adds a
- * drop; it does not add a line across the plan.
+ * picture stable as edges are added. A new hand-off inside a known flow joins a
+ * trunk that is already there; it does not add a line across the plan.
  *
  * Direction reads left to right along the pipeline, and the arrowhead is on the
- * TERMINAL drop only. A trunk carries no arrows of its own, so two edges
- * sharing one can never be read as disagreeing about which way the work goes.
+ * ARRIVAL only. A trunk carries no arrows of its own, so two edges sharing one
+ * can never be read as disagreeing about which way the work goes.
  *
- * This replaced a point-to-point routing with a per-edge x-nudge on each tap.
- * The nudges kept verticals off each other pixel by pixel, but they also meant
- * no two lines ever quite lined up: revealed together, eight edges read as a
- * tangle rather than as one system. Sharing the trunk is what buys the picture
- * back, and centring every drop is what makes the sharing exact.
+ * This replaced a routing that hung every trunk in a horizontal lane BELOW one
+ * flat rank of rooms. That was the right drawing while the rooms were a rank;
+ * once each group became a column, a trunk under the whole plan meant every
+ * wire took the long way round and a drop down a column ran through the cards
+ * stacked in it. The gutters are where the room now is.
  *
  * EVERY line this module produces is orthogonal, the leader included. A
  * diagonal drawn across a schematic reads as a mistake in it, and one drawn the
  * width of the whole sheet reads as the loudest thing on it — which is why the
- * annotation's leader now takes the same lane discipline as the wires instead
- * of cutting the plan in half.
+ * annotation's leader takes the same bus discipline as the wires instead of
+ * cutting the plan in half.
  *
  * ## A dash means data
  * The sheet has two kinds of line and they must never be confused. STRUCTURE —
@@ -63,7 +73,8 @@
  * is broken; it only decides which line says so.
  */
 import type { GridVitals, Health } from '../../engine/gridVitals';
-import { firstFault } from './districts';
+import { busPath, trunkBetween } from './boardLayout';
+import { ROOM_GROUP, firstFault } from './districts';
 import { ROOMS, type RoomId } from './rooms';
 
 /**
@@ -85,8 +96,24 @@ import { ROOMS, type RoomId } from './rooms';
  */
 export const TREE_MIN_WIDTH = 960;
 
-/** Lane depth in px below the bottom of the room rank. */
-export const LANES = { 1: 20, 2: 34, 3: 48 } as const;
+/**
+ * How wide the channel between two group columns is — the gutter every trunk
+ * stands in. One constant, read by the sheet's `@container` rule and by the
+ * routing, so the drawing and the geometry cannot drift: a gutter the CSS
+ * narrowed would otherwise leave two lanes drawn on top of each other.
+ *
+ * Wide enough for the three lanes below to stand clear of one another and of
+ * the cards on either side, narrow enough that four columns still read as one
+ * plan rather than four plans.
+ */
+export const GROUP_GAP = 44;
+
+/**
+ * Lane offsets, in px, from the middle of the gutter a trunk runs in. Signed:
+ * the flow a reader follows most stands nearest the column it leaves, and the
+ * one that is only ever plumbing stands furthest.
+ */
+export const LANES = { 1: -12, 2: 0, 3: 12 } as const;
 
 export type Lane = keyof typeof LANES;
 
@@ -196,12 +223,22 @@ export function wireVisible(kind: WireKind, revealed: boolean): boolean {
   return kind !== 'norm' || revealed;
 }
 
-/** A measured room card, in the sheet's own coordinate space. */
+/**
+ * A measured room card, in the sheet's own coordinate space.
+ *
+ * The whole box, not a centre and two edges: a bus running in a gutter departs
+ * from a card's SIDE and arrives at another card's side, and deciding whether a
+ * third card stands between two others in a column needs all four edges.
+ */
 export interface RoomBox {
-  /** Horizontal centre. */
-  cx: number;
+  left: number;
+  right: number;
   top: number;
   bottom: number;
+  /** Horizontal centre. */
+  cx: number;
+  /** Vertical centre — where a run into or out of a card's side sits. */
+  cy: number;
 }
 
 export interface Wire {
@@ -217,103 +254,145 @@ function px(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
-/** The radius a turn takes when there is room for it. */
-const CORNER = 6;
-
-/**
- * One DROP–RUN–DROP path: down out of the source to `laneY`, along the trunk,
- * and out again into the target, with the corners rounded by whatever radius
- * actually fits.
- *
- * Two bends whenever there is a run to make, and never more than two — they are
- * the only turns the sheet draws anywhere. Two taps already in one column need
- * no trunk and take none, which is the only case that bends fewer times.
- * The two vertical legs are signed independently, so this one shape serves both
- * things the sheet needs: a wire that drops out of a card, runs under the rank
- * and rises into another, and a leader that drops out of the pinned chip, runs
- * across above the rank and drops into the card it names.
- *
- * Nothing here is ever diagonal. When a corner will not fit — cards nearly in
- * the same column, or a lane too shallow to turn in — the turn is drawn SQUARE
- * rather than cut across. That case used to collapse to a single straight
- * segment between the taps, which is fine when the two taps share a y and is a
- * stray hypotenuse the moment they do not; the shape is the contract here, and
- * a schematic with one diagonal in it reads as a schematic with a mistake in it.
- */
-export function orthoPath(x1: number, y1: number, x2: number, y2: number, laneY: number): string {
-  // Same column: the drop IS the path. Sending it down to the trunk and back up
-  // the same line would draw the line over itself and call it a route.
-  if (px(x1) === px(x2)) return `M ${px(x1)} ${px(y1)} L ${px(x1)} ${px(y2)}`;
-  const dir = x2 > x1 ? 1 : -1;
-  // Which way each leg travels to reach (and leave) the lane. A wire arrives
-  // from above and leaves upward; a leader arrives from above and leaves
-  // downward, which is the only difference between the two shapes.
-  const into = laneY >= y1 ? 1 : -1;
-  const outOf = y2 >= laneY ? 1 : -1;
-  const r = Math.max(
-    0,
-    Math.min(CORNER, Math.abs(x2 - x1) / 2 - 1, Math.abs(laneY - y1) / 2, Math.abs(y2 - laneY) / 2)
-  );
-  if (r === 0) {
-    return (
-      `M ${px(x1)} ${px(y1)} L ${px(x1)} ${px(laneY)}` +
-      ` L ${px(x2)} ${px(laneY)} L ${px(x2)} ${px(y2)}`
-    );
-  }
-  return (
-    `M ${px(x1)} ${px(y1)} L ${px(x1)} ${px(laneY - into * r)} Q ${px(x1)} ${px(laneY)} ${px(x1 + dir * r)} ${px(laneY)}` +
-    ` L ${px(x2 - dir * r)} ${px(laneY)} Q ${px(x2)} ${px(laneY)} ${px(x2)} ${px(laneY + outOf * r)} L ${px(x2)} ${px(y2)}`
-  );
-}
-
 export interface WireLayout {
   wires: Wire[];
   /** The first faulted path, for the travelling pulse. Empty when nothing is. */
   faultPath: string;
 }
 
-/** How far clear of a card's border its drop begins, and ends. The two differ
- *  so a pair of opposed edges between the same two cards cannot overdraw each
- *  other exactly — and so the arrowhead lands ON the border rather than under
- *  the line leaving it. */
-const DROP_OUT = 2;
-const DROP_IN = 3;
+/** How far clear of a card's border a run begins, and ends. The two differ so a
+ *  pair of opposed edges between the same two cards cannot overdraw each other
+ *  exactly — and so the arrowhead lands ON the border rather than under the line
+ *  leaving it. */
+const DEPART = 2;
+const ARRIVE = 3;
+
+/**
+ * Whether a straight run between two cards in one column would pass through a
+ * third. Measured, never assumed: a fold takes cards out of the plan, and a
+ * gap that was blocked a moment ago is honestly clear now.
+ */
+function obstructed(
+  a: RoomBox,
+  b: RoomBox,
+  boxes: Partial<Record<RoomId, RoomBox>>
+): boolean {
+  const from = Math.min(a.bottom, b.bottom);
+  const to = Math.max(a.top, b.top);
+  for (const other of Object.values(boxes)) {
+    if (!other || other === a || other === b) continue;
+    // Only what shares the column: a card off to the side is not in the way.
+    if (other.right <= a.left || other.left >= a.right) continue;
+    if (other.bottom > from && other.top < to) return true;
+  }
+  return false;
+}
+
+/** Every measured room of one group column — what a gutter beside it is
+ *  measured from. */
+function columnBoxes(
+  group: number,
+  boxes: Partial<Record<RoomId, RoomBox>>
+): RoomBox[] {
+  const out: RoomBox[] = [];
+  for (const [id, box] of Object.entries(boxes)) {
+    if (box && ROOM_GROUP[id] === group) out.push(box);
+  }
+  return out;
+}
 
 /**
  * Route every edge whose two rooms were measured.
  *
- * Every trunk hangs below the LOWEST card in the rank, not below its own two
- * cards, so a district whose cards ran to two lines cannot have a wire drawn
- * through it — and so every edge in a lane lands on the SAME trunk y, which is
- * what makes the sharing exact rather than approximate. The drops are card
- * centres, untouched by anything per-edge: two edges meeting at a card meet on
- * one line.
+ * The trunks are computed FIRST, one per gutter, from every card on both sides
+ * of it rather than from the two an edge happens to join — that is what makes
+ * the sharing exact rather than approximate, and what keeps a trunk standing in
+ * the channel instead of wherever one pair of cards left room. A lane is then a
+ * fixed offset off that one line, so two flows crossing a gutter are two
+ * parallel trunks and two edges in a flow are one.
+ *
+ * Departures and arrivals are card centrelines, untouched by anything per-edge:
+ * two edges meeting at a card meet on one line.
  */
 export function layoutWires(
   boxes: Partial<Record<RoomId, RoomBox>>,
   vitals: GridVitals
 ): WireLayout {
-  let rankBottom = 0;
-  for (const box of Object.values(boxes)) {
-    if (box) rankBottom = Math.max(rankBottom, box.bottom);
+  const drawable = WIRE_DEFS.map((def) => ({
+    def,
+    a: boxes[def.from],
+    b: boxes[def.to],
+  })).filter((row): row is { def: WireDef; a: RoomBox; b: RoomBox } => !!row.a && !!row.b);
+
+  // One gutter per pair of columns an edge crosses, plus one beside a column
+  // whose own edges have to step out of it. Keyed by the columns rather than by
+  // the edge, so every edge in a channel measures the same channel.
+  const gutters = new Map<string, number>();
+  for (const { def } of drawable) {
+    const from = ROOM_GROUP[def.from];
+    const to = ROOM_GROUP[def.to];
+    const key = from === to ? `beside-${from}` : `${Math.min(from, to)}-${Math.max(from, to)}`;
+    if (gutters.has(key)) continue;
+    if (from === to) {
+      // Beside the column: there is nothing on the far side to measure to, so
+      // the gutter takes its own pitch off the column's trailing edge.
+      gutters.set(
+        key,
+        trunkBetween(columnBoxes(from, boxes).map((box) => box.right), [], GROUP_GAP)
+      );
+      continue;
+    }
+    const [left, right] = from < to ? [from, to] : [to, from];
+    gutters.set(
+      key,
+      trunkBetween(
+        columnBoxes(left, boxes).map((box) => box.right),
+        columnBoxes(right, boxes).map((box) => box.left),
+        GROUP_GAP
+      )
+    );
   }
 
   const wires: Wire[] = [];
   let faultPath = '';
-  for (const def of WIRE_DEFS) {
-    const a = boxes[def.from];
-    const b = boxes[def.to];
-    if (!a || !b) continue;
-    const kind = wireKind(def, vitals);
-    const d = orthoPath(
-      a.cx,
-      a.bottom + DROP_OUT,
-      b.cx,
-      b.bottom + DROP_IN,
-      rankBottom + LANES[wireLane(def)]
-    );
-    wires.push({ key: `${def.from}-${def.to}`, d, kind });
-    if (kind === 'err' && faultPath === '') faultPath = d;
+  for (const { def, a, b } of drawable) {
+    const from = ROOM_GROUP[def.from];
+    const to = ROOM_GROUP[def.to];
+    const inside = from === to;
+    const key = inside ? `beside-${from}` : `${Math.min(from, to)}-${Math.max(from, to)}`;
+    const trunk = px((gutters.get(key) ?? a.right + GROUP_GAP / 2) + LANES[wireLane(def)]);
+
+    let d: string;
+    if (inside && !obstructed(a, b, boxes)) {
+      // Straight down (or straight up) the shared centreline. `busPath` collapses
+      // to the one segment when both ends already stand on the trunk.
+      const down = b.top >= a.bottom;
+      d = busPath(
+        px(a.cx),
+        px(down ? a.bottom + DEPART : a.top - DEPART),
+        px(a.cx),
+        px(down ? b.top - ARRIVE : b.bottom + ARRIVE),
+        px(a.cx)
+      );
+    } else if (inside || b.left >= a.right) {
+      // Out of the trailing edge, along the trunk, and in again: at the target's
+      // LEADING edge when the work crosses to the next column, at its trailing
+      // edge when the wire only stepped out of its own.
+      d = busPath(
+        px(a.right + DEPART),
+        px(a.cy),
+        px(inside ? b.right + ARRIVE : b.left - ARRIVE),
+        px(b.cy),
+        trunk
+      );
+    } else {
+      // The work travels leftwards — the same shape, mirrored, so a table that
+      // ever wires a room back to an earlier group still draws a bus.
+      d = busPath(px(a.left - DEPART), px(a.cy), px(b.right + ARRIVE), px(b.cy), trunk);
+    }
+
+    wires.push({ key: `${def.from}-${def.to}`, d, kind: wireKind(def, vitals) });
+    if (wires[wires.length - 1].kind === 'err' && faultPath === '') faultPath = d;
   }
   return { wires, faultPath };
 }
@@ -324,18 +403,18 @@ export interface Anchor {
   y: number;
 }
 
-/** How far above the target card the leader's horizontal run sits, and where on
- *  the card's top edge it lands — right of centre, clear of the title. */
-const LEADER_LANE = 18;
-const LEADER_TAP = 24;
-/** The shortest first leg the leader will take before turning. */
-const LEADER_DROP = 10;
+/**
+ * How wide a channel the leader is given down the plan's right edge — and so
+ * how much clear ground the sheet's own padding has to leave beyond the last
+ * column. Read by the sheet's CSS as well, for the reason {@link GROUP_GAP} is.
+ */
+export const LEADER_CHANNEL = 18;
 
 /**
  * The leader from the pinned annotation chip to the room it names, drawn with
- * the same lane discipline as the wires: down the plan's right edge out of the
- * chip, across a lane just above the room rank, and down into the target card's
- * top edge.
+ * the same bus discipline as the wires: out of the chip along the clear band
+ * beneath it, down the channel beside the named room's own column, and back in
+ * at that card's trailing edge.
  *
  * It used to be a single diagonal, on the theory that a diagonal could never be
  * mistaken for a wire. On a plan the width of a real pane that theory cost more
@@ -344,15 +423,23 @@ const LEADER_DROP = 10;
  * annotation of the schematic rather than a scratch across it, and the dash
  * pattern is what keeps it distinct from the wires.
  *
+ * It comes down BESIDE the target's column rather than down the plan's right
+ * edge, and arrives at the card's side rather than its top. Both for the same
+ * reason: on a plan of columns, the ground above a card is the card above it
+ * and the ground between the right edge and a card is every column in between —
+ * either route would draw the annotation straight through rooms it says nothing
+ * about. The channel beside a column is clear ground by construction, and the
+ * last leg is then only as long as that channel is wide. `channel` caps it, so
+ * the room in the LAST column is pointed at from inside the plan's own margin
+ * rather than from off the edge of it.
+ *
  * Returns an empty string when either end has no box to point at (a chip the
  * narrow tier has hidden, a room the plan has not laid out).
  */
-export function leaderPath(chip: Anchor | null, room: RoomBox | null): string {
+export function leaderPath(chip: Anchor | null, room: RoomBox | null, channel: number): string {
   if (!chip || !room) return '';
-  // The lane sits above the card, but never above the chip it leaves: a target
-  // high on the plan gets a short drop rather than a leg doubling back.
-  const laneY = Math.max(chip.y + LEADER_DROP, room.top - LEADER_LANE);
-  return orthoPath(chip.x, chip.y, room.cx + LEADER_TAP, room.top - 3, laneY);
+  const trunk = Math.min(channel, room.right + LEADER_CHANNEL / 2);
+  return busPath(px(chip.x), px(chip.y), px(room.right + ARRIVE), px(room.cy), px(trunk));
 }
 
 /* ── the sheet's one alert line ─────────────────────────────────────── */

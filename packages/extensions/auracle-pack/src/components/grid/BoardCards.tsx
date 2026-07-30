@@ -138,6 +138,15 @@ const SHEET = `
   .abrd__cards { grid-template-columns: repeat(3, ${MATERIALIZED_COLUMN}px); }
 }
 
+/* WRAPPED. On a tall frame the pipeline comes down onto a second band and this
+   block is no longer beside the plane but under it, so it is given the width
+   the plane had rather than the sliver a third column of a row could spare.
+   Three columns wide it sits under the two ranks at about their own width,
+   which is what makes the wrapped board read as one block instead of two. */
+@container auracle-board (max-aspect-ratio: 4 / 3) {
+  .abrd__cards { grid-template-columns: repeat(3, ${MATERIALIZED_COLUMN}px); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .abrd__card { transition: none; }
 }

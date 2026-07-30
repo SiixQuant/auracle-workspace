@@ -4,11 +4,13 @@
  * Two things are worth pinning, and they are different kinds of claim:
  *
  *  - the ROUTING is a pure function of measured boxes, so it is asserted
- *    directly, and what is asserted is the SCHEMATIC's own discipline: one
- *    trunk per flow, every edge in a flow riding the same trunk y, every drop
- *    on its card's own centreline and through no other card, two bends a path,
- *    and the right angles every line (the annotation's leader included) is made
- *    of. Those properties are what stop eight revealed edges reading as a
+ *    directly, and what is asserted is the SCHEMATIC's own discipline: a trunk
+ *    that stands in the gutter between two group columns and is decided by that
+ *    gutter and the edge's flow alone (which is what makes two edges in a flow
+ *    one line rather than two), every departure and arrival on its card's own
+ *    centreline, no line drawn through any card it does not join, two bends a
+ *    path, and the right angles every line (the annotation's leader included) is
+ *    made of. Those properties are what stop eight revealed edges reading as a
  *    tangle, so they are held by test rather than by eye;
  *  - what is DRAWN is a separate claim from what is routed: a quiet edge is
  *    withheld until somebody rests on a wired card or on the chip, and an edge
@@ -21,8 +23,9 @@
  *    same way, through `gridFoldStore`.
  *
  * Geometry comes from a stubbed `getBoundingClientRect`: jsdom lays nothing
- * out, so the tree tier is described here explicitly — one room rank, a plan
- * wide enough to clear the tier gate, and a chip pinned top-right.
+ * out, so the plan tier is described here explicitly — four group columns with
+ * each district's rooms stacked down its own, a plan wide enough to clear the
+ * tier gate, and a chip pinned top-right.
  */
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -47,14 +50,16 @@ vi.mock('../../engine/client', () => ({
 import { GridSheet } from '../grid/GridSheet';
 import { getActiveRoom, openGridHome } from '../grid/gridNav';
 import { gridFoldStore } from '../grid/gridFoldStore';
+import { busPath } from '../grid/boardLayout';
+import { DISTRICTS, ROOM_GROUP } from '../grid/districts';
 import {
   FLOW_LANE,
+  GROUP_GAP,
   LANES,
   TREE_MIN_WIDTH,
   WIRE_DEFS,
   layoutWires,
   leaderPath,
-  orthoPath,
   sheetAlert,
   wireLane,
   wireVisible,
@@ -68,13 +73,18 @@ import type { Deployment } from '../../engine/live';
 import { deriveRooms, erroredNames, gridVitals, type VitalSources } from '../../engine/gridVitals';
 import { deploymentsBlock, summaryBody } from '../../engine/__tests__/summaryFixture';
 
-/* ── a tree-tier layout, described because jsdom lays nothing out ───── */
+/* ── a plan-tier layout, described because jsdom lays nothing out ───── */
 
-const ROOM_W = 120;
-const ROOM_GAP = 6;
-const RANK_TOP = 300;
-const RANK_BOTTOM = 360;
-const PLAN_H = 520;
+const ROOM_W = 200;
+const ROOM_H = 52;
+/** Between two rooms stacked in one group's column. */
+const ROOM_GAP = 16;
+/** Between the trailing edge of one column's cards and the leading edge of the
+ *  next's — the channel the trunks stand in. */
+const COL_GAP = 62;
+const PLAN_LEFT = 20;
+const RANK_TOP = 200;
+const PLAN_H = 620;
 const WIDE = TREE_MIN_WIDTH + 120;
 /** Narrower than the tier gate — the stacked sheet, where nothing is drawn. */
 const NARROW = TREE_MIN_WIDTH - 380;
@@ -93,26 +103,46 @@ function rect(left: number, top: number, width: number, height: number): DOMRect
   } as DOMRect;
 }
 
-/** Rooms sit in one rank, in registry order. `shift` stands in for a
- *  rearrangement the plan's own box does not reveal — a folded district. */
-function roomLeft(id: RoomId, shift = 0): number {
-  return 20 + shift + ROOM_IDS.indexOf(id) * (ROOM_W + ROOM_GAP);
+/** Which group column a room sits in and how far down it — the plan's own
+ *  geography, read off the districts rather than restated here, so the fixture
+ *  cannot describe a layout the sheet would never draw. */
+function slotOf(id: RoomId): { group: number; row: number } {
+  for (const [group, district] of DISTRICTS.entries()) {
+    const row = district.rooms.indexOf(id);
+    if (row >= 0) return { group, row };
+  }
+  throw new Error(`no district holds ${id}`);
 }
 
-/** Where the routing believes a card's centre is, given the layout above. */
-function boxFor(id: RoomId): RoomBox {
-  return { cx: roomLeft(id) + ROOM_W / 2, top: RANK_TOP, bottom: RANK_BOTTOM };
+/** Where the routing believes a card is, given the layout above. `shift` stands
+ *  in for a rearrangement the plan's own box does not reveal — a folded
+ *  district. */
+function boxFor(id: RoomId, shift = 0): RoomBox {
+  const { group, row } = slotOf(id);
+  const left = PLAN_LEFT + shift + group * (ROOM_W + COL_GAP);
+  const top = RANK_TOP + row * (ROOM_H + ROOM_GAP);
+  return {
+    left,
+    right: left + ROOM_W,
+    top,
+    bottom: top + ROOM_H,
+    cx: left + ROOM_W / 2,
+    cy: top + ROOM_H / 2,
+  };
 }
 
-/**
- * The horizontal span a card occupies in the rank. The routing is never handed
- * these — a {@link RoomBox} carries a centre and nothing else — so they exist
- * here only to prove the thing the centre rule buys: that no drop was ever put
- * down a column belonging to a card the edge has no business touching.
- */
-function spanFor(id: RoomId): { left: number; right: number } {
-  const left = roomLeft(id);
-  return { left, right: left + ROOM_W };
+/** The middle of the channel BETWEEN two neighbouring group columns — where a
+ *  trunk with no lane offset of its own stands. Measured, so it is the midpoint
+ *  of the ground the two columns actually leave. */
+function crossGutter(left: number): number {
+  return PLAN_LEFT + left * (ROOM_W + COL_GAP) + ROOM_W + COL_GAP / 2;
+}
+
+/** The channel BESIDE one column, which an edge that stays inside it steps out
+ *  into. There is nothing on the far side to measure to, so it takes the
+ *  gutter's own declared pitch off the column's trailing edge. */
+function besideGutter(group: number): number {
+  return PLAN_LEFT + group * (ROOM_W + COL_GAP) + ROOM_W + GROUP_GAP / 2;
 }
 
 let restoreRects: (() => void) | null = null;
@@ -125,7 +155,8 @@ function installLayout(planWidth: number, shift = 0): void {
     if (el.classList?.contains('agrid__annot')) return rect(planWidth - 220, 16, 200, 24);
     const room = el.getAttribute?.('data-room');
     if (room && el.classList?.contains('agrid__room') && ROOM_IDS.includes(room as RoomId)) {
-      return rect(roomLeft(room as RoomId, shift), RANK_TOP, ROOM_W, RANK_BOTTOM - RANK_TOP);
+      const box = boxFor(room as RoomId, shift);
+      return rect(box.left, box.top, ROOM_W, ROOM_H);
     }
     return rect(0, 0, 0, 0);
   };
@@ -198,19 +229,42 @@ afterEach(async () => {
 
 /* ── routing (pure) ─────────────────────────────────────────────────── */
 
-/** Every "x y" pair in a path, in order. */
+/**
+ * Every point a path passes through, in order, with the `H`/`V` shorthand
+ * expanded back into whole coordinates. Written as a parse rather than a regex
+ * over number pairs because a shorthand command carries ONE number: a pattern
+ * looking for two would read the end of one leg and the start of the next as a
+ * point that is on neither.
+ */
 function points(d: string): Array<[number, number]> {
-  return [...d.matchAll(/(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)/g)].map(
-    (m) => [Number(m[1]), Number(m[2])] as [number, number]
-  );
+  const out: Array<[number, number]> = [];
+  const tokens = d.trim().split(/\s+/);
+  let x = 0;
+  let y = 0;
+  for (let i = 0; i < tokens.length; ) {
+    const command = tokens[i];
+    i += 1;
+    if (command === 'M' || command === 'L') {
+      x = Number(tokens[i]);
+      y = Number(tokens[i + 1]);
+      i += 2;
+    } else if (command === 'H') {
+      x = Number(tokens[i]);
+      i += 1;
+    } else if (command === 'V') {
+      y = Number(tokens[i]);
+      i += 1;
+    } else {
+      continue;
+    }
+    out.push([x, y]);
+  }
+  return out;
 }
 
 /**
  * The axis of every segment in a path, with consecutive runs of the same axis
- * collapsed into one. A drop, a trunk run and a drop reads `['v', 'h', 'v']`,
- * whatever the corners between them are drawn with — a quadratic corner's
- * control point sits on the leg it leaves and its end point on the leg it
- * joins, so the corner adds no entry of its own.
+ * collapsed into one. Leave, run the trunk and arrive reads `['h', 'v', 'h']`.
  *
  * A segment sharing neither coordinate with the one before it is a DIAGONAL,
  * which this sheet does not have; it is reported rather than thrown away, so
@@ -229,7 +283,8 @@ function axes(d: string): string[] {
   return out;
 }
 
-/** Turns per path. Drop–run–drop is two; three is the most the sheet allows. */
+/** Turns per path. Leave–run–arrive is two; three is the most the sheet
+ *  allows. */
 function bends(d: string): number {
   return Math.max(0, axes(d).length - 1);
 }
@@ -238,28 +293,41 @@ function isOrthogonal(d: string): boolean {
   return !axes(d).includes('diagonal');
 }
 
-/** The trunk a path rides: the y of its horizontal run, and the x it travels
- *  FROM and TO along it — signed, so the direction of travel is readable. */
-function trunkOf(d: string): { y: number; from: number; to: number } | null {
+/** The trunk a path rides: the x of its vertical run, and the y it travels FROM
+ *  and TO along it — signed, so the direction of travel is readable. Null for a
+ *  path with no trunk to ride, which is every edge whose two cards already line
+ *  up on one line. */
+function trunkOf(d: string): { x: number; from: number; to: number } | null {
   const pts = points(d);
   for (let i = 1; i < pts.length; i += 1) {
     const [ax, ay] = pts[i - 1];
     const [bx, by] = pts[i];
-    if (ay === by && ax !== bx) return { y: ay, from: ax, to: bx };
+    if (ax === bx && ay !== by) return { x: ax, from: ay, to: by };
   }
   return null;
 }
 
-/** The x of every vertical run in a path — its drop columns, and nothing else. */
-function drops(d: string): number[] {
+/** Every straight segment of a path, endpoint to endpoint. */
+function segments(d: string): Array<[[number, number], [number, number]]> {
   const pts = points(d);
-  const xs: number[] = [];
+  const out: Array<[[number, number], [number, number]]> = [];
   for (let i = 1; i < pts.length; i += 1) {
-    const [ax, ay] = pts[i - 1];
-    const [bx, by] = pts[i];
-    if (ax === bx && ay !== by && !xs.includes(ax)) xs.push(ax);
+    if (pts[i - 1][0] === pts[i][0] && pts[i - 1][1] === pts[i][1]) continue;
+    out.push([pts[i - 1], pts[i]]);
   }
-  return xs;
+  return out;
+}
+
+/** Whether a segment passes through a box — the property that matters most on
+ *  a plan of columns, where the ground above a card is another card. */
+function cuts(segment: [[number, number], [number, number]], box: RoomBox): boolean {
+  const [[ax, ay], [bx, by]] = segment;
+  return (
+    Math.min(ax, bx) < box.right &&
+    Math.max(ax, bx) > box.left &&
+    Math.min(ay, by) < box.bottom &&
+    Math.max(ay, by) > box.top
+  );
 }
 
 const ALL_BOXES: Partial<Record<RoomId, RoomBox>> = Object.fromEntries(
@@ -343,7 +411,7 @@ function routed(): Array<{ key: string; lane: number; d: string }> {
   });
 }
 
-describe('the routing is one trunk per flow, with drops off it', () => {
+describe('the routing is one trunk per gutter and flow, with runs off it', () => {
   it('takes its lane from the flow, never from the edge', () => {
     expect(FLOW_LANE).toEqual({ pipeline: 1, execution: 2, supply: 3 });
 
@@ -354,128 +422,137 @@ describe('the routing is one trunk per flow, with drops off it', () => {
     for (const def of WIRE_DEFS) expect(wireLane(def)).toBe(FLOW_LANE[def.flow]);
   });
 
-  it('lands every edge in a lane on one and the same trunk, below the rank', () => {
-    const byLane = new Map<number, Set<number>>();
+  it('stands every trunk in the gutter its edge crosses, at its flow lane', () => {
     for (const wire of routed()) {
+      const [from, to] = wire.key.split('-') as [RoomId, RoomId];
+      const groups = [ROOM_GROUP[from], ROOM_GROUP[to]];
+      if (axes(wire.d).length === 1) {
+        // No trunk to stand in: the two cards already share the line the work
+        // travels along, so the edge is one straight segment — across to the
+        // next group, or down the group's own column.
+        expect(axes(wire.d)).toEqual([groups[0] === groups[1] ? 'v' : 'h']);
+        continue;
+      }
       const trunk = trunkOf(wire.d);
       expect(trunk).toBeTruthy();
-      // The lane hangs below the LOWEST card, never through the rank.
-      expect(trunk!.y).toBe(RANK_BOTTOM + LANES[wire.lane as keyof typeof LANES]);
-      expect(trunk!.y).toBeGreaterThan(RANK_BOTTOM);
-      const seen = byLane.get(wire.lane) ?? new Set<number>();
-      seen.add(trunk!.y);
-      byLane.set(wire.lane, seen);
+      // The trunk is a function of the GUTTER and the FLOW, and of nothing
+      // else. That is exactly what makes two edges of one flow crossing one
+      // gutter collinear rather than parallel: neither edge can move the line
+      // it rides, so neither can move off the other's.
+      const channel =
+        groups[0] === groups[1]
+          ? besideGutter(groups[0])
+          : crossGutter(Math.min(groups[0], groups[1]));
+      expect({ edge: wire.key, x: trunk!.x }).toEqual({
+        edge: wire.key,
+        x: channel + LANES[wire.lane as keyof typeof LANES],
+      });
     }
-    // One y per lane: the sharing is exact, so two edges on a trunk draw the
-    // same line rather than two lines a pixel apart.
-    expect([...byLane.keys()].sort()).toEqual([1, 2, 3]);
-    for (const ys of byLane.values()) expect(ys.size).toBe(1);
   });
 
-  it('hangs every drop on its own card centreline', () => {
+  it('leaves and arrives on its own card centreline', () => {
     const { wires } = layoutWires(ALL_BOXES, quietVitals());
     expect(wires).toHaveLength(WIRE_DEFS.length);
 
     for (const def of WIRE_DEFS) {
       const wire = wires.find((w) => w.key === `${def.from}-${def.to}`)!;
       const pts = points(wire.d);
-      // Out of the source's centre, and into the target's — no per-edge nudge
-      // is left anywhere, which is what lets two edges meeting at a card meet
-      // on one line instead of near one.
-      expect(pts[0]).toEqual([boxFor(def.from).cx, RANK_BOTTOM + 2]);
-      expect(pts[pts.length - 1]).toEqual([boxFor(def.to).cx, RANK_BOTTOM + 3]);
-      expect(drops(wire.d)).toEqual([boxFor(def.from).cx, boxFor(def.to).cx]);
+      const a = boxFor(def.from);
+      const b = boxFor(def.to);
+      const straightDownTheColumn =
+        ROOM_GROUP[def.from] === ROOM_GROUP[def.to] && axes(wire.d).length === 1;
+      // A run into or out of a card's SIDE sits on that card's vertical
+      // centreline; a run straight down a column sits on the two cards' shared
+      // horizontal one. Either way there is no per-edge nudge anywhere, which
+      // is what lets two edges meeting at a card meet on one line.
+      if (straightDownTheColumn) {
+        expect(a.cx).toBe(b.cx);
+        expect([pts[0][0], pts[pts.length - 1][0]]).toEqual([a.cx, a.cx]);
+      } else {
+        expect([pts[0][1], pts[pts.length - 1][1]]).toEqual([a.cy, b.cy]);
+      }
     }
   });
 
-  it('never puts a drop down a column belonging to another card', () => {
+  it('never draws a line through a card it does not join', () => {
     for (const wire of routed()) {
       const [from, to] = wire.key.split('-') as [RoomId, RoomId];
-      for (const x of drops(wire.d)) {
+      for (const segment of segments(wire.d)) {
         for (const id of ROOM_IDS) {
           if (id === from || id === to) continue;
-          const { left, right } = spanFor(id);
-          expect({ edge: wire.key, id, inside: x > left && x < right }).toEqual({
+          expect({ edge: wire.key, id, through: cuts(segment, boxFor(id)) }).toEqual({
             edge: wire.key,
             id,
-            inside: false,
+            through: false,
           });
         }
       }
     }
   });
 
-  it('bends exactly twice — a drop, a run, and a drop', () => {
+  it('bends at most twice: leave, run the trunk, arrive', () => {
     for (const wire of routed()) {
-      expect(axes(wire.d)).toEqual(['v', 'h', 'v']);
-      expect(bends(wire.d)).toBeLessThanOrEqual(3);
+      // Three shapes and no others: a straight run across to a card on the same
+      // line, a straight run down a column, and the full leave-trunk-arrive.
+      expect([['h'], ['v'], ['h', 'v', 'h']]).toContainEqual(axes(wire.d));
+      expect(bends(wire.d)).toBeLessThanOrEqual(2);
       expect(isOrthogonal(wire.d)).toBe(true);
     }
   });
 
-  it('leaves no two edges in a lane crossing, or arguing about direction', () => {
-    const all = routed().map((wire) => ({
-      ...wire,
-      trunk: trunkOf(wire.d)!,
-      ys: points(wire.d).map(([, y]) => y),
-    }));
-
-    // A drop STOPS at its own trunk: nothing on the path goes below it. So a
-    // vertical can never pass through a horizontal drawn on the same lane —
-    // which is the whole of the no-crossing guarantee, since every horizontal
-    // in a lane is the same line and every vertical is a card centre.
-    for (const wire of all) expect(Math.max(...wire.ys)).toBe(wire.trunk.y);
+  it('leaves no two edges on a trunk arguing about direction', () => {
+    const all = routed()
+      .map((wire) => ({ ...wire, trunk: trunkOf(wire.d) }))
+      .filter((wire) => wire.trunk !== null);
 
     for (const a of all) {
       for (const b of all) {
-        if (a.key === b.key || a.lane !== b.lane) continue;
+        if (a.key === b.key || a.trunk!.x !== b.trunk!.x) continue;
         const overlap =
-          Math.min(Math.max(a.trunk.from, a.trunk.to), Math.max(b.trunk.from, b.trunk.to)) -
-          Math.max(Math.min(a.trunk.from, a.trunk.to), Math.min(b.trunk.from, b.trunk.to));
+          Math.min(Math.max(a.trunk!.from, a.trunk!.to), Math.max(b.trunk!.from, b.trunk!.to)) -
+          Math.max(Math.min(a.trunk!.from, a.trunk!.to), Math.min(b.trunk!.from, b.trunk!.to));
         if (overlap <= 0) continue;
-        // Two runs sharing a stretch of trunk travel the same way down it, so
+        // Two runs sharing a stretch of trunk travel the same way along it, so
         // the shared line is never ambiguous about which way the work goes.
-        expect(Math.sign(a.trunk.to - a.trunk.from)).toBe(Math.sign(b.trunk.to - b.trunk.from));
+        expect(Math.sign(a.trunk!.to - a.trunk!.from)).toBe(
+          Math.sign(b.trunk!.to - b.trunk!.from)
+        );
       }
     }
   });
 
-  it('reads left to right along the pipeline', () => {
+  it('reads forwards along the pipeline: across to the next group, or down', () => {
     const byKey = new Map(routed().map((wire) => [wire.key, wire]));
     for (const key of FLOW_EDGES.pipeline) {
-      const trunk = trunkOf(byKey.get(key)!.d)!;
-      expect(trunk.to).toBeGreaterThan(trunk.from);
+      const [from, to] = key.split('-') as [RoomId, RoomId];
+      const pts = points(byKey.get(key)!.d);
+      const [startX, startY] = pts[0];
+      const [endX, endY] = pts[pts.length - 1];
+      if (ROOM_GROUP[from] === ROOM_GROUP[to]) {
+        // Down the group's own column, in the order the group lists its rooms.
+        expect(endY).toBeGreaterThan(startY);
+      } else {
+        // On to the next group's column, left to right.
+        expect(ROOM_GROUP[to]).toBeGreaterThan(ROOM_GROUP[from]);
+        expect(endX).toBeGreaterThan(startX);
+      }
     }
   });
 
-  it('rounds its corners, and squares them when there is no room to turn', () => {
-    // A normal turn is drawn with quadratic corners.
-    expect(orthoPath(0, 0, 200, 0, 40)).toContain('Q');
-    // Taps a pixel apart cannot hold a 6px corner. The turn is drawn SQUARE:
-    // the straight run this used to fall back to was honest only while both
-    // taps shared a y, and a stray hypotenuse the moment they did not.
-    const tight = orthoPath(100, 0, 101, 1, 40);
-    expect(tight).toBe('M 100 0 L 100 40 L 101 40 L 101 1');
-    expect(isOrthogonal(tight)).toBe(true);
-    expect(bends(tight)).toBe(2);
-    // Two taps in one column need no trunk at all — the drop is the path.
-    expect(orthoPath(100, 0, 100, 50, 40)).toBe('M 100 0 L 100 50');
-    expect(bends(orthoPath(100, 0, 100, 50, 40))).toBe(0);
-  });
+  it('steps out of a column only when a card stands in the way', () => {
+    // Two rooms next to each other in one group are joined by the shortest
+    // honest line there is, which is also the one that makes the group's own
+    // sequence obvious.
+    expect(axes(routed().find((wire) => wire.key === 'strategies-backtest')!.d)).toEqual(['v']);
 
-  it('draws only right angles, whichever side of the lane the target is on', () => {
-    // Both ends above the lane — the wires' own shape.
-    expect(isOrthogonal(orthoPath(0, 0, 200, 10, 90))).toBe(true);
-    // The target BELOW the lane — the leader's shape, and the one the old
-    // single-direction routing could only draw as a straight diagonal.
-    const down = orthoPath(600, 40, 200, 300, 280);
-    expect(isOrthogonal(down)).toBe(true);
-    expect(down).toContain('Q');
-    expect(bends(down)).toBe(2);
-    // It leaves the lane going down, not back up the way it came.
-    const ys = points(down).map(([, y]) => y);
-    expect(ys[ys.length - 1]).toBe(300);
-    expect(Math.max(...ys)).toBe(300);
+    // Two rooms in one group with a third between them cannot be: the wire
+    // steps out into the channel beside the column and comes back in at the
+    // target's trailing edge rather than being drawn through the card.
+    const skipping = routed().find((wire) => wire.key === 'deploys-incidents')!;
+    expect(axes(skipping.d)).toEqual(['h', 'v', 'h']);
+    const pts = points(skipping.d);
+    expect(pts[pts.length - 1][0]).toBeGreaterThan(boxFor('incidents').cx);
+    expect(trunkOf(skipping.d)!.x).toBeGreaterThan(boxFor('blotter').right);
   });
 
   it('routes nothing for a room the plan did not lay out', () => {
@@ -487,41 +564,98 @@ describe('the routing is one trunk per flow, with drops off it', () => {
   });
 });
 
-describe('the alert leader keeps to the lanes', () => {
-  /** The pinned chip's lower-left, top-right of a tree-tier plan. */
+describe('the bus both faces are drawn with', () => {
+  it('collapses to one segment when there is no turn to make', () => {
+    // Straight across to a card on the same line: no hop, and no bends put on
+    // a straight line.
+    expect(busPath(0, 40, 200, 40, 90)).toBe('M 0 40 H 200');
+    expect(bends(busPath(0, 40, 200, 40, 90))).toBe(0);
+    // Straight along the trunk itself, which is what a run down one column is.
+    expect(busPath(100, 0, 100, 50, 100)).toBe('M 100 0 V 50');
+    expect(bends(busPath(100, 0, 100, 50, 100))).toBe(0);
+  });
+
+  it('draws only right angles, whichever side of the trunk each end is on', () => {
+    // Forwards: out of a card, along the trunk, into the next column.
+    const forward = busPath(0, 40, 200, 300, 90);
+    expect(axes(forward)).toEqual(['h', 'v', 'h']);
+    expect(isOrthogonal(forward)).toBe(true);
+    expect(bends(forward)).toBe(2);
+    // Out and BACK: an edge that stepped beside its own column, and the
+    // leader's shape too. Both ends left of the trunk, and still no diagonal.
+    const back = busPath(600, 40, 560, 300, 640);
+    expect(axes(back)).toEqual(['h', 'v', 'h']);
+    expect(isOrthogonal(back)).toBe(true);
+    expect(Math.max(...points(back).map(([x]) => x))).toBe(640);
+  });
+});
+
+describe('the alert leader keeps to the channels', () => {
+  /** The pinned chip's lower-left, top-right of a plan-tier plan. */
   const CHIP = { x: WIDE - 208, y: 42 };
+  /** The clear ground the plan's own right margin leaves. */
+  const CHANNEL = WIDE - 9;
 
   it('turns at right angles rather than cutting across the sheet', () => {
     // The whole point of the rewrite: the old leader was one long diagonal
     // from the chip to the card, and on a real pane it was the loudest line
     // on the plan.
     const room = boxFor('deploys');
-    const d = leaderPath(CHIP, room);
+    const d = leaderPath(CHIP, room, CHANNEL);
     expect(isOrthogonal(d)).toBe(true);
-    expect(d).toContain('Q');
-    // The same drop–run–drop the wires are made of: the annotation is drawn in
-    // the schematic's own hand, and only its dash pattern sets it apart.
-    expect(axes(d)).toEqual(['v', 'h', 'v']);
+    // The same leave-trunk-arrive the wires are made of: the annotation is
+    // drawn in the schematic's own hand, and only its dash pattern sets it
+    // apart.
+    expect(axes(d)).toEqual(['h', 'v', 'h']);
     expect(bends(d)).toBeLessThanOrEqual(3);
   });
 
-  it('leaves the chip and lands on the card it names, from above', () => {
+  it('leaves the chip and lands on the card it names, from the side', () => {
     const room = boxFor('deploys');
-    const pts = points(leaderPath(CHIP, room));
+    const pts = points(leaderPath(CHIP, room, CHANNEL));
     expect(pts[0]).toEqual([CHIP.x, CHIP.y]);
 
     const [x, y] = pts[pts.length - 1];
-    // Right of the card's centre, clear of the title it would otherwise cross.
-    expect(x).toBeGreaterThan(room.cx);
-    // Stopping ON the top edge, having come down to it — never through the card.
-    expect(y).toBeLessThan(room.top);
-    expect(y).toBeGreaterThan(CHIP.y);
-    expect(Math.max(...pts.map(([, py]) => py))).toBe(y);
+    // On the card's trailing edge, at its own centreline. Not the top edge:
+    // above a card in a column is the card above it, and a leader let down
+    // through that would annotate a room it says nothing about.
+    expect(x).toBeGreaterThan(room.right);
+    expect(x).toBeLessThan(room.right + GROUP_GAP / 2);
+    expect(y).toBe(room.cy);
+  });
+
+  it('comes down beside the named room rather than down the whole plan', () => {
+    // Every room, wherever its group sits: the trunk stands clear of that
+    // room's own column and of nothing further out, so the last leg is only as
+    // long as the channel is wide and crosses no other column on the way.
+    for (const id of ROOM_IDS) {
+      const room = boxFor(id);
+      const d = leaderPath(CHIP, room, CHANNEL);
+      const trunk = trunkOf(d)!;
+      expect({ id, clear: trunk.x > room.right }).toEqual({ id, clear: true });
+      for (const other of ROOM_IDS) {
+        if (other === id) continue;
+        for (const segment of segments(d)) {
+          expect({ id, other, through: cuts(segment, boxFor(other)) }).toEqual({
+            id,
+            other,
+            through: false,
+          });
+        }
+      }
+    }
+  });
+
+  it('stays inside the plan when the room it names is in the last column', () => {
+    // The channel caps the trunk, so the room furthest right is pointed at
+    // from inside the plan's own margin rather than from off the edge of it.
+    const trunk = trunkOf(leaderPath(CHIP, boxFor('runway'), CHANNEL))!;
+    expect(trunk.x).toBeLessThanOrEqual(CHANNEL);
   });
 
   it('says nothing when either end has no box to point at', () => {
-    expect(leaderPath(null, boxFor('deploys'))).toBe('');
-    expect(leaderPath(CHIP, null)).toBe('');
+    expect(leaderPath(null, boxFor('deploys'), CHANNEL)).toBe('');
+    expect(leaderPath(CHIP, null, CHANNEL)).toBe('');
   });
 });
 

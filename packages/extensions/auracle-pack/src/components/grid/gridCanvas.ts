@@ -53,11 +53,12 @@ export interface Inset {
  * whose type has one legible size, so the zoom is for taking in a wide plan or
  * leaning into one district, never for reading it at either extreme.
  *
- * The floor must clear what fit needs at the narrowest tree-tier stage: the
- * plan lays out at a fixed width (~1720px with padding), the tier starts at
- * 960px of stage, and the fit insets take their share — so fit legitimately
- * asks for about (960 − insets) / 1720 ≈ 0.54 there. A floor above that
- * beats fit and the plan clips at both edges instead of shrinking.
+ * The floor must clear what fit needs at the narrowest tree-tier stage for the
+ * widest thing either face can put on the canvas: the tier starts at 960px of
+ * stage, the fit insets take their share, and a crowded Board runs to about
+ * 1720px — so fit legitimately asks for about (960 − insets) / 1720 ≈ 0.54
+ * there. A floor above that beats fit and the drawing clips at both edges
+ * instead of shrinking.
  */
 export const ZOOM_MIN = 0.53;
 export const ZOOM_MAX = 1.5;

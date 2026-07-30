@@ -32,15 +32,16 @@ import { IDENTITY, fitView, isGround, panBy, zoomAt, type View } from './gridCan
 import { TREE_MIN_WIDTH } from './gridWires';
 
 /**
- * How wide a face is cut, before the canvas scales it — capped so a drawing
- * does not stretch into a smear on a very wide pane, and centred by the fit.
- * One number for both faces, so a person flipping between them is looking at
- * the same plane at the same pitch.
+ * How wide a face is cut BELOW the canvas tier — capped so a drawing does not
+ * stretch into a smear on a very wide pane, and centred by the fit. One number
+ * for both faces, so a person flipping between them is looking at the same
+ * plane at the same pitch.
  *
- * The Plan is PINNED to it (its tree is that wide whatever is on it); the Board
- * treats it as a ceiling below the canvas tier and takes its content's width
- * above, because a board holds whatever somebody put on it and an empty one
- * must not be shrunk to fill a frame it never asked for.
+ * Above the tier neither face is pinned to it: each lays out at the width its
+ * own content asks for and the fit scales THAT, in both directions. The Plan's
+ * width is four group columns wide enough to write a room's name out; the
+ * Board's is whatever somebody put on it, and an empty one must not be stretched
+ * to fill a frame it never asked for.
  */
 export const CANVAS_WIDTH = 1680;
 

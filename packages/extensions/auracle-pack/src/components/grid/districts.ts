@@ -34,6 +34,21 @@ export const DISTRICTS: readonly District[] = [
   { id: 'system', number: '04', name: 'System', rooms: ['conns', 'runway'] },
 ];
 
+/**
+ * Which group column a room sits in, as the districts' own order — the table
+ * read back the other way round.
+ *
+ * The sheet lays each district out as a COLUMN of its rooms under its own
+ * header, so this is what tells the wire routing whether a hand-off crosses
+ * from one group to the next (and therefore rides the gutter between their
+ * columns) or stays inside a single group's column. Derived from
+ * {@link DISTRICTS} rather than written out, so a room cannot be in one place
+ * on the plan and another in the wiring.
+ */
+export const ROOM_GROUP: Record<string, number> = Object.fromEntries(
+  DISTRICTS.flatMap((district, index) => district.rooms.map((room) => [room, index]))
+);
+
 /** Material Symbols ligature per room — the host loads that face globally
  *  (renderer/index.css), which is also what the pack's rail button draws with. */
 export const ROOM_ICONS: Record<RoomId, string> = {

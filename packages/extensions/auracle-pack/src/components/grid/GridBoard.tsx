@@ -13,8 +13,11 @@
  * from the other. Where the two differ is what they hand the fit: the Plan is a
  * drawing of a known thing and pins itself to a fixed width; the board is
  * whatever a person put on it, so it takes its content's width and the fit
- * scales THAT — an empty board therefore sits at 1:1 rather than being shrunk
- * to fill a frame it never asked for.
+ * scales THAT — in both directions, so a sparse board is taken UP to fill the
+ * pane rather than left as a stamp in the middle of it, and a crowded one is
+ * still brought down whole. The composition it scales is one centred stack: the
+ * layer is as wide as its widest part and centres the rest on it, so the
+ * sentence, the chips and the pipeline share one spine (see the sheet).
  *
  * TIERS: `@container`, never `@media`, for the reason the Plan gives — the
  * panel's width has nothing to do with the window's. Three of them, mobile
@@ -94,6 +97,17 @@ const STYLE_ID = 'auracle-grid-board-styles';
  *  surface, wide enough that it never becomes a rule. */
 const DOT_PITCH = 13;
 
+/**
+ * The board's vertical step, and the only spacing number above the cards.
+ *
+ * Everything down the middle of the board is one of two gaps: ONE step inside a
+ * group and TWO between groups. The sentence and the chips that answer it are
+ * one group; the pipeline under them is another. Before this they were 14 and
+ * 12 — a bigger gap INSIDE the group than between it and the board, which is
+ * what made four elements read as four unrelated ones.
+ */
+const STEP = 12;
+
 const SHEET = `
 /* A column, matching the Plan's frame: the stage takes whatever height is left
    so the board is always the full height of the pane. */
@@ -110,7 +124,7 @@ const SHEET = `
 /* Plane and materialized block together. A column below the canvas tier (the
    pane is a scrolling list there); the pipeline's own row at it. */
 .aboard__board { display: flex; flex-direction: column; min-width: 0; }
-.aboard__hint { margin: 0 0 14px; font-size: 11.5px; line-height: 1.5; color: ${tone.text3}; }
+.aboard__hint { margin: 0 0 ${STEP}px; font-size: 11.5px; line-height: 1.5; color: ${tone.text3}; }
 /* Pinned to the stage rather than the board, so the controls that move the
    board do not move with it. */
 .aboard__zoom { position: absolute; right: 14px; bottom: 12px; z-index: 7; display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 999px; border: 1px solid ${tone.border}; background: ${tone.surface}; box-shadow: 0 6px 18px rgba(0,0,0,0.35); }
@@ -119,8 +133,9 @@ const SHEET = `
 .aboard__zbtn:disabled { opacity: 0.35; cursor: default; }
 .aboard__zbtn:focus-visible { outline: 2px solid ${GRID_ACCENT}; outline-offset: 1px; }
 .aboard__zbtn .material-symbols-outlined { font-size: 17px; line-height: 1; }
-/* The two moves, kept within reach once the empty state's ghosts are gone. */
-.aboard__adds { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; }
+/* The two moves, kept within reach once the empty state's ghosts are gone.
+   Two steps below, because what follows is the board rather than more caption. */
+.aboard__adds { display: flex; align-items: center; gap: 8px; margin: 0 0 ${STEP * 2}px; }
 .aboard__add { display: inline-flex; align-items: center; gap: 6px; appearance: none; font: inherit; font-size: 11.5px; padding: 4px 10px; border-radius: 999px; border: 1px solid ${tone.border}; background: transparent; color: ${tone.text2}; cursor: pointer; }
 .aboard__add:hover { border-color: ${tone.borderStrong}; color: ${tone.text}; }
 .aboard__add:focus-visible { outline: 2px solid ${GRID_ACCENT}; outline-offset: 1px; }
@@ -131,7 +146,7 @@ const SHEET = `
    and only while it is the answer to what the board is missing. */
 .aboard__add[data-primary='true'] { border-color: transparent; background: ${tone.accent}; color: ${tone.accentInk}; font-weight: 600; box-shadow: inset 0 1px 0 rgba(255,255,255,0.14); }
 .aboard__add[data-primary='true']:hover { border-color: transparent; background: ${tone.accentHover}; color: ${tone.accentInk}; }
-.aboard__notice { margin: 0 0 12px; font-size: 11.5px; line-height: 1.5; color: ${tone.text2}; }
+.aboard__notice { margin: 0 0 ${STEP * 2}px; font-size: 11.5px; line-height: 1.5; color: ${tone.text2}; }
 .aboard__notice[data-kind='err'] { color: ${tone.danger}; }
 /* WAITING is not failing. The sync note reports where the board is kept, and
    the board is never at risk, so it takes the caution tone and never the
@@ -173,15 +188,26 @@ const SHEET = `
      scaling into moire. */
   .aboard__stage { background-image: radial-gradient(${tint(tone.text3, 16)} 1px, transparent 1px); background-size: ${DOT_PITCH}px ${DOT_PITCH}px; }
   /* THE PIPELINE, left to right: the ranks a person placed, then what came out
-     of them. Top-aligned so the three section labels sit on one line. */
-  .aboard__board { flex-direction: row; align-items: flex-start; gap: ${RANK_GAP - BOARD_PAD}px; }
+     of them. Top-aligned so the three section labels sit on one line, and
+     centred — explicit though the shrink-to-fit box makes it moot today, so
+     that a row which ever stretches stays on the spine below rather than
+     starting at the edge. */
+  .aboard__board { flex-direction: row; align-items: flex-start; justify-content: center; gap: ${RANK_GAP - BOARD_PAD}px; }
   /* The board does not squeeze to the stage: it lays out at its CONTENT's
      width and the canvas fit-scales the result, which is what keeps a board
-     wider than the pane legible — and, just as importantly, keeps a board
-     NARROWER than the pane at 1:1 instead of shrinking an empty state nobody
-     needed shrunk. (The Plan pins itself to a fixed width instead, because its
-     tree genuinely is that wide whatever is on it.) */
-  .aboard__layer { position: absolute; top: 0; left: 0; margin: 0; transform-origin: 0 0; align-items: center; padding: 22px 20px 44px; width: max-content; max-width: none; }
+     wider than the pane legible — and lets a board narrower than the pane be
+     scaled UP to fill it rather than left as a stamp on empty canvas (see
+     FIT_MAX). (The Plan pins itself to a fixed width instead, because its tree
+     genuinely is that wide whatever is on it.)
+
+     ONE SPINE, and this is where it comes from: the layer is exactly as wide as
+     its widest child and centres every child on that width, and the fit then
+     centres the LAYER in the stage. So the sentence, the chips and the pipeline
+     all sit on the same vertical line through the middle of the pane, and no
+     element carries an alignment of its own to drift out of agreement with.
+     Padding is symmetric for the same reason: an extra strip along one edge is
+     an offset the centring cannot see, and the plan is centred by its BOX. */
+  .aboard__layer { position: absolute; top: 0; left: 0; margin: 0; transform-origin: 0 0; align-items: center; padding: ${STEP * 2}px 20px; width: max-content; max-width: none; }
   .aboard__hint { text-align: center; }
   /* Fixed pitch rather than auto-fit: the layer is at its own width here, so
      three equal columns are three equal columns whatever the pane is doing. */
@@ -607,7 +633,13 @@ export function GridBoard({ host }: { host?: PanelHost }): JSX.Element {
           {/* The pipeline: the ranks a person placed, then the cards the system
               wrote, side by side at the canvas tier and stacked below it. */}
           <div className="aboard__board" data-testid="board-pipeline">
-            {empty ? null : (
+            {/* The PLANE is drawn only when it holds something. An empty one is
+                a zero-width box, and a zero-width box in a gapped row is still
+                worth a gap: the materialized block was being pushed half a rank
+                to the right of the sentence above it, on exactly the board — no
+                sources, no questions, cards the system wrote — where the
+                composition is emptiest and a drift is most visible. */}
+            {layout.cards.length === 0 ? null : (
               <div
                 ref={cardsRef}
                 className="aboard__cards"

@@ -39,7 +39,6 @@ import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import { GridPanel } from '../grid/GridPanel';
 import { closePalette, registerCommandProvider } from '../grid/gridCommands';
 import { getActiveRoom, openGridHome } from '../grid/gridNav';
-import { setFace } from '../grid/gridFaceStore';
 import { ROOMS, ROOM_IDS } from '../grid/rooms';
 import { alertStore } from '../../engine/alertStore';
 import { gridVitals } from '../../engine/gridVitals';
@@ -99,16 +98,15 @@ async function settle(): Promise<void> {
   });
 }
 
-/** Open the palette the way the plan does, with the panel focused. */
+/** Open the palette the only way there is now: the panel focused, Cmd+K. The
+ *  plan's command-post node is gone with the plan; the shortcut is the door. */
 function openFromRoot(): void {
   act(() => panel().focus());
-  fireEvent.click(screen.getByTestId('grid-root'));
+  fireEvent.keyDown(window, { key: 'k', metaKey: true });
 }
 
 beforeEach(() => {
-  // The panel opens on the BOARD in a workspace that has not chosen a face.
-  // These are the PLAN's tests, so they say so.
-  setFace('plan');
+  // The panel opens on the resting state; the palette is summoned over it.
   stub.feeds = {};
   gridVitals.reset();
 });
@@ -315,14 +313,16 @@ describe('leaving the palette', () => {
     expect(screen.queryByTestId('grid-palette')).toBeNull();
   });
 
-  it('hands focus back to the root node', () => {
+  it('hands focus back to the panel', () => {
     renderGrid();
     openFromRoot();
 
     fireEvent.keyDown(input(), { key: 'Escape' });
 
     expect(screen.queryByTestId('grid-palette')).toBeNull();
-    expect(document.activeElement).toBe(screen.getByTestId('grid-root'));
+    // The plan's root node is gone; the panel itself is the focus fallback,
+    // so the keyboard is never left pointing at nothing.
+    expect(document.activeElement).toBe(panel());
   });
 });
 

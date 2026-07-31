@@ -34,6 +34,7 @@ import { graphArtifacts } from '../../engine/boardArtifacts';
 import { questionsOf } from '../../engine/boardStandingQueries';
 import { ensurePanelKitStyles, tone } from '../panelkit';
 import { ArtifactCard } from './ArtifactCard';
+import { CredentialPaste } from './CredentialPaste';
 import { GridLedger } from './GridLedger';
 import { GridScope } from './GridScope';
 import { GridSteps } from './GridSteps';
@@ -127,11 +128,13 @@ export function GridHome(): JSX.Element {
 
   const status = statusLine();
   const watches = watchRows();
-  const artifacts = graphArtifacts(
-    boardGraphStore.getSnapshot().graph,
-    backtestStore.getSnapshot(),
-    boardRuns.getSnapshot()
-  );
+  const graph = boardGraphStore.getSnapshot().graph;
+  const artifacts = graphArtifacts(graph, backtestStore.getSnapshot(), boardRuns.getSnapshot());
+  // Sources the agent stood up that name a vault slot: the only place a key is
+  // ever asked for, and the only input left in the panel.
+  const keyed = graph.nodes
+    .filter((node) => node.kind === 'source' && node.source?.credentialSlot)
+    .map((node) => ({ id: node.id, slot: node.source!.credentialSlot as string, name: node.source!.name }));
 
   return (
     <section className="ahome" data-testid="grid-resting" aria-label="Auracle">
@@ -166,6 +169,13 @@ export function GridHome(): JSX.Element {
         <div className="ahome__artifacts" data-testid="resting-artifacts">
           {artifacts.map((artifact) => (
             <ArtifactCard artifact={artifact} key={artifact.id} />
+          ))}
+        </div>
+      ) : null}
+      {keyed.length > 0 ? (
+        <div className="ahome__artifacts" data-testid="resting-credentials">
+          {keyed.map((source) => (
+            <CredentialPaste slot={source.slot} sourceName={source.name} key={source.id} />
           ))}
         </div>
       ) : null}

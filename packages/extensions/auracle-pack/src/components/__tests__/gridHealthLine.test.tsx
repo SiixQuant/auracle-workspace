@@ -34,7 +34,6 @@ import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import { GridPanel } from '../grid/GridPanel';
 import { GridHealthLine } from '../grid/GridHealthLine';
 import { gridVitals, type GridVitals } from '../../engine/gridVitals';
-import { resetFaceStore } from '../grid/gridFaceStore';
 import { aiRunStore } from '../grid/gridAiActions';
 import { openGridHome, openRoom } from '../grid/gridNav';
 import { closePalette } from '../grid/gridCommands';
@@ -61,14 +60,12 @@ function seedVitals(overrides: Partial<Record<string, Partial<GridVitals[keyof G
 
 beforeEach(() => {
   gridVitals.reset();
-  resetFaceStore();
 });
 
 afterEach(() => {
   cleanup();
   closePalette();
   openGridHome();
-  resetFaceStore();
   vi.restoreAllMocks();
   gridVitals.reset();
 });

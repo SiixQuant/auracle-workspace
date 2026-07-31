@@ -40,18 +40,18 @@
  */
 import type { ExtensionStorage } from '@nimbalyst/extension-sdk';
 
-/** The panel's two faces. */
-export type GridFace = 'plan' | 'board';
+/** The panel's views. `home` is the resting state; the two legacy faces
+ * remain reachable by keyboard as construction scaffolding until the swap's
+ * deletion issue removes them. */
+export type GridFace = 'home' | 'plan' | 'board';
 
-/** What an undecided workspace opens on. See the note above. */
-export const DEFAULT_FACE: GridFace = 'board';
+/** Every workspace opens on the resting state. The redesign's contract is
+ * that the panel opens on a statement of state, so the opening view is not a
+ * preference and is deliberately not remembered. */
+export const DEFAULT_FACE: GridFace = 'home';
 
 /** Workspace-storage key, namespaced by the host to this extension. */
 export const FACE_KEY = 'grid.face';
-
-function isFace(value: unknown): value is GridFace {
-  return value === 'plan' || value === 'board';
-}
 
 /** `null` until something decides — a stored choice, or a person pressing. */
 let face: GridFace | null = null;
@@ -74,14 +74,10 @@ function notify(): void {
 export function bindFaceStorage(storage: ExtensionStorage | undefined | null): void {
   if (!storage) return;
   backing = storage;
-  if (face !== null) return;
-  try {
-    const stored = storage.get<unknown>(FACE_KEY);
-    if (isFace(stored)) face = stored;
-  } catch {
-    // A storage backend that throws is a host problem, not a reason to refuse
-    // to draw a panel. The default face is a complete answer.
-  }
+  // Deliberately no adoption: the panel OPENS on the resting state every
+  // time, so a face remembered from before the redesign must not decide the
+  // opening view. The binding is kept so a mid-session flip still writes,
+  // which costs nothing and dies with this store in the deletion issue.
 }
 
 /** The face to draw. */
@@ -109,9 +105,12 @@ export function setFace(next: GridFace): void {
   if (changed) notify();
 }
 
-/** The other one. */
+/** The next view along: home, then the Board, then the Plan, then home.
+ * The cycle is the scaffolding entry to the legacy faces — no on-screen
+ * control offers them any more. */
 export function toggleFace(): void {
-  setFace(getFace() === 'plan' ? 'board' : 'plan');
+  const current = getFace();
+  setFace(current === 'home' ? 'board' : current === 'board' ? 'plan' : 'home');
 }
 
 export function subscribeFace(listener: () => void): () => void {

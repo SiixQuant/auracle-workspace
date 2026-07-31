@@ -219,7 +219,9 @@ describe('a card nobody typed into does not survive its editor', () => {
     await place('source');
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('grid-face-plan'));
+      // The control is gone; leaving the Board is a view change on the store
+      // (the keyboard cycle drives the same call).
+      setFace('plan');
     });
 
     expect(graph().nodes).toEqual([]);

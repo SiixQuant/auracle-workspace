@@ -408,24 +408,24 @@ describe('the panel help entry covers both faces', () => {
     ).toBe('grid');
   });
 
-  it('names both faces, under the names the control gives them', async () => {
-    await paint();
+  it('leads with the resting state, which is what the panel opens on', () => {
+    expect(helpEntry).toMatch(/resting state/);
+    expect(helpEntry).toMatch(/conversation/);
+  });
 
-    const plan = screen.getByTestId('grid-face-plan').textContent ?? '';
-    const board = screen.getByTestId('grid-face-board').textContent ?? '';
-    expect(plan).not.toBe('');
-    expect(board).not.toBe('');
-    expect(helpEntry).toContain(plan);
-    expect(helpEntry).toContain(board);
-    // And says what each of them is FOR, not only that it exists.
+  it('names both faces and what each is for', () => {
+    // The control is gone; the faces survive behind the keyboard cycle, and
+    // the copy still has to say what each one IS while they exist.
+    expect(helpEntry).toContain('Board');
+    expect(helpEntry).toContain('Plan');
     expect(helpEntry).toContain('what you are working on');
     expect(helpEntry).toContain('floor plan');
   });
 
-  it('names the control and the key that switch them', () => {
-    expect(helpEntry).toMatch(/Plan and Board control/);
+  it('names the key, and no control, because there is none', () => {
     expect(helpEntry).toContain('Cmd B');
     expect(helpEntry).toContain('Ctrl B');
+    expect(helpEntry).not.toMatch(/control at the top left/);
   });
 
   it('states the rule that configuring never navigates', () => {

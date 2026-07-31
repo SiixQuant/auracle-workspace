@@ -28,6 +28,8 @@ import { backtestStore, type BacktestResultData } from '../src/engine/backtestSt
 import { EquityChartShad } from '../src/components/charts/EquityChartShad';
 import { GridPanel } from '../src/components/grid/GridPanel';
 import { ArtifactCard } from '../src/components/grid/ArtifactCard';
+import { GridSteps } from '../src/components/grid/GridSteps';
+import type { AiAction, AiRunState } from '../src/components/grid/gridAiActions';
 import { basketVerdictArtifact, materializedArtifact } from '../src/engine/boardArtifacts';
 import { RunStrategyHeader } from '../src/components/RunStrategyHeader';
 
@@ -903,10 +905,35 @@ function ArtifactCardsHarness(): JSX.Element {
   );
 }
 
+/** The step list on its own, in a running state, so the current-step mark and
+ *  the cost tag can be screenshot without dispatching a live action. */
+function StepsHarness(): JSX.Element {
+  const state: AiRunState = {
+    pending: null,
+    running: {
+      id: 'a1',
+      class: 'mutation',
+      room: 'deploys',
+      label: 'Restart the errored deployments',
+      icon: 'x',
+      intent: { operation: 'deploy.restart-errored', room: 'deploys', summary: 's', fields: [] },
+    } as AiAction,
+    step: 'x',
+    outcome: null,
+  };
+  return (
+    <div style={{ maxWidth: 460, padding: 24 }}>
+      <p style={{ margin: '0 0 6px', fontSize: 13.5, color: '#b6c0cc' }}>Working on Deployments.</p>
+      <GridSteps state={state} />
+    </div>
+  );
+}
+
 const PANELS: Record<string, (props: { host: never }) => JSX.Element> = {
   live: LiveAlgorithmsPanel,
   grid: GridPanel as (props: { host: never }) => JSX.Element,
   'artifact-cards': ArtifactCardsHarness as (props: { host: never }) => JSX.Element,
+  steps: StepsHarness as (props: { host: never }) => JSX.Element,
   'run-header': RunHeaderHarness as (props: { host: never }) => JSX.Element,
   'deploy-bound': (() => <DeployWizardHarness deploy={DEPLOY_BOUND} />) as (props: { host: never }) => JSX.Element,
   'deploy-blocked': (() => <DeployWizardHarness deploy={DEPLOY_BLOCKED} />) as (props: { host: never }) => JSX.Element,

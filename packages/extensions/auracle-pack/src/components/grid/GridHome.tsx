@@ -34,7 +34,8 @@ import { graphArtifacts } from '../../engine/boardArtifacts';
 import { questionsOf } from '../../engine/boardStandingQueries';
 import { ensurePanelKitStyles, tone } from '../panelkit';
 import { ArtifactCard } from './ArtifactCard';
-import { aiRunStore } from './gridAiActions';
+import { GridSteps } from './GridSteps';
+import { aiRunStore, resultLine } from './gridAiActions';
 import { ROOMS } from './rooms';
 
 const STYLE_ID = 'auracle-grid-home-styles';
@@ -84,14 +85,19 @@ function watchRows(): WatchRow[] {
   return rows;
 }
 
-/** The one sentence the panel owes at rest. */
+/** The one sentence the panel owes at rest.
+ *
+ * While the agent works, the sentence is the headline and the step list below
+ * carries the operation and its cost, so the two do not say the same thing
+ * twice. When work has just settled, the sentence is its one-line outcome —
+ * an honest terminal state rather than a jump straight back to quiet. */
 function statusLine(): { text: string; detail: string | null } {
   const run = aiRunStore.getSnapshot();
   if (run.running) {
-    return {
-      text: `Working on ${ROOMS[run.running.room].title}:`,
-      detail: `${run.running.label}.`,
-    };
+    return { text: `Working on ${ROOMS[run.running.room].title}.`, detail: null };
+  }
+  if (run.outcome) {
+    return { text: `${run.outcome.action.label}:`, detail: resultLine(run.outcome.result) };
   }
   if (boardGraphStore.getSnapshot().status === 'loading') {
     return { text: 'Catching up.', detail: null };
@@ -136,6 +142,7 @@ export function GridHome(): JSX.Element {
           </>
         ) : null}
       </p>
+      <GridSteps state={aiRunStore.getSnapshot()} />
       {watches.length > 0 ? (
         <ul className="ahome__watches" data-testid="resting-watches">
           {watches.map((watch) => (

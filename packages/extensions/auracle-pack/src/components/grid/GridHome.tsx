@@ -34,6 +34,7 @@ import { graphArtifacts } from '../../engine/boardArtifacts';
 import { questionsOf } from '../../engine/boardStandingQueries';
 import { ensurePanelKitStyles, tone } from '../panelkit';
 import { ArtifactCard } from './ArtifactCard';
+import { GridScope } from './GridScope';
 import { GridSteps } from './GridSteps';
 import { aiRunStore, resultLine } from './gridAiActions';
 import { ROOMS } from './rooms';
@@ -142,6 +143,7 @@ export function GridHome(): JSX.Element {
           </>
         ) : null}
       </p>
+      <GridScope state={aiRunStore.getSnapshot()} />
       <GridSteps state={aiRunStore.getSnapshot()} />
       {watches.length > 0 ? (
         <ul className="ahome__watches" data-testid="resting-watches">

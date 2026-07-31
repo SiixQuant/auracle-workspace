@@ -28,6 +28,7 @@ import { backtestStore, type BacktestResultData } from '../src/engine/backtestSt
 import { EquityChartShad } from '../src/components/charts/EquityChartShad';
 import { GridPanel } from '../src/components/grid/GridPanel';
 import { ArtifactCard } from '../src/components/grid/ArtifactCard';
+import { GridScope } from '../src/components/grid/GridScope';
 import { GridSteps } from '../src/components/grid/GridSteps';
 import type { AiAction, AiRunState } from '../src/components/grid/gridAiActions';
 import { basketVerdictArtifact, materializedArtifact } from '../src/engine/boardArtifacts';
@@ -916,14 +917,20 @@ function StepsHarness(): JSX.Element {
       room: 'deploys',
       label: 'Restart the errored deployments',
       icon: 'x',
-      intent: { operation: 'deploy.restart-errored', room: 'deploys', summary: 's', fields: [] },
+      intent: {
+        operation: 'deploy.restart-errored',
+        room: 'deploys',
+        summary: 'Restart every deployment the engine reports as errored, then re-read their state.',
+        fields: [],
+      },
     } as AiAction,
     step: 'x',
     outcome: null,
   };
   return (
-    <div style={{ maxWidth: 460, padding: 24 }}>
-      <p style={{ margin: '0 0 6px', fontSize: 13.5, color: '#b6c0cc' }}>Working on Deployments.</p>
+    <div style={{ maxWidth: 460, padding: 24, display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <p style={{ margin: 0, fontSize: 13.5, color: '#b6c0cc' }}>Working on Deployments.</p>
+      <GridScope state={state} />
       <GridSteps state={state} />
     </div>
   );

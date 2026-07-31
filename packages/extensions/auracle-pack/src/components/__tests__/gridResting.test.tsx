@@ -36,21 +36,43 @@ vi.mock('../../engine/client', async (importOriginal) => ({
 
 import { GridHome } from '../grid/GridHome';
 import { boardGraphStore, type BoardSnapshot } from '../../engine/boardGraphStore';
+import { backtestStore, type BacktestResultData } from '../../engine/backtestStore';
 import { engineFeeds, gridVitals } from '../../engine/gridVitals';
-import type { BoardNode } from '../../engine/boardGraph';
+import type { BoardNode, BoardEdge } from '../../engine/boardGraph';
 
 function research(id: string, hypothesis: string): BoardNode {
   return { id, kind: 'research', research: { hypothesis } } as unknown as BoardNode;
 }
 
-function snapshot(nodes: BoardNode[], status: BoardSnapshot['status'] = 'idle'): BoardSnapshot {
+function snapshot(
+  nodes: BoardNode[],
+  status: BoardSnapshot['status'] = 'idle',
+  edges: BoardEdge[] = []
+): BoardSnapshot {
   return {
     workspaceId: 'ws',
-    graph: { nodes, edges: [] },
+    graph: { nodes, edges },
     status,
     sync: 'synced',
     dirty: false,
   } as unknown as BoardSnapshot;
+}
+
+function readyRun(jobId: number, over: Partial<BacktestResultData> = {}): void {
+  vi.spyOn(backtestStore, 'getSnapshot').mockReturnValue({
+    ...backtestStore.getSnapshot(),
+    jobId,
+    result: {
+      equity: [1, 1.1],
+      drawdown: [0, -0.05],
+      labels: ['2020-01-01', '2020-01-02'],
+      stats: { annualized_return: 0.22, sharpe: 1.4, max_drawdown: -0.18 },
+      asOf: '2020-01-02',
+      nBars: 500,
+      trades: 42,
+      ...over,
+    },
+  });
 }
 
 function seedCounters(rows: Array<{ nodeId: string; newMaterial: number }>): void {
@@ -136,8 +158,45 @@ describe('an install with no watches', () => {
 
     expect(screen.getByTestId('resting-status')).toBeTruthy();
     expect(screen.queryByTestId('resting-watches')).toBeNull();
+    expect(screen.queryByTestId('resting-artifacts')).toBeNull();
     // The whole surface is the sentence: one paragraph, and nothing else
     // rendered beside it.
     expect(screen.getByTestId('grid-resting').children).toHaveLength(1);
+  });
+});
+
+describe('artifacts on the stage', () => {
+  it('renders a materialized card when its run is ready', () => {
+    const strategy: BoardNode = { id: 's1', kind: 'strategy', label: 'Atlas Momentum' } as BoardNode;
+    const test: BoardNode = {
+      id: 't1',
+      kind: 'test',
+      label: 'Run',
+      ref: { kind: 'backtest', id: '7' },
+    } as unknown as BoardNode;
+    const edge: BoardEdge = { id: 'e', from: 's1', to: 't1', origin: 'system' } as BoardEdge;
+    vi.spyOn(boardGraphStore, 'getSnapshot').mockReturnValue(
+      snapshot([strategy, test], 'idle', [edge])
+    );
+    readyRun(7);
+    render(<GridHome />);
+
+    const list = screen.getByTestId('resting-artifacts');
+    expect(list).toBeTruthy();
+    // The strategy quotes its child's ready run; both are cards.
+    expect(screen.getByTestId('artifact-s1')).toBeTruthy();
+    expect(screen.getByTestId('artifact-t1')).toBeTruthy();
+    expect(screen.getByTestId('artifact-s1').querySelector('[data-testid="artifact-name"]')?.textContent).toBe(
+      'Atlas Momentum'
+    );
+  });
+
+  it('shows no artifact section when nothing has materialized', () => {
+    vi.spyOn(boardGraphStore, 'getSnapshot').mockReturnValue(
+      snapshot([research('q1', 'A question')])
+    );
+    render(<GridHome />);
+
+    expect(screen.queryByTestId('resting-artifacts')).toBeNull();
   });
 });

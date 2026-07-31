@@ -47,7 +47,7 @@ and dropped rows are asserted absent.
 | canvas-2 | Zoom in, out, or to fit (controls, wheel, double-click) | zoom cluster and gestures | **dropped** | nothing left to zoom |
 | canvas-3 | Place a source card | placement buttons and ghost slots | **subsumed** | the agent stands up sources when asked to read something |
 | canvas-4 | Place a research question card | placement buttons and ghost slots | **subsumed** | a sentence in the conversation is the question |
-| canvas-5 | Place a live-quote card | placement button | **subsumed** | asking for a quote produces a quote artifact |
+| canvas-5 | Place a live-quote card | placement button | **dropped** | the live-quote widget is deleted with the canvas; the card verb writes only sources and questions (the rest are written by the system), and a quote asked for is answered in the conversation rather than pinned to the stage |
 | canvas-6 | Learn the empty board from ghost slots and the hint line | empty-state onboarding | **dropped** | the resting state opens on status, not on an empty canvas |
 
 ## Board face: wires
@@ -69,7 +69,7 @@ and dropped rows are asserted absent.
 | card-5 | Delete a card and what hangs off it | delete row with its consequence summary | **subsumed** | asking; the consequence summary must still be shown before anything is removed |
 | card-6 | Run a scan for new material on a question | per-card verb | **subsumed** | asking; the budget rules are unchanged |
 | card-7 | Open an agent session on a question's gathered evidence | per-card verb | **subsumed** | asking from the card or the conversation |
-| card-8 | Watch or unwatch a live quote, with its quality badge | quote card toggle | **subsumed** | "keep watching that"; the quality badge survives on the artifact card |
+| card-8 | Watch or unwatch a live quote, with its quality badge | quote card toggle | **dropped** | the watch toggle and its quality badge went with the quote widget; a quote read in the conversation carries its own freshness there, not on a panel card |
 | card-9 | See a standing question's new-material count | card counter | **carried** | the watch list line in the resting state |
 | card-10 | See what an agent action will spend before approving it | approval dialog | **carried** | unchanged, deliberately; capital and spend approvals are not redesigned |
 | card-11 | Open a materialized strategy, test, or deploy artifact in its room | materialized card handoff | **carried** | unchanged; these cards were already records |
@@ -83,3 +83,10 @@ and dropped rows are asserted absent.
   consequence summary, card-6's budget rules, card-3's write-only secrecy).
 - Rows marked **dropped** are asserted absent, so a regression cannot
   resurrect half of one.
+- The live-quote rows (canvas-5, card-8) are dropped, not subsumed onto the
+  stage: nothing on this panel places, renders, or watches a quote. The card
+  verb writes only sources and questions, and a quote asked for is answered in
+  the conversation. The quote domain remains as library code, reached by no
+  panel path, so the suite asserts the widget absent the same as any other
+  dropped row (no quote artifact on the stage, and the live-quote hook mounted
+  by nothing).

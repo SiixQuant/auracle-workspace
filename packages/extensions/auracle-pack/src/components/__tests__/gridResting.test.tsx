@@ -153,16 +153,18 @@ describe('the watch list', () => {
 });
 
 describe('an install with no watches', () => {
-  it('shows the sentence alone — no list, no placeholder, no hint', () => {
+  it('shows the sentence and the closed ledger — no lists, no placeholders', () => {
     vi.spyOn(boardGraphStore, 'getSnapshot').mockReturnValue(snapshot([]));
     render(<GridHome />);
 
     expect(screen.getByTestId('resting-status')).toBeTruthy();
     expect(screen.queryByTestId('resting-watches')).toBeNull();
     expect(screen.queryByTestId('resting-artifacts')).toBeNull();
-    // The whole surface is the sentence: one paragraph, and nothing else
-    // rendered beside it.
-    expect(screen.getByTestId('grid-resting').children).toHaveLength(1);
+    expect(screen.queryByTestId('grid-steps')).toBeNull();
+    // The activity ledger is the one deliberate persistent fixture — closed,
+    // not empty-state art. Beyond the sentence and it, nothing else renders.
+    expect(screen.getByTestId('grid-ledger').getAttribute('data-open')).toBe('closed');
+    expect(screen.getByTestId('grid-resting').children).toHaveLength(2);
   });
 });
 

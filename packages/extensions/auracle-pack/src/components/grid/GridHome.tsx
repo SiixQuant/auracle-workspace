@@ -34,6 +34,7 @@ import { graphArtifacts } from '../../engine/boardArtifacts';
 import { questionsOf } from '../../engine/boardStandingQueries';
 import { ensurePanelKitStyles, tone } from '../panelkit';
 import { ArtifactCard } from './ArtifactCard';
+import { GridLedger } from './GridLedger';
 import { GridScope } from './GridScope';
 import { GridSteps } from './GridSteps';
 import { aiRunStore, resultLine } from './gridAiActions';
@@ -168,6 +169,10 @@ export function GridHome(): JSX.Element {
           ))}
         </div>
       ) : null}
+      {/* The ledger is the one thing the redesign ADDS to the persistent set:
+          closed by default, always reachable, the price of letting the agent
+          act. It is not empty-state art — it is a deliberate fixture. */}
+      <GridLedger />
     </section>
   );
 }

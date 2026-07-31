@@ -15,22 +15,28 @@ describe('ClaudeCliSessionLauncher', () => {
     createClaudeCliTerminal?: ReturnType<typeof vi.fn<CreateClaudeCliTerminal>>;
     pathExists?: (p: string) => boolean;
     homedir?: () => string;
+    getEngineMcpServer?: ClaudeCliSessionLauncherDeps['getEngineMcpServer'];
+    getMcpServersConfig?: ClaudeCliSessionLauncherDeps['getMcpServersConfig'];
   } = {}) {
     const writes: Array<{ file: string; data: string }> = [];
     const createClaudeCliTerminal =
       opts.createClaudeCliTerminal ??
       vi.fn<CreateClaudeCliTerminal>(async (..._args: CreateClaudeCliTerminalArgs): Promise<void> => {});
-    const getMcpServersConfig = vi.fn(async (_opts: { sessionId: string; workspacePath: string }) => ({
-      // The eager core `nimbalyst` server is what the launcher lifts the
-      // /permission host+token from (the legacy `nimbalyst-mcp` is retired).
-      'nimbalyst': {
-        type: 'sse',
-        url: `http://127.0.0.1:5123/mcp/core?workspacePath=%2Fwork&sessionId=${_opts.sessionId}`,
-      },
-    }));
+    const getMcpServersConfig = vi.fn(
+      opts.getMcpServersConfig ??
+        (async (_opts: { sessionId: string; workspacePath: string }) => ({
+          // The eager core `nimbalyst` server is what the launcher lifts the
+          // /permission host+token from (the legacy `nimbalyst-mcp` is retired).
+          'nimbalyst': {
+            type: 'sse',
+            url: `http://127.0.0.1:5123/mcp/core?workspacePath=%2Fwork&sessionId=${_opts.sessionId}`,
+          },
+        }))
+    );
 
     const launcher = new ClaudeCliSessionLauncher({
       getMcpServersConfig,
+      getEngineMcpServer: opts.getEngineMcpServer,
       resolveClaudeExecutable: () => '/usr/local/bin/claude',
       getEnhancedPath: () => '/opt/bin:/usr/bin',
       terminalManager: { createClaudeCliTerminal },
@@ -66,6 +72,64 @@ describe('ClaudeCliSessionLauncher', () => {
     const parsed = JSON.parse(writes[0].data);
     expect(parsed).toHaveProperty('mcpServers');
     expect(parsed.mcpServers['nimbalyst'].url).toContain('sessionId=sess-01HABC');
+  });
+
+  it('merges the engine MCP server into the session config when the resolver returns one', async () => {
+    const engineEntry = {
+      type: 'http',
+      url: 'http://localhost:7777/mcp',
+      headers: { Authorization: 'Bearer tok-abc' },
+    };
+    const { launcher, writes } = makeHarness({
+      getEngineMcpServer: async () => ({ 'auracle-engine': engineEntry }),
+    });
+    await launcher.launch(baseInput);
+
+    const parsed = JSON.parse(writes[0].data);
+    expect(parsed.mcpServers['auracle-engine']).toEqual(engineEntry);
+    // the base servers are untouched
+    expect(parsed.mcpServers['nimbalyst']).toBeTruthy();
+  });
+
+  it('launches without the engine server when the resolver returns null', async () => {
+    const { launcher, writes } = makeHarness({ getEngineMcpServer: async () => null });
+    await launcher.launch(baseInput);
+
+    const parsed = JSON.parse(writes[0].data);
+    expect(parsed.mcpServers['auracle-engine']).toBeUndefined();
+    expect(parsed.mcpServers['nimbalyst']).toBeTruthy();
+  });
+
+  it('launches when the resolver throws — wiring the engine is best-effort, never blocking', async () => {
+    const { launcher, writes } = makeHarness({
+      getEngineMcpServer: async () => {
+        throw new Error('engine unreachable');
+      },
+    });
+    const result = await launcher.launch(baseInput);
+
+    expect(result.mcpConfigPath).toBeTruthy();
+    const parsed = JSON.parse(writes[0].data);
+    expect(parsed.mcpServers['auracle-engine']).toBeUndefined();
+  });
+
+  it('never overwrites a user-configured server of the same name', async () => {
+    const userEntry = { type: 'http', url: 'http://user-configured/mcp', headers: {} };
+    const { launcher, writes } = makeHarness({
+      getMcpServersConfig: async () => ({ 'auracle-engine': userEntry }),
+      getEngineMcpServer: async () => ({
+        'auracle-engine': {
+          type: 'http',
+          url: 'http://localhost:7777/mcp',
+          headers: { Authorization: 'Bearer auto' },
+        },
+      }),
+    });
+    await launcher.launch(baseInput);
+
+    const parsed = JSON.parse(writes[0].data);
+    // the user's config wins; the auto-wire does not clobber it
+    expect(parsed.mcpServers['auracle-engine']).toEqual(userEntry);
   });
 
   it('spawns the CLI terminal with the temp mcp-config path and the session id', async () => {

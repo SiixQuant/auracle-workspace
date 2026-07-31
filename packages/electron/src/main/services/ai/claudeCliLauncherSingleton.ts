@@ -22,6 +22,7 @@ import { getSessionStateManager } from '@nimbalyst/runtime/ai/server/SessionStat
 import { getTerminalSessionManager } from '../TerminalSessionManager';
 import { getEnhancedPath, getShellEnvironment } from '../CLIManager';
 import { ClaudeCliSessionLauncher } from './ClaudeCliSessionLauncher';
+import { resolveEngineMcpServer } from '../../ipc/AuracleEngineHandlers';
 import { HooklessAgentFileWatcher } from './HooklessAgentFileWatcher';
 import { resolveClaudeExecutablePath, isClaudeExecutableInstalled } from './claudeExecutableResolver';
 import { resolveClaudeCliSupportsPluginDir } from './claudeCliPluginSupport';
@@ -131,6 +132,10 @@ function buildLauncher(): ClaudeCliSessionLauncher {
   return new ClaudeCliSessionLauncher({
     getMcpServersConfig: ({ sessionId, workspacePath }) =>
       mcpConfigService.getMcpServersConfig({ sessionId, workspacePath }),
+    // Auto-wire the local engine's MCP server (research_scan, run_backtest_now,
+    // ...) when the engine is reachable and has a token set. Best-effort and
+    // additive: null on any failure so the session still launches.
+    getEngineMcpServer: () => resolveEngineMcpServer(),
     resolveClaudeExecutable,
     getEnhancedPath: () => getEnhancedPath(),
     terminalManager: getTerminalSessionManager(),

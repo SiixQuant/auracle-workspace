@@ -259,6 +259,39 @@ async function clearSession(): Promise<void> {
   await fs.rm(sessionPath(), { force: true });
 }
 
+/**
+ * The local engine's MCP server entry to merge into an agent session's MCP
+ * config, or null when the engine is unreachable or has no token set.
+ *
+ * Fetches the owner-gated `GET /ui/api/ide/mcp` handoff (authenticated with the
+ * same Auracle key every other engine request uses) and shapes it as the `http`
+ * MCP server the CLI accepts, so the agent gets the engine's tools
+ * (research_scan, run_backtest_now, ...) with nothing for the user to paste.
+ *
+ * Never throws: a down or unconfigured engine, a disabled handoff (no token),
+ * or a malformed body all yield null, so the caller launches the session
+ * without the engine's tools rather than failing to launch at all.
+ */
+export async function resolveEngineMcpServer(
+  request: typeof auracleEngineRequest = auracleEngineRequest
+): Promise<Record<string, unknown> | null> {
+  try {
+    const res = await request('GET', '/ui/api/ide/mcp');
+    if (!res.ok) return null;
+    const body = res.body as { enabled?: boolean; url?: string; token?: string } | null;
+    if (!body || !body.enabled || !body.url || !body.token) return null;
+    return {
+      'auracle-engine': {
+        type: 'http',
+        url: body.url,
+        headers: { Authorization: `Bearer ${body.token}` },
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function registerAuracleEngineHandlers(): void {
   safeHandle('auracle:auth-state', async () => {
     const session = await readSession();

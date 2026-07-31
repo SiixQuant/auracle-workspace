@@ -45,6 +45,15 @@ export interface ClaudeCliSessionLauncherDeps {
     sessionId: string;
     workspacePath: string;
   }) => Promise<Record<string, unknown>>;
+  /**
+   * Resolve the local Auracle engine's MCP server entry to merge into the
+   * session map, or null when the engine is unreachable or has no token set.
+   * In production this fetches the owner-gated `GET /ui/api/ide/mcp` handoff so
+   * the agent gets the engine's tools (research_scan, run_backtest_now, ...)
+   * with nothing for the user to paste. Best-effort: any failure yields null
+   * and the session launches without the engine's tools rather than not at all.
+   */
+  getEngineMcpServer?: () => Promise<Record<string, unknown> | null>;
   /** Resolve the `claude` executable path. Falls back to the bare `claude`. */
   resolveClaudeExecutable: () => string;
   /** Login-shell-enhanced PATH so a GUI-launched Electron can find `claude`. */
@@ -177,6 +186,20 @@ export class ClaudeCliSessionLauncher {
 
     // 1 + 2. Build the sessionId-bearing MCP config and persist it to a temp file.
     const mcpServers = await this.deps.getMcpServersConfig({ sessionId, workspacePath });
+    // Auto-wire the local engine's MCP server (research_scan, run_backtest_now,
+    // ...) when it is reachable, so the agent gets the engine's tools with
+    // nothing to paste. Additive and best-effort: never overwrite a server the
+    // user configured, and never block the launch on a down/unconfigured engine.
+    try {
+      const engineMcp = await this.deps.getEngineMcpServer?.();
+      if (engineMcp) {
+        for (const [name, cfg] of Object.entries(engineMcp)) {
+          if (!(name in mcpServers)) mcpServers[name] = cfg;
+        }
+      }
+    } catch {
+      // engine down or not configured — launch without its tools
+    }
     const mcpConfigPath = await this.writeMcpConfig(sessionId, mcpServers);
     // The map's keys are the trusted Auracle MCP server names — pre-allow them so
     // the genuine CLI doesn't double-prompt on top of our widgets (NIM-806 BUG 2).

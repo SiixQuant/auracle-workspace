@@ -37,6 +37,7 @@ vi.mock('../../engine/client', async (importOriginal) => ({
 import { GridHome } from '../grid/GridHome';
 import { boardGraphStore, type BoardSnapshot } from '../../engine/boardGraphStore';
 import { backtestStore, type BacktestResultData } from '../../engine/backtestStore';
+import { aiRunStore, type AiAction, type AiRunState } from '../grid/gridAiActions';
 import { engineFeeds, gridVitals } from '../../engine/gridVitals';
 import type { BoardNode, BoardEdge } from '../../engine/boardGraph';
 
@@ -162,6 +163,38 @@ describe('an install with no watches', () => {
     // The whole surface is the sentence: one paragraph, and nothing else
     // rendered beside it.
     expect(screen.getByTestId('grid-resting').children).toHaveLength(1);
+  });
+});
+
+describe('while the agent works', () => {
+  function running(): AiRunState {
+    const action = {
+      id: 'a1',
+      class: 'mutation',
+      room: 'deploys',
+      label: 'Restart the errored deployments',
+      icon: 'x',
+      intent: { operation: 'deploy.restart', room: 'deploys', summary: 's', fields: [] },
+    } as AiAction;
+    return { pending: null, running: action, step: 'x', outcome: null };
+  }
+
+  it('shows the headline and the step list, not a spinner', () => {
+    vi.spyOn(boardGraphStore, 'getSnapshot').mockReturnValue(snapshot([]));
+    vi.spyOn(aiRunStore, 'getSnapshot').mockReturnValue(running());
+    render(<GridHome />);
+
+    // The sentence is the headline; the operation and its cost live in the
+    // step below, so the two do not repeat each other.
+    expect(screen.getByTestId('resting-status').textContent).toBe('Working on Deployments.');
+    expect(screen.getByTestId('grid-steps')).toBeTruthy();
+    expect(screen.getByTestId('grid-step-cost-0').textContent).toContain('capital');
+  });
+
+  it('shows no step list when nothing is running', () => {
+    vi.spyOn(boardGraphStore, 'getSnapshot').mockReturnValue(snapshot([]));
+    render(<GridHome />);
+    expect(screen.queryByTestId('grid-steps')).toBeNull();
   });
 });
 

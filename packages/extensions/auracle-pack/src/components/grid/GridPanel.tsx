@@ -44,14 +44,11 @@ import './gridAiCommands';
 import { registerAgentHost, unregisterAgentHost } from './gridAiExecutors';
 import { closePalette, isPaletteOpen, subscribePalette, togglePalette } from './gridCommands';
 import { useRoomAiContext } from './gridFocus';
-import { bindFaceStorage, getFace, setFace, subscribeFace, toggleFace } from './gridFaceStore';
-import { getActiveRoom, openGridHome, subscribeGrid } from './gridNav';
+import { getActiveRoom, subscribeGrid } from './gridNav';
 import { boardGraphStore } from '../../engine/boardGraphStore';
-import { GridBoard } from './GridBoard';
 import { GridHealthLine } from './GridHealthLine';
 import { GridHome } from './GridHome';
 import { GridPalette } from './GridPalette';
-import { GridSheet } from './GridSheet';
 import { GRID_ACCENT } from './gridTheme';
 import { ROOMS, type RoomId } from './rooms';
 
@@ -104,16 +101,10 @@ function GridRoomView({ roomId, hostProps }: { roomId: RoomId; hostProps: PanelH
 export function GridPanel(props: PanelHostProps): JSX.Element {
   ensurePanelKitStyles();
   ensureGridStyles();
-  // Bound during render, before the face is read, so the remembered face is the
-  // one that PAINTS rather than the one that replaces a default a frame later.
-  // Idempotent, synchronous, and it seeds nothing a person has already chosen —
-  // see gridFaceStore.
-  bindFaceStorage(props.host?.storage);
   const roomId = useSyncExternalStore(subscribeGrid, getActiveRoom, () => null);
-  const face = useSyncExternalStore(subscribeFace, getFace, getFace);
   const paletteOpen = useSyncExternalStore(subscribePalette, isPaletteOpen, () => false);
   // The approval gate is mounted above the router for the same reason the
-  // palette is: a mutation can be raised from the plan, from a room, or from
+  // palette is: a mutation can be raised from the stage, from a room, or from
   // the palette, and it has to be answerable on whichever view is showing when
   // it is raised.
   const aiRun = useSyncExternalStore(aiRunStore.subscribe, aiRunStore.getSnapshot, aiRunStore.getSnapshot);
@@ -144,16 +135,13 @@ export function GridPanel(props: PanelHostProps): JSX.Element {
   }, [workspaceId]);
 
   /**
-   * The panel's two shortcuts — the palette, and the face flip — scoped to this
-   * panel by FOCUS rather than by a manifest keybinding. The SDK's
+   * The panel's one shortcut — the command palette — scoped to this panel by
+   * FOCUS rather than by a manifest keybinding. The SDK's
    * `contributions.keybindings` is the only keybinding surface an extension
    * has, and it can address exactly one kind of command: a panel's
    * auto-registered TOGGLE. It cannot reach an action inside a panel, and it
    * carries no when-clause, so a declared binding would fire app-wide and could
    * still not open this palette.
-   *
-   * ONE listener for both, because the guards are the same four questions and a
-   * second copy of them is a second thing to get wrong.
    *
    * Capture phase at the window, because the host's own global shortcut layer
    * listens there in capture and calls `stopPropagation()` — a bubble-phase
@@ -170,7 +158,7 @@ export function GridPanel(props: PanelHostProps): JSX.Element {
     if (typeof window === 'undefined') return;
     const onKeyDown = (event: KeyboardEvent): void => {
       const key = event.key?.toLowerCase();
-      if ((key !== 'k' && key !== 'b') || event.altKey || event.shiftKey) return;
+      if (key !== 'k' || event.altKey || event.shiftKey) return;
       if (!event.metaKey && !event.ctrlKey) return;
       const host = hostRef.current;
       if (!host || !host.isConnected) return;
@@ -178,20 +166,7 @@ export function GridPanel(props: PanelHostProps): JSX.Element {
       if (!host.contains(document.activeElement)) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      if (key === 'k') {
-        togglePalette();
-        return;
-      }
-      // From a room the key comes HOME first — predictable, and the resting
-      // state is the panel's front door. At home it cycles the views, which is
-      // the scaffolding entry to the legacy faces until the deletion issue
-      // removes them.
-      if (getActiveRoom() !== null) {
-        setFace('home');
-        openGridHome();
-        return;
-      }
-      toggleFace();
+      togglePalette();
     };
     window.addEventListener('keydown', onKeyDown, { capture: true });
     return () => window.removeEventListener('keydown', onKeyDown, { capture: true });
@@ -220,7 +195,6 @@ export function GridPanel(props: PanelHostProps): JSX.Element {
       className="auracle-grid"
       data-testid="auracle-grid"
       data-room={roomId ?? 'home'}
-      data-face={face}
       data-palette={paletteOpen ? 'open' : 'closed'}
       data-approval={aiRun.pending ? 'open' : 'closed'}
       // Focusable but not tabbable: a click anywhere on the plan puts focus
@@ -240,15 +214,7 @@ export function GridPanel(props: PanelHostProps): JSX.Element {
       {roomId === null ? <GridHealthLine /> : null}
       <div className="auracle-grid__view">
         {roomId === null ? (
-          face === 'home' ? (
-            <GridHome />
-          ) : face === 'board' ? (
-            // The host, for the one thing the Board needs from it: which
-            // workspace's graph to open. Everything else it reads is a store.
-            <GridBoard host={props.host} />
-          ) : (
-            <GridSheet />
-          )
+          <GridHome />
         ) : (
           <GridRoomView roomId={roomId} hostProps={props} />
         )}

@@ -11,7 +11,6 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { panels } from '../../index';
 import { ROOM_IDS, ROOM_LIST } from '../grid/rooms';
 import { openGridHome, openRoom } from '../grid/gridNav';
-import { setFace } from '../grid/gridFaceStore';
 import manifest from '../../../manifest.json';
 
 // The rooms with a built page mount their REAL surface, so the seam has to
@@ -44,7 +43,6 @@ const host = { panelId: 'com.auracle.pack.grid', extensionId: 'com.auracle.pack'
 beforeEach(() => {
   // The panel opens on the BOARD in a workspace that has not chosen a face.
   // These are the PLAN's tests, so they say so.
-  setFace('plan');
 });
 
 afterEach(() => {
@@ -77,14 +75,16 @@ describe('exactly one panel contribution', () => {
   });
 });
 
-describe('the Grid renders its plan and routes to a room', () => {
-  it('opens on the plan, listing every room', () => {
+describe('the Grid opens on the resting state and routes to a room', () => {
+  it('opens on the resting state, not a room', () => {
     const Grid = panels.grid.component;
     render(<Grid host={host as never} />);
 
-    expect(screen.getByTestId('auracle-grid-home')).toBeTruthy();
+    // The panel opens on the stage; rooms are reached on purpose (the palette),
+    // not laid out as a plan of tiles.
+    expect(screen.getByTestId('grid-resting')).toBeTruthy();
     for (const room of ROOM_LIST) {
-      expect(screen.getByTestId(`grid-home-room-${room.id}`).textContent).toContain(room.title);
+      expect(screen.queryByTestId(`grid-room-${room.id}`)).toBeNull();
     }
   });
 
@@ -94,8 +94,8 @@ describe('the Grid renders its plan and routes to a room', () => {
     render(<Grid host={host as never} />);
 
     expect(screen.getByTestId(`grid-room-${roomId}`)).toBeTruthy();
-    expect(screen.queryByTestId('auracle-grid-home')).toBeNull();
-    // And the way back to the plan is always present.
+    expect(screen.queryByTestId('grid-resting')).toBeNull();
+    // And the way back to the stage is always present.
     expect(screen.getByTestId('grid-back')).toBeTruthy();
   });
 });

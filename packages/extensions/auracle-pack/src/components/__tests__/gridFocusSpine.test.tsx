@@ -17,7 +17,7 @@
  */
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 vi.mock('../../engine/client', () => ({
   authState: vi.fn(async () => ({ signedIn: true })),
@@ -45,7 +45,6 @@ import { gridVitals } from '../../engine/gridVitals';
 import { focusForOpen, roomAiContext, useRoomAiContext } from '../grid/gridFocus';
 import { listCommands } from '../grid/gridCommands';
 import { PACK_PREFIX, getActiveRoom, openGridHome, openRoomFocused } from '../grid/gridNav';
-import { setFace } from '../grid/gridFaceStore';
 import type { PanelHostLike } from '../aiPanel';
 
 /** The one strategy the engine discovers in these fixtures. */
@@ -91,7 +90,6 @@ function renderGrid(host: PanelHostLike) {
 beforeEach(() => {
   // The panel opens on the BOARD in a workspace that has not chosen a face.
   // These are the PLAN's tests, so they say so.
-  setFace('plan');
   vi.mocked(getJson).mockImplementation(defaultGetJson as never);
   vi.mocked(getJsonDetailed).mockImplementation(defaultGetJsonDetailed as never);
   gridVitals.reset();
@@ -234,10 +232,10 @@ describe('a room opened from outside the panel lands focused', () => {
   });
 });
 
-/* ── round trip through the plan ────────────────────────────────────────── */
+/* ── round trip through the resting state ───────────────────────────────── */
 
-describe('focus survives a sheet-page round trip', () => {
-  it('page to plan and back shows the same focused object', async () => {
+describe('focus survives a room round trip', () => {
+  it('room to the stage and back shows the same focused object', async () => {
     focusStore.publish(A_STRATEGY);
     const { host } = hostWithLane();
     openRoomFocused('strategies');
@@ -248,11 +246,12 @@ describe('focus survives a sheet-page round trip', () => {
     );
 
     fireEvent.click(screen.getByTestId('grid-back'));
-    expect(screen.getByTestId('auracle-grid-home')).toBeTruthy();
-    // Stepping out to the plan is not a decision to stop looking at something.
+    expect(screen.getByTestId('grid-resting')).toBeTruthy();
+    // Stepping back to the stage is not a decision to stop looking at something.
     expect(focusStore.getSnapshot()).toEqual(A_STRATEGY);
 
-    fireEvent.click(screen.getByTestId('grid-home-room-strategies'));
+    // Rooms open by navigation now, not by a plan tile.
+    act(() => openRoomFocused('strategies'));
     expect((await screen.findByTestId(`strategy-row-${STRATEGY.path}`)).textContent).toContain(
       'Focused'
     );

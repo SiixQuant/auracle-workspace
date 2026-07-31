@@ -39,7 +39,6 @@ import {
   tone,
 } from '../panelkit';
 import { getZoomOrigin, openGridHome, openRoomFocused, zoomOriginFrom } from './gridNav';
-import { RoomAiBar } from './RoomAiBar';
 import { ROOMS, type RoomId } from './rooms';
 import { WIRED_TO } from './wiring';
 
@@ -301,12 +300,9 @@ export function RoomPage({
           </div>
         ) : null}
 
-        {/* What the assistant can do about THIS room, above the work rather
-            than after it: an action offered underneath a long body would be
-            an action nobody scrolls to. Renders nothing at all when the room
-            has nothing to offer (see RoomAiBar). */}
-        <RoomAiBar room={room} />
-
+        {/* The per-room AI action bar is gone: what the assistant can do about
+            a room is asked for in the conversation now, not offered as an
+            inline strip. The room shows its work; the agent is talked to. */}
         <div data-testid="room-body" style={{ minWidth: 0 }}>
           <EmbeddedShellContext.Provider value>{children}</EmbeddedShellContext.Provider>
         </div>

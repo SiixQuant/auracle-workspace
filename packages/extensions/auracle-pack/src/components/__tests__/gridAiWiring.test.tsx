@@ -91,7 +91,6 @@ import {
 } from '../grid/gridAiActions';
 import { registerAgentHost, repairUndoStore } from '../grid/gridAiExecutors';
 import { openGridHome } from '../grid/gridNav';
-import { setFace } from '../grid/gridFaceStore';
 import type { RoomId } from '../grid/rooms';
 
 const HOST_PROPS = {} as PanelHostProps;
@@ -154,7 +153,6 @@ function postsTo(prefix: string): PostCall[] {
 beforeEach(() => {
   // The panel opens on the BOARD in a workspace that has not chosen a face.
   // These are the PLAN's tests, so they say so.
-  setFace('plan');
   stub.gets = {};
   stub.getStatus = {};
   stub.replies = {};
@@ -541,97 +539,3 @@ describe('the sheet asks once for the districts the engine consolidates', () => 
   });
 });
 
-/* ── the undo beside the outcome ────────────────────────────────────── */
-
-describe('the strip offers to put the last repair back', () => {
-  async function settle(): Promise<void> {
-    await act(async () => {
-      await gridVitals.refresh();
-    });
-  }
-
-  async function flush(): Promise<void> {
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-  }
-
-  it('runs the engine recorded inverse for the entry the repair created', async () => {
-    serveDeployments([deployment(1, 'errored')]);
-    stub.replies['/ui/api/ops/repair'] = {
-      ok: true,
-      status: 200,
-      body: { entry: { id: 42, status: 'applied' } },
-    };
-    stub.replies['/ui/api/ops/journal/42/undo'] = { ok: true, status: 200, body: { entry: {} } };
-
-    render(<GridPanel {...HOST_PROPS} />);
-    await settle();
-    fireEvent.click(screen.getByTestId('grid-ai-strip-repair'));
-    await flush();
-
-    expect(screen.getByTestId('grid-ai-strip-result').getAttribute('data-result')).toBe('done');
-
-    fireEvent.click(screen.getByTestId('grid-ai-strip-undo'));
-    await flush();
-
-    expect(postsTo('/ui/api/ops/journal/42/undo')).toHaveLength(1);
-    // Reversed once: the offer is withdrawn rather than left to be pressed again.
-    expect(screen.queryByTestId('grid-ai-strip-undo')).toBeNull();
-    expect(repairUndoStore.getSnapshot()).toBeNull();
-  });
-
-  it('reverses every entry a multi-target repair created, not only the last', async () => {
-    serveDeployments([deployment(1, 'errored'), deployment(2, 'errored')]);
-    // Two targets, so the engine journals two entries.
-    let nextEntry = 0;
-    stub.replies['/ui/api/ops/repair'] = () => {
-      nextEntry += 1;
-      return { ok: true, status: 200, body: { entry: { id: nextEntry } } };
-    };
-    stub.replies['/ui/api/ops/journal'] = { ok: true, status: 200, body: { entry: {} } };
-
-    render(<GridPanel {...HOST_PROPS} />);
-    await settle();
-    fireEvent.click(screen.getByTestId('grid-ai-strip-repair'));
-    await flush();
-
-    expect(repairUndoStore.getSnapshot()?.entryIds).toEqual(['1', '2']);
-
-    fireEvent.click(screen.getByTestId('grid-ai-strip-undo'));
-    await flush();
-
-    // Newest first: a chain of changes comes apart in the order it went on.
-    expect(postsTo('/ui/api/ops/journal').map((call) => call.path)).toEqual([
-      '/ui/api/ops/journal/2/undo',
-      '/ui/api/ops/journal/1/undo',
-    ]);
-    expect(repairUndoStore.getSnapshot()).toBeNull();
-  });
-
-  it('keeps the offer and states the reason when the engine refuses the reversal', async () => {
-    serveDeployments([deployment(1, 'errored')]);
-    stub.replies['/ui/api/ops/repair'] = {
-      ok: true,
-      status: 200,
-      body: { entry: { id: 42, status: 'applied' } },
-    };
-    stub.replies['/ui/api/ops/journal/42/undo'] = {
-      ok: false,
-      status: 409,
-      body: { detail: 'deployment 1 has moved on to \'running\'' },
-    };
-
-    render(<GridPanel {...HOST_PROPS} />);
-    await settle();
-    fireEvent.click(screen.getByTestId('grid-ai-strip-repair'));
-    await flush();
-    fireEvent.click(screen.getByTestId('grid-ai-strip-undo'));
-    await flush();
-
-    expect(screen.getByTestId('grid-ai-strip-undo-note').textContent).toContain('has moved on');
-    expect(screen.getByTestId('grid-ai-strip-undo')).toBeTruthy();
-  });
-});

@@ -440,7 +440,7 @@ if (new URLSearchParams(location.search).get('board') === 'demo') {
     '': {
       nodes: [
         { id: 'src-bars', kind: 'source', source: { name: 'Daily bars', connectorKind: 'yfinance', endpoint: '', payloadType: 'bars' } },
-        { id: 'src-papers', kind: 'source', source: { name: 'arXiv q-fin feed', connectorKind: 'http', endpoint: 'https://arxiv.org', payloadType: 'papers' } },
+        { id: 'src-papers', kind: 'source', source: { name: 'arXiv q-fin feed', connectorKind: 'http', endpoint: 'https://arxiv.org', payloadType: 'papers', credentialSlot: 'arxiv-key' } },
         { id: 'src-macro', kind: 'source', source: { name: 'Macro release calendar', connectorKind: 'http', endpoint: 'https://example.test', payloadType: 'json' } },
         { id: 'q-vol', kind: 'research', research: { hypothesis: 'Does vol-scaling a momentum signal lift its Sharpe out of sample?' } },
         { id: 'q-rev', kind: 'research', research: { hypothesis: 'Do overnight moves in liquid futures reverse intraday?' } },

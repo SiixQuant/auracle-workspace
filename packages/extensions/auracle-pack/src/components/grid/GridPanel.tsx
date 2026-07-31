@@ -48,6 +48,7 @@ import { bindFaceStorage, getFace, setFace, subscribeFace, toggleFace } from './
 import { getActiveRoom, openGridHome, subscribeGrid } from './gridNav';
 import { boardGraphStore } from '../../engine/boardGraphStore';
 import { GridBoard } from './GridBoard';
+import { GridHealthLine } from './GridHealthLine';
 import { GridHome } from './GridHome';
 import { GridPalette } from './GridPalette';
 import { GridSheet } from './GridSheet';
@@ -233,6 +234,10 @@ export function GridPanel(props: PanelHostProps): JSX.Element {
         font: `13px/1.5 ${tone.font}`,
       }}
     >
+      {/* Home only: a room page carries its own whole frame, and its own
+          status surface, so a second health line over it would state the
+          room's condition twice. Part of the header flow — never an overlay. */}
+      {roomId === null ? <GridHealthLine /> : null}
       <div className="auracle-grid__view">
         {roomId === null ? (
           face === 'home' ? (

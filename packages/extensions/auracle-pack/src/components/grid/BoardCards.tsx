@@ -37,7 +37,7 @@ import { FloatingPortal, flip, offset, shift, useFloating } from '@floating-ui/r
 import { moduleOf } from '../../engine/backtest';
 import { backtestStore, type BacktestSnapshot } from '../../engine/backtestStore';
 import type { BoardGraph, BoardNode } from '../../engine/boardGraph';
-import { BACKTEST_REF, startBoardMaterialization } from '../../engine/boardMaterialize';
+import { startBoardMaterialization } from '../../engine/boardMaterialize';
 import {
   peekMetrics,
   provenanceBadge,
@@ -188,27 +188,8 @@ function deploymentFor(node: BoardNode, rows: Deployment[] | null): Deployment |
   return rows.find((row) => String(row.id) === node.ref?.id);
 }
 
-/**
- * The backtest job a card's peek is about: a test card's own run, or the most
- * recent run wired downstream of a strategy card.
- *
- * "Most recent" is the LAST such card on the graph, because materialization
- * appends: a strategy's newest test is the newest node, and a strategy card
- * therefore quotes the run a person just did rather than the one they did
- * first. Undefined when there is no run to quote, which the peek says plainly
- * instead of showing an empty frame of figures.
- */
-export function runIdForNode(graph: BoardGraph, node: BoardNode): string | undefined {
-  if (node.kind === 'test') return node.ref?.kind === BACKTEST_REF ? node.ref.id : undefined;
-  if (node.kind !== 'strategy') return undefined;
-  const downstream = graph.edges.filter((edge) => edge.from === node.id).map((edge) => edge.to);
-  let latest: string | undefined;
-  for (const id of downstream) {
-    const child = graph.nodes.find((candidate) => candidate.id === id);
-    if (child?.kind === 'test' && child.ref?.kind === BACKTEST_REF) latest = child.ref.id;
-  }
-  return latest;
-}
+import { runIdForNode } from '../../engine/boardArtifacts';
+export { runIdForNode };
 
 /** How many runs a strategy card has produced, for its one-line note. */
 function runCount(graph: BoardGraph, node: BoardNode): number {

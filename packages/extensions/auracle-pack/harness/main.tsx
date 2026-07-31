@@ -27,6 +27,8 @@ import { BacktestPanel, BacktestResultView } from '../src/components/BacktestPan
 import { backtestStore, type BacktestResultData } from '../src/engine/backtestStore';
 import { EquityChartShad } from '../src/components/charts/EquityChartShad';
 import { GridPanel } from '../src/components/grid/GridPanel';
+import { ArtifactCard } from '../src/components/grid/ArtifactCard';
+import { basketVerdictArtifact, materializedArtifact } from '../src/engine/boardArtifacts';
 import { RunStrategyHeader } from '../src/components/RunStrategyHeader';
 
 /* ── mock data ─────────────────────────────────────────────── */
@@ -857,9 +859,54 @@ function RunHeaderHarness(): JSX.Element {
   );
 }
 
+/** The artifact cards on their own, seeded — a materialized run, a certified
+ *  run, and a basket-study verdict — so the shape can be screenshot without a
+ *  live engine behind the stage. */
+function ArtifactCardsHarness(): JSX.Element {
+  const cards = [
+    materializedArtifact(
+      { id: 's1', kind: 'strategy', label: 'Atlas Momentum' },
+      {
+        phase: 'ready',
+        result: {
+          equity: [1, 1.27],
+          drawdown: [0, -0.18],
+          labels: ['2016-01-01', '2026-01-01'],
+          stats: { annualized_return: 0.229, sharpe: 1.42, max_drawdown: -0.303 },
+          asOf: '2026-01-01',
+          nBars: 2534,
+          trades: 118,
+          source: 'quantconnect',
+        },
+      }
+    ),
+    basketVerdictArtifact({
+      strategy_ref: 'strategies.example_ma.MACrossover',
+      trials: 448,
+      luck_bar_portfolio: 1.41,
+      luck_bar_single: 1.28,
+      survived: false,
+      pvalue: 0.539,
+      default_universe: 'quant.liquid',
+      ranking: [{ sharpe: 0.73, selectable: false }],
+      provenance: [
+        'survivorship: basket membership was derived from currently-listed names, so delisted names are absent from every basket in this study',
+      ],
+    }),
+  ].filter(Boolean);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 460, padding: 24 }}>
+      {cards.map((artifact) => (
+        <ArtifactCard artifact={artifact!} key={artifact!.id} />
+      ))}
+    </div>
+  );
+}
+
 const PANELS: Record<string, (props: { host: never }) => JSX.Element> = {
   live: LiveAlgorithmsPanel,
   grid: GridPanel as (props: { host: never }) => JSX.Element,
+  'artifact-cards': ArtifactCardsHarness as (props: { host: never }) => JSX.Element,
   'run-header': RunHeaderHarness as (props: { host: never }) => JSX.Element,
   'deploy-bound': (() => <DeployWizardHarness deploy={DEPLOY_BOUND} />) as (props: { host: never }) => JSX.Element,
   'deploy-blocked': (() => <DeployWizardHarness deploy={DEPLOY_BLOCKED} />) as (props: { host: never }) => JSX.Element,

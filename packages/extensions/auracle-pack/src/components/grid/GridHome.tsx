@@ -28,8 +28,12 @@ import { useSyncExternalStore } from 'react';
 
 import { engineFeeds } from '../../engine/gridVitals';
 import { boardGraphStore } from '../../engine/boardGraphStore';
+import { backtestStore } from '../../engine/backtestStore';
+import { boardRuns } from '../../engine/boardRuns';
+import { graphArtifacts } from '../../engine/boardArtifacts';
 import { questionsOf } from '../../engine/boardStandingQueries';
 import { ensurePanelKitStyles, tone } from '../panelkit';
+import { ArtifactCard } from './ArtifactCard';
 import { aiRunStore } from './gridAiActions';
 import { ROOMS } from './rooms';
 
@@ -45,6 +49,7 @@ const SHEET = `
 .ahome__question { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: ${tone.text2}; }
 .ahome__count { flex: none; font-family: ${tone.mono}; font-variant-numeric: tabular-nums; font-size: 10.5px; color: ${tone.text}; border: 1px solid ${tone.border}; border-radius: 999px; padding: 2px 8px; background: ${tone.surface}; }
 .ahome__quiet { flex: none; font-size: 10.5px; color: ${tone.text3}; }
+.ahome__artifacts { display: flex; flex-direction: column; gap: 10px; }
 @container auracle-grid (min-width: 640px) {
   .ahome { padding: 30px 26px; max-width: 720px; }
 }
@@ -107,9 +112,18 @@ export function GridHome(): JSX.Element {
     boardGraphStore.getSnapshot
   );
   useSyncExternalStore(engineFeeds.subscribe, engineFeeds.getSnapshot, engineFeeds.getSnapshot);
+  // The artifacts on the stage move with the run stores as well as the graph:
+  // a strategy card appears the moment its backtest lands.
+  useSyncExternalStore(backtestStore.subscribe, backtestStore.getSnapshot, backtestStore.getSnapshot);
+  useSyncExternalStore(boardRuns.subscribe, boardRuns.getSnapshot, boardRuns.getSnapshot);
 
   const status = statusLine();
   const watches = watchRows();
+  const artifacts = graphArtifacts(
+    boardGraphStore.getSnapshot().graph,
+    backtestStore.getSnapshot(),
+    boardRuns.getSnapshot()
+  );
 
   return (
     <section className="ahome" data-testid="grid-resting" aria-label="Auracle">
@@ -137,6 +151,13 @@ export function GridHome(): JSX.Element {
             </li>
           ))}
         </ul>
+      ) : null}
+      {artifacts.length > 0 ? (
+        <div className="ahome__artifacts" data-testid="resting-artifacts">
+          {artifacts.map((artifact) => (
+            <ArtifactCard artifact={artifact} key={artifact.id} />
+          ))}
+        </div>
       ) : null}
     </section>
   );

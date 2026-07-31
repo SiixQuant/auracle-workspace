@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [2.0.1] - 2026-07-31
+
+### Fixed
+- The panel's assistant now reaches your engine's own tools. When the engine is connected, an agent session automatically picks up its research, backtest and data tools, so asking the assistant to research an idea, run a backtest or ingest data no longer sends it hunting for tools it cannot see. Needs the matching engine update on your install.
+
 ## [2.0.0] - 2026-07-31
 
 ### Changed

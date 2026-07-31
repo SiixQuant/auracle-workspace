@@ -787,7 +787,7 @@ describe('configuration never leaves the Board', () => {
     openEditor(graph().nodes[0].id);
     fireEvent.change(screen.getByTestId('board-editor-name'), { target: { value: 'Renamed' } });
 
-    fireEvent.click(screen.getByTestId('grid-face-plan'));
+    act(() => setFace('plan'));
 
     expect(screen.getByTestId('auracle-grid-home')).toBeTruthy();
     // The editor went with the face it belonged to rather than floating over

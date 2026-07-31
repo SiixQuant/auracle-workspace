@@ -13,13 +13,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 <!-- Changes to existing functionality go here -->
-- Auracle now has a typeface of its own instead of borrowing whichever font the machine happened to supply. Every surface the app draws itself — panels, menus, labels, buttons and the figures in every table — is set in Geist, which ships inside the app, so the interface reads the same on macOS, Windows and Linux and comes up in the right face immediately without fetching anything over the network. Panels and the window around them are now guaranteed to be the same font as each other; until now the two could resolve to different faces on the same screen. Numbers in a column sit on a common width so they line up digit for digit, and the face used for figures and code marks its zero so it cannot be read as a capital O. Weights are drawn rather than faked, so a bold label is genuinely bold. The font you have chosen for the code editor itself is untouched — this changes the app's own chrome only.
 
 ### Fixed
 <!-- Bug fixes go here -->
 
 ### Removed
 <!-- Removed features go here -->
+
+## [2.0.0] - 2026-07-31
+
+### Changed
+- The Auracle panel is now one place: a conversation. Where it used to open on a board you arranged by hand — dragging source and question cards onto a canvas, wiring them together, flipping between a floor-plan face and a board face — it now opens on a single stage that reports what is happening and takes what you want in your own words. The agent stands up the sources and the questions from what you ask, so the work starts by talking rather than by placing anything. The stage keeps the things that are genuinely yours to see and to hold: a health line that reads every room at a glance and expands to name a fault and its consequence, the standing watches quietly gathering material with their new-material counts, the artifacts each run leaves behind, and an activity ledger that prices what the agent has spent against the month's budget. The one thing a machine cannot type for you — a key — is still pasted by hand, into a write-only box that is cleared the instant it is stored and never read back. The command palette and every room are exactly where they were.
+- Auracle now has a typeface of its own instead of borrowing whichever font the machine happened to supply. Every surface the app draws itself — panels, menus, labels, buttons and the figures in every table — is set in Geist, which ships inside the app, so the interface reads the same on macOS, Windows and Linux and comes up in the right face immediately without fetching anything over the network. Panels and the window around them are now guaranteed to be the same font as each other; until now the two could resolve to different faces on the same screen. Numbers in a column sit on a common width so they line up digit for digit, and the face used for figures and code marks its zero so it cannot be read as a capital O. Weights are drawn rather than faked, so a bold label is genuinely bold. The font you have chosen for the code editor itself is untouched — this changes the app's own chrome only.
+
+### Removed
+- The Board canvas and everything that was only a way to operate it are gone: panning and zooming the plane, placing and editing cards by hand, drawing and cutting the wires between them, the two-face toggle, the floor plan with its district folds, and the hover peeks. Each of these is now reached by asking instead, and the one that could not be — pasting a secret — is kept as the single input on the stage. The live-quote card is removed with the canvas; a quote is asked for in the conversation rather than pinned to the board.
 
 ## [1.8.1] - 2026-07-30
 

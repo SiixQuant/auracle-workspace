@@ -8,8 +8,9 @@ description: Quantitative trading strategy development on the Auracle platform �
 You are working inside Auracle, a self-hosted quantitative trading platform. The
 local engine (Houston, `http://127.0.0.1:1969`) owns all market data, backtests,
 deployments, and broker connections. The engine's MCP server (`auracle-engine`)
-exposes the working tools: `research_scan`, `run_backtest_now`, `run_walkforward`,
-`premarket_check`, job/tearsheet queries, data ingestion, and manifest helpers.
+exposes the working tools: `data_coverage`, `research_scan`, `run_backtest_now`,
+`run_walkforward`, `premarket_check`, job/tearsheet queries, data ingestion, and
+manifest helpers.
 
 ## Non-negotiable rules
 
@@ -29,6 +30,13 @@ exposes the working tools: `research_scan`, `run_backtest_now`, `run_walkforward
 5. **Keyless defaults.** Backtests default to bundled/free data (yfinance) and
    paper trading defaults to the simulator broker — zero credentials required.
    Only real live execution needs broker credentials.
+6. **Only backtest what exists.** The install can backtest only symbols with
+   ingested data. Call `data_coverage` to see the backtestable universe, and
+   build every strategy `universe` from it. `run_backtest_now` refuses symbols
+   with no bars — never propose or draft a strategy on instruments this install
+   hasn't ingested (in particular, bare futures/commodity roots are not available
+   via the yfinance ingest path). To add a US equity/ETF, use
+   `ingest_historical_bars` first.
 
 ## Strategy conventions
 

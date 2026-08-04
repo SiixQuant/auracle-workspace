@@ -8,7 +8,11 @@
  * never has to handle it.
  */
 import { describe, expect, it, vi } from 'vitest';
-import { callerHeaders, resolveEngineMcpServer } from '../AuracleEngineHandlers';
+import {
+  callerHeaders,
+  resolveEngineMcpServer,
+  resolveInstallUniversePreamble,
+} from '../AuracleEngineHandlers';
 
 describe('the headers a caller may add', () => {
   it('keeps the one the engine expects, and emits it under the one spelling', () => {
@@ -86,5 +90,62 @@ describe('the engine MCP server the IDE auto-wires', () => {
       throw new Error('engine unreachable');
     };
     expect(await resolveEngineMcpServer(req as never)).toBeNull();
+  });
+});
+
+describe('the install-universe preamble the IDE grounds the agent with', () => {
+  it('formats the backtestable universe into one directive paragraph', async () => {
+    const req = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      body: {
+        backtestable: [{ symbol: 'SPY' }, { symbol: 'QQQ' }, { symbol: 'IWM' }],
+        n_backtestable: 3,
+        span: { earliest: '2005-01-03', latest: '2026-07-29' },
+        asset_classes: { ETF: 3 },
+      },
+    }));
+    const preamble = await resolveInstallUniversePreamble(req as never);
+    expect(req).toHaveBeenCalledWith('GET', '/ui/api/ide/universe');
+    expect(preamble).toContain('can backtest 3 instrument(s)');
+    expect(preamble).toContain('SPY, QQQ, IWM');
+    expect(preamble).toContain('2005-01-03 to 2026-07-29');
+    expect(preamble).toContain('3 ETF');
+    // The load-bearing instructions: only these symbols, and check first.
+    expect(preamble).toContain('ONLY from these symbols');
+    expect(preamble).toContain('data_coverage');
+  });
+
+  it('caps a long symbol list and notes the remainder', async () => {
+    const many = Array.from({ length: 75 }, (_v, i) => ({ symbol: `S${i}` }));
+    const req = async () => ({
+      ok: true,
+      status: 200,
+      body: { backtestable: many, n_backtestable: 75, span: {}, asset_classes: {} },
+    });
+    const preamble = await resolveInstallUniversePreamble(req as never);
+    expect(preamble).toContain('+15 more'); // 75 - 60 cap
+    expect(preamble).not.toContain('S74'); // beyond the cap, not listed inline
+  });
+
+  it('tells the agent to ingest first when nothing is backtestable', async () => {
+    const req = async () => ({
+      ok: true,
+      status: 200,
+      body: { backtestable: [], n_backtestable: 0, span: {}, asset_classes: {} },
+    });
+    const preamble = await resolveInstallUniversePreamble(req as never);
+    expect(preamble).toContain('no ingested market data yet');
+    expect(preamble).toContain('ingest_historical_bars');
+    expect(preamble).not.toContain('Backtestable symbols:');
+  });
+
+  it('is null on a non-ok response, and never throws', async () => {
+    const notOk = async () => ({ ok: false, status: 401, body: { detail: 'no key' } });
+    expect(await resolveInstallUniversePreamble(notOk as never)).toBeNull();
+    const boom = async () => {
+      throw new Error('engine unreachable');
+    };
+    expect(await resolveInstallUniversePreamble(boom as never)).toBeNull();
   });
 });

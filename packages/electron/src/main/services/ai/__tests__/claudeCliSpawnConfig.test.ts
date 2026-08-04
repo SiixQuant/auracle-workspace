@@ -174,6 +174,28 @@ describe('buildClaudeCliSpawnConfig', () => {
     expect(nudge).toContain('mcp__nimbalyst__update_session_meta');
   });
 
+  it('appends the install-capability preamble after the base nudges when provided', () => {
+    const cfg = buildClaudeCliSpawnConfig({
+      ...base,
+      installCapabilityPreamble: 'This install can backtest 3 instrument(s): SPY, QQQ, IWM.',
+    });
+    const append = cfg.args[cfg.args.indexOf('--append-system-prompt') + 1] ?? '';
+    // Both the base nudges AND the preamble ride in the one --append value.
+    expect(append).toContain('mcp__nimbalyst__AskUserQuestion');
+    expect(append).toContain('This install can backtest 3 instrument(s): SPY, QQQ, IWM.');
+  });
+
+  it('omits the preamble segment when none is provided or it is blank', () => {
+    const none = buildClaudeCliSpawnConfig(base);
+    const blank = buildClaudeCliSpawnConfig({ ...base, installCapabilityPreamble: '   ' });
+    const appendNone = none.args[none.args.indexOf('--append-system-prompt') + 1] ?? '';
+    const appendBlank = blank.args[blank.args.indexOf('--append-system-prompt') + 1] ?? '';
+    // A blank preamble adds no stray segment — identical to no preamble at all.
+    expect(appendNone).toBe(appendBlank);
+    expect(appendNone).toContain('mcp__nimbalyst__update_session_meta');
+    expect(appendNone).not.toContain('can backtest');
+  });
+
   it('keeps the disallow flag followed by a non-variadic flag so it consumes only AskUserQuestion', () => {
     // commander treats --disallowedTools as variadic; a value-bearing flag must
     // follow it (here --append-system-prompt) so it does not swallow later args.

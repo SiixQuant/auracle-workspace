@@ -22,7 +22,7 @@ import { getSessionStateManager } from '@nimbalyst/runtime/ai/server/SessionStat
 import { getTerminalSessionManager } from '../TerminalSessionManager';
 import { getEnhancedPath, getShellEnvironment } from '../CLIManager';
 import { ClaudeCliSessionLauncher } from './ClaudeCliSessionLauncher';
-import { resolveEngineMcpServer } from '../../ipc/AuracleEngineHandlers';
+import { resolveEngineMcpServer, resolveInstallUniversePreamble } from '../../ipc/AuracleEngineHandlers';
 import { HooklessAgentFileWatcher } from './HooklessAgentFileWatcher';
 import { resolveClaudeExecutablePath, isClaudeExecutableInstalled } from './claudeExecutableResolver';
 import { resolveClaudeCliSupportsPluginDir } from './claudeCliPluginSupport';
@@ -136,6 +136,10 @@ function buildLauncher(): ClaudeCliSessionLauncher {
     // ...) when the engine is reachable and has a token set. Best-effort and
     // additive: null on any failure so the session still launches.
     getEngineMcpServer: () => resolveEngineMcpServer(),
+    // Ground the agent in the install's real backtestable universe (fetched from
+    // the engine) so it proposes only testable strategies. Best-effort: null when
+    // the engine is down, and the session launches without the preamble.
+    loadInstallCapabilityPreamble: () => resolveInstallUniversePreamble(),
     resolveClaudeExecutable,
     getEnhancedPath: () => getEnhancedPath(),
     terminalManager: getTerminalSessionManager(),

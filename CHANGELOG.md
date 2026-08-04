@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!-- New features go here -->
 
 ### Changed
-<!-- Changes to existing functionality go here -->
+- The panel's assistant now grounds itself in what your install can actually backtest — it sees your ingested symbols and proposes strategies only on data you have, instead of suggesting instruments it can't test. Needs the matching engine update on your install.
 
 ### Fixed
 <!-- Bug fixes go here -->

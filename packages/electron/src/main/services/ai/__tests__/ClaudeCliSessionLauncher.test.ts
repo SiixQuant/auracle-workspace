@@ -17,6 +17,7 @@ describe('ClaudeCliSessionLauncher', () => {
     homedir?: () => string;
     getEngineMcpServer?: ClaudeCliSessionLauncherDeps['getEngineMcpServer'];
     getMcpServersConfig?: ClaudeCliSessionLauncherDeps['getMcpServersConfig'];
+    loadInstallCapabilityPreamble?: ClaudeCliSessionLauncherDeps['loadInstallCapabilityPreamble'];
   } = {}) {
     const writes: Array<{ file: string; data: string }> = [];
     const createClaudeCliTerminal =
@@ -37,6 +38,7 @@ describe('ClaudeCliSessionLauncher', () => {
     const launcher = new ClaudeCliSessionLauncher({
       getMcpServersConfig,
       getEngineMcpServer: opts.getEngineMcpServer,
+      loadInstallCapabilityPreamble: opts.loadInstallCapabilityPreamble,
       resolveClaudeExecutable: () => '/usr/local/bin/claude',
       getEnhancedPath: () => '/opt/bin:/usr/bin',
       terminalManager: { createClaudeCliTerminal },
@@ -130,6 +132,45 @@ describe('ClaudeCliSessionLauncher', () => {
     const parsed = JSON.parse(writes[0].data);
     // the user's config wins; the auto-wire does not clobber it
     expect(parsed.mcpServers['auracle-engine']).toEqual(userEntry);
+  });
+
+  it('appends the install-capability preamble to the spawn config when the loader returns one', async () => {
+    const { launcher, createClaudeCliTerminal } = makeHarness({
+      loadInstallCapabilityPreamble: async () =>
+        'This install can backtest 3 instrument(s): SPY, QQQ, IWM.',
+    });
+    await launcher.launch(baseInput);
+
+    const args = createClaudeCliTerminal.mock.calls[0][1].spawnConfig.args;
+    const append = args[args.indexOf('--append-system-prompt') + 1] ?? '';
+    expect(append).toContain('This install can backtest 3 instrument(s): SPY, QQQ, IWM.');
+    expect(append).toContain('mcp__nimbalyst__AskUserQuestion'); // base nudge still present
+  });
+
+  it('launches without a preamble when the loader returns null', async () => {
+    const { launcher, createClaudeCliTerminal } = makeHarness({
+      loadInstallCapabilityPreamble: async () => null,
+    });
+    const result = await launcher.launch(baseInput);
+
+    expect(result.mcpConfigPath).toBeTruthy();
+    const args = createClaudeCliTerminal.mock.calls[0][1].spawnConfig.args;
+    const append = args[args.indexOf('--append-system-prompt') + 1] ?? '';
+    expect(append).not.toContain('can backtest');
+  });
+
+  it('launches when the preamble loader throws — grounding is best-effort, never blocking', async () => {
+    const { launcher, createClaudeCliTerminal } = makeHarness({
+      loadInstallCapabilityPreamble: async () => {
+        throw new Error('engine unreachable');
+      },
+    });
+    const result = await launcher.launch(baseInput);
+
+    expect(result.mcpConfigPath).toBeTruthy();
+    const args = createClaudeCliTerminal.mock.calls[0][1].spawnConfig.args;
+    const append = args[args.indexOf('--append-system-prompt') + 1] ?? '';
+    expect(append).not.toContain('can backtest');
   });
 
   it('spawns the CLI terminal with the temp mcp-config path and the session id', async () => {

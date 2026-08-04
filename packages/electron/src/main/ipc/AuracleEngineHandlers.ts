@@ -292,6 +292,82 @@ export async function resolveEngineMcpServer(
   }
 }
 
+/**
+ * A short "what this install can actually backtest" preamble for the agent's
+ * system prompt, or null when the engine is unreachable.
+ *
+ * Fetches GET /ui/api/ide/universe (the same Auracle-key auth every engine
+ * request uses) and formats the coverage summary into one directive paragraph:
+ * the backtestable symbols, the date span, and the rule to build strategy
+ * universes only from them. The launcher injects it once per session so the
+ * agent grounds itself in real data instead of proposing, say, a futures
+ * strategy on an equities-only install (where the backtester would otherwise
+ * mis-resolve a bare futures root to an unrelated equity).
+ *
+ * Never throws: a down engine, a non-200, or a malformed body all yield null,
+ * so the session launches without the preamble rather than not at all.
+ */
+export async function resolveInstallUniversePreamble(
+  request: typeof auracleEngineRequest = auracleEngineRequest
+): Promise<string | null> {
+  try {
+    const res = await request('GET', '/ui/api/ide/universe');
+    if (!res.ok) return null;
+    const body = res.body as {
+      backtestable?: Array<{ symbol?: string }>;
+      n_backtestable?: number;
+      span?: { earliest?: string | null; latest?: string | null };
+      asset_classes?: Record<string, number>;
+    } | null;
+    if (!body || typeof body !== 'object') return null;
+
+    const symbols = Array.isArray(body.backtestable)
+      ? body.backtestable
+          .map((b) => (b && typeof b.symbol === 'string' ? b.symbol : ''))
+          .filter((s) => s.length > 0)
+      : [];
+    const n = typeof body.n_backtestable === 'number' ? body.n_backtestable : symbols.length;
+
+    if (n === 0 || symbols.length === 0) {
+      return (
+        'This Auracle install has no ingested market data yet — nothing can be ' +
+        'backtested until data is ingested. Before proposing or backtesting a ' +
+        'strategy, call the ingest_historical_bars tool to load US equities/ETFs ' +
+        '(bare futures/commodity roots like ZN, CL, GC, ES are NOT available), ' +
+        'then call data_coverage to confirm. Do not propose strategies on ' +
+        'instruments with no ingested data.'
+      );
+    }
+
+    const classes =
+      body.asset_classes && typeof body.asset_classes === 'object'
+        ? Object.entries(body.asset_classes)
+            .map(([cls, cnt]) => `${cnt} ${cls}`)
+            .join(', ')
+        : '';
+    const span = body.span ?? {};
+    const spanText = span.earliest && span.latest ? ` (${span.earliest} to ${span.latest})` : '';
+
+    const CAP = 60;
+    const shown = symbols.slice(0, CAP);
+    const moreText = symbols.length > CAP ? ` +${symbols.length - CAP} more` : '';
+
+    return (
+      `This Auracle install can backtest ${n} instrument(s)` +
+      `${classes ? ` (${classes})` : ''}${spanText}. ` +
+      `Backtestable symbols: ${shown.join(', ')}${moreText}. ` +
+      'Build every strategy universe ONLY from these symbols — run_backtest_now ' +
+      'refuses any symbol with no ingested bars, and there is no data for anything ' +
+      'not listed (in particular, bare futures/commodity roots like ZN, CL, GC, ES ' +
+      'are NOT available). To add a US equity or ETF, call ingest_historical_bars ' +
+      'first. Call the data_coverage tool for the exact, current list before ' +
+      'proposing or drafting a strategy.'
+    );
+  } catch {
+    return null;
+  }
+}
+
 export function registerAuracleEngineHandlers(): void {
   safeHandle('auracle:auth-state', async () => {
     const session = await readSession();

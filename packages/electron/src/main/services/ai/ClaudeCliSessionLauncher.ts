@@ -54,6 +54,15 @@ export interface ClaudeCliSessionLauncherDeps {
    * and the session launches without the engine's tools rather than not at all.
    */
   getEngineMcpServer?: () => Promise<Record<string, unknown> | null>;
+  /**
+   * Resolve a short "what this install can backtest" preamble to append to the
+   * agent's system prompt, or null when the engine is unreachable. In production
+   * this fetches `GET /ui/api/ide/universe` (`resolveInstallUniversePreamble`) so
+   * the agent grounds itself in the install's real ingested universe and stops
+   * proposing strategies on instruments with no data. Best-effort: any failure
+   * yields null and the session launches without the preamble.
+   */
+  loadInstallCapabilityPreamble?: () => Promise<string | null>;
   /** Resolve the `claude` executable path. Falls back to the bare `claude`. */
   resolveClaudeExecutable: () => string;
   /** Login-shell-enhanced PATH so a GUI-launched Electron can find `claude`. */
@@ -295,6 +304,22 @@ export class ClaudeCliSessionLauncher {
       }
     }
 
+    // 2.7. Ground the agent in what this install can actually backtest (its real
+    // ingested universe), appended to the system prompt so it stops proposing
+    // strategies on instruments with no data. Best-effort: never block the launch.
+    let installCapabilityPreamble: string | undefined;
+    if (this.deps.loadInstallCapabilityPreamble) {
+      try {
+        installCapabilityPreamble = (await this.deps.loadInstallCapabilityPreamble()) ?? undefined;
+      } catch (err) {
+        console.warn(
+          '[ClaudeCliSessionLauncher] failed to load install universe preamble; launching without it:',
+          err,
+        );
+        installCapabilityPreamble = undefined;
+      }
+    }
+
     // 3. Build the spawn config (resolves exec, sets enhanced PATH, strips API key).
     const spawnConfig = buildClaudeCliSpawnConfig({
       claudeExecutable,
@@ -311,6 +336,7 @@ export class ClaudeCliSessionLauncher {
       dangerouslySkipPermissions,
       additionalDirectories: input.additionalDirectories,
       pluginDirs,
+      installCapabilityPreamble,
     });
 
     // 4. Spawn the genuine interactive CLI in the terminal strip. Tear the proxy

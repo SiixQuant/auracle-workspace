@@ -127,6 +127,13 @@ export interface ClaudeCliSpawnInput {
    */
   additionalDirectories?: string[];
   /**
+   * A short "what this install can backtest" preamble appended to the CLI's
+   * `--append-system-prompt`, so the agent grounds itself in the install's real
+   * ingested universe instead of proposing strategies on instruments with no data
+   * (see `resolveInstallUniversePreamble`). Omit/empty to append nothing extra.
+   */
+  installCapabilityPreamble?: string;
+  /**
    * Extension Claude-plugin directories to load for this session via
    * `--plugin-dir <dir>` (NIM-845). Each is a bare plugin directory (one
    * containing `.claude-plugin/plugin.json` + `commands/`) — the CLI analog of
@@ -317,7 +324,15 @@ export function buildClaudeCliSpawnConfig(input: ClaudeCliSpawnInput): ClaudeCli
   }
   // Force the model off the built-in TUI AskUserQuestion and onto our MCP tool.
   args.push('--disallowedTools', ...CLAUDE_CLI_DISALLOWED_TOOLS);
-  args.push('--append-system-prompt', CLAUDE_CLI_SYSTEM_PROMPT_APPEND);
+  // Append the base nudges plus, when present, the install-capability preamble
+  // (the real backtestable universe) so the agent proposes only testable
+  // strategies. Both ride in the single `--append-system-prompt` value.
+  const appendParts = [CLAUDE_CLI_SYSTEM_PROMPT_APPEND];
+  const preamble = input.installCapabilityPreamble?.trim();
+  if (preamble) {
+    appendParts.push(preamble);
+  }
+  args.push('--append-system-prompt', appendParts.join('\n\n'));
   if (input.extraArgs?.length) {
     args.push(...input.extraArgs);
   }

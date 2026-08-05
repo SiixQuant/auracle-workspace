@@ -53,6 +53,10 @@ export const ROOM_ALIASES: Record<string, RoomId> = {
   // default tab used to show.
   'strategy-lab': 'findings',
   'live-desk': 'deploys',
+  // The tearsheet room is new with the Grid, but it carries a route alias so the
+  // `open-tearsheet` command (and any host toggle) navigates to it rather than
+  // toggling the Grid's own id — see ROOM_ROUTE_ALIASES below.
+  tearsheet: 'strategy',
 };
 
 /**
@@ -64,6 +68,7 @@ export const ROOM_ALIASES: Record<string, RoomId> = {
 const ROOM_ROUTE_ALIASES: Partial<Record<RoomId, string>> = {
   findings: 'research',
   qc: 'qc-import',
+  strategy: 'tearsheet',
   backtest: 'backtest',
   validation: 'validation',
   deploys: 'live-algorithms',

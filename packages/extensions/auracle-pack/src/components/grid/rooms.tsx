@@ -27,6 +27,7 @@ import { QcPage } from './pages/QcPage';
 import { RunwayPage } from './pages/RunwayPage';
 import { SchedulesPage } from './pages/SchedulesPage';
 import { StrategiesPage } from './pages/StrategiesPage';
+import { StrategyPage } from './pages/StrategyPage';
 import { ValidationPage } from './pages/ValidationPage';
 
 /** Every room, in the order the home plan lists them. */
@@ -34,6 +35,7 @@ export const ROOM_IDS = [
   'findings',
   'qc',
   'strategies',
+  'strategy',
   'backtest',
   'validation',
   'deploys',
@@ -63,6 +65,7 @@ export const ROOMS: Record<RoomId, GridRoom> = {
   findings: room('findings', 'Findings', FindingsPage),
   qc: room('qc', 'QC Library', QcPage),
   strategies: room('strategies', 'Strategies', StrategiesPage),
+  strategy: room('strategy', 'Tearsheet', StrategyPage),
   backtest: room('backtest', 'Backtest', BacktestPage),
   validation: room('validation', 'Validation', ValidationPage),
   deploys: room('deploys', 'Deployments', DeploysPage),

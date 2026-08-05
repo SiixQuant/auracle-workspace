@@ -93,6 +93,7 @@
         "tooltip": "Auracle opens on its resting state: one line of status, and the standing watches quietly gathering material. Work starts in the conversation, and what it produces appears here.\n\nThe two earlier faces are still reachable while their replacements are built: press Cmd B (Ctrl B on Windows and Linux) to cycle home, **Board** - what you are working on - and **Plan**, the floor plan of every Auracle surface.\n\nEvery card on the Board is configured on the canvas itself, so nothing you set up there navigates away.",
         "aliases": [
           "backtest",
+          "tearsheet",
           "strategy-lab",
           "live-desk",
           "research",

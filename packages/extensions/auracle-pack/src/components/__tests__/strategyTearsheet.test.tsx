@@ -1,0 +1,260 @@
+/**
+ * The strategy tearsheet room (WS-E, AC-5).
+ *
+ * Two promises are pinned here. HONESTY: the Risk / Return table is the exact
+ * 14 rows the owner's reference shows, in order, formatted to it (percentages at
+ * two decimals, ratios at three, day-counts whole) — every value the engine's,
+ * put through the house formatter. FIDELITY: the performance chart is driven by
+ * `Plotly.react` with the reference's own traces (orange strategy line, grey
+ * benchmark, steel underwater on the second y-axis) and layout (the two stacked
+ * y-domains, the −45° ISO date ticks, `x unified` hover). Plotly is mocked —
+ * jsdom paints nothing — so the figure is asserted from the call, not the pixels.
+ *
+ * The fetch seam is `client.tearsheetResult` / `tearsheetFactors`, the two
+ * getJson-backed reads the room drives off; mocking them stands in for a
+ * synthetic `/result` (+ `/factors`) without a live engine.
+ */
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+
+vi.mock('plotly.js-basic-dist-min', () => ({
+  default: {
+    react: vi.fn(() => Promise.resolve()),
+    newPlot: vi.fn(() => Promise.resolve()),
+    purge: vi.fn(),
+    Plots: { resize: vi.fn() },
+  },
+}));
+
+vi.mock('../../engine/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../engine/client')>();
+  return { ...actual, tearsheetResult: vi.fn(), tearsheetFactors: vi.fn() };
+});
+
+import Plotly from 'plotly.js-basic-dist-min';
+import {
+  tearsheetFactors,
+  tearsheetResult,
+  type BacktestResultBody,
+  type FactorBatteryBody,
+} from '../../engine/client';
+import { focusStore } from '../../engine/focusStore';
+import { buildTearsheetFigure } from '../charts/TearsheetChart';
+import { StrategyPage } from '../grid/pages/StrategyPage';
+
+const LABELS = ['2018-01-02', '2019-01-02', '2020-01-02', '2021-01-02', '2025-06-30'];
+
+/** A synthetic `/result` whose numbers land on the reference's exact strings. */
+const RESULT: BacktestResultBody = {
+  status: 'succeeded',
+  chartable: true,
+  strategy_path: 'strategies.desk.fund_pair.FundPair',
+  as_of: '2026-08-05',
+  n_bars: 1888,
+  trades: 128,
+  stats: {
+    total_return: 4.97,
+    annualized_return: 0.269,
+    sharpe: 1.42,
+    sortino: 1.95,
+    calmar: 0.888,
+    annualized_vol: 0.197,
+    max_drawdown: -0.303,
+    average_drawdown: -0.049,
+    current_drawdown: -0.061,
+    days_since_ath: 34,
+    average_drawdown_days: 38,
+    excess_sharpe: 0.47,
+  },
+  chart: { labels: LABELS, points: [0, 40, -12, 260, 497] },
+  drawdown: { labels: LABELS, points: [0, -3.2, -30.3, -5.1, -6.1] },
+  benchmark: { labels: LABELS, points: [0, 22, -8, 90, 173], symbol: 'SPY' },
+};
+
+const FACTORS: FactorBatteryBody = {
+  ok: true,
+  regression: { alpha_annual: 0.082, alpha_tstat: 2.3 },
+};
+
+const host = { panelId: 'com.auracle.pack.grid', extensionId: 'com.auracle.pack' } as never;
+
+/** The reference's rows, in order: [slug, rendered value]. */
+const EXPECTED_ROWS: Array<[string, string, string]> = [
+  ['strategy-return', 'Strategy Return', '497.00%'],
+  ['annualized-return', 'Annualized Return', '26.90%'],
+  ['sharpe-ratio', 'Sharpe Ratio', '1.420'],
+  ['sortino-ratio', 'Sortino Ratio', '1.950'],
+  ['calmar-ratio', 'Calmar Ratio', '0.888'],
+  ['annualized-volatility', 'Annualized Volatility', '19.70%'],
+  ['max-drawdown', 'Max Drawdown', '-30.30%'],
+  ['average-drawdown', 'Average Drawdown', '-4.90%'],
+  ['current-drawdown', 'Current Drawdown', '-6.10%'],
+  ['days-since-ath', 'Days Since ATH', '34'],
+  ['average-drawdown-days', 'Average Drawdown Days', '38'],
+  ['benchmark-return', 'Benchmark Return', '173.00%'],
+  ['alpha', 'Alpha', '8.20%'],
+  ['excess-sharpe', 'Excess Sharpe', '0.470'],
+];
+
+beforeEach(() => {
+  vi.mocked(tearsheetResult).mockResolvedValue(RESULT);
+  vi.mocked(tearsheetFactors).mockResolvedValue(FACTORS);
+  // The room keys off the Spine's focus — point it at a backtest run.
+  focusStore.publish({ run: { kind: 'backtest', id: '42' } });
+});
+
+afterEach(() => {
+  cleanup();
+  focusStore.clear();
+  vi.clearAllMocks();
+});
+
+describe('the Risk / Return table matches the reference', () => {
+  it('renders exactly the 14 rows, in order, with the reference values (all white)', async () => {
+    render(<StrategyPage host={host} />);
+    await waitFor(() => expect(screen.getByTestId('tearsheet-metrics')).toBeTruthy());
+
+    const root = screen.getByTestId('tearsheet-metrics');
+    const values = root.querySelectorAll('[data-testid^="tearsheet-metric-value-"]');
+    expect(values).toHaveLength(14);
+
+    // Order and value, row by row.
+    const orderedLabels = Array.from(root.children).map(
+      (row) => row.querySelector('.auracle-tearsheet__mk')?.textContent
+    );
+    expect(orderedLabels).toEqual(EXPECTED_ROWS.map(([, label]) => label));
+
+    for (const [slug, , value] of EXPECTED_ROWS) {
+      const cell = screen.getByTestId(`tearsheet-metric-value-${slug}`);
+      expect(cell.textContent).toBe(value);
+    }
+  });
+
+  it('reads alpha from /factors and the benchmark return from the overlay tail', async () => {
+    render(<StrategyPage host={host} />);
+    await waitFor(() => expect(screen.getByTestId('tearsheet-metric-value-alpha')).toBeTruthy());
+    expect(vi.mocked(tearsheetFactors)).toHaveBeenCalledWith(42);
+    expect(screen.getByTestId('tearsheet-metric-value-alpha').textContent).toBe('8.20%');
+    expect(screen.getByTestId('tearsheet-metric-value-benchmark-return').textContent).toBe('173.00%');
+  });
+
+  it('shows an em dash for a metric the engine did not compute', async () => {
+    vi.mocked(tearsheetResult).mockResolvedValue({
+      ...RESULT,
+      stats: { ...RESULT.stats, calmar: null },
+    });
+    render(<StrategyPage host={host} />);
+    await waitFor(() => expect(screen.getByTestId('tearsheet-metric-value-calmar-ratio')).toBeTruthy());
+    expect(screen.getByTestId('tearsheet-metric-value-calmar-ratio').textContent).toBe('—');
+  });
+});
+
+describe('the performance chart is a Plotly figure matched to the reference', () => {
+  it('invokes Plotly.react with the strategy, benchmark and drawdown traces', async () => {
+    render(<StrategyPage host={host} />);
+    await waitFor(() => expect(vi.mocked(Plotly.react)).toHaveBeenCalled());
+
+    const traces = vi.mocked(Plotly.react).mock.calls[0][1] as Array<Record<string, unknown>>;
+    expect(traces).toHaveLength(3);
+
+    const [strategy, benchmark, drawdown] = traces;
+    expect(strategy.name).toBe('Strategy');
+    expect(strategy.line).toEqual({ color: '#f26430', width: 1.6 });
+    expect(strategy.yaxis).toBe('y');
+    expect(strategy.y).toEqual([0, 40, -12, 260, 497]);
+
+    expect(benchmark.name).toBe('Benchmark');
+    expect(benchmark.line).toEqual({ color: '#cfd3d8', width: 1.2 });
+    expect(benchmark.yaxis).toBe('y');
+
+    expect(drawdown.name).toBe('Drawdown');
+    expect(drawdown.line).toEqual({ color: '#86a0bd', width: 1.2 });
+    expect(drawdown.yaxis).toBe('y2');
+    expect(drawdown.y).toEqual([0, -3.2, -30.3, -5.1, -6.1]);
+  });
+
+  it('drives the stacked y-domains, ISO −45° date ticks and % suffixes from the reference layout', async () => {
+    render(<StrategyPage host={host} />);
+    await waitFor(() => expect(vi.mocked(Plotly.react)).toHaveBeenCalled());
+
+    const call = vi.mocked(Plotly.react).mock.calls[0];
+    const layout = call[2] as Record<string, Record<string, unknown>>;
+    const config = call[3] as Record<string, unknown>;
+
+    expect(layout.yaxis.domain).toEqual([0.3, 1.0]);
+    expect(layout.yaxis2.domain).toEqual([0, 0.2]);
+    expect(layout.xaxis.anchor).toBe('y2');
+    expect(layout.xaxis.tickformat).toBe('%Y-%m-%d');
+    expect(layout.xaxis.tickangle).toBe(-45);
+    expect(layout.yaxis.ticksuffix).toBe('%');
+    expect(layout.yaxis2.ticksuffix).toBe('%');
+    expect(layout.paper_bgcolor).toBe('#0e0f13');
+    expect(layout.hovermode).toBe('x unified');
+    expect(config).toEqual({ displayModeBar: false, responsive: true });
+  });
+
+  it('omits the benchmark trace and its return when the run has no benchmark', async () => {
+    vi.mocked(tearsheetResult).mockResolvedValue({ ...RESULT, benchmark: null });
+    render(<StrategyPage host={host} />);
+    await waitFor(() => expect(vi.mocked(Plotly.react)).toHaveBeenCalled());
+
+    const traces = vi.mocked(Plotly.react).mock.calls[0][1] as Array<Record<string, unknown>>;
+    expect(traces).toHaveLength(2);
+    expect(traces.map((t) => t.name)).toEqual(['Strategy', 'Drawdown']);
+    expect(screen.getByTestId('tearsheet-metric-value-benchmark-return').textContent).toBe('—');
+  });
+});
+
+describe('the pure figure builder (paint-free)', () => {
+  it('assembles the reference traces, domains and config', () => {
+    const figure = buildTearsheetFigure({
+      chart: RESULT.chart!,
+      drawdown: RESULT.drawdown!,
+      benchmark: RESULT.benchmark,
+    });
+    expect(figure.traces.map((t) => [t.name, t.yaxis])).toEqual([
+      ['Strategy', 'y'],
+      ['Benchmark', 'y'],
+      ['Drawdown', 'y2'],
+    ]);
+    expect((figure.layout.yaxis as { domain: number[] }).domain).toEqual([0.3, 1.0]);
+    expect((figure.layout.yaxis2 as { domain: number[] }).domain).toEqual([0, 0.2]);
+    expect(figure.config).toEqual({ displayModeBar: false, responsive: true });
+  });
+});
+
+describe('the in-room segmented controls (WS-E FR-E3)', () => {
+  it('Live shows a clean no-deployment rest, and toggles back to the backtest tearsheet', async () => {
+    render(<StrategyPage host={host} />);
+    await waitFor(() => expect(screen.getByTestId('tearsheet-metrics')).toBeTruthy());
+
+    fireEvent.click(screen.getByTestId('tearsheet-mode-live'));
+    expect(screen.getByTestId('tearsheet-live-empty')).toBeTruthy();
+    expect(screen.queryByTestId('tearsheet-metrics')).toBeNull();
+    expect(screen.queryByTestId('tearsheet-chart')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('tearsheet-mode-backtest'));
+    await waitFor(() => expect(screen.getByTestId('tearsheet-metrics')).toBeTruthy());
+  });
+
+  it('Trades is an empty stub in this slice; Overview holds the tearsheet', async () => {
+    render(<StrategyPage host={host} />);
+    await waitFor(() => expect(screen.getByTestId('tearsheet-metrics')).toBeTruthy());
+
+    fireEvent.click(screen.getByTestId('tearsheet-tab-trades'));
+    expect(screen.getByTestId('tearsheet-trades-empty')).toBeTruthy();
+    expect(screen.queryByTestId('tearsheet-metrics')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('tearsheet-tab-overview'));
+    await waitFor(() => expect(screen.getByTestId('tearsheet-metrics')).toBeTruthy());
+  });
+
+  it('rests with a prompt when no backtest run is focused', async () => {
+    focusStore.clear();
+    render(<StrategyPage host={host} />);
+    await waitFor(() => expect(screen.getByText('No run focused yet')).toBeTruthy());
+    expect(screen.queryByTestId('tearsheet-metrics')).toBeNull();
+    expect(vi.mocked(tearsheetResult)).not.toHaveBeenCalled();
+  });
+});

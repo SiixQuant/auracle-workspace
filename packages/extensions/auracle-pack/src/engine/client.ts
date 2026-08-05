@@ -131,6 +131,19 @@ export async function backtestJobStatus(
   return { ok: false, status: res.status };
 }
 
+/**
+ * A cumulative-return series aligned to `chart.labels` — the benchmark overlay
+ * the tearsheet draws behind the strategy line. `points` are in the same PERCENT
+ * units the engine hands `chart.points` (e.g. 173.0 means +173%), not fractions.
+ * Null on a run the engine computed no benchmark for.
+ */
+export interface BenchmarkSeries {
+  labels: string[];
+  points: number[];
+  /** The benchmark's ticker (e.g. "SPY"), when the engine names it. */
+  symbol?: string;
+}
+
 /** A completed backtest's chartable result (equity curve + headline stats). */
 export interface BacktestResultBody {
   status: string;
@@ -143,6 +156,9 @@ export interface BacktestResultBody {
   stats?: Record<string, number | null>;
   chart?: { labels: string[]; points: number[] };
   drawdown?: { labels: string[]; points: number[] };
+  /** The benchmark cumulative-return overlay (WS-A / FR-A1), or null when the
+   *  engine computed none. Additive — an older engine omits the key entirely. */
+  benchmark?: BenchmarkSeries | null;
   trades?: number;
   /** Where the run came from when it is not a local backtest — a persisted
    *  external run declares its origin so the viewer can label it. Read both
@@ -247,6 +263,28 @@ export async function backtestJobFactors(
   );
   if (res.ok) return { ok: true, body: res.body };
   return { ok: false, status: res.status, body: res.body };
+}
+
+/**
+ * The tearsheet's result fetch (WS-E). A thin `getJson` read of the same
+ * `/result` route {@link backtestJobResult} uses, but returning the parsed body
+ * (or null) directly so the tearsheet room can drive off one mockable seam —
+ * benchmark overlay and the QuantStats-extra stats ride along in the additive
+ * keys. Null on any 404/transport failure: the room then shows its honest
+ * "no chartable run" state rather than a fabricated curve.
+ */
+export async function tearsheetResult(jobId: number): Promise<BacktestResultBody | null> {
+  return getJson<BacktestResultBody>(`/ui/api/backtest/job/${jobId}/result`);
+}
+
+/**
+ * The tearsheet's factor fetch (FR-A3) — the alpha row's only source. Read
+ * through `getJson` (not the status-keeping {@link backtestJobFactors}) so the
+ * whole tearsheet fetches through one seam; a failed factor read simply leaves
+ * Alpha as an em dash rather than blocking the sheet.
+ */
+export async function tearsheetFactors(jobId: number): Promise<FactorBatteryBody | null> {
+  return getJson<FactorBatteryBody>(`/ui/api/backtest/job/${jobId}/factors`);
 }
 
 /** Engine reachability + identity probe (`/ui/api/ide/connect-check`). */

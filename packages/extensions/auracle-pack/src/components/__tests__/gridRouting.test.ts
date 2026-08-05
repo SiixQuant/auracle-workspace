@@ -38,6 +38,7 @@ const panels = (manifest as { contributions: { panels: ManifestPanel[] } }).cont
 const ALIAS_TABLE: Array<[string, RoomId]> = [
   ['research', 'findings'],
   ['qc-import', 'qc'],
+  ['tearsheet', 'strategy'],
   ['backtest', 'backtest'],
   ['validation', 'validation'],
   ['live-algorithms', 'deploys'],

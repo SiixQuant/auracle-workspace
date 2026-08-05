@@ -29,7 +29,7 @@ export interface District {
 
 export const DISTRICTS: readonly District[] = [
   { id: 'research', number: '01', name: 'Research', rooms: ['findings', 'qc'] },
-  { id: 'build-test', number: '02', name: 'Build · Test', rooms: ['strategies', 'backtest', 'validation'] },
+  { id: 'build-test', number: '02', name: 'Build · Test', rooms: ['strategies', 'strategy', 'backtest', 'validation'] },
   { id: 'operate', number: '03', name: 'Operate', rooms: ['deploys', 'blotter', 'incidents', 'schedules'] },
   { id: 'system', number: '04', name: 'System', rooms: ['conns', 'runway'] },
 ];
@@ -55,6 +55,7 @@ export const ROOM_ICONS: Record<RoomId, string> = {
   findings: 'lightbulb',
   qc: 'library_books',
   strategies: 'description',
+  strategy: 'insights',
   backtest: 'query_stats',
   validation: 'fact_check',
   deploys: 'rocket_launch',

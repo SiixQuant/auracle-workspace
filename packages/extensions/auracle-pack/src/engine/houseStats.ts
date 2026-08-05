@@ -148,6 +148,80 @@ export function detailCards(stats: Stats, trades: number): MetricProps[] {
   ];
 }
 
+/* ── tearsheet metric table (WS-E / FR-E1, FR-E5) ───────────────────────── */
+
+/** A ratio at the reference's three-decimal precision (Sharpe "1.420"). */
+const ratio = (v: number | null | undefined): string => dec(v, 3);
+
+/** A whole-day count — no decimals (Days Since ATH "34"). */
+const days = (v: number | null | undefined): string => {
+  const n = num(v);
+  return n === null ? EM_DASH : String(Math.round(n));
+};
+
+/**
+ * A value ALREADY in percent units — the benchmark's last cumulative-return
+ * point arrives as 173.0 (meaning +173%), not the 0.xx fraction the `stats`
+ * block uses, so it is formatted without the ×100 the fraction path applies.
+ */
+const pctDirect = (v: number | null | undefined): string => {
+  const n = num(v);
+  return n === null ? EM_DASH : `${n.toFixed(2)}%`;
+};
+
+/** One label/value line of the Risk / Return table. Values are strings the
+ *  component prints verbatim (all white) — never re-derived downstream. */
+export interface TearsheetMetricRow {
+  label: string;
+  value: string;
+}
+
+/** What the tearsheet's 14 rows need beyond the `stats` block: alpha comes from
+ *  the `/factors` battery and the benchmark return from the overlay's tail. */
+export interface TearsheetMetricInputs {
+  /** annualized alpha as a FRACTION (`factors.regression.alpha_annual`). */
+  alphaAnnual?: number | null;
+  /** the benchmark overlay's last point, already in PERCENT units. */
+  benchmarkReturnPct?: number | null;
+}
+
+/**
+ * The reference's Risk / Return table, in its exact order and labels — the
+ * 14 rows the owner's tearsheet shows (`_a.html`). Formatting matches the
+ * reference precisely: fraction-based percentages at two decimals, the four
+ * ratios at three, the two day-counts as integers, and the benchmark return
+ * printed from its own percent units. Every missing value is an em dash, never
+ * a fabricated number (the house rule). The Sortino cap is decoded like the
+ * headline cards so a no-losing-days run cannot read its emptiness as a score.
+ */
+export function tearsheetMetricRows(
+  stats: Stats,
+  inputs: TearsheetMetricInputs = {}
+): TearsheetMetricRow[] {
+  const sortinoRaw = num(stats.sortino);
+  const sortino =
+    sortinoRaw !== null && sortinoRaw >= SORTINO_NO_DOWNSIDE && hasNoLosingDays(stats)
+      ? `≥ ${SORTINO_NO_DOWNSIDE.toFixed(3)}`
+      : ratio(stats.sortino);
+
+  return [
+    { label: 'Strategy Return', value: pct(stats.total_return) },
+    { label: 'Annualized Return', value: pct(stats.annualized_return) },
+    { label: 'Sharpe Ratio', value: ratio(stats.sharpe) },
+    { label: 'Sortino Ratio', value: sortino },
+    { label: 'Calmar Ratio', value: ratio(stats.calmar) },
+    { label: 'Annualized Volatility', value: pct(stats.annualized_vol) },
+    { label: 'Max Drawdown', value: pct(stats.max_drawdown) },
+    { label: 'Average Drawdown', value: pct(stats.average_drawdown) },
+    { label: 'Current Drawdown', value: pct(stats.current_drawdown) },
+    { label: 'Days Since ATH', value: days(stats.days_since_ath) },
+    { label: 'Average Drawdown Days', value: days(stats.average_drawdown_days) },
+    { label: 'Benchmark Return', value: pctDirect(inputs.benchmarkReturnPct) },
+    { label: 'Alpha', value: pct(inputs.alphaAnnual) },
+    { label: 'Excess Sharpe', value: ratio(stats.excess_sharpe) },
+  ];
+}
+
 /**
  * The one-line takeaway beside the DRAWDOWN title — the three tail figures
  * that mean the most where the drawdown is, per the house's risk-profile row.

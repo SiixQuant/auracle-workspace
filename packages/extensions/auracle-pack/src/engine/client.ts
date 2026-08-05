@@ -287,6 +287,53 @@ export async function tearsheetFactors(jobId: number): Promise<FactorBatteryBody
   return getJson<FactorBatteryBody>(`/ui/api/backtest/job/${jobId}/factors`);
 }
 
+/**
+ * A structured, logged reason a position was entered (WS-B / FR-B1). `rule` is
+ * the engine's rule slug (e.g. "ma_cross_20_50"); `values` are the named facts
+ * it recorded at the entry, each a number or a boolean. The panel NEVER invents
+ * these — a trade that logged none renders facts-only, no thesis sentence
+ * (INV-2). The panel only reads them; it derives no signal of its own.
+ */
+export interface SignalFact {
+  rule: string;
+  values: Record<string, number | boolean>;
+}
+
+/**
+ * One position episode within a run (WS-B / FR-B3, FR-B4). `side` is long/short
+ * from the position's weight sign. `contribution_pct` is the position's
+ * contribution to the PORTFOLIO's return — NOT a standalone trade P&L or a
+ * per-trade return (recon Q3); the Trades view labels it "Contribution" and
+ * shows no dollar figure. `signals` is the ordered SignalFact set, possibly
+ * empty.
+ */
+export interface TradeRecord {
+  symbol: string;
+  side: 'long' | 'short';
+  entry_date: string;
+  exit_date: string;
+  hold_days: number;
+  contribution_pct: number;
+  signals: SignalFact[];
+}
+
+/** The per-trade list payload from `/…/job/{id}/trades` (WS-B / FR-B4). */
+export interface TradesBody {
+  status: string;
+  trades: TradeRecord[];
+}
+
+/**
+ * The tearsheet's per-trade fetch (WS-G / FR-B4). Mirrors {@link tearsheetResult}:
+ * a thin `getJson` read of `/…/job/{id}/trades` returning the parsed body (or
+ * null on any 404/transport failure) so the Trades view drives off one mockable
+ * seam. Null lets the view show its honest "trades could not be loaded" rest
+ * rather than a fabricated record.
+ */
+export async function tearsheetTrades(jobId: number): Promise<TradesBody | null> {
+  return getJson<TradesBody>(`/ui/api/backtest/job/${jobId}/trades`);
+}
+
 /** Engine reachability + identity probe (`/ui/api/ide/connect-check`). */
 export async function connectCheck(): Promise<ConnectCheck | null> {
   return getJson<ConnectCheck>('/ui/api/ide/connect-check');

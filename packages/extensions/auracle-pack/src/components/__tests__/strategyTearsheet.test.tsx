@@ -29,13 +29,14 @@ vi.mock('plotly.js-basic-dist-min', () => ({
 
 vi.mock('../../engine/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../engine/client')>();
-  return { ...actual, tearsheetResult: vi.fn(), tearsheetFactors: vi.fn() };
+  return { ...actual, tearsheetResult: vi.fn(), tearsheetFactors: vi.fn(), tearsheetTrades: vi.fn() };
 });
 
 import Plotly from 'plotly.js-basic-dist-min';
 import {
   tearsheetFactors,
   tearsheetResult,
+  tearsheetTrades,
   type BacktestResultBody,
   type FactorBatteryBody,
 } from '../../engine/client';
@@ -100,6 +101,9 @@ const EXPECTED_ROWS: Array<[string, string, string]> = [
 beforeEach(() => {
   vi.mocked(tearsheetResult).mockResolvedValue(RESULT);
   vi.mocked(tearsheetFactors).mockResolvedValue(FACTORS);
+  // The Trades view (its own slice) fetches lazily; default it to an empty
+  // succeeded list so this suite's focus stays on the Overview tearsheet.
+  vi.mocked(tearsheetTrades).mockResolvedValue({ status: 'succeeded', trades: [] });
   // The room keys off the Spine's focus — point it at a backtest run.
   focusStore.publish({ run: { kind: 'backtest', id: '42' } });
 });
@@ -238,12 +242,12 @@ describe('the in-room segmented controls (WS-E FR-E3)', () => {
     await waitFor(() => expect(screen.getByTestId('tearsheet-metrics')).toBeTruthy());
   });
 
-  it('Trades is an empty stub in this slice; Overview holds the tearsheet', async () => {
+  it('Trades swaps in the per-trade view; Overview holds the tearsheet', async () => {
     render(<StrategyPage host={host} />);
     await waitFor(() => expect(screen.getByTestId('tearsheet-metrics')).toBeTruthy());
 
     fireEvent.click(screen.getByTestId('tearsheet-tab-trades'));
-    expect(screen.getByTestId('tearsheet-trades-empty')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('tearsheet-trades')).toBeTruthy());
     expect(screen.queryByTestId('tearsheet-metrics')).toBeNull();
 
     fireEvent.click(screen.getByTestId('tearsheet-tab-overview'));

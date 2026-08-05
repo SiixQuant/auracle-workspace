@@ -145,3 +145,57 @@ export function brokerLabel(id: string | null | undefined): string {
   if (key === '' || key === 'none') return 'none';
   return BROKER_LABELS[key] ?? prettifySlug(id) ?? 'none';
 }
+
+/**
+ * Indicator abbreviations that must print in their canonical caps rather than
+ * be Title-Cased (prettifySlug would render 'ma' as 'Ma', 'rsi' as 'Rsi'). Only
+ * the tokens a SignalFact rule slug actually carries; an unlisted alphabetic
+ * token stays lower-case, which is the right register inside a fact clause.
+ */
+const INDICATOR_TOKENS: Record<string, string> = {
+  ma: 'MA',
+  ema: 'EMA',
+  sma: 'SMA',
+  wma: 'WMA',
+  dma: 'DMA',
+  rsi: 'RSI',
+  macd: 'MACD',
+  atr: 'ATR',
+  adx: 'ADX',
+  roc: 'ROC',
+  vwap: 'VWAP',
+  obv: 'OBV',
+  cci: 'CCI',
+  mfi: 'MFI',
+  bbands: 'Bollinger',
+  bollinger: 'Bollinger',
+  stoch: 'Stochastic',
+};
+
+/**
+ * A SignalFact rule slug as a readable clause label, in CLAUSE register — lower
+ * case except known indicator abbreviations, with numeric parameters lifted to
+ * the front as an "A/B" period pair. So 'ma_cross_20_50' reads '20/50 MA cross'
+ * and 'rsi_oversold' reads 'RSI oversold'. The numbers-first convention mirrors
+ * the reference tearsheet's own phrasing for moving-average crosses (the primary
+ * built-in rule family); a rule that reads better with its number last should
+ * name it so engine-side. Blank in ⇒ null, so the composer falls back to a bare
+ * 'signal'. This never HIDES a token: an unknown stem still renders, lower-cased.
+ */
+export function humanizeRule(rule: string | null | undefined): string | null {
+  if (!rule) return null;
+  const trimmed = rule.trim();
+  if (trimmed.length === 0) return null;
+  const nums: string[] = [];
+  const alpha: string[] = [];
+  for (const token of words(trimmed)) {
+    if (/^\d+(?:\.\d+)?$/.test(token)) nums.push(token);
+    else alpha.push(token);
+  }
+  const stem = alpha
+    .map((token) => INDICATOR_TOKENS[token.toLowerCase()] ?? token.toLowerCase())
+    .join(' ');
+  const periods = nums.join('/');
+  if (periods && stem) return `${periods} ${stem}`;
+  return stem || periods || null;
+}

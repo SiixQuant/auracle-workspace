@@ -6,7 +6,7 @@
  * and nothing is invented for a blank input.
  */
 import { describe, expect, it } from 'vitest';
-import { brokerLabel, humanizeAction, prettifyPath, prettifySlug } from '../humanize';
+import { brokerLabel, humanizeAction, humanizeRule, prettifyPath, prettifySlug } from '../humanize';
 
 describe('humanizeAction', () => {
   it('maps the three action codes the ops journal actually records', () => {
@@ -92,5 +92,29 @@ describe('brokerLabel', () => {
 
   it('titleizes an unmapped broker id rather than showing the raw slug', () => {
     expect(brokerLabel('some_new_broker')).toBe('Some New Broker');
+  });
+});
+
+describe('humanizeRule', () => {
+  it('reads a moving-average cross as periods-first, indicator in caps', () => {
+    // The house convention the reference shows for a cross: "20/50 MA cross".
+    expect(humanizeRule('ma_cross_20_50')).toBe('20/50 MA cross');
+    expect(humanizeRule('ema_cross_9_21')).toBe('9/21 EMA cross');
+  });
+
+  it('caps known indicator tokens and keeps the rest of the stem lower-case', () => {
+    expect(humanizeRule('rsi_oversold')).toBe('RSI oversold');
+    expect(humanizeRule('breakout_high')).toBe('breakout high');
+  });
+
+  it('renders a params-only or stem-only rule without a stray separator', () => {
+    expect(humanizeRule('donchian_20')).toBe('20 donchian');
+    expect(humanizeRule('mean_reversion')).toBe('mean reversion');
+  });
+
+  it('is null for a blank or missing rule so the composer can fall back', () => {
+    expect(humanizeRule('')).toBeNull();
+    expect(humanizeRule(null)).toBeNull();
+    expect(humanizeRule(undefined)).toBeNull();
   });
 });

@@ -24,18 +24,24 @@
  * number). The values render white, matched to the reference.
  */
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import type { PanelHostProps } from '@nimbalyst/extension-sdk';
+import type { PanelHost, PanelHostProps } from '@nimbalyst/extension-sdk';
 import {
+  buildDossier,
+  openReport,
   tearsheetFactors,
   tearsheetResult,
+  tearsheetSummary,
   tearsheetTrades,
   type BacktestResultBody,
+  type DossierReport,
+  type StrategySummaryBody,
   type TradeRecord,
 } from '../../../engine/client';
 import { focusStore } from '../../../engine/focusStore';
 import { EM_DASH, tearsheetMetricRows } from '../../../engine/houseStats';
 import { composeThesis } from '../../../engine/signalThesis';
-import { CenterState, SkeletonRows, tint, tone } from '../../panelkit';
+import { handOffToAgent, type AgentNote } from '../../aiPanel';
+import { Button, CenterState, InlineNote, SkeletonRows, tint, tone } from '../../panelkit';
 import { TearsheetChart } from '../../charts/TearsheetChart';
 import { GRID_ACCENT } from '../gridTheme';
 import { RoomPage, type PageVital, type RoomStatus } from '../RoomPage';
@@ -66,6 +72,14 @@ interface TradesLoad {
 }
 
 const TRADES_IDLE: TradesLoad = { phase: 'idle', trades: [], forRun: null };
+
+/**
+ * The dossier card's decorative doc-spine letterhead hint, matched to the
+ * reference mockup's gold band. This is ONLY the card's cue — the generated PDF
+ * itself carries the real AuraPoint navy/blue letterhead (engine, FR-C5), a
+ * swappable asset the panel never renders.
+ */
+const DOSSIER_GOLD = '#c8a25a';
 
 const STYLE_ID = 'auracle-tearsheet-styles';
 
@@ -117,6 +131,22 @@ const SHEET = `
   .auracle-tearsheet__thead, .auracle-tearsheet__tsum { grid-template-columns: 1fr auto; }
   .auracle-tearsheet__hide { display: none; }
 }
+.auracle-tearsheet__summary { background: ${tone.surface}; border: 1px solid ${tone.border}; border-radius: 10px; padding: 14px 16px; }
+.auracle-tearsheet__seclabel { font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: ${tone.text3}; }
+.auracle-tearsheet__summarytext { margin: 8px 0 0; color: ${tone.text2}; font-size: 12.9px; line-height: 1.62; max-width: 92ch; }
+.auracle-tearsheet__summarynote { margin-top: 8px; font-size: 11.5px; line-height: 1.5; color: ${tone.text3}; }
+.auracle-tearsheet__summaryactions { margin-top: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.auracle-tearsheet__report { display: flex; align-items: center; gap: 14px; background: ${tone.surface}; border: 1px solid ${tone.border}; border-radius: 10px; padding: 14px 16px; }
+@container auracle-grid (max-width: 560px) { .auracle-tearsheet__report { flex-wrap: wrap; } }
+.auracle-tearsheet__doc { width: 44px; height: 56px; border-radius: 5px; flex: none; position: relative; overflow: hidden; background: linear-gradient(160deg, #1a1c22, #0f1014); border: 1px solid ${tone.borderStrong}; }
+.auracle-tearsheet__docband { position: absolute; top: 0; left: 0; right: 0; height: 14px; background: linear-gradient(90deg, ${DOSSIER_GOLD}, #a9823d); }
+.auracle-tearsheet__docmark { position: absolute; top: 3px; left: 5px; font-size: 6.5px; font-weight: 700; letter-spacing: 0.06em; color: #161109; }
+.auracle-tearsheet__reportmeta { flex: 1; min-width: 0; }
+.auracle-tearsheet__rtitle { font-weight: 600; font-size: 13px; color: ${tone.text}; }
+.auracle-tearsheet__firm { color: ${DOSSIER_GOLD}; }
+.auracle-tearsheet__rsub { color: ${tone.text3}; font-size: 11.5px; margin-top: 3px; line-height: 1.5; }
+.auracle-tearsheet__savedpath { font-size: 10.5px; color: ${tone.text3}; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.auracle-tearsheet__savedpath b { color: ${tone.text2}; font-weight: 500; }
 `;
 
 function ensureTearsheetStyles(): void {
@@ -265,6 +295,243 @@ function Overview({ state }: { state: LoadState }): JSX.Element {
         </header>
         <MetricsTable result={result} alphaAnnual={alphaAnnual} benchmarkReturnPct={benchmarkReturnPct} />
       </section>
+    </div>
+  );
+}
+
+/* ── Summary + dossier (WS-F / FR-F1, FR-F2, FR-F3) ──────────────────────── */
+
+function DownloadGlyph(): JSX.Element {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" />
+    </svg>
+  );
+}
+
+interface SummaryState {
+  phase: 'loading' | 'loaded';
+  body: StrategySummaryBody | null;
+}
+
+/** The prompt handed to the agent to author + persist a real summary. It cites
+ *  the run's engine-computed metrics only (INV-1) and PUTs the result back to
+ *  the engine's summary store (FR-D3). */
+function summaryHandoffPrompt(strategyPath: string, jobId: number | null): string {
+  const run = jobId !== null ? `backtest run ${jobId}` : 'its latest backtest run';
+  return (
+    `Write a concise, plain-English summary of the strategy \`${strategyPath}\` for its tearsheet. ` +
+    `Read the strategy source and the engine-computed metrics from ${run} — cite only numbers the ` +
+    `engine computed, never invent one. In three to five sentences, say what the strategy does and ` +
+    `why it should work, then persist it by PUTting ` +
+    `{ "summary_text": "…", "source_run_id": ${jobId ?? 'null'} } ` +
+    `to /ui/api/strategy/summary?strategy_path=${strategyPath}.`
+  );
+}
+
+/**
+ * The plain-English summary strip (FR-F1). Reads the engine's stored summary by
+ * strategy_path and renders it in plain type below the metrics. A docstring
+ * fallback and a stale summary are each flagged quietly; an absent one rests
+ * empty. When no real agent summary exists yet and the host exposes the AI
+ * seam, a small "Have the agent write a summary" action prefills an agent
+ * session (best-effort — hidden on hosts without `launchAgentSession`).
+ */
+function StrategySummary({
+  strategyPath,
+  jobId,
+  host,
+}: {
+  strategyPath: string | null;
+  jobId: number | null;
+  host: PanelHost;
+}): JSX.Element | null {
+  const [state, setState] = useState<SummaryState>({ phase: 'loading', body: null });
+  const [note, setNote] = useState<AgentNote>(null);
+  const [handingOff, setHandingOff] = useState(false);
+  const generation = useRef(0);
+
+  useEffect(() => {
+    if (!strategyPath) return;
+    const gen = (generation.current += 1);
+    setState({ phase: 'loading', body: null });
+    void (async () => {
+      const body = await tearsheetSummary(strategyPath);
+      if (gen !== generation.current) return;
+      setState({ phase: 'loaded', body });
+    })();
+  }, [strategyPath]);
+
+  if (!strategyPath) return null;
+
+  if (state.phase === 'loading') {
+    return (
+      <div className="auracle-tearsheet__summary" data-testid="tearsheet-summary">
+        <SkeletonRows rows={2} />
+      </div>
+    );
+  }
+
+  const body = state.body;
+  const text = body?.summary_text?.trim() ?? '';
+  const hasText = text.length > 0;
+  const needsSummary = !hasText || body?.is_fallback === true;
+
+  const runHandOff = async () => {
+    setHandingOff(true);
+    const result = await handOffToAgent(
+      host,
+      summaryHandoffPrompt(strategyPath, jobId),
+      'Write strategy summary'
+    );
+    setHandingOff(false);
+    setNote(result);
+  };
+
+  return (
+    <div className="auracle-tearsheet__summary" data-testid="tearsheet-summary">
+      <div className="auracle-tearsheet__seclabel">What this strategy does · in plain English</div>
+      {hasText ? (
+        <p className="auracle-tearsheet__summarytext" data-testid="tearsheet-summary-text">
+          {text}
+        </p>
+      ) : (
+        <p className="auracle-tearsheet__summarynote" data-testid="tearsheet-summary-empty">
+          No plain-English summary yet — the engine has neither an agent summary nor a docstring to
+          show for this strategy.
+        </p>
+      )}
+      {body?.is_fallback ? (
+        <div className="auracle-tearsheet__summarynote" data-testid="tearsheet-summary-fallback">
+          This is the strategy&rsquo;s docstring — no agent summary has been written yet.
+        </div>
+      ) : null}
+      {body?.stale ? (
+        <div className="auracle-tearsheet__summarynote" data-testid="tearsheet-summary-stale">
+          This may be out of date — the strategy or its run has changed since it was written.
+        </div>
+      ) : null}
+      {needsSummary && host.launchAgentSession ? (
+        <div className="auracle-tearsheet__summaryactions">
+          <Button
+            variant="ghost"
+            testId="tearsheet-summary-handoff"
+            busy={handingOff}
+            onClick={() => void runHandOff()}
+          >
+            Have the agent write a summary
+          </Button>
+          {note ? (
+            <InlineNote kind={note.kind} testId="tearsheet-summary-note">
+              {note.text}
+            </InlineNote>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+interface DossierState {
+  phase: 'idle' | 'building' | 'ready' | 'error';
+  report: DossierReport | null;
+  message: string | null;
+}
+
+const DOSSIER_IDLE: DossierState = { phase: 'idle', report: null, message: null };
+
+/** Honest copy per failure, so the card never hides why a build didn't happen:
+ *  a 503 = the engine build lacks the PDF generator (WeasyPrint), a 400/404 =
+ *  the run can't be built, status 0 = unreachable. */
+function dossierError(status: number, error?: string): string {
+  if (status === 503) return 'The dossier generator is not available on this engine build.';
+  if (status === 400 || status === 404) return 'This run can’t be built into a dossier yet.';
+  if (status === 0) return 'Couldn’t reach the engine — make sure your local stack is running.';
+  return error && error.trim() ? error : 'The dossier could not be generated.';
+}
+
+/**
+ * The AuraPoint research-dossier card (FR-F2/F3), matched to the reference
+ * mockup. Download builds (or returns the cached) PDF for the focused
+ * Strategy+Run, opens it through the host once the engine resolves the report,
+ * and shows where it saved. States are honest: idle → building → ready / error.
+ */
+function DossierCard({
+  strategyPath,
+  jobId,
+}: {
+  strategyPath: string | null;
+  jobId: number | null;
+}): JSX.Element {
+  const [state, setState] = useState<DossierState>(DOSSIER_IDLE);
+  const canBuild = Boolean(strategyPath) && jobId !== null;
+
+  const build = async () => {
+    if (!strategyPath || jobId === null) return;
+    setState({ phase: 'building', report: null, message: null });
+    const res = await buildDossier(strategyPath, jobId);
+    if (!res.ok) {
+      setState({ phase: 'error', report: null, message: dossierError(res.status, res.error) });
+      return;
+    }
+    setState({ phase: 'ready', report: res.report, message: null });
+    void openReport(res.report.id);
+  };
+
+  const isReady = state.phase === 'ready' && state.report !== null;
+
+  return (
+    <div className="auracle-tearsheet__report" data-testid="tearsheet-dossier">
+      <div className="auracle-tearsheet__doc" aria-hidden>
+        <div className="auracle-tearsheet__docband" />
+        <div className="auracle-tearsheet__docmark">AURAPOINT</div>
+      </div>
+      <div className="auracle-tearsheet__reportmeta">
+        <div className="auracle-tearsheet__rtitle">
+          <span className="auracle-tearsheet__firm">AuraPoint Capital</span> — Research Dossier
+        </div>
+        <div className="auracle-tearsheet__rsub">
+          The thesis and the market intuition, the full math, the out-of-sample proof, and every
+          test — factor regression, t / p-stats, drawdown and robustness.
+        </div>
+        {state.phase === 'ready' && state.report ? (
+          <div className="auracle-tearsheet__savedpath" data-testid="tearsheet-dossier-saved">
+            {state.report.cached ? 'Ready at ' : 'Saved to '}
+            <b>reports/{state.report.filename}</b>
+          </div>
+        ) : null}
+        {state.phase === 'error' && state.message ? (
+          <div style={{ marginTop: 6 }}>
+            <InlineNote kind="err" testId="tearsheet-dossier-error">
+              {state.message}
+            </InlineNote>
+          </div>
+        ) : null}
+      </div>
+      <Button
+        variant="ghost"
+        testId="tearsheet-dossier-download"
+        busy={state.phase === 'building'}
+        disabled={!canBuild}
+        title={canBuild ? undefined : 'Focus a backtest run to build its dossier'}
+        onClick={() => {
+          if (state.phase === 'ready' && state.report) void openReport(state.report.id);
+          else void build();
+        }}
+      >
+        <DownloadGlyph />
+        {isReady ? 'Open PDF' : 'Download PDF'}
+      </Button>
     </div>
   );
 }
@@ -506,7 +773,7 @@ function contextFor(state: LoadState, mode: TearsheetMode): string {
   return ROOM_CONTEXT.strategy;
 }
 
-export function StrategyPage(_props: PanelHostProps): JSX.Element {
+export function StrategyPage({ host }: PanelHostProps): JSX.Element {
   ensureTearsheetStyles();
   const focus = useSyncExternalStore(focusStore.subscribe, focusStore.getSnapshot);
   const [view, setView] = useState<TearsheetView>('overview');
@@ -647,7 +914,19 @@ export function StrategyPage(_props: PanelHostProps): JSX.Element {
             <Trades state={tradesState} />
           )
         ) : (
-          <Overview state={state} />
+          <>
+            <Overview state={state} />
+            {state.phase === 'loaded' && state.result ? (
+              <>
+                <StrategySummary
+                  strategyPath={state.result.strategy_path ?? null}
+                  jobId={runId}
+                  host={host}
+                />
+                <DossierCard strategyPath={state.result.strategy_path ?? null} jobId={runId} />
+              </>
+            ) : null}
+          </>
         )}
       </div>
     </RoomPage>

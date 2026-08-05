@@ -15,6 +15,9 @@ interface BridgeResponse {
 interface ElectronBridge {
   electronAPI?: {
     invoke?: (channel: string, ...args: unknown[]) => Promise<unknown>;
+    /** Host shell bridge — opens an absolute URL in the user's browser
+     *  (`open-external`). Feature-detected: absent in tests and older hosts. */
+    openExternal?: (url: string) => Promise<void>;
   };
 }
 
@@ -332,6 +335,105 @@ export interface TradesBody {
  */
 export async function tearsheetTrades(jobId: number): Promise<TradesBody | null> {
   return getJson<TradesBody>(`/ui/api/backtest/job/${jobId}/trades`);
+}
+
+/**
+ * A strategy's plain-English summary (WS-D / FR-F1), keyed by `strategy_path`.
+ * `is_fallback` marks the docstring stand-in the engine serves until an agent
+ * has authored one; `stale` marks a stored summary whose source run or strategy
+ * file changed since it was written. `summary_text` may be empty when neither
+ * exists.
+ */
+export interface StrategySummaryBody {
+  summary_text: string;
+  source_run_id: number | null;
+  generated_at: string | null;
+  stale: boolean;
+  is_fallback: boolean;
+}
+
+/**
+ * The tearsheet's summary fetch (FR-F1). Mirrors {@link tearsheetResult}: a thin
+ * `getJson` read of `/ui/api/strategy/summary?strategy_path=…` returning the
+ * parsed body (or null on any 404/transport failure) so the Overview drives off
+ * one mockable seam. Null lets the strip show its quiet empty rest rather than
+ * fabricating prose.
+ */
+export async function tearsheetSummary(
+  strategyPath: string
+): Promise<StrategySummaryBody | null> {
+  return getJson<StrategySummaryBody>(
+    `/ui/api/strategy/summary?strategy_path=${encodeURIComponent(strategyPath)}`
+  );
+}
+
+/**
+ * A generated research dossier's persisted record (FR-F2/F3). The engine builds
+ * the PDF into its `reports/` volume and returns this handle; `cached` is true
+ * when the build was already on disk for this run. The panel never reads the
+ * file itself — it opens the engine's download URL (see {@link openReport}).
+ */
+export interface DossierReport {
+  id: string;
+  filename: string;
+  path: string;
+  created_at: string;
+  cached: boolean;
+}
+
+/**
+ * Ask the engine to build (or return the cached) AuraPoint dossier for a
+ * Strategy+Run (FR-F2/F3, E5). Keeps the HTTP status on failure so the card can
+ * tell the honest states apart: a 503 = the engine build lacks the PDF
+ * generator (WeasyPrint), a 400/404 = the run can't be built, status 0 =
+ * unreachable. The engine owns every number in the PDF (INV-1); the panel only
+ * triggers and opens it.
+ */
+export async function buildDossier(
+  strategyPath: string,
+  jobId: number
+): Promise<
+  { ok: true; report: DossierReport } | { ok: false; status: number; error?: string }
+> {
+  const res = await postJson('/ui/api/strategy/dossier', {
+    strategy_path: strategyPath,
+    job_id: jobId,
+  });
+  const body = (res.body ?? {}) as {
+    ok?: boolean;
+    report?: DossierReport;
+    error?: string;
+    detail?: string;
+  };
+  if (res.ok && body.ok && body.report && typeof body.report.id === 'string') {
+    return { ok: true, report: body.report };
+  }
+  const error = body.error ?? (typeof body.detail === 'string' ? body.detail : undefined);
+  return { ok: false, status: res.status, error };
+}
+
+/**
+ * Open a generated report's PDF in the user's browser. No pack surface opened an
+ * engine URL before, so this builds the download URL from the resolved engine
+ * base ({@link engineConfig}) and hands it to the host's shell through the same
+ * `electronAPI` bridge the engine requests ride — feature-detected, so a
+ * renderer without it (tests, older host) is a no-op that reports false.
+ * Returns false when the engine base is unknown or the bridge is absent, so the
+ * card can stay honest about whether the file actually opened.
+ */
+export async function openReport(reportId: string): Promise<boolean> {
+  if (!reportId) return false;
+  const { engineUrl } = await engineConfig();
+  if (!engineUrl) return false;
+  const url = `${engineUrl.replace(/\/+$/, '')}/ui/api/reports/${encodeURIComponent(reportId)}`;
+  const api = (window as unknown as ElectronBridge).electronAPI;
+  if (!api?.openExternal) return false;
+  try {
+    await api.openExternal(url);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Engine reachability + identity probe (`/ui/api/ide/connect-check`). */

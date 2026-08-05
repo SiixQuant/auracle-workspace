@@ -129,6 +129,82 @@ export function connectorTag(connector: Connector): ConnectorTag {
   return { kind: 'muted', label: 'Not configured' };
 }
 
+/* ── setup completeness (WS-H / FR-H2, PRD DF4) ─────────────────────── */
+
+/**
+ * Connector kinds that can serve MARKET DATA. A broker carries data as well as
+ * execution ("your broker = data + trading"), so a live broker satisfies the
+ * data-source requirement too; a pure data vendor obviously does.
+ */
+const DATA_SOURCE_KINDS: ReadonlySet<string> = new Set(['broker', 'data_provider']);
+
+/** Connector kinds that can EXECUTE orders. */
+const VENUE_KINDS: ReadonlySet<string> = new Set(['broker']);
+
+/**
+ * States that mean the operator ENABLED a connector and it is NOT healthy — one
+ * they turned on that is mid-handshake, wobbling, or rejected. `not_configured`
+ * and `disconnected` are deliberately absent: an unconfigured connector is a
+ * choice, not a fault (the platform is keyless by default), so an untouched
+ * optional never holds the connect entry open (DF4). Only these three, reached
+ * exclusively AFTER the operator engages a connector, keep it open.
+ */
+const ENABLED_UNHEALTHY_STATES: ReadonlySet<string> = new Set([
+  'connecting',
+  'degraded',
+  'error',
+]);
+
+/**
+ * The zero-config paper execution venue: a keyless broker usable the moment the
+ * engine is up, so it counts as a live venue without ever reporting `connected`
+ * — this is the "paper counts" clause of DF4.
+ */
+const PAPER_SIMULATOR_ID = 'simulator';
+
+/**
+ * A connector that gives LIVE market data: a real, engine-confirmed connection
+ * to a broker or a data vendor. Keyless yfinance in its default `not_configured`
+ * state is NOT counted — the connect entry's whole job is to get a real data
+ * source wired, so a bare keyless box still reads as "set me up", not "done".
+ */
+function isLiveDataSource(connector: Connector): boolean {
+  return DATA_SOURCE_KINDS.has(connector.kind) && isConnected(connector.status);
+}
+
+/**
+ * A venue the operator can execute against right now: a connected broker, or the
+ * always-available paper simulator (unless it has actually errored). Paper
+ * counts even though it is never `connected`, per DF4.
+ */
+function isLiveVenue(connector: Connector): boolean {
+  if (connector.id === PAPER_SIMULATOR_ID) return connector.status?.state !== 'error';
+  return VENUE_KINDS.has(connector.kind) && isConnected(connector.status);
+}
+
+/**
+ * Whether the operator has a viable, HEALTHY trading setup — the DF4 predicate
+ * behind hiding the single connect entry (FR-H2). True (⇒ hide the entry) only
+ * when there is at least one live data source AND at least one live execution
+ * venue (the paper simulator counts) AND nothing the operator has enabled is
+ * mid-handshake, degraded, or errored.
+ *
+ * PURE: derived entirely from the connector list the registry already polls, so
+ * it re-shows the entry the instant an enabled connector degrades and never
+ * fabricates a reason to hide. Unconfigured optional connectors do NOT keep it
+ * open — only what the operator turned on and is unhealthy does. A fresh box
+ * (everything `not_configured`, keyless sources included) is missing a real data
+ * source, so it reads as incomplete and the entry stays.
+ */
+export function isSetupComplete(connectors: Connector[]): boolean {
+  const hasData = connectors.some(isLiveDataSource);
+  const hasVenue = connectors.some(isLiveVenue);
+  const anyEnabledUnhealthy = connectors.some((connector) =>
+    ENABLED_UNHEALTHY_STATES.has(connector.status?.state ?? '')
+  );
+  return hasData && hasVenue && !anyEnabledUnhealthy;
+}
+
 /** Fill engine-optional fields so list rows render without undefined checks. */
 export function normalizeConnector(raw: Partial<Connector> & { id: string }): Connector {
   return {

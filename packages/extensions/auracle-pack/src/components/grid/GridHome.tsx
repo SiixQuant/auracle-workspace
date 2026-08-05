@@ -35,6 +35,7 @@ import { questionsOf } from '../../engine/boardStandingQueries';
 import { ensurePanelKitStyles, tone } from '../panelkit';
 import { ArtifactCard } from './ArtifactCard';
 import { CredentialPaste } from './CredentialPaste';
+import { GridConnect } from './GridConnect';
 import { GridLedger } from './GridLedger';
 import { GridScope } from './GridScope';
 import { GridSteps } from './GridSteps';
@@ -128,6 +129,9 @@ export function GridHome(): JSX.Element {
 
   const status = statusLine();
   const watches = watchRows();
+  // The connector registry the Grid already polls — the connect entry reads it
+  // rather than opening a poll of its own, and renders nothing once set up.
+  const connectors = engineFeeds.getSnapshot().connections;
   const graph = boardGraphStore.getSnapshot().graph;
   const artifacts = graphArtifacts(graph, backtestStore.getSnapshot(), boardRuns.getSnapshot());
   // Sources the agent stood up that name a vault slot: the only place a key is
@@ -179,6 +183,10 @@ export function GridHome(): JSX.Element {
           ))}
         </div>
       ) : null}
+      {/* The single connect entry: a quiet, orange line inviting the operator to
+          wire their data + broker. It renders nothing once the box is set up
+          (DF4), so a configured install is as quiet as a fresh one is inviting. */}
+      <GridConnect connectors={connectors} />
       {/* The ledger is the one thing the redesign ADDS to the persistent set:
           closed by default, always reachable, the price of letting the agent
           act. It is not empty-state art — it is a deliberate fixture. */}

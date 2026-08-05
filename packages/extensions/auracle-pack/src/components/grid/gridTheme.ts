@@ -11,8 +11,8 @@
  * a MAP rather than a control — a root node, four district ranks, a room grid,
  * and the wires between them. Those are STRUCTURAL marks, and in white they
  * read at the same weight as the health colours that are the one thing on the
- * sheet a person is meant to chase. So the plan's structure takes the IDE's
- * own blue: unmistakably not a status, and used nowhere outside the Grid.
+ * sheet a person is meant to chase. So the plan's structure takes a warm
+ * orange: unmistakably not a status, and used nowhere outside the Grid.
  *
  * THE RULE THAT SURVIVES INTACT: nothing carrying STATE is drawn with this.
  * Health stays on `tone.caution` / `tone.danger` / `tone.text3`, always, on
@@ -20,8 +20,9 @@
  */
 import { tint } from '../panelkit';
 
-/** The IDE's accent (renderer chrome, the launcher's active marks). */
-export const GRID_ACCENT = '#60a5fa';
+/** The Grid's structural accent — a warm orange, deliberately distinct from
+ *  the white pack accent (`tone.accent`) and from every semantic status hue. */
+export const GRID_ACCENT = '#f26430';
 
 /** The accent as a hairline — the root node's ring, a hovered room's border. */
 export const GRID_ACCENT_DIM = tint(GRID_ACCENT, 38);

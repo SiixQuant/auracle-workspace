@@ -132,7 +132,7 @@ const SHEET = `
 .apk-btn:focus-visible, .apk-input:focus-visible, .apk-selectwrap:focus-within, .apk-rowbtn:focus-visible { outline: 2px solid ${tone.accentText}; outline-offset: 1px; }
 .apk-btn-primary { background: ${tone.accent}; color: ${tone.accentInk}; box-shadow: inset 0 1px 0 rgba(255,255,255,0.14); }
 .apk-btn-primary:hover:not(:disabled) { background: ${tone.accentHover}; box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 2px 12px -4px ${tone.accentDim}; }
-.apk-btn-primary:active:not(:disabled) { background: #00379f; box-shadow: none; }
+.apk-btn-primary:active:not(:disabled) { background: ${tone.accentHover}; box-shadow: none; }
 .apk-btn-ghost:hover:not(:disabled), .apk-btn-quiet:hover:not(:disabled) { background: color-mix(in srgb, ${tone.text} 8%, transparent); border-color: color-mix(in srgb, ${tone.text} 28%, transparent); }
 .apk-btn-ghost:active:not(:disabled), .apk-btn-quiet:active:not(:disabled) { background: color-mix(in srgb, ${tone.text} 12%, transparent); }
 .apk-btn-danger:hover:not(:disabled) { background: color-mix(in srgb, ${tone.danger} 14%, transparent); }

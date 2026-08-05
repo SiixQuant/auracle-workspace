@@ -71,14 +71,19 @@ describe('toRows', () => {
     ]);
     expect(rows.find((r) => r.id === 'a')?.cost).toBe('capital');
     expect(rows.find((r) => r.id === 'b')?.cost).toBe('free');
+    // Cost still derives from the RAW code, but `what` reads as a phrase — the
+    // raw `redeploy_deployment: atlas` never reaches the DOM (FR-H3).
+    expect(rows.find((r) => r.id === 'a')?.what).toBe('Redeployed a deployment: Atlas');
+    expect(rows.find((r) => r.id === 'b')?.what).toBe('Restarted the data feed: Ibkr');
   });
 
-  it('states time locale-free, what, and undone', () => {
+  it('states time locale-free, humanized what, and undone', () => {
     const [row] = toRows([
-      entry({ action: 're_arm_schedule', target: 'eod', undoneAt: '2026-07-27T10:00:00Z' }),
+      entry({ action: 'rearm_schedule', target: 'eod', undoneAt: '2026-07-27T10:00:00Z' }),
     ]);
     expect(row.at).toBe('2026-07-27 09:12');
-    expect(row.what).toBe('re_arm_schedule: eod');
+    expect(row.what).toBe('Re-armed a schedule: Eod');
+    expect(row.what).not.toContain('rearm_schedule');
     expect(row.undone).toBe(true);
   });
 });

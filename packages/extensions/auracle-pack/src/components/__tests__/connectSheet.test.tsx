@@ -33,21 +33,32 @@ function conn(
   return normalizeConnector({ id, kind, status: { state, detail: null }, ...over });
 }
 
-/** A fresh box: keyless sources ready, everything real still unconfigured. */
+/** A fresh box: the keyless yfinance + paper defaults are live out of the box
+ *  (houston reports them `connected`), everything real still unconfigured. */
 const FRESH: Connector[] = [
-  conn('yfinance', 'data_provider', 'not_configured', { display_label: 'yfinance' }),
-  conn('simulator', 'broker', 'not_configured', { display_label: 'Paper Simulator' }),
+  conn('yfinance', 'data_provider', 'connected', { display_label: 'yfinance' }),
+  conn('simulator', 'broker', 'connected', { display_label: 'Paper Simulator' }),
   conn('ibkr', 'broker', 'not_configured', { test_supported: true }),
   conn('alpaca', 'broker', 'not_configured', { test_supported: true, display_label: 'Alpaca' }),
   conn('polygon', 'data_provider', 'not_configured', { test_supported: true, display_label: 'Polygon' }),
   conn('eodhd', 'data_provider', 'not_configured', { test_supported: true, display_label: 'EODHD' }),
 ];
 
-/** A viable, healthy box: a connected broker (data + venue) + paper. */
+/** A viable, healthy box: a connected real broker (data + venue) over the free
+ *  defaults, nothing enabled unhealthy. */
 const COMPLETE: Connector[] = [
-  conn('yfinance', 'data_provider', 'not_configured'),
-  conn('simulator', 'broker', 'not_configured'),
+  conn('yfinance', 'data_provider', 'connected'),
+  conn('simulator', 'broker', 'connected'),
   conn('ibkr', 'broker', 'connected', { test_supported: true }),
+];
+
+/** A partly-wired box: a real broker is live, but a keyed vendor the operator
+ *  enabled is degraded — so the entry stays, showing only the REAL live count. */
+const PARTIAL: Connector[] = [
+  conn('yfinance', 'data_provider', 'connected'),
+  conn('simulator', 'broker', 'connected'),
+  conn('ibkr', 'broker', 'connected', { test_supported: true }),
+  conn('polygon', 'data_provider', 'degraded', { test_supported: true }),
 ];
 
 /** The engine's detail payload for polygon — fields the list omits. */
@@ -76,16 +87,28 @@ afterEach(() => {
 });
 
 describe('the connect entry', () => {
-  it('shows on a fresh box with a live count, and opens the sheet', () => {
+  it('shows on a fresh box (only free defaults live) and opens the sheet', () => {
     render(<GridConnect connectors={FRESH} />);
     const entry = screen.getByTestId('connect-entry');
     expect(entry).toBeTruthy();
-    // Two keyless sources read live on a fresh box.
-    expect(screen.getByTestId('connect-entry-status').textContent).toContain('2');
+    // The keyless yfinance + paper defaults don't count as a real connection, so
+    // a fresh box invites wiring one rather than claiming an inflated live count.
+    expect(screen.getByTestId('connect-entry-status').textContent).toContain(
+      'Connect your market data'
+    );
 
     expect(screen.queryByTestId('connect-sheet')).toBeNull();
     fireEvent.click(screen.getByTestId('connect-open'));
     expect(screen.getByTestId('connect-sheet')).toBeTruthy();
+  });
+
+  it('counts only REAL live connections, not the keyless defaults', () => {
+    // ibkr is a live real connection; polygon (enabled) is degraded so the entry
+    // stays; the free yfinance + simulator defaults are excluded from the count.
+    render(<GridConnect connectors={PARTIAL} />);
+    const status = screen.getByTestId('connect-entry-status').textContent ?? '';
+    expect(status).toContain('1');
+    expect(status).toContain('connection');
   });
 
   it('renders nothing at all once the box is set up (DF4)', () => {

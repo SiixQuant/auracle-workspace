@@ -33,6 +33,7 @@ import {
   connectorTag,
   isConnected,
   isSetupComplete,
+  isZeroConfigDefault,
   normalizeConnector,
   KEYLESS_IDS,
   type Connector,
@@ -449,11 +450,14 @@ function ConnectSheet({
   );
 }
 
-/** The count of connectors that read live right now — connected, or a keyless
- *  source that is ready. Shares the one tag rule, so "live" here means exactly
- *  what a green status means everywhere else. */
+/** The count of REAL connections that read live right now — connected AND not a
+ *  zero-config default. The free yfinance + paper-simulator defaults are always
+ *  live but the operator never wired them, so counting them would inflate this
+ *  misleadingly; "N live" here means N connections the operator established. */
 function liveCount(connectors: Connector[]): number {
-  return connectors.filter((connector) => connectorTag(connector).kind === 'ok').length;
+  return connectors.filter(
+    (connector) => connectorTag(connector).kind === 'ok' && !isZeroConfigDefault(connector)
+  ).length;
 }
 
 /**

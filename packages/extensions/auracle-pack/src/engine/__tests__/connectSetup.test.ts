@@ -1,92 +1,108 @@
 /**
- * The DF4 "fully connected ⇒ hide" predicate (WS-H / FR-H2, AC-7).
+ * The DF4 "connected ⇒ hide" predicate (WS-H / FR-H2, AC-7).
  *
- * The connect entry disappears only on a viable, HEALTHY setup: at least one
- * live data source AND one live execution venue (the paper simulator counts)
- * AND nothing the operator enabled is degraded/error/connecting. These cases
- * pin every branch of that rule, from a fresh keyless box (shows) to a broker
- * that later wobbles (re-shows).
+ * The single connect entry disappears only once the operator has established a
+ * REAL connection — a non-simulator broker, or a KEYED data vendor — AND nothing
+ * they enabled is degraded/error/connecting. The zero-config free defaults never
+ * count as "set up": houston reports keyless yfinance `connected` (it needs no
+ * key) and forces the paper simulator `connected` too, so a bare box is live for
+ * backtest+paper out of the box — the entry's whole job is to get something REAL
+ * wired over the top of those, so a fresh box always SHOWS it.
  */
 import { describe, expect, it } from 'vitest';
-import { isSetupComplete, normalizeConnector, type Connector } from '../model';
+import {
+  isSetupComplete,
+  isZeroConfigDefault,
+  normalizeConnector,
+  type Connector,
+  type FieldMeta,
+} from '../model';
 
-/** A connector shaped like the registry list payload. */
-function conn(
-  id: string,
-  kind: string,
-  state: string,
-  over: Partial<Connector> = {}
-): Connector {
+/** A minimal key field, so a data provider reads as KEYED (fields non-empty)
+ *  rather than the keyless zero-config default that yfinance is. */
+function keyField(name = 'api_key'): FieldMeta {
+  return { name, label: name, kind: 'password', required: true, has_value: false, preview: '', options: [] };
+}
+
+function conn(id: string, kind: string, state: string, over: Partial<Connector> = {}): Connector {
   return normalizeConnector({ id, kind, status: { state, detail: null }, ...over });
 }
 
-// The six connectors a real registry lists, in their fresh (untouched) state.
-const YFINANCE = (state = 'not_configured') => conn('yfinance', 'data_provider', state);
-const SIMULATOR = (state = 'not_configured') => conn('simulator', 'broker', state);
-const IBKR = (state = 'not_configured') => conn('ibkr', 'broker', state, { test_supported: true });
-const ALPACA = (state = 'not_configured') => conn('alpaca', 'broker', state, { test_supported: true });
-const POLYGON = (state = 'not_configured') => conn('polygon', 'data_provider', state, { test_supported: true });
-const EODHD = (state = 'not_configured') => conn('eodhd', 'data_provider', state, { test_supported: true });
+// Realistic registry states. yfinance is a keyless data provider (no fields) that
+// houston reports `connected` out of the box; the paper simulator is a
+// credential-free broker also `connected`. Keyed vendors carry a key field;
+// brokers (never a zero-config default unless id==='simulator') carry creds.
+const YFINANCE = (state = 'connected') => conn('yfinance', 'data_provider', state); // fields default []
+const SIMULATOR = (state = 'connected') => conn('simulator', 'broker', state);
+const IBKR = (state = 'not_configured') =>
+  conn('ibkr', 'broker', state, { fields: [keyField('username')], test_supported: true });
+const ALPACA = (state = 'not_configured') =>
+  conn('alpaca', 'broker', state, { fields: [keyField('key_id')], test_supported: true });
+const POLYGON = (state = 'not_configured') =>
+  conn('polygon', 'data_provider', state, { fields: [keyField()], test_supported: true });
+const EODHD = (state = 'not_configured') =>
+  conn('eodhd', 'data_provider', state, { fields: [keyField()], test_supported: true });
+
+describe('isZeroConfigDefault — the free, out-of-the-box sources', () => {
+  it('treats the paper simulator as a zero-config default', () => {
+    expect(isZeroConfigDefault(SIMULATOR('connected'))).toBe(true);
+  });
+  it('treats keyless yfinance (data_provider, no fields) as a zero-config default', () => {
+    expect(isZeroConfigDefault(YFINANCE('connected'))).toBe(true);
+  });
+  it('does NOT treat a keyed data vendor as a default', () => {
+    expect(isZeroConfigDefault(POLYGON('connected'))).toBe(false);
+  });
+  it('does NOT treat a real broker as a default', () => {
+    expect(isZeroConfigDefault(IBKR('connected'))).toBe(false);
+  });
+});
 
 describe('isSetupComplete — the DF4 hide predicate', () => {
-  it('hides on a viable, healthy setup (a connected broker gives data AND venue)', () => {
-    // IBKR connected = a live data source and a live venue; the paper simulator
-    // is a venue too. The unconfigured optionals (yfinance, polygon, eodhd) must
-    // NOT keep it open.
+  it('SHOWS on a fresh box (only the free yfinance + simulator defaults are live)', () => {
+    const connectors = [YFINANCE(), SIMULATOR(), IBKR(), ALPACA(), POLYGON(), EODHD()];
+    expect(isSetupComplete(connectors)).toBe(false);
+  });
+
+  it('HIDES once a real broker is connected and healthy', () => {
     const connectors = [YFINANCE(), SIMULATOR(), IBKR('connected'), POLYGON(), EODHD()];
     expect(isSetupComplete(connectors)).toBe(true);
   });
 
-  it('hides on a data vendor + paper (no live broker needed — paper counts)', () => {
+  it('HIDES once a keyed data vendor is connected and healthy', () => {
     const connectors = [YFINANCE(), SIMULATOR(), POLYGON('connected')];
     expect(isSetupComplete(connectors)).toBe(true);
   });
 
-  it('shows when missing a data source (only the paper venue is live)', () => {
-    // A box with the paper simulator (a live venue) but no connected data source
-    // — keyless yfinance in its default state does not count.
-    const connectors = [YFINANCE(), SIMULATOR(), POLYGON(), EODHD()];
+  it('keyless yfinance connected does NOT count as a real connection', () => {
+    // Both free defaults live, nothing real wired — still incomplete.
+    const connectors = [YFINANCE('connected'), SIMULATOR('connected'), IBKR(), POLYGON()];
     expect(isSetupComplete(connectors)).toBe(false);
   });
 
-  it('shows when missing a venue (a live data source but nothing can execute)', () => {
-    // A connected data vendor, but no broker and no paper simulator to route to.
-    const connectors = [POLYGON('connected'), EODHD()];
-    expect(isSetupComplete(connectors)).toBe(false);
-  });
-
-  it('re-shows when an enabled connector degrades', () => {
-    // IBKR connected would otherwise hide it — but Alpaca, which the operator
-    // enabled, is degraded, so the entry comes back.
+  it('re-shows when an enabled connector degrades, even with a real connection', () => {
     const connectors = [SIMULATOR(), IBKR('connected'), ALPACA('degraded')];
     expect(isSetupComplete(connectors)).toBe(false);
   });
 
-  it('re-shows on any enabled-unhealthy state (error, connecting), not just degraded', () => {
+  it('re-shows on any enabled-unhealthy state (error, connecting, degraded)', () => {
     for (const bad of ['error', 'connecting', 'degraded']) {
       const connectors = [SIMULATOR(), IBKR('connected'), POLYGON(bad)];
       expect(isSetupComplete(connectors)).toBe(false);
     }
   });
 
-  it('shows on an all-unconfigured fresh box', () => {
-    const connectors = [YFINANCE(), SIMULATOR(), IBKR(), ALPACA(), POLYGON(), EODHD()];
-    expect(isSetupComplete(connectors)).toBe(false);
-  });
-
-  it('does not treat an unconfigured optional as unhealthy (it stays hidden)', () => {
-    // Same viable IBKR setup, plus a pile of untouched optionals — none of which
-    // is `connecting`/`degraded`/`error`, so none keeps the entry open.
+  it('does not treat an unconfigured optional as unhealthy', () => {
     const connectors = [SIMULATOR(), IBKR('connected'), ALPACA(), POLYGON(), EODHD()];
     expect(isSetupComplete(connectors)).toBe(true);
   });
 
-  it('shows on an empty registry', () => {
-    expect(isSetupComplete([])).toBe(false);
+  it('SHOWS on a defaults-only / all-unconfigured registry', () => {
+    const connectors = [YFINANCE(), SIMULATOR(), IBKR(), ALPACA(), POLYGON(), EODHD()];
+    expect(isSetupComplete(connectors)).toBe(false);
   });
 
-  it('shows when the only live venue (paper) has errored, even with a data source', () => {
-    const connectors = [POLYGON('connected'), SIMULATOR('error')];
-    expect(isSetupComplete(connectors)).toBe(false);
+  it('SHOWS on an empty registry', () => {
+    expect(isSetupComplete([])).toBe(false);
   });
 });

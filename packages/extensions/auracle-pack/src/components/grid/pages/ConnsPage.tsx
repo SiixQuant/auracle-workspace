@@ -20,6 +20,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import { getJsonDetailed, onConnectGeneration } from '../../../engine/client';
+import { prettifySlug } from '../../../engine/humanize';
 import {
   connectorTag,
   isConnected,
@@ -106,7 +107,7 @@ function ConnectorRow({ connector }: { connector: Connector }): JSX.Element {
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 200 }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: tone.text }}>
-          {connector.display_label || connector.id}
+          {connector.display_label || prettifySlug(connector.id) || connector.id}
         </span>
         {connector.blurb ? (
           <span style={{ fontSize: 11.5, color: tone.text3 }}>{connector.blurb}</span>
@@ -116,7 +117,7 @@ function ConnectorRow({ connector }: { connector: Connector }): JSX.Element {
         data-testid={`conns-kind-${connector.id}`}
         style={{ fontSize: 11.5, color: tone.text3, whiteSpace: 'nowrap' }}
       >
-        {KIND_LABEL[connector.kind] ?? connector.kind ?? ''}
+        {KIND_LABEL[connector.kind] ?? prettifySlug(connector.kind) ?? ''}
       </span>
       {connector.gated ? <Pill kind="caution">Upgrade</Pill> : null}
       <span data-testid={`conns-status-${connector.id}`}>

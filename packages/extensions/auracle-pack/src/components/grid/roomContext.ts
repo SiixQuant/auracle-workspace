@@ -21,6 +21,8 @@ export const ROOM_CONTEXT: Record<RoomId, string> = {
   qc: 'Your linked QuantConnect account.',
   strategies:
     'Every strategy the engine discovered in your workspace, and every file it had to leave out with the reason why.',
+  strategy:
+    "The focused strategy's performance tearsheet — its return curve against a benchmark, the drawdown beneath it, and the risk and return that summarize the run.",
   backtest:
     'Run a strategy from its file and its curves, headline metrics and overfit check land here.',
   validation:

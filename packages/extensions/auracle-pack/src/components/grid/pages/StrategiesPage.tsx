@@ -30,6 +30,7 @@ import {
 } from '../../../engine/backtest';
 import { getJsonDetailed } from '../../../engine/client';
 import { focusStore } from '../../../engine/focusStore';
+import { prettifyPath } from '../../../engine/humanize';
 import { classifyLoadFailure, type LoadFailure } from '../../../engine/research';
 import { strategySourceFromDotted } from '../../../engine/spineNav';
 import {
@@ -241,8 +242,12 @@ export function StrategiesPage({ host }: PanelHostProps): JSX.Element {
                     data-testid={`strategy-excluded-${row.path}`}
                     style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 6px' }}
                   >
-                    <span style={{ fontSize: 12.5, color: tone.text2 }}>{row.path}</span>
-                    <span style={{ fontSize: 11.5, color: tone.caution }}>Engine: {row.reason}</span>
+                    <span style={{ fontSize: 12.5, color: tone.text2 }} title={row.path}>
+                      {prettifyPath(row.path) ?? row.path}
+                    </span>
+                    <span style={{ fontSize: 11.5, color: tone.caution }}>
+                      Engine skipped it: {row.reason}
+                    </span>
                   </div>
                 ))}
               </>

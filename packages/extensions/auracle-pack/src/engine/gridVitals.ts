@@ -358,6 +358,10 @@ export function deriveRooms(sources: VitalSources): GridVitals {
     findings: findingsVital(summary?.research),
     qc: qcVital(sources.qc),
     strategies: strategiesVital(sources.strategies),
+    // The tearsheet is a viewer of whatever run is focused — it has no
+    // independent health source of its own, so it reads quiet (nominal, no fact)
+    // on the plan rather than borrowing another room's state.
+    strategy: QUIET,
     backtest: backtestVital(sources.run),
     validation: validationVital(sources.run.validation),
     deploys: deploysVital(summary?.deployments, sources.errored),

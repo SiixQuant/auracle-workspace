@@ -15,6 +15,9 @@ interface BridgeResponse {
 interface ElectronBridge {
   electronAPI?: {
     invoke?: (channel: string, ...args: unknown[]) => Promise<unknown>;
+    /** Host shell bridge — opens an absolute URL in the user's browser
+     *  (`open-external`). Feature-detected: absent in tests and older hosts. */
+    openExternal?: (url: string) => Promise<void>;
   };
 }
 
@@ -131,6 +134,19 @@ export async function backtestJobStatus(
   return { ok: false, status: res.status };
 }
 
+/**
+ * A cumulative-return series aligned to `chart.labels` — the benchmark overlay
+ * the tearsheet draws behind the strategy line. `points` are in the same PERCENT
+ * units the engine hands `chart.points` (e.g. 173.0 means +173%), not fractions.
+ * Null on a run the engine computed no benchmark for.
+ */
+export interface BenchmarkSeries {
+  labels: string[];
+  points: number[];
+  /** The benchmark's ticker (e.g. "SPY"), when the engine names it. */
+  symbol?: string;
+}
+
 /** A completed backtest's chartable result (equity curve + headline stats). */
 export interface BacktestResultBody {
   status: string;
@@ -143,6 +159,9 @@ export interface BacktestResultBody {
   stats?: Record<string, number | null>;
   chart?: { labels: string[]; points: number[] };
   drawdown?: { labels: string[]; points: number[] };
+  /** The benchmark cumulative-return overlay (WS-A / FR-A1), or null when the
+   *  engine computed none. Additive — an older engine omits the key entirely. */
+  benchmark?: BenchmarkSeries | null;
   trades?: number;
   /** Where the run came from when it is not a local backtest — a persisted
    *  external run declares its origin so the viewer can label it. Read both
@@ -247,6 +266,174 @@ export async function backtestJobFactors(
   );
   if (res.ok) return { ok: true, body: res.body };
   return { ok: false, status: res.status, body: res.body };
+}
+
+/**
+ * The tearsheet's result fetch (WS-E). A thin `getJson` read of the same
+ * `/result` route {@link backtestJobResult} uses, but returning the parsed body
+ * (or null) directly so the tearsheet room can drive off one mockable seam —
+ * benchmark overlay and the QuantStats-extra stats ride along in the additive
+ * keys. Null on any 404/transport failure: the room then shows its honest
+ * "no chartable run" state rather than a fabricated curve.
+ */
+export async function tearsheetResult(jobId: number): Promise<BacktestResultBody | null> {
+  return getJson<BacktestResultBody>(`/ui/api/backtest/job/${jobId}/result`);
+}
+
+/**
+ * The tearsheet's factor fetch (FR-A3) — the alpha row's only source. Read
+ * through `getJson` (not the status-keeping {@link backtestJobFactors}) so the
+ * whole tearsheet fetches through one seam; a failed factor read simply leaves
+ * Alpha as an em dash rather than blocking the sheet.
+ */
+export async function tearsheetFactors(jobId: number): Promise<FactorBatteryBody | null> {
+  return getJson<FactorBatteryBody>(`/ui/api/backtest/job/${jobId}/factors`);
+}
+
+/**
+ * A structured, logged reason a position was entered (WS-B / FR-B1). `rule` is
+ * the engine's rule slug (e.g. "ma_cross_20_50"); `values` are the named facts
+ * it recorded at the entry, each a number or a boolean. The panel NEVER invents
+ * these — a trade that logged none renders facts-only, no thesis sentence
+ * (INV-2). The panel only reads them; it derives no signal of its own.
+ */
+export interface SignalFact {
+  rule: string;
+  values: Record<string, number | boolean>;
+}
+
+/**
+ * One position episode within a run (WS-B / FR-B3, FR-B4). `side` is long/short
+ * from the position's weight sign. `contribution_pct` is the position's
+ * contribution to the PORTFOLIO's return — NOT a standalone trade P&L or a
+ * per-trade return (recon Q3); the Trades view labels it "Contribution" and
+ * shows no dollar figure. `signals` is the ordered SignalFact set, possibly
+ * empty.
+ */
+export interface TradeRecord {
+  symbol: string;
+  side: 'long' | 'short';
+  entry_date: string;
+  exit_date: string;
+  hold_days: number;
+  contribution_pct: number;
+  signals: SignalFact[];
+}
+
+/** The per-trade list payload from `/…/job/{id}/trades` (WS-B / FR-B4). */
+export interface TradesBody {
+  status: string;
+  trades: TradeRecord[];
+}
+
+/**
+ * The tearsheet's per-trade fetch (WS-G / FR-B4). Mirrors {@link tearsheetResult}:
+ * a thin `getJson` read of `/…/job/{id}/trades` returning the parsed body (or
+ * null on any 404/transport failure) so the Trades view drives off one mockable
+ * seam. Null lets the view show its honest "trades could not be loaded" rest
+ * rather than a fabricated record.
+ */
+export async function tearsheetTrades(jobId: number): Promise<TradesBody | null> {
+  return getJson<TradesBody>(`/ui/api/backtest/job/${jobId}/trades`);
+}
+
+/**
+ * A strategy's plain-English summary (WS-D / FR-F1), keyed by `strategy_path`.
+ * `is_fallback` marks the docstring stand-in the engine serves until an agent
+ * has authored one; `stale` marks a stored summary whose source run or strategy
+ * file changed since it was written. `summary_text` may be empty when neither
+ * exists.
+ */
+export interface StrategySummaryBody {
+  summary_text: string;
+  source_run_id: number | null;
+  generated_at: string | null;
+  stale: boolean;
+  is_fallback: boolean;
+}
+
+/**
+ * The tearsheet's summary fetch (FR-F1). Mirrors {@link tearsheetResult}: a thin
+ * `getJson` read of `/ui/api/strategy/summary?strategy_path=…` returning the
+ * parsed body (or null on any 404/transport failure) so the Overview drives off
+ * one mockable seam. Null lets the strip show its quiet empty rest rather than
+ * fabricating prose.
+ */
+export async function tearsheetSummary(
+  strategyPath: string
+): Promise<StrategySummaryBody | null> {
+  return getJson<StrategySummaryBody>(
+    `/ui/api/strategy/summary?strategy_path=${encodeURIComponent(strategyPath)}`
+  );
+}
+
+/**
+ * A generated research dossier's persisted record (FR-F2/F3). The engine builds
+ * the PDF into its `reports/` volume and returns this handle; `cached` is true
+ * when the build was already on disk for this run. The panel never reads the
+ * file itself — it opens the engine's download URL (see {@link openReport}).
+ */
+export interface DossierReport {
+  id: string;
+  filename: string;
+  path: string;
+  created_at: string;
+  cached: boolean;
+}
+
+/**
+ * Ask the engine to build (or return the cached) AuraPoint dossier for a
+ * Strategy+Run (FR-F2/F3, E5). Keeps the HTTP status on failure so the card can
+ * tell the honest states apart: a 503 = the engine build lacks the PDF
+ * generator (WeasyPrint), a 400/404 = the run can't be built, status 0 =
+ * unreachable. The engine owns every number in the PDF (INV-1); the panel only
+ * triggers and opens it.
+ */
+export async function buildDossier(
+  strategyPath: string,
+  jobId: number
+): Promise<
+  { ok: true; report: DossierReport } | { ok: false; status: number; error?: string }
+> {
+  const res = await postJson('/ui/api/strategy/dossier', {
+    strategy_path: strategyPath,
+    job_id: jobId,
+  });
+  const body = (res.body ?? {}) as {
+    ok?: boolean;
+    report?: DossierReport;
+    error?: string;
+    detail?: string;
+  };
+  if (res.ok && body.ok && body.report && typeof body.report.id === 'string') {
+    return { ok: true, report: body.report };
+  }
+  const error = body.error ?? (typeof body.detail === 'string' ? body.detail : undefined);
+  return { ok: false, status: res.status, error };
+}
+
+/**
+ * Open a generated report's PDF in the user's browser. No pack surface opened an
+ * engine URL before, so this builds the download URL from the resolved engine
+ * base ({@link engineConfig}) and hands it to the host's shell through the same
+ * `electronAPI` bridge the engine requests ride — feature-detected, so a
+ * renderer without it (tests, older host) is a no-op that reports false.
+ * Returns false when the engine base is unknown or the bridge is absent, so the
+ * card can stay honest about whether the file actually opened.
+ */
+export async function openReport(reportId: string): Promise<boolean> {
+  if (!reportId) return false;
+  const { engineUrl } = await engineConfig();
+  if (!engineUrl) return false;
+  const url = `${engineUrl.replace(/\/+$/, '')}/ui/api/reports/${encodeURIComponent(reportId)}`;
+  const api = (window as unknown as ElectronBridge).electronAPI;
+  if (!api?.openExternal) return false;
+  try {
+    await api.openExternal(url);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Engine reachability + identity probe (`/ui/api/ide/connect-check`). */

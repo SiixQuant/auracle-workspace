@@ -21,6 +21,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 import { engineFeeds } from '../../engine/gridVitals';
+import { humanizeAction, prettifySlug } from '../../engine/humanize';
 import { readJournal, type OpsEntry } from '../../engine/opsJournal';
 import { ensurePanelKitStyles, tone } from '../panelkit';
 
@@ -60,7 +61,11 @@ export function toRows(entries: OpsEntry[]): LedgerRow[] {
   return entries.map((entry) => ({
     id: entry.id,
     at: stamp(entry.at),
-    what: [entry.action, entry.target].filter(Boolean).join(': ') || 'an action',
+    // Humanized at the leak: the raw action code becomes a past-tense verb and
+    // the raw target a readable name (FR-H3). `costOf` still reads the RAW
+    // action, so the capital-hint match keeps working on the engine's codes.
+    what: [humanizeAction(entry.action), prettifySlug(entry.target)].filter(Boolean).join(': ') ||
+      'an action',
     actor: entry.actor ?? 'unknown',
     cost: costOf(entry.action),
     undone: entry.undoneAt !== null,

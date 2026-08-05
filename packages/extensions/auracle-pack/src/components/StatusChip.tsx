@@ -5,6 +5,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { connectCheckDetailed, engineConfig, onConnectGeneration } from '../engine/client';
+import { brokerLabel } from '../engine/humanize';
 import { ensurePanelKitStyles, tint, tone } from './panelkit';
 import { classifyChipState, type ChipState } from './statusChipState';
 
@@ -21,7 +22,7 @@ function chipText(state: ChipState): string {
     case 'unreachable':
       return 'engine: unreachable';
     case 'connected': {
-      const broker = state.check.active_broker || 'none';
+      const broker = brokerLabel(state.check.active_broker);
       const live = state.check.live_allowed ? 'live ok' : 'paper only';
       return `engine: on · broker: ${broker} · ${live}`;
     }

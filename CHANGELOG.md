@@ -20,6 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [2.2.0] - 2026-08-05
+
+### Added
+- Open any strategy to a full performance tearsheet — an equity-and-drawdown chart, an institutional risk/return table, a plain-English summary of what the strategy does, and a Trades view that explains why each position was entered. Generate a branded research dossier (PDF) for any strategy, with every number computed by your engine. Needs the matching engine update on your install.
+
+### Changed
+- One cheapest-first Connect sheet to wire your market data and broker, plus clearer plain-English labels across the panel; the Connect prompt disappears once you're set up.
+
 ## [2.1.0] - 2026-08-03
 
 ### Changed

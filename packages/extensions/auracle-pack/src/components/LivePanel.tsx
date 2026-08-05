@@ -11,6 +11,7 @@ import { authState, connectCheck, getJson, onConnectGeneration, postJson } from 
 import { Connector, isConnected, normalizeConnector } from '../engine/model';
 import { deployStore } from '../engine/deployStore';
 import { focusStore } from '../engine/focusStore';
+import { prettifyPath } from '../engine/humanize';
 import { strategySourceFromDotted } from '../engine/spineNav';
 import {
   blockedReasonText,
@@ -101,6 +102,13 @@ function stateColor(state: string): string {
     default:
       return NEUTRAL;
   }
+}
+
+/** A deployment's human name for display: its given name, else the strategy
+ *  module prettified to a readable stem instead of the raw dotted path (FR-H3).
+ *  The raw `strategy_path` is the last-ditch fallback so nothing renders blank. */
+function deploymentLabel(d: Deployment): string {
+  return d.name || prettifyPath(d.strategy_path) || d.strategy_path || 'Untitled deployment';
 }
 
 const styles = {
@@ -1192,7 +1200,7 @@ export function LiveAlgorithmsPanel({
   }, [phase, model.rows, model.selected]);
   const investigate = async (d: Deployment) => {
     setInvestigateNote(
-      await handOffToAgent(host, deploymentPrompt(d), `Investigate: ${d.name || d.strategy_path}`)
+      await handOffToAgent(host, deploymentPrompt(d), `Investigate: ${deploymentLabel(d)}`)
     );
   };
 
@@ -1420,7 +1428,7 @@ export function LiveAlgorithmsPanel({
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 13, fontWeight: 600, color: tone.text }}>
-                  {selectedRow.name || selectedRow.strategy_path}
+                  {deploymentLabel(selectedRow)}
                 </span>
                 <span style={{ fontSize: 12, color: tone.text3 }}>Order ledger</span>
                 <ToolbarSpring />
@@ -1497,7 +1505,7 @@ function FragmentRow({
             <span aria-hidden style={{ color: tone.text3, fontSize: 10 }}>
               {expanded ? '▾' : '▸'}
             </span>
-            {row.name || row.strategy_path}
+            {deploymentLabel(row)}
           </span>
           <span style={{ fontSize: 11.5, color: tone.text3 }}>
             {row.broker || '—'} · {row.mode}

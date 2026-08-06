@@ -62,7 +62,7 @@ describe('an unanswered source says nothing', () => {
   it('every fetched room carries no note at all', () => {
     // The two store-fed rooms (backtest, validation) always have a session
     // state to state; every fetched room stays blank until the engine answers.
-    for (const id of ['findings', 'qc', 'strategies', 'deploys', 'blotter', 'incidents', 'schedules', 'runway', 'conns'] as const) {
+    for (const id of ['findings', 'qc', 'strategies', 'deploys', 'blotter', 'incidents', 'schedules', 'runway'] as const) {
       expect(rooms[id].note).toBeNull();
     }
   });
@@ -133,38 +133,6 @@ describe('an answered source states what it found', () => {
       '1 finding · top 71'
     );
     expect(deriveRooms(sources(answered({ research: { findings: 1 } }))).findings.note).toBe('1 finding');
-  });
-
-  it('reads a connector in error as a fault and a wobbling one as degraded', () => {
-    // Connections keeps the registry read the room itself uses: the
-    // consolidated call counts brokers only, and the card must not disagree
-    // with the room it opens.
-    const conn = (id: string, state: string, kind = 'broker') => ({
-      id,
-      display_label: id,
-      blurb: '',
-      kind,
-      status: { state },
-      fields: [],
-      asset_kinds: [],
-      test_supported: false,
-      gated: false,
-      gated_reason: '',
-    });
-    expect(deriveRooms(sources({ connections: [conn('a', 'error'), conn('b', 'connected')] })).conns).toMatchObject({
-      health: 'fault',
-      note: '1 of 2 in error',
-    });
-    expect(deriveRooms(sources({ connections: [conn('a', 'degraded')] })).conns.health).toBe('degraded');
-    // Keyless by default: an unconfigured connector is a choice, not a problem.
-    expect(deriveRooms(sources({ connections: [conn('a', 'not_configured')] })).conns).toMatchObject({
-      health: 'nominal',
-      note: '0 of 1 connected',
-    });
-    // A data provider counts too — the room lists it, so the card must.
-    expect(
-      deriveRooms(sources({ connections: [conn('yf', 'error', 'data_provider')] })).conns.health
-    ).toBe('fault');
   });
 
   it('counts the schedules and the stages the engine reported', () => {

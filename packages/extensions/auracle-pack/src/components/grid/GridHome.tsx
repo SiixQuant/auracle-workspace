@@ -35,10 +35,14 @@ import { graphArtifacts } from '../../engine/boardArtifacts';
 import { questionsOf } from '../../engine/boardStandingQueries';
 import { focusStore } from '../../engine/focusStore';
 import { tearsheetRuns, type RecentRun } from '../../engine/client';
+import {
+  pendingConnectionStore,
+  syncDataSourceAdvisory,
+} from '../../engine/connectionTools';
 import { CenterState, ensurePanelKitStyles, tone } from '../panelkit';
 import { ArtifactCard } from './ArtifactCard';
+import { ConnectionSecretField } from './ConnectionSecretField';
 import { CredentialPaste } from './CredentialPaste';
-import { GridConnect } from './GridConnect';
 import { GridLedger } from './GridLedger';
 import { GridScope } from './GridScope';
 import { GridSteps } from './GridSteps';
@@ -225,12 +229,28 @@ export function GridHome({ host }: { host: PanelHost }): JSX.Element {
   // a strategy card appears the moment its backtest lands.
   useSyncExternalStore(backtestStore.subscribe, backtestStore.getSnapshot, backtestStore.getSnapshot);
   useSyncExternalStore(boardRuns.subscribe, boardRuns.getSnapshot, boardRuns.getSnapshot);
+  // A keyed connect the agent started, waiting on its secret. Set by
+  // `connect_source`, cleared once the paste field posts — so the write-only
+  // field below appears only while a connect is actually pending.
+  const pendingConnection = useSyncExternalStore(
+    pendingConnectionStore.subscribe,
+    pendingConnectionStore.getSnapshot,
+    pendingConnectionStore.getSnapshot
+  );
 
   const status = statusLine();
   const watches = watchRows();
-  // The connector registry the Grid already polls — the connect entry reads it
-  // rather than opening a poll of its own, and renders nothing once set up.
+  // The connector registry the Grid already polls — the data-source advisory
+  // reads it rather than opening a poll of its own.
   const connectors = engineFeeds.getSnapshot().connections;
+  // Proactive nudge for the agent: while only the free floor is connected, push
+  // one ambient note so a backtest prompts the operator to wire a real source;
+  // clear it when one connects. Idempotent and host-detected inside the helper,
+  // and driven off the same poll (which moves on a connect-generation bump), so
+  // it costs nothing extra and fires only on the transition.
+  useEffect(() => {
+    syncDataSourceAdvisory(host?.ai, connectors);
+  }, [host, connectors]);
   const graph = boardGraphStore.getSnapshot().graph;
   const artifacts = graphArtifacts(graph, backtestStore.getSnapshot(), boardRuns.getSnapshot());
   // Sources the agent stood up that name a vault slot: the only place a key is
@@ -282,12 +302,19 @@ export function GridHome({ host }: { host: PanelHost }): JSX.Element {
           ))}
         </div>
       ) : null}
-      {/* The single connect entry: a quiet, orange line inviting the operator to
-          wire their data + broker. It renders nothing once the box is set up
-          (DF4), so a configured install is as quiet as a fresh one is inviting. */}
-      <GridConnect connectors={connectors} />
-      {/* The tearsheet hero — the default thing seen. Sits BELOW the connect
-          entry (kept on top, self-hiding once set up) and ABOVE the ledger; a
+      {/* A keyed connect the agent started, still waiting on its secret: the one
+          place a key is asked for on the connections lane. It appears only while
+          the pending signal is set and vanishes the instant the key is stored. */}
+      {pendingConnection ? (
+        <div className="ahome__artifacts" data-testid="pending-connection">
+          <ConnectionSecretField
+            id={pendingConnection.id}
+            sourceName={pendingConnection.sourceName}
+            fieldName={pendingConnection.fieldName}
+          />
+        </div>
+      ) : null}
+      {/* The tearsheet hero — the default thing seen. Sits ABOVE the ledger; a
           box with no backtest yet rests on an honest empty state. */}
       <HomeTearsheet host={host} />
       {/* The ledger is the one thing the redesign ADDS to the persistent set:

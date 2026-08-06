@@ -413,6 +413,6 @@ registerAiExecutor('strategy.draft-from-finding', async (intent) => {
   // does not exist until the agent is sent and writes one.
   return {
     kind: 'done',
-    note: 'Agent session started with the draft prompt. Review it and send it — no strategy has been written yet.',
+    note: 'Agent session started with the draft. Review it and send it — no strategy has been written yet.',
   };
 });

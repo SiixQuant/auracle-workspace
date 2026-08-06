@@ -9,10 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-<!-- New features go here -->
+- Connections now live in the agent: ask it to connect a data source or broker, paste your key once in a masked field, and it works immediately — no separate connections page. Ask what to connect and it lists every source grouped by free, free account, or paid.
 
 ### Changed
-<!-- Changes to existing functionality go here -->
+- Backtests stop and prompt you to connect a real market-data source before running, so an in-sample / out-of-sample test isn't run on empty data; free yfinance runs still work, with a heads-up.
 
 ### Fixed
 <!-- Bug fixes go here -->

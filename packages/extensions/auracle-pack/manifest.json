@@ -20,7 +20,10 @@
       "board_unwire",
       "board_delete_card",
       "board_read_outputs",
-      "board_scan_card"
+      "board_scan_card",
+      "list_sources",
+      "connection_status",
+      "connect_source"
     ],
     "customEditors": [
       {
@@ -76,11 +79,6 @@
         { "name": "validate-manifest", "description": "Validate a deployment manifest" },
         { "name": "backtest-manifest", "description": "Backtest a manifest with no broker calls" }
       ]
-    },
-    "settingsPanel": {
-      "component": "AuracleConnections",
-      "title": "Auracle",
-      "icon": "cable"
     },
     "panels": [
       {

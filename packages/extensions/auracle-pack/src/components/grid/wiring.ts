@@ -28,6 +28,5 @@ export const WIRED_TO: Record<RoomId, RoomId[]> = {
   blotter: ['deploys'],
   incidents: ['deploys'],
   schedules: ['deploys'],
-  runway: ['deploys', 'conns'],
-  conns: ['deploys', 'qc'],
+  runway: ['deploys'],
 };

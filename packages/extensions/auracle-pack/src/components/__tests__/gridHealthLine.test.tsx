@@ -81,7 +81,7 @@ describe('the chip', () => {
 
   it('names the worst room and its consequence', () => {
     seedVitals({
-      conns: { health: 'degraded', note: 'engine reachable, broker is not' },
+      blotter: { health: 'degraded', note: 'fills are stale' },
       deploys: { health: 'fault', note: '2 deployments errored' },
     });
     render(<GridHealthLine />);
@@ -95,7 +95,7 @@ describe('the chip', () => {
 describe('the expansion', () => {
   it('lists every unwell room, worst first, with its consequence line', () => {
     seedVitals({
-      conns: { health: 'degraded', note: 'engine reachable, broker is not' },
+      blotter: { health: 'degraded', note: 'fills are stale' },
       deploys: { health: 'fault', note: '2 deployments errored' },
     });
     render(<GridHealthLine />);
@@ -107,9 +107,9 @@ describe('the expansion', () => {
       el.getAttribute('data-testid')
     );
     expect(rows[0]).toBe('grid-health-deploys');
-    expect(rows).toContain('grid-health-conns');
-    expect(screen.getByTestId('grid-health-conns').textContent).toContain(
-      'engine reachable, broker is not'
+    expect(rows).toContain('grid-health-blotter');
+    expect(screen.getByTestId('grid-health-blotter').textContent).toContain(
+      'fills are stale'
     );
     // Nominal rooms are not news.
     expect(rows).toHaveLength(2);

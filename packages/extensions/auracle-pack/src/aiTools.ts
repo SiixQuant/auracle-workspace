@@ -45,6 +45,7 @@ import {
 } from './engine/boardTools';
 import { settleBoardDispatch } from './components/grid/boardScan';
 import { agentSessionHost } from './components/grid/gridAiExecutors';
+import { connectSource, connectionStatus, listSources } from './engine/connectionTools';
 
 /** Turn one outcome into what the host hands the agent. */
 function result(outcome: BoardToolOutcome): ExtensionToolResult {
@@ -345,6 +346,67 @@ export const boardAiTools: ExtensionAITool[] = [
       if (!nodeId) return { success: false, error: 'node_id is required.' };
       return dispatchScan(nodeId);
     },
+  },
+  /* ── the connections lane ──────────────────────────────────────────────── */
+  {
+    name: 'list_sources',
+    scope: 'global',
+    access: { kind: 'filesystem' },
+    description:
+      'List every connectable market-data source and broker with its live status. Also returns ' +
+      'catalog — the data sources grouped by cost: free (no account), account (free signup + key), ' +
+      'or paid — and market_data_brokers, the brokers that actually pull data (only IBKR and Alpaca; ' +
+      'the others route orders only). When the user asks what to connect, show that grouping, ' +
+      'cheapest first. Each row is value-free: id, kind, connected state, whether it provides market ' +
+      'data, and its access tier — never a credential value.',
+    inputSchema: { type: 'object', properties: {} },
+    handler: async () => listSources(),
+  },
+  {
+    name: 'connection_status',
+    scope: 'global',
+    access: { kind: 'filesystem' },
+    description:
+      "Report a connection's live status. With an id, the one connector's connected state, " +
+      'whether it still needs a credential, and its field NAMES (never any value). Without an id, ' +
+      'the same summary as list_sources plus has_real_data_source — whether any real (non-free) ' +
+      'data source or broker is connected, which a backtest should check before it runs.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: {
+          type: 'string',
+          description: 'The connector to read. Omit for a whole-registry summary.',
+        },
+      },
+    },
+    handler: async (params) => connectionStatus(params),
+  },
+  {
+    name: 'connect_source',
+    scope: 'global',
+    access: { kind: 'filesystem' },
+    description:
+      'Connect a data source or broker by id (from list_sources). A free, keyless source ' +
+      'connects immediately. A source that needs a credential is NOT connected here — a secret ' +
+      'never travels through a tool, so the panel shows a write-only paste field for the person ' +
+      'to fill, and this returns needs_credential. The optional options object may carry only ' +
+      'non-secret mode fields (e.g. environment); a value that looks like a key or token is refused.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'The connector id to connect.' },
+        options: {
+          type: 'object',
+          description:
+            'Optional non-secret mode fields (e.g. an environment or mode selector). Never a key, ' +
+            'token, or password — those are refused, because the person pastes any secret into the ' +
+            'panel, the only route a secret has.',
+        },
+      },
+      required: ['id'],
+    },
+    handler: async (params) => connectSource(params),
   },
 ];
 

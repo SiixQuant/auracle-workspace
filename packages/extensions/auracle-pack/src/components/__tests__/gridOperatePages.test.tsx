@@ -1,14 +1,12 @@
 /**
  * The Operate and System district pages: Deployments, Blotter, Incidents,
- * Schedules, Runway, Connections.
+ * Schedules, Runway.
  *
  * What is worth pinning here is the same promise the first five pages made —
  * each room mounts the REAL surface rather than a lookalike, so what a room
- * headlines and what its body shows come from one read of the engine. Two
- * things are specific to this wave and get their own cases: the ops journal's
- * undo may only be offered on an entry the engine still calls `applied`, and
- * Connections must describe a connector with the same words the Settings page
- * uses.
+ * headlines and what its body shows come from one read of the engine. One
+ * thing is specific to this wave and gets its own case: the ops journal's
+ * undo may only be offered on an entry the engine still calls `applied`.
  *
  * The engine client is mocked at its seam, so every figure asserted below is
  * one the fixtures actually served.
@@ -379,49 +377,13 @@ describe('the ops action journal', () => {
   });
 });
 
-describe('the Connections room', () => {
-  it('lists the connectors with their kind and status tag', async () => {
-    renderGrid('conns');
-
-    expect(await screen.findByTestId('conns-list')).toBeTruthy();
-    expect(screen.getByTestId('grid-page-conns')).toBeTruthy();
-    expect(screen.getByTestId('conns-row-ibkr').textContent).toContain('Interactive Brokers');
-    expect(screen.getByTestId('conns-kind-ibkr').textContent).toContain('Broker');
-    expect(screen.getByTestId('conns-status-ibkr').textContent).toContain('Connected');
-    // Keyless sources are READY, not "not configured" — the same rule the
-    // Settings page renders.
-    expect(screen.getByTestId('conns-status-yfinance').textContent).toContain('Ready');
-    expect(screen.getByTestId('conns-status-polygon').textContent).toContain('key rejected');
-  });
-
-  it('reads an errored connector as attention, and names where keys are managed', async () => {
-    renderGrid('conns');
-
-    await waitFor(() => {
-      expect(screen.getByTestId('room-status').getAttribute('data-status')).toBe('attention');
-    });
-    expect(screen.getByTestId('room-vital-in-error').textContent).toContain('1');
-    expect(screen.getByTestId('conns-manage-note').textContent).toContain('Auracle Connections');
-  });
-
-  it('does not offer to edit a credential from this room', async () => {
-    renderGrid('conns');
-
-    await screen.findByTestId('conns-list');
-    for (const label of ['Save', 'Test', 'Disconnect']) {
-      expect(screen.queryByRole('button', { name: label })).toBeNull();
-    }
-  });
-});
-
 describe('the Operate and System rooms are wired to each other', () => {
   it('declares the flow the districts are grouped by', () => {
     expect(WIRED_TO.deploys).toEqual(['incidents', 'blotter', 'schedules', 'runway']);
     expect(WIRED_TO.blotter).toEqual(['deploys']);
     expect(WIRED_TO.incidents).toEqual(['deploys']);
     expect(WIRED_TO.schedules).toEqual(['deploys']);
-    expect(WIRED_TO.runway).toEqual(['deploys', 'conns']);
-    expect(WIRED_TO.conns).toEqual(['deploys', 'qc']);
+    expect(WIRED_TO.runway).toEqual(['deploys']);
   });
 
   it('routes from a chip to the room it names', async () => {
@@ -433,12 +395,5 @@ describe('the Operate and System rooms are wired to each other', () => {
 
     fireEvent.click(screen.getByTestId('room-wired-deploys'));
     expect(screen.getByTestId('grid-room-deploys')).toBeTruthy();
-  });
-
-  it('routes from Runway out to Connections', async () => {
-    renderGrid('runway');
-
-    fireEvent.click(await screen.findByTestId('room-wired-conns'));
-    expect(screen.getByTestId('grid-room-conns')).toBeTruthy();
   });
 });

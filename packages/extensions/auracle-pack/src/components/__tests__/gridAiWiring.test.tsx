@@ -211,7 +211,7 @@ describe('a repair runs as a journalled maintenance operation', () => {
     };
     stub.replies['/ui/api/ops/repair'] = { ok: true, status: 200, body: { entry: { id: 4 } } };
 
-    const result = await run(action('connection.reconnect-errored', 'repair', 'conns'));
+    const result = await run(action('connection.reconnect-errored', 'repair', 'incidents'));
 
     expect(postsTo('/ui/api/ops/repair')[0].body).toEqual({
       action: 'restart_data_feed',
@@ -233,7 +233,7 @@ describe('a repair runs as a journalled maintenance operation', () => {
     };
     stub.replies['/ui/api/ops/repair'] = { ok: true, status: 200, body: { entry: { id: 5 } } };
 
-    const result = await run(action('connection.reconnect-errored', 'repair', 'conns'));
+    const result = await run(action('connection.reconnect-errored', 'repair', 'incidents'));
 
     expect(postsTo('/ui/api/ops/repair').map((call) => (call.body as { target: string }).target)).toEqual([
       'ibkr',

@@ -19,7 +19,6 @@ import {
   RunwayPanel,
   SchedulesPanel,
 } from '../src/components/MonitorPanels';
-import { AuracleConnections } from '../src/components/ConnectionsSettings';
 import { AuracleStatusChip } from '../src/components/StatusChip';
 import { ResearchPanel } from '../src/components/ResearchPanel';
 import { QcImportPanel, QcBacktestResult } from '../src/components/QcImportPanel';
@@ -950,7 +949,6 @@ const PANELS: Record<string, (props: { host: never }) => JSX.Element> = {
   incidents: IncidentsPanel,
   schedules: SchedulesPanel,
   runway: RunwayPanel,
-  connections: AuracleConnections as (props: { host: never }) => JSX.Element,
   statuschip: AuracleStatusChip as (props: { host: never }) => JSX.Element,
   research: ResearchPanel as (props: { host: never }) => JSX.Element,
   qc: QcImportPanel as (props: { host: never }) => JSX.Element,

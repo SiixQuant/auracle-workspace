@@ -331,10 +331,10 @@ describe('the page context reaches the AI chat', () => {
   });
 
   it('states the room even when nothing is focused', () => {
-    expect(roomAiContext('conns', 'Connections', {})).toEqual({
+    expect(roomAiContext('blotter', 'Blotter', {})).toEqual({
       panel: 'grid',
-      room: 'conns',
-      room_title: 'Connections',
+      room: 'blotter',
+      room_title: 'Blotter',
     });
   });
 

@@ -266,7 +266,7 @@ const PROOFS: Record<string, () => Promise<void>> = {
   'plan-5': async () => {
     const seeded = vitalsWith({
       deploys: { health: 'fault', note: '2 deployments errored', fact: 'live', subjects: ['a'] },
-      conns: { health: 'degraded', note: 'engine reachable, broker is not' },
+      blotter: { health: 'degraded', note: 'fills are stale' },
     });
     vi.spyOn(gridVitals, 'getSnapshot').mockReturnValue(seeded);
     render(<GridHealthLine />);
@@ -275,7 +275,7 @@ const PROOFS: Record<string, () => Promise<void>> = {
     });
     // per-room readings live in the expansion, worst-first, each with its note
     expect(screen.getByTestId('grid-health-deploys').textContent).toContain('errored');
-    expect(screen.getByTestId('grid-health-conns').textContent).toContain('broker');
+    expect(screen.getByTestId('grid-health-blotter').textContent).toContain('stale');
   },
 
   'plan-6': async () => {

@@ -462,19 +462,27 @@ export async function buildDossier(
 }
 
 /**
- * Open a generated report's PDF in the user's browser. No pack surface opened an
- * engine URL before, so this builds the download URL from the resolved engine
- * base ({@link engineConfig}) and hands it to the host's shell through the same
- * `electronAPI` bridge the engine requests ride — feature-detected, so a
- * renderer without it (tests, older host) is a no-op that reports false.
- * Returns false when the engine base is unknown or the bridge is absent, so the
- * card can stay honest about whether the file actually opened.
+ * Open a generated report's PDF in the user's browser. The engine's PDF route
+ * is session-authed, but the OS browser carries no Houston session — so this
+ * first asks the engine, over the SAME authenticated bridge the other requests
+ * ride, for a short-lived signed URL ({@link getJson} of the `…/token` route),
+ * then hands THAT url to the host's shell. Feature-detected, so a renderer
+ * without the bridge (tests, older host) is a no-op that reports false; returns
+ * false when the engine base is unknown, no token comes back, or the bridge is
+ * absent, so the card stays honest about whether the file actually opened.
  */
 export async function openReport(reportId: string): Promise<boolean> {
   if (!reportId) return false;
   const { engineUrl } = await engineConfig();
   if (!engineUrl) return false;
-  const url = `${engineUrl.replace(/\/+$/, '')}/ui/api/reports/${encodeURIComponent(reportId)}`;
+  // The browser has no session cookie; fetch a signed, short-lived download
+  // path over the authenticated bridge and open that instead of the raw route.
+  const signed = await getJson<{ download_path?: string }>(
+    `/ui/api/reports/${encodeURIComponent(reportId)}/token`
+  );
+  const path = signed?.download_path;
+  if (!path) return false;
+  const url = `${engineUrl.replace(/\/+$/, '')}${path}`;
   const api = (window as unknown as ElectronBridge).electronAPI;
   if (!api?.openExternal) return false;
   try {

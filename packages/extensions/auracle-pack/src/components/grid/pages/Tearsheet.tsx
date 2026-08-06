@@ -116,6 +116,7 @@ const SHEET = `
 .auracle-tearsheet__mk { color: ${tone.text2}; font-size: 12.5px; }
 .auracle-tearsheet__mv { color: ${tone.text}; font-size: 12.5px; font-variant-numeric: tabular-nums; letter-spacing: 0.005em; }
 .auracle-tearsheet__chartwrap { padding: 0 6px 6px; }
+.auracle-tearsheet__provenance { margin: 2px 2px 0; font-size: 11.5px; line-height: 1.5; color: ${tone.text3}; font-variant-numeric: tabular-nums; }
 .auracle-tearsheet__tv { display: flex; flex-direction: column; }
 .auracle-tearsheet__tstat { display: flex; flex-wrap: wrap; gap: 8px; padding: 2px 0 12px; }
 .auracle-tearsheet__chip { font-size: 11.5px; color: ${tone.text2}; background: ${tone.surface}; border: 1px solid ${tone.border}; border-radius: 20px; padding: 5px 11px; white-space: nowrap; }
@@ -178,12 +179,57 @@ function slug(label: string): string {
     .replace(/^-|-$/g, '');
 }
 
-/** The benchmark overlay's last cumulative-return point (already percent), or null. */
-function benchmarkTail(result: BacktestResultBody): number | null {
+/**
+ * Convert a growth-of-$1 curve to cumulative-return percent — (v − 1) × 100.
+ * The engine's `/result` serves the equity and benchmark curves as growth (first
+ * point 1.0; a value of 74.0475 means +7304.75%), but {@link TearsheetChart}'s
+ * documented contract is percent, so the Overview converts here — at the one
+ * seam where it assembles the chart data. Pure and robust to an empty/short
+ * array.
+ */
+export function growthToPercent(points: number[]): number[] {
+  if (!Array.isArray(points)) return [];
+  return points.map((v) => (v - 1) * 100);
+}
+
+/**
+ * The benchmark overlay's last point, converted from the engine's growth-of-$1
+ * to cumulative-return percent — (last − 1) × 100 — or null when the run has no
+ * benchmark. A SPY curve ending 8.924 reads as +792.4%.
+ */
+export function benchmarkTail(result: BacktestResultBody): number | null {
   const points = result.benchmark?.points;
   if (!points || points.length === 0) return null;
   const last = points[points.length - 1];
-  return typeof last === 'number' && Number.isFinite(last) ? last : null;
+  return typeof last === 'number' && Number.isFinite(last) ? (last - 1) * 100 : null;
+}
+
+/** Group a non-negative integer with thousands separators ("4158" → "4,158"),
+ *  locale-independent so the caption reads the same everywhere. */
+function groupThousands(n: number): string {
+  return String(Math.trunc(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+/**
+ * The data-provenance caption — the real-data fact the owner wants visible,
+ * built ONLY from fields the run already carries: the bar count (`n_bars`) and
+ * the chart's first and last date. No data-source name is invented — bar count
+ * and date range only. Returns null when the run carries neither, so it never
+ * prints an empty caption.
+ */
+function provenanceLine(result: BacktestResultBody): string | null {
+  const nBars =
+    typeof result.n_bars === 'number' && Number.isFinite(result.n_bars) && result.n_bars > 0
+      ? result.n_bars
+      : null;
+  const labels = result.chart?.labels;
+  const first = labels && labels.length > 0 ? labels[0] : null;
+  const last = labels && labels.length > 0 ? labels[labels.length - 1] : null;
+  const parts: string[] = [];
+  if (nBars !== null) parts.push(`Backtested on ${groupThousands(nBars)} daily bars`);
+  if (first && last && first !== last) parts.push(`${first} → ${last}`);
+  else if (first) parts.push(first);
+  return parts.length > 0 ? parts.join(' · ') : null;
 }
 
 function Segmented({
@@ -352,37 +398,51 @@ function Overview({ state }: { state: LoadState }): JSX.Element {
   }
 
   const chartable = Boolean(result.chartable && result.chart && result.drawdown);
+  const provenance = provenanceLine(result);
 
   return (
-    <div className="auracle-tearsheet__dash" data-testid="tearsheet-dash">
-      <section className="auracle-tearsheet__card">
-        <header className="auracle-tearsheet__cardhead">
-          <h3 className="auracle-tearsheet__cardtitle">Performance Chart</h3>
-        </header>
-        <div className="auracle-tearsheet__chartwrap">
-          {chartable ? (
-            <TearsheetChart
-              data={{
-                chart: result.chart!,
-                drawdown: result.drawdown!,
-                benchmark: result.benchmark ?? null,
-              }}
-            />
-          ) : (
-            <CenterState
-              title="No chartable curve"
-              detail="This run recorded metrics but no plottable equity series — the numbers still stand to the right."
-            />
-          )}
-        </div>
-      </section>
-      <section className="auracle-tearsheet__card">
-        <header className="auracle-tearsheet__cardhead">
-          <h3 className="auracle-tearsheet__cardtitle">Risk / Return Metrics</h3>
-        </header>
-        <MetricsTable result={result} alphaAnnual={alphaAnnual} benchmarkReturnPct={benchmarkReturnPct} />
-      </section>
-    </div>
+    <>
+      <div className="auracle-tearsheet__dash" data-testid="tearsheet-dash">
+        <section className="auracle-tearsheet__card">
+          <header className="auracle-tearsheet__cardhead">
+            <h3 className="auracle-tearsheet__cardtitle">Performance Chart</h3>
+          </header>
+          <div className="auracle-tearsheet__chartwrap">
+            {chartable ? (
+              // The engine serves the equity + benchmark curves as growth-of-$1
+              // (first point 1.0); TearsheetChart's contract is percent, so
+              // convert both here before they reach it. Drawdown is already
+              // percent and passes through untouched.
+              <TearsheetChart
+                data={{
+                  chart: { ...result.chart!, points: growthToPercent(result.chart!.points) },
+                  drawdown: result.drawdown!,
+                  benchmark: result.benchmark
+                    ? { ...result.benchmark, points: growthToPercent(result.benchmark.points) }
+                    : null,
+                }}
+              />
+            ) : (
+              <CenterState
+                title="No chartable curve"
+                detail="This run recorded metrics but no plottable equity series — the numbers still stand to the right."
+              />
+            )}
+          </div>
+        </section>
+        <section className="auracle-tearsheet__card">
+          <header className="auracle-tearsheet__cardhead">
+            <h3 className="auracle-tearsheet__cardtitle">Risk / Return Metrics</h3>
+          </header>
+          <MetricsTable result={result} alphaAnnual={alphaAnnual} benchmarkReturnPct={benchmarkReturnPct} />
+        </section>
+      </div>
+      {provenance ? (
+        <p className="auracle-tearsheet__provenance" data-testid="tearsheet-provenance">
+          {provenance}
+        </p>
+      ) : null}
+    </>
   );
 }
 

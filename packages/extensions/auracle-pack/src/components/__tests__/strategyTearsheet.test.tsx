@@ -49,11 +49,16 @@ import {
 } from '../../engine/client';
 import { focusStore } from '../../engine/focusStore';
 import { buildTearsheetFigure } from '../charts/TearsheetChart';
+import { benchmarkTail, growthToPercent } from '../grid/pages/Tearsheet';
 import { StrategyPage } from '../grid/pages/StrategyPage';
 
 const LABELS = ['2018-01-02', '2019-01-02', '2020-01-02', '2021-01-02', '2025-06-30'];
 
-/** A synthetic `/result` whose numbers land on the reference's exact strings. */
+/** A synthetic `/result` whose numbers land on the reference's exact strings.
+ *  The equity + benchmark curves are the engine's GROWTH-OF-$1 (first point
+ *  1.0), the contract the tearsheet converts to cumulative-return % before it
+ *  charts: growth 5.97 → +497% (matching total_return 4.97), benchmark growth
+ *  2.73 → +173%. Drawdown is already percent. */
 const RESULT: BacktestResultBody = {
   status: 'succeeded',
   chartable: true,
@@ -75,9 +80,9 @@ const RESULT: BacktestResultBody = {
     average_drawdown_days: 38,
     excess_sharpe: 0.47,
   },
-  chart: { labels: LABELS, points: [0, 40, -12, 260, 497] },
+  chart: { labels: LABELS, points: [1.0, 1.4, 0.88, 3.6, 5.97] },
   drawdown: { labels: LABELS, points: [0, -3.2, -30.3, -5.1, -6.1] },
-  benchmark: { labels: LABELS, points: [0, 22, -8, 90, 173], symbol: 'SPY' },
+  benchmark: { labels: LABELS, points: [1.0, 1.22, 0.92, 1.9, 2.73], symbol: 'SPY' },
 };
 
 const FACTORS: FactorBatteryBody = {
@@ -176,11 +181,20 @@ describe('the performance chart is a Plotly figure matched to the reference', ()
     expect(strategy.name).toBe('Strategy');
     expect(strategy.line).toEqual({ color: '#f26430', width: 1.6 });
     expect(strategy.yaxis).toBe('y');
-    expect(strategy.y).toEqual([0, 40, -12, 260, 497]);
+    // The engine's growth-of-$1 curve is converted to cumulative-return % —
+    // (v − 1) × 100 — before Plotly, so the fixture's growth curve plots as
+    // these percents. Rounded to shed the float dust the subtraction leaves.
+    expect((strategy.y as number[]).map((v) => Math.round(v * 100) / 100)).toEqual([
+      0, 40, -12, 260, 497,
+    ]);
 
     expect(benchmark.name).toBe('Benchmark');
     expect(benchmark.line).toEqual({ color: '#cfd3d8', width: 1.2 });
     expect(benchmark.yaxis).toBe('y');
+    // Benchmark growth 2.73 tail plots as +173% too.
+    expect((benchmark.y as number[]).map((v) => Math.round(v * 100) / 100)).toEqual([
+      0, 22, -8, 90, 173,
+    ]);
 
     expect(drawdown.name).toBe('Drawdown');
     expect(drawdown.line).toEqual({ color: '#86a0bd', width: 1.2 });
@@ -222,10 +236,14 @@ describe('the performance chart is a Plotly figure matched to the reference', ()
 
 describe('the pure figure builder (paint-free)', () => {
   it('assembles the reference traces, domains and config', () => {
+    // The builder's contract is percent, so convert the growth fixture first —
+    // exactly as the Overview does before handing the chart data over.
     const figure = buildTearsheetFigure({
-      chart: RESULT.chart!,
+      chart: { ...RESULT.chart!, points: growthToPercent(RESULT.chart!.points) },
       drawdown: RESULT.drawdown!,
-      benchmark: RESULT.benchmark,
+      benchmark: RESULT.benchmark
+        ? { ...RESULT.benchmark, points: growthToPercent(RESULT.benchmark.points) }
+        : RESULT.benchmark,
     });
     expect(figure.traces.map((t) => [t.name, t.yaxis])).toEqual([
       ['Strategy', 'y'],
@@ -235,6 +253,54 @@ describe('the pure figure builder (paint-free)', () => {
     expect((figure.layout.yaxis as { domain: number[] }).domain).toEqual([0.3, 1.0]);
     expect((figure.layout.yaxis2 as { domain: number[] }).domain).toEqual([0, 0.2]);
     expect(figure.config).toEqual({ displayModeBar: false, responsive: true });
+  });
+});
+
+describe('growth-of-$1 → cumulative-return % (Fix 1)', () => {
+  it('converts a growth curve to percent: (v − 1) × 100', () => {
+    expect(growthToPercent([1.0, 2.0, 0.5])).toEqual([0, 100, -50]);
+  });
+
+  it('is robust to empty and single-point curves', () => {
+    expect(growthToPercent([])).toEqual([]);
+    expect(growthToPercent([1.0])).toEqual([0]);
+  });
+
+  it('reads the benchmark return from the growth tail — SPY ending 8.924 is +792.4%', () => {
+    const tail = benchmarkTail({
+      status: 'succeeded',
+      benchmark: { labels: ['2010-01-04', '2026-07-15'], points: [1.0, 8.924] },
+    } as BacktestResultBody);
+    expect(tail).not.toBeNull();
+    expect(tail as number).toBeCloseTo(792.4, 1);
+  });
+
+  it('is null when the run carries no benchmark', () => {
+    expect(benchmarkTail({ status: 'succeeded' } as BacktestResultBody)).toBeNull();
+  });
+});
+
+describe('the data-provenance line (Fix 3)', () => {
+  it('states the real bar count and date range from the run itself', async () => {
+    render(<StrategyPage host={host} />);
+    const prov = await screen.findByTestId('tearsheet-provenance');
+    // Bar count with thousands separators, and the chart's first → last label.
+    expect(prov.textContent).toContain('1,888 daily bars');
+    expect(prov.textContent).toContain('2018-01-02 → 2025-06-30');
+    // No fabricated data-source name — bar count and date range only.
+    expect(prov.textContent?.toLowerCase()).not.toContain('yfinance');
+  });
+
+  it('omits the line for a run carrying no bar count or curve', async () => {
+    vi.mocked(tearsheetResult).mockResolvedValue({
+      status: 'succeeded',
+      chartable: false,
+      strategy_path: 'strategies.desk.fund_pair.FundPair',
+      stats: {},
+    });
+    render(<StrategyPage host={host} />);
+    await waitFor(() => expect(screen.getByTestId('tearsheet-metrics')).toBeTruthy());
+    expect(screen.queryByTestId('tearsheet-provenance')).toBeNull();
   });
 });
 

@@ -188,6 +188,25 @@ describe('an install with no watches', () => {
   });
 });
 
+describe('the wide tier fills the panel (Fix 2)', () => {
+  // jsdom applies no container queries, so the measured width is asserted in a
+  // real browser; here the claim is on the stylesheet the surface injects.
+  it('lifts the column width cap while keeping the resting text readable', () => {
+    vi.spyOn(boardGraphStore, 'getSnapshot').mockReturnValue(snapshot([]));
+    render(<GridHome host={host} />);
+
+    const sheet = document.getElementById('auracle-grid-home-styles')?.textContent ?? '';
+    // The status sentence and the watch rows keep their own readable max-width,
+    // so a wide panel never stretches the resting text into one long line.
+    expect(sheet).toMatch(/\.ahome__status\s*\{[^}]*max-width/);
+    expect(sheet).toMatch(/\.ahome__watches\s*\{[^}]*max-width/);
+    // But the column itself is no longer capped at the wide tier — the tearsheet
+    // hero and the connect entry fill the panel width.
+    const wideTier = sheet.slice(sheet.indexOf('min-width: 640px'));
+    expect(wideTier).not.toContain('max-width');
+  });
+});
+
 describe('the tearsheet hero — the default thing seen', () => {
   const RUN: RecentRun = {
     jobId: 9,

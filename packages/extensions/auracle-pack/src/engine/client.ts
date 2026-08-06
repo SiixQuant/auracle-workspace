@@ -135,10 +135,12 @@ export async function backtestJobStatus(
 }
 
 /**
- * A cumulative-return series aligned to `chart.labels` — the benchmark overlay
- * the tearsheet draws behind the strategy line. `points` are in the same PERCENT
- * units the engine hands `chart.points` (e.g. 173.0 means +173%), not fractions.
- * Null on a run the engine computed no benchmark for.
+ * A growth-of-$1 series aligned to `chart.labels` — the benchmark overlay the
+ * tearsheet draws behind the strategy line. `points` are in the same GROWTH
+ * units the engine hands `chart.points` (first point 1.0; e.g. 8.924 means
+ * +792.4%), not percent and not fractions — the tearsheet Overview converts
+ * growth → cumulative-return % before charting. Null on a run the engine
+ * computed no benchmark for.
  */
 export interface BenchmarkSeries {
   labels: string[];
@@ -157,6 +159,9 @@ export interface BacktestResultBody {
   n_bars?: number;
   /** Headline metrics; NaN/Inf come through as null. */
   stats?: Record<string, number | null>;
+  /** The equity curve as growth-of-$1 (first point 1.0; 74.0475 means
+   *  +7304.75%). The tearsheet Overview converts growth → cumulative-return %
+   *  before charting. */
   chart?: { labels: string[]; points: number[] };
   drawdown?: { labels: string[]; points: number[] };
   /** The benchmark cumulative-return overlay (WS-A / FR-A1), or null when the

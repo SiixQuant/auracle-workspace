@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [2.3.2] - 2026-08-05
+
+### Fixed
+- The research dossier now opens once it's generated — the download no longer needs a browser sign-in. Requires the engine 2.25.1 update on your install.
+
 ## [2.3.1] - 2026-08-05
 
 ### Fixed

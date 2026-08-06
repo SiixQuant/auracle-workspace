@@ -22,7 +22,8 @@
 import { useEffect, useMemo, useRef } from 'react';
 import Plotly from 'plotly.js-basic-dist-min';
 
-/** A dated series in the engine's PERCENT units (e.g. 173.0 = +173%). */
+/** A dated series in cumulative-return PERCENT units (e.g. 173.0 = +173%). The
+ *  engine serves growth-of-$1; the Overview converts to percent before here. */
 export interface TearsheetSeries {
   labels: string[];
   points: number[];

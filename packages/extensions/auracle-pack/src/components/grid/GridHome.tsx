@@ -50,9 +50,9 @@ const STYLE_ID = 'auracle-grid-home-styles';
 
 const SHEET = `
 .ahome { display: flex; flex-direction: column; gap: 18px; height: 100%; padding: 22px 18px; overflow-y: auto; }
-.ahome__status { margin: 0; font-size: 13.5px; color: ${tone.text2}; }
+.ahome__status { margin: 0; font-size: 13.5px; color: ${tone.text2}; max-width: 720px; }
 .ahome__status strong { font-weight: 600; color: ${tone.text}; }
-.ahome__watches { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.ahome__watches { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; max-width: 720px; }
 .ahome__watch { display: flex; align-items: baseline; gap: 10px; padding: 7px 10px; border-radius: 8px; }
 .ahome__watch + .ahome__watch { border-top: 1px solid ${tone.border}; border-top-left-radius: 0; border-top-right-radius: 0; }
 .ahome__question { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: ${tone.text2}; }
@@ -60,7 +60,9 @@ const SHEET = `
 .ahome__quiet { flex: none; font-size: 10.5px; color: ${tone.text3}; }
 .ahome__artifacts { display: flex; flex-direction: column; gap: 10px; }
 @container auracle-grid (min-width: 640px) {
-  .ahome { padding: 30px 26px; max-width: 720px; }
+  /* The column is no longer capped here, so the tearsheet hero + connect entry
+     fill a wide panel; the resting text keeps its own readable cap above. */
+  .ahome { padding: 30px 26px; }
 }
 `;
 

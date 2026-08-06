@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [2.3.1] - 2026-08-05
+
+### Fixed
+- The strategy tearsheet now shows returns correctly: the performance chart and Benchmark Return were rendering growth multiples as percentages (a +7304% return read as "80%") and now match the metrics table. The tearsheet also fills the panel width and notes how many daily bars each backtest ran on.
+
 ## [2.3.0] - 2026-08-05
 
 ### Added

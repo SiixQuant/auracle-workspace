@@ -29,13 +29,20 @@ vi.mock('plotly.js-basic-dist-min', () => ({
 
 vi.mock('../../engine/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../engine/client')>();
-  return { ...actual, tearsheetResult: vi.fn(), tearsheetFactors: vi.fn(), tearsheetTrades: vi.fn() };
+  return {
+    ...actual,
+    tearsheetResult: vi.fn(),
+    tearsheetFactors: vi.fn(),
+    tearsheetTrades: vi.fn(),
+    tearsheetRuns: vi.fn(),
+  };
 });
 
 import Plotly from 'plotly.js-basic-dist-min';
 import {
   tearsheetFactors,
   tearsheetResult,
+  tearsheetRuns,
   tearsheetTrades,
   type BacktestResultBody,
   type FactorBatteryBody,
@@ -104,6 +111,9 @@ beforeEach(() => {
   // The Trades view (its own slice) fetches lazily; default it to an empty
   // succeeded list so this suite's focus stays on the Overview tearsheet.
   vi.mocked(tearsheetTrades).mockResolvedValue({ status: 'succeeded', trades: [] });
+  // The recent-runs picker reads this on mount; empty keeps it hidden so this
+  // suite stays on the Overview tearsheet.
+  vi.mocked(tearsheetRuns).mockResolvedValue([]);
   // The room keys off the Spine's focus — point it at a backtest run.
   focusStore.publish({ run: { kind: 'backtest', id: '42' } });
 });
@@ -260,5 +270,49 @@ describe('the in-room segmented controls (WS-E FR-E3)', () => {
     await waitFor(() => expect(screen.getByText('No run focused yet')).toBeTruthy());
     expect(screen.queryByTestId('tearsheet-metrics')).toBeNull();
     expect(vi.mocked(tearsheetResult)).not.toHaveBeenCalled();
+  });
+});
+
+describe('the recent-runs picker (WS-E)', () => {
+  it('lists recent runs by humanized name and, on select, focuses the chosen run', async () => {
+    vi.mocked(tearsheetRuns).mockResolvedValue([
+      {
+        jobId: 42,
+        strategyPath: 'strategies.desk.fund_pair.FundPair',
+        asOf: '2026-08-05',
+        nBars: 1888,
+        finishedAt: '2026-08-05T00:00:00Z',
+        totalReturn: 4.97,
+        sharpe: 1.42,
+        maxDrawdown: -0.303,
+      },
+      {
+        jobId: 51,
+        strategyPath: 'strategies.momentum.Mom',
+        asOf: '2026-08-04',
+        nBars: 900,
+        finishedAt: '2026-08-04T00:00:00Z',
+        totalReturn: 0.12,
+        sharpe: 0.9,
+        maxDrawdown: -0.15,
+      },
+    ]);
+    render(<StrategyPage host={host} />);
+
+    const picker = await screen.findByTestId('tearsheet-run-picker');
+    // Humanized via prettifyPath (module path stripped to the class tail), with
+    // the finished date and the total-return % from the house formatter.
+    expect(picker.textContent).toContain('FundPair · Aug 5 · 497.00%');
+
+    fireEvent.change(picker, { target: { value: '51' } });
+    expect(focusStore.getSnapshot().run).toEqual({ kind: 'backtest', id: '51' });
+    expect(focusStore.getSnapshot().strategy?.dottedPath).toBe('strategies.momentum.Mom');
+  });
+
+  it('stays hidden when there are no recent runs', async () => {
+    vi.mocked(tearsheetRuns).mockResolvedValue([]);
+    render(<StrategyPage host={host} />);
+    await waitFor(() => expect(screen.getByTestId('tearsheet-metrics')).toBeTruthy());
+    expect(screen.queryByTestId('tearsheet-run-picker')).toBeNull();
   });
 });

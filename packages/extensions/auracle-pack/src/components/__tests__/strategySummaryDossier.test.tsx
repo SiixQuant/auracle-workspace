@@ -35,6 +35,7 @@ vi.mock('../../engine/client', async (importOriginal) => {
     tearsheetResult: vi.fn(),
     tearsheetFactors: vi.fn(),
     tearsheetTrades: vi.fn(),
+    tearsheetRuns: vi.fn(),
     tearsheetSummary: vi.fn(),
     buildDossier: vi.fn(),
     openReport: vi.fn(),
@@ -46,6 +47,7 @@ import {
   openReport,
   tearsheetFactors,
   tearsheetResult,
+  tearsheetRuns,
   tearsheetSummary,
   tearsheetTrades,
   type BacktestResultBody,
@@ -89,6 +91,7 @@ beforeEach(() => {
   vi.mocked(tearsheetResult).mockResolvedValue(RESULT);
   vi.mocked(tearsheetFactors).mockResolvedValue(null);
   vi.mocked(tearsheetTrades).mockResolvedValue({ status: 'succeeded', trades: [] });
+  vi.mocked(tearsheetRuns).mockResolvedValue([]);
   vi.mocked(tearsheetSummary).mockResolvedValue(AGENT_SUMMARY);
   vi.mocked(buildDossier).mockResolvedValue({ ok: true, report: REPORT });
   vi.mocked(openReport).mockResolvedValue(true);

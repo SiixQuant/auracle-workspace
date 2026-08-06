@@ -214,7 +214,7 @@ export function GridPanel(props: PanelHostProps): JSX.Element {
       {roomId === null ? <GridHealthLine /> : null}
       <div className="auracle-grid__view">
         {roomId === null ? (
-          <GridHome />
+          <GridHome host={props.host} />
         ) : (
           <GridRoomView roomId={roomId} hostProps={props} />
         )}

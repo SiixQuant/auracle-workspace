@@ -291,6 +291,50 @@ export async function tearsheetFactors(jobId: number): Promise<FactorBatteryBody
 }
 
 /**
+ * One recent chartable backtest, as the tearsheet's run picker (and the home
+ * hero's auto-focus) lists it. Every figure is the engine's own, already
+ * summarized for the row — the panel recomputes none of them. `totalReturn`,
+ * `sharpe` and `maxDrawdown` are null when the engine had no value, so the row
+ * shows an em dash rather than a fabricated number.
+ */
+export interface RecentRun {
+  jobId: number;
+  strategyPath: string;
+  asOf: string;
+  nBars: number;
+  finishedAt: string;
+  totalReturn: number | null;
+  sharpe: number | null;
+  maxDrawdown: number | null;
+}
+
+/**
+ * The recent-backtests feed. A thin `getJson` read of `/ui/api/backtest/jobs`
+ * (newest first, already user-scoped by the engine, agent runs included),
+ * mapping the wire's snake_case onto the pack's camelCase. Returns [] on any
+ * 404/transport failure — the picker then shows nothing rather than a
+ * fabricated list, exactly as the other tearsheet* reads rest on their empties.
+ */
+export async function tearsheetRuns(limit = 20): Promise<RecentRun[]> {
+  const body = await getJson<{ jobs?: Array<Record<string, unknown>> }>(
+    `/ui/api/backtest/jobs?limit=${limit}`
+  );
+  const jobs = body && Array.isArray(body.jobs) ? body.jobs : [];
+  const numOrNull = (v: unknown): number | null =>
+    typeof v === 'number' && Number.isFinite(v) ? v : null;
+  return jobs.map((job) => ({
+    jobId: Number(job.job_id),
+    strategyPath: typeof job.strategy_path === 'string' ? job.strategy_path : '',
+    asOf: typeof job.as_of === 'string' ? job.as_of : '',
+    nBars: typeof job.n_bars === 'number' ? job.n_bars : 0,
+    finishedAt: typeof job.finished_at === 'string' ? job.finished_at : '',
+    totalReturn: numOrNull(job.total_return),
+    sharpe: numOrNull(job.sharpe),
+    maxDrawdown: numOrNull(job.max_drawdown),
+  }));
+}
+
+/**
  * A structured, logged reason a position was entered (WS-B / FR-B1). `rule` is
  * the engine's rule slug (e.g. "ma_cross_20_50"); `values` are the named facts
  * it recorded at the entry, each a number or a boolean. The panel NEVER invents

@@ -126,6 +126,7 @@ function ensureConnectStyles(): void {
 .auracle-connect__meta { min-width: 0; flex: 1; }
 .auracle-connect__nm { font-weight: 600; font-size: 12.5px; color: ${tone.text}; }
 .auracle-connect__ds { color: ${tone.text3}; font-size: 11px; margin-top: 1px; }
+.auracle-connect__cap { display: inline-block; margin-left: 7px; padding: 0 6px; border-radius: 999px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; white-space: nowrap; vertical-align: 1px; color: ${GRID_ACCENT}; background: ${tint(GRID_ACCENT, 12)}; border: 1px solid ${tint(GRID_ACCENT, 26)}; }
 .auracle-connect__act { margin-left: auto; flex: none; display: flex; align-items: center; gap: 10px; }
 .auracle-connect__status { font-size: 11.5px; font-weight: 600; white-space: nowrap; }
 .auracle-connect__hint { font-size: 11px; color: ${tone.text3}; white-space: nowrap; }
@@ -310,7 +311,21 @@ function ConnectorRow({ connector }: { connector: Connector }): JSX.Element {
           <span className="auracle-connect__nm" data-testid={`connect-name-${slug(connector.id)}`}>
             {name}
           </span>
-          <span className="auracle-connect__ds">{connectorBlurb(connector, action)}</span>
+          <span className="auracle-connect__ds">
+            {connectorBlurb(connector, action)}
+            {/* A broker that also streams quotes (IBKR/Alpaca) does both jobs, so
+                it carries a subtle capability mark rather than earning a second,
+                duplicate data-vendor row. Orange = a capability fact, never a
+                status (health stays on the semantic ramp). */}
+            {connector.kind === 'broker' && connector.provides_data ? (
+              <span
+                className="auracle-connect__cap"
+                data-testid={`connect-cap-${slug(connector.id)}`}
+              >
+                trades + data
+              </span>
+            ) : null}
+          </span>
         </span>
         <span className="auracle-connect__act">
           <span
@@ -347,14 +362,32 @@ interface Group {
   connectors: Connector[];
 }
 
+/** Defensive de-dup: keep the FIRST occurrence of each connector id. The engine
+ *  now dedupes the registry so each connector answers once, but a stale engine
+ *  could still emit a duplicate id (two `simulator`, or an `ibkr` listed once as
+ *  a broker and again as a data provider before the dedupe landed) — collapsing
+ *  by id here means such a payload can never render two rows for one connector. */
+function uniqueById(connectors: Connector[]): Connector[] {
+  const seen = new Set<string>();
+  const out: Connector[] = [];
+  for (const connector of connectors) {
+    if (seen.has(connector.id)) continue;
+    seen.add(connector.id);
+    out.push(connector);
+  }
+  return out;
+}
+
 /** Cheapest-first grouping, matched to the mockup: free/keyless, then your
  *  broker (data + trading), then data vendors, then any remaining integrations
- *  so nothing is silently dropped. */
+ *  so nothing is silently dropped. De-duped by id first, so one connector is one
+ *  row even if the engine listed it twice. */
 function groupConnectors(connectors: Connector[]): Group[] {
-  const keyless = connectors.filter((c) => KEYLESS_IDS.has(c.id));
-  const brokers = connectors.filter((c) => c.kind === 'broker' && !KEYLESS_IDS.has(c.id));
-  const vendors = connectors.filter((c) => c.kind === 'data_provider' && !KEYLESS_IDS.has(c.id));
-  const integrations = connectors.filter((c) => c.kind === 'integration' && !KEYLESS_IDS.has(c.id));
+  const unique = uniqueById(connectors);
+  const keyless = unique.filter((c) => KEYLESS_IDS.has(c.id));
+  const brokers = unique.filter((c) => c.kind === 'broker' && !KEYLESS_IDS.has(c.id));
+  const vendors = unique.filter((c) => c.kind === 'data_provider' && !KEYLESS_IDS.has(c.id));
+  const integrations = unique.filter((c) => c.kind === 'integration' && !KEYLESS_IDS.has(c.id));
   return [
     { id: 'free', label: 'Free · no account', connectors: keyless },
     { id: 'brokers', label: 'Your broker · live data + trading', connectors: brokers },

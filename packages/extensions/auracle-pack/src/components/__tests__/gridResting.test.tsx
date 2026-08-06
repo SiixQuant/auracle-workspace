@@ -32,6 +32,12 @@ vi.mock('../../engine/client', async (importOriginal) => ({
   connectCheck: vi.fn(async () => null),
   bumpConnectGeneration: vi.fn(),
   onConnectGeneration: vi.fn(() => () => {}),
+  // The home hero reads these: the recent-runs feed drives its auto-focus, and
+  // the focused run's result drives the tearsheet it lands on.
+  tearsheetRuns: vi.fn(async () => []),
+  tearsheetResult: vi.fn(async () => null),
+  tearsheetFactors: vi.fn(async () => null),
+  tearsheetSummary: vi.fn(async () => null),
 }));
 
 import { GridHome } from '../grid/GridHome';
@@ -39,7 +45,12 @@ import { boardGraphStore, type BoardSnapshot } from '../../engine/boardGraphStor
 import { backtestStore, type BacktestResultData } from '../../engine/backtestStore';
 import { aiRunStore, type AiAction, type AiRunState } from '../grid/gridAiActions';
 import { engineFeeds, gridVitals } from '../../engine/gridVitals';
+import { focusStore } from '../../engine/focusStore';
+import { tearsheetResult, tearsheetRuns, type RecentRun } from '../../engine/client';
 import type { BoardNode, BoardEdge } from '../../engine/boardGraph';
+
+/** A host object shaped like the real PanelHost the panel hands the hero. */
+const host = { panelId: 'com.auracle.pack.grid', extensionId: 'com.auracle.pack' } as never;
 
 function research(id: string, hypothesis: string): BoardNode {
   return { id, kind: 'research', research: { hypothesis } } as unknown as BoardNode;
@@ -85,25 +96,31 @@ function seedCounters(rows: Array<{ nodeId: string; newMaterial: number }>): voi
 
 beforeEach(() => {
   gridVitals.reset();
+  focusStore.clear();
+  // Default the hero's reads to "nothing to show" so a suite that is not about
+  // the hero rests on its empty state without wiring the feed each time.
+  vi.mocked(tearsheetRuns).mockResolvedValue([]);
+  vi.mocked(tearsheetResult).mockResolvedValue(null);
 });
 
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  focusStore.clear();
   gridVitals.reset();
 });
 
 describe('the status line', () => {
   it('says nothing is running when nothing is', () => {
     vi.spyOn(boardGraphStore, 'getSnapshot').mockReturnValue(snapshot([]));
-    render(<GridHome />);
+    render(<GridHome host={host} />);
 
     expect(screen.getByTestId('resting-status').textContent).toBe('Nothing is running.');
   });
 
   it('says it is catching up while the graph loads', () => {
     vi.spyOn(boardGraphStore, 'getSnapshot').mockReturnValue(snapshot([], 'loading'));
-    render(<GridHome />);
+    render(<GridHome host={host} />);
 
     expect(screen.getByTestId('resting-status').textContent).toBe('Catching up.');
   });
@@ -118,7 +135,7 @@ describe('the watch list', () => {
       ])
     );
     seedCounters([{ nodeId: 'q1', newMaterial: 4 }]);
-    render(<GridHome />);
+    render(<GridHome host={host} />);
 
     const rows = screen.getByTestId('resting-watches');
     expect(rows).toBeTruthy();
@@ -135,7 +152,7 @@ describe('the watch list', () => {
     vi.spyOn(boardGraphStore, 'getSnapshot').mockReturnValue(
       snapshot([research('q1', '   '), research('q2', 'A real question')])
     );
-    render(<GridHome />);
+    render(<GridHome host={host} />);
 
     expect(screen.queryByTestId('resting-watch-q1')).toBeNull();
     expect(screen.getByTestId('resting-watch-q2')).toBeTruthy();
@@ -145,7 +162,7 @@ describe('the watch list', () => {
     vi.spyOn(boardGraphStore, 'getSnapshot').mockReturnValue(
       snapshot([research('q1', 'A question')])
     );
-    render(<GridHome />);
+    render(<GridHome host={host} />);
 
     const list = screen.getByTestId('resting-watches');
     expect(list.querySelectorAll('button, a, input, select, textarea')).toHaveLength(0);
@@ -153,18 +170,79 @@ describe('the watch list', () => {
 });
 
 describe('an install with no watches', () => {
-  it('shows the sentence and the closed ledger — no lists, no placeholders', () => {
+  it('rests on the sentence, the tearsheet empty state, and the closed ledger', async () => {
     vi.spyOn(boardGraphStore, 'getSnapshot').mockReturnValue(snapshot([]));
-    render(<GridHome />);
+    render(<GridHome host={host} />);
 
     expect(screen.getByTestId('resting-status')).toBeTruthy();
+    // With no backtest to show, the hero rests on its honest empty state.
+    await screen.findByTestId('grid-tearsheet-empty');
     expect(screen.queryByTestId('resting-watches')).toBeNull();
     expect(screen.queryByTestId('resting-artifacts')).toBeNull();
     expect(screen.queryByTestId('grid-steps')).toBeNull();
     // The activity ledger is the one deliberate persistent fixture — closed,
-    // not empty-state art. Beyond the sentence and it, nothing else renders.
+    // not empty-state art.
     expect(screen.getByTestId('grid-ledger').getAttribute('data-open')).toBe('closed');
-    expect(screen.getByTestId('grid-resting').children).toHaveLength(2);
+    // The sentence, the tearsheet hero, and the ledger — nothing else.
+    expect(screen.getByTestId('grid-resting').children).toHaveLength(3);
+  });
+});
+
+describe('the tearsheet hero — the default thing seen', () => {
+  const RUN: RecentRun = {
+    jobId: 9,
+    strategyPath: 'strategies.desk.atlas.Atlas',
+    asOf: '2026-08-01',
+    nBars: 500,
+    finishedAt: '2026-08-01T00:00:00Z',
+    totalReturn: 0.3,
+    sharpe: 1.2,
+    maxDrawdown: -0.2,
+  };
+
+  it('renders the tearsheet when a run is focused', async () => {
+    vi.spyOn(boardGraphStore, 'getSnapshot').mockReturnValue(snapshot([]));
+    vi.mocked(tearsheetResult).mockResolvedValue({
+      status: 'succeeded',
+      chartable: false,
+      strategy_path: RUN.strategyPath,
+      stats: { annualized_return: 0.22, sharpe: 1.4, max_drawdown: -0.18 },
+    });
+    focusStore.publish({ run: { kind: 'backtest', id: '9' } });
+    render(<GridHome host={host} />);
+
+    expect(await screen.findByTestId('grid-tearsheet-hero')).toBeTruthy();
+    // The one shared body renders here, keyed off the focused run.
+    expect(await screen.findByTestId('tearsheet-room')).toBeTruthy();
+    expect(await screen.findByTestId('tearsheet-metrics')).toBeTruthy();
+    expect(screen.queryByTestId('grid-tearsheet-empty')).toBeNull();
+  });
+
+  it('shows an honest empty state when there are no backtests', async () => {
+    vi.spyOn(boardGraphStore, 'getSnapshot').mockReturnValue(snapshot([]));
+    vi.mocked(tearsheetRuns).mockResolvedValue([]);
+    render(<GridHome host={host} />);
+
+    await screen.findByTestId('grid-tearsheet-empty');
+    expect(screen.queryByTestId('grid-tearsheet-hero')).toBeNull();
+    // Auto-focus published nothing, so the focus is left untouched.
+    expect(focusStore.getSnapshot().run).toBeUndefined();
+  });
+
+  it('auto-focuses the latest run on open when nothing is focused', async () => {
+    vi.spyOn(boardGraphStore, 'getSnapshot').mockReturnValue(snapshot([]));
+    vi.mocked(tearsheetRuns).mockResolvedValue([RUN]);
+    vi.mocked(tearsheetResult).mockResolvedValue({
+      status: 'succeeded',
+      chartable: false,
+      strategy_path: RUN.strategyPath,
+      stats: {},
+    });
+    render(<GridHome host={host} />);
+
+    // The hook publishes the latest run, so the hero lands on its tearsheet.
+    expect(await screen.findByTestId('grid-tearsheet-hero')).toBeTruthy();
+    expect(focusStore.getSnapshot().run).toEqual({ kind: 'backtest', id: '9' });
   });
 });
 
@@ -184,7 +262,7 @@ describe('while the agent works', () => {
   it('shows the headline and the step list, not a spinner', () => {
     vi.spyOn(boardGraphStore, 'getSnapshot').mockReturnValue(snapshot([]));
     vi.spyOn(aiRunStore, 'getSnapshot').mockReturnValue(running());
-    render(<GridHome />);
+    render(<GridHome host={host} />);
 
     // The sentence is the headline; the operation and its cost live in the
     // step below, so the two do not repeat each other.
@@ -195,7 +273,7 @@ describe('while the agent works', () => {
 
   it('shows no step list when nothing is running', () => {
     vi.spyOn(boardGraphStore, 'getSnapshot').mockReturnValue(snapshot([]));
-    render(<GridHome />);
+    render(<GridHome host={host} />);
     expect(screen.queryByTestId('grid-steps')).toBeNull();
   });
 });
@@ -214,7 +292,7 @@ describe('artifacts on the stage', () => {
       snapshot([strategy, test], 'idle', [edge])
     );
     readyRun(7);
-    render(<GridHome />);
+    render(<GridHome host={host} />);
 
     const list = screen.getByTestId('resting-artifacts');
     expect(list).toBeTruthy();
@@ -230,7 +308,7 @@ describe('artifacts on the stage', () => {
     vi.spyOn(boardGraphStore, 'getSnapshot').mockReturnValue(
       snapshot([research('q1', 'A question')])
     );
-    render(<GridHome />);
+    render(<GridHome host={host} />);
 
     expect(screen.queryByTestId('resting-artifacts')).toBeNull();
   });

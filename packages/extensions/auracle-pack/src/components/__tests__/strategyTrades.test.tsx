@@ -32,12 +32,14 @@ vi.mock('../../engine/client', async (importOriginal) => {
     tearsheetResult: vi.fn(),
     tearsheetFactors: vi.fn(),
     tearsheetTrades: vi.fn(),
+    tearsheetRuns: vi.fn(),
   };
 });
 
 import {
   tearsheetFactors,
   tearsheetResult,
+  tearsheetRuns,
   tearsheetTrades,
   type BacktestResultBody,
   type TradesBody,
@@ -81,6 +83,7 @@ beforeEach(() => {
   vi.mocked(tearsheetResult).mockResolvedValue(RESULT);
   vi.mocked(tearsheetFactors).mockResolvedValue(null);
   vi.mocked(tearsheetTrades).mockResolvedValue(TRADES);
+  vi.mocked(tearsheetRuns).mockResolvedValue([]);
   focusStore.publish({ run: { kind: 'backtest', id: '42' } });
 });
 

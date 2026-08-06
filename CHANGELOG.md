@@ -20,6 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [2.3.0] - 2026-08-05
+
+### Added
+- The panel now opens on your latest strategy's tearsheet by default, with a picker to switch between recent backtests — and backtests you run from the chat appear here automatically. Needs the matching engine update on your install.
+
+### Changed
+- The Connect sheet shows each broker and data feed once; a broker that also provides market data (Interactive Brokers, Alpaca) is marked "trades + data" instead of appearing as a duplicate row.
+
 ## [2.2.0] - 2026-08-05
 
 ### Added

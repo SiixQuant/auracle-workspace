@@ -35,6 +35,12 @@ export interface Connector {
   /** Whether the operator's tier blocks connecting this connector. */
   gated: boolean;
   gated_reason: string;
+  /** Whether this connector ALSO provides market data. A broker like IBKR/Alpaca
+   *  trades AND streams quotes, so the sheet can say "trades + data" on the one
+   *  broker row rather than listing a separate data-vendor row for it. The engine
+   *  dedupes the registry so such a connector appears once carrying this flag;
+   *  everything else defaults false. */
+  provides_data?: boolean;
 }
 
 export interface FieldMeta {
@@ -215,5 +221,6 @@ export function normalizeConnector(raw: Partial<Connector> & { id: string }): Co
     test_supported: raw.test_supported ?? false,
     gated: raw.gated ?? false,
     gated_reason: raw.gated_reason ?? '',
+    provides_data: raw.provides_data ?? false,
   };
 }

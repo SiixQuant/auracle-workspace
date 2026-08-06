@@ -24,7 +24,8 @@
  * tier's measure is asserted in a real browser; tests below the fold claim
  * structure and copy only.
  */
-import { useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import type { PanelHost } from '@nimbalyst/extension-sdk';
 
 import { engineFeeds } from '../../engine/gridVitals';
 import { boardGraphStore } from '../../engine/boardGraphStore';
@@ -32,13 +33,16 @@ import { backtestStore } from '../../engine/backtestStore';
 import { boardRuns } from '../../engine/boardRuns';
 import { graphArtifacts } from '../../engine/boardArtifacts';
 import { questionsOf } from '../../engine/boardStandingQueries';
-import { ensurePanelKitStyles, tone } from '../panelkit';
+import { focusStore } from '../../engine/focusStore';
+import { tearsheetRuns, type RecentRun } from '../../engine/client';
+import { CenterState, ensurePanelKitStyles, tone } from '../panelkit';
 import { ArtifactCard } from './ArtifactCard';
 import { CredentialPaste } from './CredentialPaste';
 import { GridConnect } from './GridConnect';
 import { GridLedger } from './GridLedger';
 import { GridScope } from './GridScope';
 import { GridSteps } from './GridSteps';
+import { Tearsheet } from './pages/Tearsheet';
 import { aiRunStore, resultLine } from './gridAiActions';
 import { ROOMS } from './rooms';
 
@@ -109,7 +113,100 @@ function statusLine(): { text: string; detail: string | null } {
   return { text: 'Nothing is running.', detail: null };
 }
 
-export function GridHome(): JSX.Element {
+/** Whether the workspace has a chartable backtest to show yet: 'checking' until
+ *  the recent-runs read returns, then 'present' (one is focused / focusable) or
+ *  'empty' (there is nothing to show). */
+type RunProbe = 'checking' | 'present' | 'empty';
+
+/**
+ * On the FIRST mount of the resting state, point the focus at the latest
+ * backtest so its tearsheet — the thing the owner wants seen first — is already
+ * showing. Runs exactly once, and NEVER clobbers a focus that is already set (or
+ * one that lands while the recent-runs read is in flight). Reports the probe so
+ * the hero can rest on an honest empty state rather than a blank; any failed
+ * read counts as "nothing to show".
+ */
+function useAutoFocusLatestRun(): RunProbe {
+  const [probe, setProbe] = useState<RunProbe>(() =>
+    focusStore.getSnapshot().run ? 'present' : 'checking'
+  );
+  const ran = useRef(false);
+
+  useEffect(() => {
+    if (ran.current) return;
+    ran.current = true;
+    if (focusStore.getSnapshot().run) {
+      setProbe('present');
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      let runs: RecentRun[] = [];
+      try {
+        runs = await tearsheetRuns(1);
+      } catch {
+        runs = [];
+      }
+      if (cancelled) return;
+      // A run may have been focused (a hand-off, the picker) while we read —
+      // never overwrite it.
+      if (focusStore.getSnapshot().run) {
+        setProbe('present');
+        return;
+      }
+      const latest = runs[0];
+      if (!latest) {
+        setProbe('empty');
+        return;
+      }
+      focusStore.publish({
+        strategy: { filePath: latest.strategyPath, dottedPath: latest.strategyPath },
+        run: { kind: 'backtest', id: String(latest.jobId) },
+      });
+      setProbe('present');
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return probe;
+}
+
+/**
+ * The tearsheet HERO — the default thing the panel shows. It auto-focuses the
+ * latest backtest on open and renders the shared {@link Tearsheet}; a workspace
+ * with no chartable backtest yet rests on an honest empty state instead. The
+ * single connect entry sits above it, the Activity ledger below.
+ */
+function HomeTearsheet({ host }: { host: PanelHost }): JSX.Element | null {
+  const focus = useSyncExternalStore(focusStore.subscribe, focusStore.getSnapshot);
+  const probe = useAutoFocusLatestRun();
+  const hasRun = focus.run?.kind === 'backtest';
+
+  if (hasRun) {
+    return (
+      <div data-testid="grid-tearsheet-hero">
+        <Tearsheet host={host} />
+      </div>
+    );
+  }
+  if (probe === 'empty') {
+    return (
+      <div data-testid="grid-tearsheet-empty">
+        <CenterState
+          title="No backtests yet"
+          detail="Run one from the chat or the Backtest room and its tearsheet appears here."
+        />
+      </div>
+    );
+  }
+  // Still checking, or a run is about to be focused — say nothing rather than
+  // flash the empty state.
+  return null;
+}
+
+export function GridHome({ host }: { host: PanelHost }): JSX.Element {
   ensurePanelKitStyles();
   ensureHomeStyles();
   // Subscribed to all three stores so the sentence and the counts move the
@@ -187,6 +284,10 @@ export function GridHome(): JSX.Element {
           wire their data + broker. It renders nothing once the box is set up
           (DF4), so a configured install is as quiet as a fresh one is inviting. */}
       <GridConnect connectors={connectors} />
+      {/* The tearsheet hero — the default thing seen. Sits BELOW the connect
+          entry (kept on top, self-hiding once set up) and ABOVE the ledger; a
+          box with no backtest yet rests on an honest empty state. */}
+      <HomeTearsheet host={host} />
       {/* The ledger is the one thing the redesign ADDS to the persistent set:
           closed by default, always reachable, the price of letting the agent
           act. It is not empty-state art — it is a deliberate fixture. */}

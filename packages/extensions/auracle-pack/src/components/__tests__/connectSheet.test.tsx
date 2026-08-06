@@ -61,6 +61,29 @@ const PARTIAL: Connector[] = [
   conn('polygon', 'data_provider', 'degraded', { test_supported: true }),
 ];
 
+/** Brokers that ALSO stream market data carry `provides_data: true` (IBKR,
+ *  Alpaca) — the deduped registry lists each once, doing both jobs. Polygon is a
+ *  plain data vendor and must NOT gain the capability hint. */
+const DATA_BROKERS: Connector[] = [
+  conn('yfinance', 'data_provider', 'connected', { display_label: 'yfinance' }),
+  conn('simulator', 'broker', 'connected', { display_label: 'Paper Simulator' }),
+  conn('ibkr', 'broker', 'not_configured', { test_supported: true, provides_data: true }),
+  conn('alpaca', 'broker', 'not_configured', {
+    test_supported: true,
+    display_label: 'Alpaca',
+    provides_data: true,
+  }),
+  conn('polygon', 'data_provider', 'not_configured', { test_supported: true, display_label: 'Polygon' }),
+];
+
+/** A STALE engine that has not deduped: the same id answers more than once — a
+ *  second `simulator`, and `ibkr` listed as both a broker and a data provider. */
+const DUPLICATED: Connector[] = [
+  ...FRESH,
+  conn('ibkr', 'data_provider', 'connected', { display_label: 'IBKR (data)' }),
+  conn('simulator', 'broker', 'connected', { display_label: 'Paper Simulator' }),
+];
+
 /** The engine's detail payload for polygon — fields the list omits. */
 const POLYGON_DETAIL = {
   connection: {
@@ -215,5 +238,41 @@ describe('a key-paste connector writes through the connections API', () => {
     expect(paths).toContain('/ui/api/connections/polygon/test');
     expect(paths).not.toContain('/ui/api/connections/polygon/save');
     expect(vi.mocked(bumpConnectGeneration)).not.toHaveBeenCalled();
+  });
+});
+
+describe('the sheet is defensive about a stale, un-deduped registry', () => {
+  it('collapses duplicate connector ids to a single row (first occurrence wins)', () => {
+    render(<GridConnect connectors={DUPLICATED} />);
+    fireEvent.click(screen.getByTestId('connect-open'));
+    // ibkr and simulator each arrived twice; each renders exactly once — getAllBy
+    // returns every match, so a length of 1 proves the duplicate never rendered.
+    expect(screen.getAllByTestId('connect-connector-ibkr')).toHaveLength(1);
+    expect(screen.getAllByTestId('connect-row-ibkr')).toHaveLength(1);
+    expect(screen.getAllByTestId('connect-row-simulator')).toHaveLength(1);
+    // First occurrence kept: ibkr keeps its BROKER identity (FRESH lists it as a
+    // broker first), so it stays in the broker group and never doubles into data.
+    const brokers = screen.getByTestId('connect-group-brokers');
+    expect(brokers.querySelector('[data-testid="connect-row-ibkr"]')).toBeTruthy();
+    const data = screen.getByTestId('connect-group-data');
+    expect(data.querySelector('[data-testid="connect-row-ibkr"]')).toBeNull();
+  });
+});
+
+describe('a broker that also provides market data', () => {
+  it('surfaces a subtle "trades + data" hint instead of a second data-vendor row', () => {
+    render(<GridConnect connectors={DATA_BROKERS} />);
+    fireEvent.click(screen.getByTestId('connect-open'));
+    // IBKR and Alpaca both trade AND stream, so each broker row carries the hint.
+    expect(screen.getByTestId('connect-cap-ibkr').textContent).toContain('trades + data');
+    expect(screen.getByTestId('connect-cap-alpaca').textContent).toContain('trades + data');
+    // The hint is a separate mark, not part of the name — the shared humanized
+    // name contract still reads exactly, with nothing appended to it.
+    expect(screen.getByTestId('connect-name-ibkr').textContent).toBe('Interactive Brokers');
+    // A plain data vendor (no trading) earns no capability hint.
+    expect(screen.queryByTestId('connect-cap-polygon')).toBeNull();
+    // And IBKR is not ALSO listed as its own row in the data-vendor group.
+    const data = screen.getByTestId('connect-group-data');
+    expect(data.querySelector('[data-testid="connect-row-ibkr"]')).toBeNull();
   });
 });

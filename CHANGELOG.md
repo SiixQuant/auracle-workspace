@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [2.7.0] - 2026-08-07
+
+### Changed
+- Connecting a broker that needs more than one detail — say Alpaca (a key, a secret, and a paper/live mode) or Tradier (a token and a mode) — now asks for everything in one short form and connects in a single step, instead of one prompt per field. The secret still never travels through chat: each value goes write-only straight to the engine's encrypted vault, and a field left blank keeps whatever is already stored rather than clearing it.
+
 ## [2.6.1] - 2026-08-07
 
 ### Fixed

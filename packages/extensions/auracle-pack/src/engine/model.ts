@@ -51,6 +51,12 @@ export interface FieldMeta {
   has_value: boolean;
   preview: string;
   options: string[];
+  /** A hint shown in the empty input (engine `ConnectionField.placeholder`). */
+  placeholder?: string;
+  /** True for a value the engine masks in its own responses. A `password`-kind
+   *  field is always masked regardless; this also masks a `text` field the
+   *  engine flagged secret. */
+  sensitive?: boolean;
 }
 
 export interface Account {

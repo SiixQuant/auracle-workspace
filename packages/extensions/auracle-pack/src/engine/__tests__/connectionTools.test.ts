@@ -233,11 +233,12 @@ describe('connect_source', () => {
     // Nothing was saved and the registry was not re-polled — no key exists yet.
     expect(vi.mocked(postJson)).not.toHaveBeenCalled();
     expect(vi.mocked(bumpConnectGeneration)).not.toHaveBeenCalled();
-    // The panel's write-only field is armed for exactly this connector + field.
+    // The panel's write-only form is armed for exactly this connector + field,
+    // projected value-free (a `secret`-kind field is marked masked).
     expect(pendingConnectionStore.getSnapshot()).toEqual({
       id: 'polygon',
       sourceName: 'Polygon',
-      fieldName: 'api_key',
+      fields: [{ name: 'api_key', label: 'API Key', kind: 'secret', required: true, sensitive: true }],
     });
     // The returned fields name the key but carry no value.
     expect(JSON.stringify(res.data)).not.toContain('preview');

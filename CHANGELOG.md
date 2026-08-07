@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+<!-- New features go here -->
+
+### Changed
+<!-- Changes go here -->
+
+### Fixed
+<!-- Bug fixes go here -->
+
+### Removed
+<!-- Removed features go here -->
+
+## [2.6.0] - 2026-08-07
+
+### Added
 - You can now turn a broker or data source off from the agent, not just on — every connection is on/off, via the `/connect` command.
 
 ### Changed
@@ -16,9 +30,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - The "Download PDF" research dossier now appears only for backtest runs. A scheduled signal run has no equity curve to build a dossier from, so the card no longer shows a download that could only fail.
-
-### Removed
-<!-- Removed features go here -->
 
 ## [2.5.0] - 2026-08-07
 

@@ -103,7 +103,7 @@ export async function handOffToAgent(
   if (!result.ok) {
     return { kind: 'err', text: result.error ?? 'The agent hand-off failed.' };
   }
-  return { kind: 'ok', text: 'Handed to the agent — review the prefilled prompt and send it.' };
+  return { kind: 'ok', text: 'Handed to the agent — review the prefilled message and send it.' };
 }
 
 /**

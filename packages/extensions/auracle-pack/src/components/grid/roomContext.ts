@@ -32,5 +32,4 @@ export const ROOM_CONTEXT: Record<RoomId, string> = {
   incidents: 'What needs attention right now.',
   schedules: 'What runs, and when.',
   runway: 'How far each idea has travelled toward live.',
-  conns: 'The engine, the broker, and the data sources.',
 };

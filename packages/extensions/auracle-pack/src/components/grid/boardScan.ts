@@ -299,7 +299,7 @@ registerAiExecutor(BOARD_SCAN_OPERATION, async (intent) => {
   const recorded = await settleBoardDispatch(scope.nodeId, kind, triggerOfIntent(intent));
 
   const opened =
-    'Agent session started with the evidence prompt. Review it and send it — nothing has been written yet.';
+    'Agent session started with the evidence. Review it and send it — nothing has been written yet.';
   return recorded.ok
     ? { kind: 'done', note: opened }
     : {

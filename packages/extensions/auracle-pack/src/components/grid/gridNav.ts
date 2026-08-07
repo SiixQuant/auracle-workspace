@@ -62,8 +62,8 @@ export const ROOM_ALIASES: Record<string, RoomId> = {
 /**
  * The alias a hand-off addresses to reach a room, short form. Only rooms that
  * inherited a retired panel id have one; a room without an alias (`strategies`,
- * `conns` — new with the Grid) is reached through the Grid's own id, which the
- * host treats as a toggle.
+ * new with the Grid) is reached through the Grid's own id, which the host
+ * treats as a toggle.
  */
 const ROOM_ROUTE_ALIASES: Partial<Record<RoomId, string>> = {
   findings: 'research',

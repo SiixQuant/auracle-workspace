@@ -316,43 +316,6 @@ const CATALOG: readonly AiActionDef[] = [
             fields: readingFields('incidents', vitals),
           },
   },
-  {
-    id: 'conns-repair',
-    class: 'repair',
-    room: 'conns',
-    label: 'Reconnect the failing connections',
-    icon: 'auto_fix_high',
-    keywords: ['repair', 'fix', 'reconnect', 'connection', 'broker'],
-    intent: (vitals) =>
-      vitals.conns.health !== 'fault'
-        ? null
-        : {
-            operation: 'connection.reconnect-errored',
-            room: 'conns',
-            summary: 'Ask the engine to reconnect every connection it reports in error.',
-            fields: [
-              ...readingFields('conns', vitals),
-              { label: 'Scope', value: 'only the connections reported in error' },
-            ],
-          },
-  },
-  {
-    id: 'conns-explain',
-    class: 'advisory',
-    room: 'conns',
-    label: 'Explain the connection state',
-    icon: 'psychology',
-    keywords: ['explain', 'why', 'connection', 'broker', 'data'],
-    intent: (vitals) =>
-      vitals.conns.note === null
-        ? null
-        : {
-            operation: 'conns.explain',
-            room: 'conns',
-            summary: 'Say what the connection registry currently reports. Changes nothing.',
-            fields: readingFields('conns', vitals),
-          },
-  },
 ];
 
 /** Every action the current readings support, in catalog order. */
@@ -535,13 +498,5 @@ registerAiExecutor(
   explainer(
     'incidents',
     'Incidents are raised by the engine against a deployment, so each one names the thing that raised it. Open the room to see what each is about.'
-  )
-);
-
-registerAiExecutor(
-  'conns.explain',
-  explainer(
-    'conns',
-    'The platform is keyless by default, so an unconfigured connection is a choice rather than a fault; only a connection that was wired and then failed reads as an error.'
   )
 );

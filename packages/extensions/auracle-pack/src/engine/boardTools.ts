@@ -94,11 +94,15 @@ const RESEARCH_KEYS = new Set(['hypothesis']);
  * Names a credential value hides behind. Matched only AFTER the allowed keys
  * have been taken, so `credential_slot` — which contains the word — is never
  * tested against it.
+ *
+ * Exported so the connections tools ({@link ./connectionTools}) refuse a
+ * secret-shaped option against the SAME pattern rather than a second copy that
+ * could drift — one regex is what every agent-facing write is measured against.
  */
-const VALUE_SHAPED =
+export const VALUE_SHAPED =
   /(secret|password|passwd|passphrase|token|api[-_ ]?key|apikey|bearer|private[-_ ]?key|access[-_ ]?key|credential|auth)/i;
 
-const WRITE_ONLY_REFUSAL =
+export const WRITE_ONLY_REFUSAL =
   'A credential value never travels through a board tool. Name the vault slot with ' +
   '`credential_slot` and ask the person to paste the key into the card\'s secret input — ' +
   'the only route a secret has.';

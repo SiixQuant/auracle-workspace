@@ -14,11 +14,11 @@
  * table below says so rather than pretending the one call covers everything.
  *
  * Connections is a fourth exception, and a subtler one: the consolidated
- * payload's connections block counts BROKERS only, while the Connections room
- * lists brokers, data providers and integrations alike. Reading the counts from
- * the one call would make the card and the room disagree — an errored data
- * provider would move one and not the other — so this room keeps the same
- * registry read the room itself uses.
+ * payload's connections block counts BROKERS only, while the shared connection
+ * feed (engineFeeds.connections) carries brokers, data providers and
+ * integrations alike — the Board's source cards and the data-source advisory
+ * read from it — so this keeps the full registry read those surfaces need
+ * rather than the broker-only count.
  *
  * The Board's research counters are a fifth, and the strictest: they are read
  * only while a question is actually registered with the engine, so an install
@@ -64,7 +64,7 @@ import {
 } from './boardResearch';
 import { hasStandingQueries } from './boardStandingQueries';
 import { DEPLOY_FAILED_STATE, type Deployment } from './live';
-import { isConnected, type Connector } from './model';
+import { type Connector } from './model';
 import type { BlotterOrder } from './monitors';
 // Type-only: erased at build time, so the engine layer keeps no runtime
 // dependency on the component that owns the room table.
@@ -333,24 +333,6 @@ function runwayVital(block: RunwayBlock | null | undefined): RoomVital {
   return vital('nominal', `${reached} of ${names.length} stages reached`, `${reached}/${names.length} stages`);
 }
 
-/** Connector states that mean "wired but not healthy" — worth an amber dot,
- *  not a red one. `not_configured` is deliberately absent: the platform is
- *  keyless by default, so an unconfigured connector is a choice. */
-const DEGRADED_CONN_STATES = new Set(['degraded', 'disconnected', 'connecting', 'reconnecting']);
-
-function connsVital(rows: Connector[] | null): RoomVital {
-  if (rows === null) return QUIET;
-  if (rows.length === 0) return vital('nominal', 'none available');
-  const errored = rows.filter((row) => row.status?.state === 'error').length;
-  if (errored > 0) return vital('fault', `${errored} of ${rows.length} in error`, `${errored} in error`);
-  const degraded = rows.filter((row) => DEGRADED_CONN_STATES.has(row.status?.state ?? '')).length;
-  if (degraded > 0) {
-    return vital('degraded', `${degraded} of ${rows.length} degraded`, `${degraded} degraded`);
-  }
-  const connected = rows.filter((row) => isConnected(row.status)).length;
-  return vital('nominal', `${connected} of ${rows.length} connected`, `${connected}/${rows.length} up`);
-}
-
 /** Every room's reading, from whatever the sources currently hold. */
 export function deriveRooms(sources: VitalSources): GridVitals {
   const summary = sources.summary;
@@ -369,7 +351,6 @@ export function deriveRooms(sources: VitalSources): GridVitals {
     incidents: incidentsVital(figure(summary?.open_alerts)),
     schedules: schedulesVital(summary?.schedules),
     runway: runwayVital(summary?.runway),
-    conns: connsVital(sources.connections),
   };
 }
 

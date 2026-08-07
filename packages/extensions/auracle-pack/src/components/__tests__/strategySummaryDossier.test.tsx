@@ -99,7 +99,7 @@ beforeEach(() => {
   vi.mocked(tearsheetRuns).mockResolvedValue([]);
   vi.mocked(tearsheetSummary).mockResolvedValue(AGENT_SUMMARY);
   vi.mocked(buildDossier).mockResolvedValue({ ok: true, report: REPORT });
-  vi.mocked(openReport).mockResolvedValue(true);
+  vi.mocked(openReport).mockResolvedValue({ ok: true, opened: true });
   focusStore.publish({ run: { kind: 'backtest', id: '42' } });
 });
 
@@ -157,7 +157,7 @@ describe('the AuraPoint dossier card (FR-F2, FR-F3)', () => {
     // POST carries the focused strategy + backtest job id (E5).
     await waitFor(() => expect(vi.mocked(buildDossier)).toHaveBeenCalledWith(STRATEGY, 42));
     // Once resolved, the file is served through the host and the path is shown.
-    await waitFor(() => expect(vi.mocked(openReport)).toHaveBeenCalledWith(REPORT.id));
+    await waitFor(() => expect(vi.mocked(openReport)).toHaveBeenCalledWith(REPORT.id, REPORT.filename));
     const saved = await screen.findByTestId('tearsheet-dossier-saved');
     expect(saved.textContent).toContain('reports/2026-08-05_fund-pair_t25-sfxh2.pdf');
     expect(screen.queryByTestId('tearsheet-dossier-error')).toBeNull();

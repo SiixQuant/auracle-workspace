@@ -482,6 +482,41 @@ export function registerAuracleEngineHandlers(): void {
     return { engineUrl: config.engineUrl, hasKey: config.apiKey.length > 0 };
   });
 
+  // Download a dossier PDF and OPEN it with the OS default viewer. Fetches the
+  // bytes over the authenticated bridge (the same cookie the build uses), writes
+  // to the Downloads folder, and opens it — so the panel never depends on the OS
+  // browser resolving the engine URL (which, with the engine's attachment
+  // disposition, silently downloaded the file — or failed — with no feedback).
+  // Returns an explicit result the panel can surface instead of a silent false.
+  safeHandle('auracle:download-report', async (_event, reportId: unknown, filename: unknown) => {
+    const id = typeof reportId === 'string' ? reportId : String(reportId ?? '');
+    if (!id) return { ok: false, error: 'No report id.' };
+    try {
+      const config = await readConfig();
+      if (!config.engineUrl) return { ok: false, error: 'The local engine is not configured.' };
+      const resp = await fetch(
+        `${config.engineUrl}/ui/api/reports/${encodeURIComponent(id)}`,
+        { method: 'GET', headers: baseHeaders(config) },
+      );
+      if (!resp.ok) {
+        return { ok: false, error: `The engine could not serve the report (HTTP ${resp.status}).` };
+      }
+      const buf = Buffer.from(await resp.arrayBuffer());
+      const disp = resp.headers.get('content-disposition') ?? '';
+      const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disp);
+      const hinted = typeof filename === 'string' && filename ? filename : '';
+      const name = (hinted || (match ? decodeURIComponent(match[1]) : '') || `auracle-dossier-${id}.pdf`)
+        .replace(/[/\\]/g, '_');
+      const dest = path.join(app.getPath('downloads'), name);
+      await fs.writeFile(dest, buf);
+      const openErr = await shell.openPath(dest);
+      return { ok: true, path: dest, opened: openErr === '' };
+    } catch (err) {
+      logger.main?.error?.('auracle:download-report failed', err);
+      return { ok: false, error: err instanceof Error ? err.message : 'The download failed.' };
+    }
+  });
+
   safeHandle(
     'auracle:engine-request',
     async (

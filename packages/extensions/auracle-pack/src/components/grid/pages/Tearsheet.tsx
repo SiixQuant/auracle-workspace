@@ -631,8 +631,12 @@ function DossierCard({
       setState({ phase: 'error', report: null, message: dossierError(res.status, res.error) });
       return;
     }
-    setState({ phase: 'ready', report: res.report, message: null });
-    void openReport(res.report.id);
+    const opened = await openReport(res.report.id, res.report.filename);
+    setState({
+      phase: 'ready',
+      report: res.report,
+      message: opened.ok ? null : opened.error || 'The dossier built, but opening it failed.',
+    });
   };
 
   const isReady = state.phase === 'ready' && state.report !== null;
@@ -657,7 +661,7 @@ function DossierCard({
             <b>reports/{state.report.filename}</b>
           </div>
         ) : null}
-        {state.phase === 'error' && state.message ? (
+        {state.message ? (
           <div style={{ marginTop: 6 }}>
             <InlineNote kind="err" testId="tearsheet-dossier-error">
               {state.message}
@@ -671,9 +675,15 @@ function DossierCard({
         busy={state.phase === 'building'}
         disabled={!canBuild}
         title={canBuild ? undefined : 'Focus a backtest run to build its dossier'}
-        onClick={() => {
-          if (state.phase === 'ready' && state.report) void openReport(state.report.id);
-          else void build();
+        onClick={async () => {
+          if (state.phase === 'ready' && state.report) {
+            const opened = await openReport(state.report.id, state.report.filename);
+            if (!opened.ok) {
+              setState({ ...state, message: opened.error || 'Could not open the PDF.' });
+            }
+          } else {
+            void build();
+          }
         }}
       >
         <DownloadGlyph />

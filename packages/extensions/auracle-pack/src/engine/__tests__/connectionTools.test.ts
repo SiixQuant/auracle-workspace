@@ -24,6 +24,7 @@ import {
   __resetConnectionToolsForTests,
   connectSource,
   connectionStatus,
+  disconnectSource,
   listSources,
   pendingConnectionStore,
 } from '../connectionTools';
@@ -263,5 +264,31 @@ describe('connect_source', () => {
     const res = await connectSource({});
     expect(res.success).toBe(false);
     expect(res.error).toContain('id is required');
+  });
+});
+
+describe('disconnect_source', () => {
+  it('turns a source off with a /disconnect POST and re-polls', async () => {
+    vi.mocked(postJson).mockResolvedValue({ ok: true, status: 200, body: { ok: true } } as never);
+
+    const res = await disconnectSource({ id: 'polygon' });
+
+    expect(res.success).toBe(true);
+    expect(res.data).toMatchObject({ ok: true, connected: false, id: 'polygon' });
+    expect(vi.mocked(postJson)).toHaveBeenCalledWith('/ui/api/connections/polygon/disconnect', {});
+    expect(vi.mocked(bumpConnectGeneration)).toHaveBeenCalled();
+  });
+
+  it('requires an id', async () => {
+    const res = await disconnectSource({});
+    expect(res.success).toBe(false);
+    expect(res.error).toContain('id is required');
+  });
+
+  it('reports honestly when the engine refuses the disconnect', async () => {
+    vi.mocked(postJson).mockResolvedValue({ ok: false, status: 500, body: {} } as never);
+    const res = await disconnectSource({ id: 'polygon' });
+    expect(res.success).toBe(false);
+    expect(res.error).toContain('polygon');
   });
 });

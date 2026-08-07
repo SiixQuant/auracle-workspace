@@ -45,7 +45,7 @@ import {
 } from './engine/boardTools';
 import { settleBoardDispatch } from './components/grid/boardScan';
 import { agentSessionHost } from './components/grid/gridAiExecutors';
-import { connectSource, connectionStatus, listSources } from './engine/connectionTools';
+import { connectSource, connectionStatus, disconnectSource, listSources } from './engine/connectionTools';
 
 /** Turn one outcome into what the host hands the agent. */
 function result(outcome: BoardToolOutcome): ExtensionToolResult {
@@ -407,6 +407,23 @@ export const boardAiTools: ExtensionAITool[] = [
       required: ['id'],
     },
     handler: async (params) => connectSource(params),
+  },
+  {
+    name: 'disconnect_source',
+    scope: 'global',
+    access: { kind: 'filesystem' },
+    description:
+      'Turn a data source or broker OFF by id (from list_sources) — clears its stored credential ' +
+      'in the engine vault and re-polls. Use this for the off half of an on/off toggle. The free ' +
+      'keyless data floor (yfinance) is unaffected; a keyed source drops back to needs-credential.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'The connector id to turn off.' },
+      },
+      required: ['id'],
+    },
+    handler: async (params) => disconnectSource(params),
   },
 ];
 

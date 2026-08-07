@@ -23,7 +23,8 @@
       "board_scan_card",
       "list_sources",
       "connection_status",
-      "connect_source"
+      "connect_source",
+      "disconnect_source"
     ],
     "customEditors": [
       {
@@ -60,25 +61,14 @@
     "claudePlugin": {
       "path": "claude-plugin",
       "displayName": "Auracle Quant Commands",
-      "description": "Research, backtests, walk-forwards, deploy checks, and connecting brokers and data - through the local Auracle engine.",
+      "description": "Five guided commands — research, strategy, backtest, deploy, and connect — backed by the local Auracle engine. Each asks what you want and walks you through it.",
       "enabledByDefault": true,
       "commands": [
-        { "name": "bd", "description": "Connect a broker or market-data source" },
-        { "name": "research-ideas", "description": "Find strategy ideas in recent research" },
-        { "name": "draft-strategy", "description": "Draft a strategy from a research finding" },
-        { "name": "transmog", "description": "Build a tested strategy from a research finding" },
-        { "name": "deep-rank", "description": "Re-rank the top research findings" },
-        { "name": "run-backtest", "description": "Backtest a strategy" },
-        { "name": "walk-forward", "description": "Walk-forward test a strategy out of sample" },
-        { "name": "premarket-check", "description": "Check you're ready to trade before the open" },
-        { "name": "open-tearsheet", "description": "Open a recent run's tearsheet" },
-        { "name": "browse-templates", "description": "Browse example strategies" },
-        { "name": "clone-template", "description": "Copy an example strategy to start from" },
-        { "name": "run-preflight", "description": "Check a strategy before deploying it live" },
-        { "name": "ingest-data", "description": "Download historical price data" },
-        { "name": "draft-manifest", "description": "Draft a deployment manifest" },
-        { "name": "validate-manifest", "description": "Validate a deployment manifest" },
-        { "name": "backtest-manifest", "description": "Backtest a deployment manifest" }
+        { "name": "research", "description": "Find and rank strategy ideas from research" },
+        { "name": "strategy", "description": "Draft, build, or clone a strategy" },
+        { "name": "backtest", "description": "Backtest, walk-forward, or check a strategy" },
+        { "name": "deploy", "description": "Prepare and check a live deployment" },
+        { "name": "connect", "description": "Connect, turn off, or check a broker or data source" }
       ]
     },
     "panels": [

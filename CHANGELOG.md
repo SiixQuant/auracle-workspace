@@ -9,10 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-<!-- New features go here -->
+- You can now turn a broker or data source off from the agent, not just on — every connection is on/off, via the `/connect` command.
 
 ### Changed
-<!-- Changes go here -->
+- The command list is now five clear categories — `/research`, `/strategy`, `/backtest`, `/deploy`, and `/connect` — each of which asks what you want and walks you through it, instead of a long flat list of sixteen. Clear Street and the other brokers are offered under `/connect`.
 
 ### Fixed
 <!-- Bug fixes go here -->

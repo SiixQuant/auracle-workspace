@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!-- Changes go here -->
 
 ### Fixed
-<!-- Bug fixes go here -->
+- The "Download PDF" research dossier now appears only for backtest runs. A scheduled signal run has no equity curve to build a dossier from, so the card no longer shows a download that could only fail.
 
 ### Removed
 <!-- Removed features go here -->

@@ -331,6 +331,30 @@ export async function connectSource(
   };
 }
 
+/**
+ * Turn a connection OFF. Clears the stored credential/session in the engine's
+ * vault (the write-only save has no counterpart the tool can read, so "off" is
+ * an explicit disconnect), then re-polls every surface. The keyless data floor
+ * (yfinance) is unaffected; a keyed source simply drops back to needs-credential.
+ */
+export async function disconnectSource(
+  params: Record<string, unknown>
+): Promise<ExtensionToolResult> {
+  const id = typeof params.id === 'string' ? params.id.trim() : '';
+  if (!id) return { success: false, error: 'id is required — the connector to turn off.' };
+
+  const res = await postJson(`/ui/api/connections/${id}/disconnect`, {});
+  if (!res.ok) {
+    return {
+      success: false,
+      error: `The engine would not turn off ${id} (${res.status || 'unreachable'}).`,
+    };
+  }
+  clearPendingConnection(id);
+  bumpConnectGeneration();
+  return { success: true, message: `Turned off ${id}.`, data: { ok: true, connected: false, id } };
+}
+
 /* ── the pending-connection signal the panel renders off ─────────────────── */
 
 /**

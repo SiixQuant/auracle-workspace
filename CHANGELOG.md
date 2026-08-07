@@ -9,16 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Connections now live in the agent: ask it to connect a data source or broker, paste your key once in a masked field, and it works immediately — no separate connections page. Ask what to connect and it lists every source grouped by free, free account, or paid.
+<!-- New features go here -->
 
 ### Changed
-- Backtests stop and prompt you to connect a real market-data source before running, so an in-sample / out-of-sample test isn't run on empty data; free yfinance runs still work, with a heads-up.
+<!-- Changes go here -->
 
 ### Fixed
 <!-- Bug fixes go here -->
 
 ### Removed
 <!-- Removed features go here -->
+
+## [2.5.0] - 2026-08-07
+
+### Added
+- A guided `/bd` command connects a broker or market-data source. It asks what you need, then walks you through each one: free feeds connect instantly, keys go in a masked field, and Interactive Brokers opens its gateway sign-in.
+
+### Changed
+- Tidier extension pages: plainer language, shorter command descriptions, and the agent's tools shown as one summary instead of a long list of internal names.
+
+## [2.4.0] - 2026-08-07
+
+### Added
+- Connections now live in the agent: ask it to connect a data source or broker, paste your key once in a masked field, and it works immediately — no separate connections page. Ask what to connect and it lists every source grouped by free, free account, or paid.
+
+### Changed
+- Backtests stop and prompt you to connect a real market-data source before running, so an in-sample / out-of-sample test isn't run on empty data; free yfinance runs still work, with a heads-up.
 
 ## [2.3.2] - 2026-08-05
 

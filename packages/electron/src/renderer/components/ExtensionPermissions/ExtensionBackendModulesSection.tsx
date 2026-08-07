@@ -161,9 +161,6 @@ export const ExtensionBackendModulesSection: React.FC<ExtensionBackendModulesSec
                 <div className="flex items-center gap-1.5 text-sm font-medium text-[var(--nim-text)]">
                   <MaterialSymbol icon="memory" size={16} />
                   {mod.id}
-                  <span className="text-xs text-[var(--nim-text-faint)] font-mono">
-                    ({mod.runtime})
-                  </span>
                 </div>
                 {stateDescription && (
                   <span

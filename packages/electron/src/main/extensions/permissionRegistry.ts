@@ -42,8 +42,8 @@ const CATALOG: readonly PermissionDescriptor[] = [
   },
   {
     id: 'mcp-server-register',
-    label: 'Register MCP tools',
-    description: 'Expose extension-defined MCP tools to the AI agent.',
+    label: 'Add agent tools',
+    description: 'Add new tools the agent can use.',
     risk: 'elevated',
   },
   {

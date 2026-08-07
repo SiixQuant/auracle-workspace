@@ -1044,7 +1044,13 @@ export function Tearsheet({
                 jobId={runId}
                 host={host}
               />
-              <DossierCard strategyPath={state.result.strategy_path ?? null} jobId={runId} />
+              {/* The research dossier needs a real backtest (equity + drawdown).
+                  A scheduled signal run has none, so the engine can't build one —
+                  don't offer a Download PDF that could only fail; just omit the
+                  card for non-chartable runs. */}
+              {Boolean(state.result.chartable && state.result.chart && state.result.drawdown) && (
+                <DossierCard strategyPath={state.result.strategy_path ?? null} jobId={runId} />
+              )}
             </>
           ) : null}
         </>

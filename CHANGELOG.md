@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [2.6.1] - 2026-08-07
+
+### Fixed
+- Download PDF on a strategy's research dossier now opens the PDF reliably. It was handed to the OS browser, which silently saved it (or failed) with no feedback; it now downloads over the authenticated connection and opens in your PDF viewer, and any failure shows a clear reason instead of nothing.
+
 ## [2.6.0] - 2026-08-07
 
 ### Added

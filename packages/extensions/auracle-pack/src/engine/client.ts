@@ -471,25 +471,34 @@ export async function buildDossier(
  * false when the engine base is unknown, no token comes back, or the bridge is
  * absent, so the card stays honest about whether the file actually opened.
  */
-export async function openReport(reportId: string): Promise<boolean> {
-  if (!reportId) return false;
-  const { engineUrl } = await engineConfig();
-  if (!engineUrl) return false;
-  // The browser has no session cookie; fetch a signed, short-lived download
-  // path over the authenticated bridge and open that instead of the raw route.
-  const signed = await getJson<{ download_path?: string }>(
-    `/ui/api/reports/${encodeURIComponent(reportId)}/token`
-  );
-  const path = signed?.download_path;
-  if (!path) return false;
-  const url = `${engineUrl.replace(/\/+$/, '')}${path}`;
-  const api = (window as unknown as ElectronBridge).electronAPI;
-  if (!api?.openExternal) return false;
+export interface OpenReportResult {
+  ok: boolean;
+  /** Where the PDF was saved (Downloads), when ok. */
+  path?: string;
+  /** True when the OS viewer opened it; false when it saved but couldn't open. */
+  opened?: boolean;
+  /** A user-readable reason when it failed — surfaced by the card, never silent. */
+  error?: string;
+}
+
+/**
+ * Download a dossier PDF and open it. Delegates to the main-process
+ * `auracle:download-report` handler, which fetches the bytes over the
+ * authenticated bridge (the same cookie the build uses) and opens them with the
+ * OS viewer — so it never depends on the OS browser resolving the engine URL,
+ * and every failure returns a reason instead of a silent false.
+ */
+export async function openReport(
+  reportId: string,
+  filename?: string
+): Promise<OpenReportResult> {
+  if (!reportId) return { ok: false, error: 'No report to open.' };
+  const invoke = bridge();
+  if (!invoke) return { ok: false, error: 'The host bridge is unavailable.' };
   try {
-    await api.openExternal(url);
-    return true;
-  } catch {
-    return false;
+    return (await invoke('auracle:download-report', reportId, filename)) as OpenReportResult;
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'The download failed.' };
   }
 }
 

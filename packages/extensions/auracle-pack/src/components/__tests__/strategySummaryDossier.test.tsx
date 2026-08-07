@@ -59,10 +59,15 @@ import { StrategyPage } from '../grid/pages/StrategyPage';
 
 const STRATEGY = 'strategies.desk.fund_pair.FundPair';
 
-/** A loaded Overview so the summary + dossier mount below the metrics. */
+/** A loaded, CHARTABLE backtest so the summary + dossier mount below the
+ *  metrics. The dossier is only offered for chartable runs (a signal/function
+ *  run has no equity curve to build one from), so its test uses a run with a
+ *  curve — Plotly is mocked above, so the Overview chart renders harmlessly. */
 const RESULT: BacktestResultBody = {
   status: 'succeeded',
-  chartable: false,
+  chartable: true,
+  chart: { labels: ['2020-01-02', '2020-01-03'], points: [1, 1.1] },
+  drawdown: { labels: ['2020-01-02', '2020-01-03'], points: [0, -0.05] },
   strategy_path: STRATEGY,
   stats: {},
 };

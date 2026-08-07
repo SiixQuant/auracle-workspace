@@ -576,12 +576,12 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
                   {/* Claude Plugin */}
                   {selectedExtension.manifest.contributions?.claudePlugin && (
                     <div className="mb-5">
-                      <div className="text-xs font-semibold text-[var(--nim-text-muted)] uppercase tracking-wide mb-2.5">Claude Agent Plugin</div>
+                      <div className="text-xs font-semibold text-[var(--nim-text-muted)] uppercase tracking-wide mb-2.5">Agent Commands</div>
                       <div className="bg-[var(--nim-bg)] border border-[var(--nim-border)] rounded-md p-3">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-1.5 text-xs font-medium text-[var(--nim-text)]">
                             <span className="material-symbols-outlined text-base text-[var(--nim-primary)]">smart_toy</span>
-                            {selectedExtension.manifest.contributions.claudePlugin.displayName || 'Claude Plugin'}
+                            {selectedExtension.manifest.contributions.claudePlugin.displayName || 'Agent Commands'}
                           </div>
                           <ToggleSwitch
                             checked={selectedExtension.claudePluginEnabled ?? true}
@@ -665,15 +665,20 @@ export const InstalledExtensionsPanel: React.FC<InstalledExtensionsPanelProps> =
                             {editor.displayName}
                           </span>
                         ))}
-                        {selectedExtension.manifest.contributions.aiTools?.map((tool, idx) => {
-                          const toolName = typeof tool === 'string' ? tool : (tool as { name: string }).name;
+                        {selectedExtension.manifest.contributions.aiTools && selectedExtension.manifest.contributions.aiTools.length > 0 && (() => {
+                          const toolNames = selectedExtension.manifest.contributions.aiTools.map((tool) =>
+                            typeof tool === 'string' ? tool : (tool as { name: string }).name
+                          );
                           return (
-                            <span key={`tool-${idx}`} className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]">
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)]"
+                              title={toolNames.join(', ')}
+                            >
                               <span className="material-symbols-outlined text-sm">smart_toy</span>
-                              AI Tool: {toolName}
+                              {toolNames.length} agent {toolNames.length === 1 ? 'tool' : 'tools'}
                             </span>
                           );
-                        })}
+                        })()}
                         {selectedExtension.manifest.contributions.slashCommands?.map((cmd, idx) => (
                           <span key={`slash-${idx}`} className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs bg-[var(--nim-bg-tertiary)] text-[var(--nim-text-muted)] font-mono">
                             /{cmd.title}

@@ -2,7 +2,7 @@
   "id": "com.nimbalyst.memory",
   "name": "Auracle Memory",
   "version": "0.1.0",
-  "description": "Local project-knowledge + facts brain. Indexes your markdown (design docs, plans, CLAUDE.md, trackers, voice-memory) into a rebuildable shadow index and serves fast hybrid retrieval + facts to AI agents over MCP. Voice-agent grounding lands in a later phase.",
+  "description": "Gives the agent memory of your project. Indexes your notes, docs, and plans so the agent can use them when it answers, and remembers key facts across sessions. Runs locally.",
   "author": "Auracle",
   "main": "dist/index.js",
   "apiVersion": "1.0.0",
@@ -21,7 +21,7 @@
         "enablement": {
           "default": "disabled",
           "promptOn": "firstUse",
-          "purpose": "Index this project's markdown locally and create OpenAI embeddings (using your configured OpenAI key) so the coding and voice agents can ground answers in your design docs, plans, and notes."
+          "purpose": "Reads your project's notes and docs on this machine so the agent can use them when it answers. Uses your OpenAI key to build the search index."
         }
       }
     ],
@@ -33,9 +33,9 @@
   },
   "marketplace": {
     "categories": ["developer-tools", "ai"],
-    "tags": ["memory", "grounding", "rag", "voice", "search"],
+    "tags": ["memory", "search", "notes", "docs"],
     "icon": "psychology",
-    "tagline": "A local project brain for your AI agents",
+    "tagline": "Local project memory for the agent",
     "fileTypes": []
   }
 }

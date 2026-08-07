@@ -310,7 +310,7 @@ export function GridHome({ host }: { host: PanelHost }): JSX.Element {
           <ConnectionSecretField
             id={pendingConnection.id}
             sourceName={pendingConnection.sourceName}
-            fieldName={pendingConnection.fieldName}
+            fields={pendingConnection.fields}
           />
         </div>
       ) : null}

@@ -269,12 +269,41 @@ function readOptions(
   return { ok: true, fields };
 }
 
-/** The field the person is asked to paste, for a keyed connector: the first
- *  required field still missing a value, else the first field. Null when the
- *  connector carries no field at all (a gateway broker has none). */
-function credentialField(connector: Connector): FieldMeta | null {
-  if (connector.fields.length === 0) return null;
-  return connector.fields.find((field) => field.required && !field.has_value) ?? connector.fields[0];
+/** A pending field projected to what the paste form needs to render it — its
+ *  name and label, the input kind, whether it is required, its select options,
+ *  a placeholder hint, and whether to mask it. NEVER a value. */
+function toPendingField(field: FieldMeta): PendingField {
+  const out: PendingField = {
+    name: field.name,
+    label: field.label,
+    kind: field.kind || 'text',
+    required: field.required,
+    // A password field is always masked; a text field the engine flagged
+    // secret is masked too. `secret` covers the older engine spelling of the
+    // kind.
+    sensitive: field.kind === 'password' || field.kind === 'secret' || Boolean(field.sensitive),
+  };
+  if (Array.isArray(field.options) && field.options.length > 0) out.options = field.options;
+  if (typeof field.placeholder === 'string' && field.placeholder) out.placeholder = field.placeholder;
+  return out;
+}
+
+/**
+ * Every field the person is asked to fill for a keyed connect — the whole form,
+ * not one field at a time. A connector like Alpaca (key + secret + mode) or
+ * Tradier (token + mode) is connected in a single paste rather than one round
+ * trip through the agent per field.
+ *
+ * The set: every required field, plus any optional field with no value yet. On
+ * a re-connect the required fields still show so a stored secret can be
+ * replaced (a blank field is left untouched at save, never overwritten with
+ * nothing). Empty when the connector carries no field at all (a gateway broker
+ * has none) — the caller then arms nothing.
+ */
+function pendingFields(connector: Connector): PendingField[] {
+  if (connector.fields.length === 0) return [];
+  const chosen = connector.fields.filter((field) => field.required || !field.has_value);
+  return (chosen.length > 0 ? chosen : connector.fields).map(toPendingField);
 }
 
 /**
@@ -311,12 +340,12 @@ export async function connectSource(
   const detail = await readConnectionDetail(id);
   if (!detail) return { success: false, error: `No connection answered for "${id}".` };
 
-  const field = credentialField(detail);
-  if (field) {
+  const fields = pendingFields(detail);
+  if (fields.length > 0) {
     setPendingConnection({
       id: detail.id,
       sourceName: detail.display_label || detail.id,
-      fieldName: field.name,
+      fields,
     });
   }
   return {
@@ -358,14 +387,31 @@ export async function disconnectSource(
 /* ── the pending-connection signal the panel renders off ─────────────────── */
 
 /**
- * A keyed connect waiting on its secret. The panel renders a write-only paste
- * field while this is set (the only place a key is asked for), and it clears the
- * moment the field posts — so the input appears only while a connect is pending.
+ * One field of a pending keyed connect, projected value-free for the paste
+ * form: its name and label, the input kind (`text` | `password` | `select` |
+ * `checkbox`), whether it is required, its select options, a placeholder hint,
+ * and whether the input masks. Never a value.
+ */
+export interface PendingField {
+  name: string;
+  label: string;
+  kind: string;
+  required: boolean;
+  options?: string[];
+  placeholder?: string;
+  sensitive?: boolean;
+}
+
+/**
+ * A keyed connect waiting on its credentials. The panel renders a write-only
+ * paste form while this is set (the only place a key is asked for) — one masked
+ * or plain input per field — and it clears the moment the form posts, so the
+ * form appears only while a connect is pending.
  */
 export interface PendingConnection {
   id: string;
   sourceName: string;
-  fieldName: string;
+  fields: PendingField[];
 }
 
 let pending: PendingConnection | null = null;
@@ -385,10 +431,16 @@ export const pendingConnectionStore = {
   },
 };
 
+/** A field signature stable enough to tell two pending forms apart without a
+ *  deep compare: the ordered name:kind pairs. */
+function fieldsSig(fields: PendingField[]): string {
+  return fields.map((field) => `${field.name}:${field.kind}`).join('|');
+}
+
 function samePending(a: PendingConnection | null, b: PendingConnection | null): boolean {
   if (a === b) return true;
   if (a === null || b === null) return false;
-  return a.id === b.id && a.sourceName === b.sourceName && a.fieldName === b.fieldName;
+  return a.id === b.id && a.sourceName === b.sourceName && fieldsSig(a.fields) === fieldsSig(b.fields);
 }
 
 /** Arm (or clear) the pending connection. `connect_source` sets it for a keyed

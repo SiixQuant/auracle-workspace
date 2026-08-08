@@ -223,7 +223,7 @@ export function tearsheetMetricRows(
     // best of every backtest tried on this strategy would reach by luck alone
     // (the engine's deflated PSR, folded into `stats`). An em dash until the
     // engine has recorded a trial — a missing value is never a fabricated one.
-    { label: "Confidence It's Real", value: pct(stats.deflated_psr) },
+    { label: 'Confidence vs Luck', value: pct(stats.deflated_psr) },
   ];
 }
 

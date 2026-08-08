@@ -79,6 +79,7 @@ const RESULT: BacktestResultBody = {
     days_since_ath: 34,
     average_drawdown_days: 38,
     excess_sharpe: 0.47,
+    deflated_psr: 0.87,
   },
   chart: { labels: LABELS, points: [1.0, 1.4, 0.88, 3.6, 5.97] },
   drawdown: { labels: LABELS, points: [0, -3.2, -30.3, -5.1, -6.1] },
@@ -108,6 +109,10 @@ const EXPECTED_ROWS: Array<[string, string, string]> = [
   ['benchmark-return', 'Benchmark Return', '173.00%'],
   ['alpha', 'Alpha', '8.20%'],
   ['excess-sharpe', 'Excess Sharpe', '0.470'],
+  // The luck-adjusted read (Frontier #5): the engine's deflated PSR, folded
+  // into `stats` — the probability this Sharpe beats what the best of every
+  // backtest tried on the strategy would reach by luck alone.
+  ['confidence-vs-luck', 'Confidence vs Luck', '87.00%'],
 ];
 
 beforeEach(() => {
@@ -136,7 +141,7 @@ describe('the Risk / Return table matches the reference', () => {
 
     const root = screen.getByTestId('tearsheet-metrics');
     const values = root.querySelectorAll('[data-testid^="tearsheet-metric-value-"]');
-    expect(values).toHaveLength(14);
+    expect(values).toHaveLength(15);
 
     // Order and value, row by row.
     const orderedLabels = Array.from(root.children).map(

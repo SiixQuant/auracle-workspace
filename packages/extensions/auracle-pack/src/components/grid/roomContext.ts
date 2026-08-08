@@ -27,6 +27,8 @@ export const ROOM_CONTEXT: Record<RoomId, string> = {
     'Run a strategy from its file and its curves, headline metrics and overfit check land here.',
   validation:
     'The overfit gates for one strategy, every signal computed by the engine on a real backtest and walk-forward.',
+  factors:
+    "How much of the focused run's return is genuine alpha versus market and style-factor exposure, read in plain English from the engine's factor regression.",
   deploys: 'Paper and live deployments, and their state.',
   blotter: 'Orders the deployments have sent.',
   incidents: 'What needs attention right now.',

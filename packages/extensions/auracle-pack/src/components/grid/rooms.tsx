@@ -20,6 +20,7 @@ import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import { BacktestPage } from './pages/BacktestPage';
 import { BlotterPage } from './pages/BlotterPage';
 import { DeploysPage } from './pages/DeploysPage';
+import { FactorPage } from './pages/FactorPage';
 import { FindingsPage } from './pages/FindingsPage';
 import { IncidentsPage } from './pages/IncidentsPage';
 import { QcPage } from './pages/QcPage';
@@ -37,6 +38,7 @@ export const ROOM_IDS = [
   'strategy',
   'backtest',
   'validation',
+  'factors',
   'deploys',
   'blotter',
   'incidents',
@@ -66,6 +68,7 @@ export const ROOMS: Record<RoomId, GridRoom> = {
   strategy: room('strategy', 'Tearsheet', StrategyPage),
   backtest: room('backtest', 'Backtest', BacktestPage),
   validation: room('validation', 'Validation', ValidationPage),
+  factors: room('factors', 'Factors', FactorPage),
   deploys: room('deploys', 'Deployments', DeploysPage),
   blotter: room('blotter', 'Blotter', BlotterPage),
   incidents: room('incidents', 'Incidents', IncidentsPage),

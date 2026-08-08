@@ -219,6 +219,11 @@ export function tearsheetMetricRows(
     { label: 'Benchmark Return', value: pctDirect(inputs.benchmarkReturnPct) },
     { label: 'Alpha', value: pct(inputs.alphaAnnual) },
     { label: 'Excess Sharpe', value: ratio(stats.excess_sharpe) },
+    // The luck-adjusted read (#5): the probability this Sharpe beats what the
+    // best of every backtest tried on this strategy would reach by luck alone
+    // (the engine's deflated PSR, folded into `stats`). An em dash until the
+    // engine has recorded a trial — a missing value is never a fabricated one.
+    { label: 'Confidence vs Luck', value: pct(stats.deflated_psr) },
   ];
 }
 

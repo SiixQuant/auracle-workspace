@@ -346,6 +346,9 @@ export function deriveRooms(sources: VitalSources): GridVitals {
     strategy: QUIET,
     backtest: backtestVital(sources.run),
     validation: validationVital(sources.run.validation),
+    // Like the tearsheet, the factor room is a viewer of the focused run's
+    // attribution — no independent health source of its own, so it reads quiet.
+    factors: QUIET,
     deploys: deploysVital(summary?.deployments, sources.errored),
     blotter: blotterVital(sources.orders),
     incidents: incidentsVital(figure(summary?.open_alerts)),

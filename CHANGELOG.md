@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [2.9.0] - 2026-08-09
+
+### Added
+- **Return after trading costs, on every tearsheet.** Next to the headline Strategy Return and Sharpe, the Risk / Return table now shows a **Net Return** and **Net Sharpe** — the same figures once a realistic trading cost is charged against the run — with a one-line note of what was assumed (a small cost per unit traded, and the run's own average turnover). Until a run has been scored with costs, both read as a dash rather than a made-up number.
+
 ## [2.8.0] - 2026-08-09
 
 ### Added

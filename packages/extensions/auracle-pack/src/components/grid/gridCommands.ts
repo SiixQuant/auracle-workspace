@@ -23,7 +23,7 @@ import type { GridVitals, Health } from '../../engine/gridVitals';
 import { ROOM_ICONS } from './districts';
 import { openRoomFocused } from './gridNav';
 import { ROOM_CONTEXT } from './roomContext';
-import { ROOM_IDS, ROOMS } from './rooms';
+import { ROOM_IDS, ROOMS, type RoomId } from './rooms';
 
 /** One runnable row. */
 export interface GridCommand {
@@ -114,6 +114,27 @@ export function filterCommands(commands: GridCommand[], query: string): GridComm
   });
 }
 
+/**
+ * Bloomberg-style mnemonics — the short codes a power user reaches for instead
+ * of the room's full name. They ride in each room's `keywords`, so typing `bt`
+ * lands on Backtest and `fac` on Factors without spelling either out. Muscle
+ * memory over menus; every code is a plain abbreviation, never a secret.
+ */
+const ROOM_MNEMONICS: Record<RoomId, readonly string[]> = {
+  findings: ['fnd', 'ideas'],
+  qc: ['qc', 'lib'],
+  strategies: ['strat', 'strats'],
+  strategy: ['ts', 'tear', 'sheet'],
+  backtest: ['bt'],
+  validation: ['val', 'gates', 'overfit'],
+  factors: ['fac', 'risk', 'attribution', 'alpha'],
+  deploys: ['dep', 'live'],
+  blotter: ['blt', 'fills'],
+  incidents: ['inc', 'alerts'],
+  schedules: ['sch', 'cron'],
+  runway: ['rw'],
+};
+
 /* ── the base provider: every room ──────────────────────────────────── */
 
 /** The rooms, as commands. `openRoomFocused` rather than `openGridRoom`: the
@@ -131,7 +152,7 @@ const roomsProvider: GridCommandProvider = {
       // Searchable by what the room is FOR, not only by its name: the sentence
       // is the one every other surface shows, so nobody has to guess the title
       // of the room that holds the thing they are after.
-      keywords: [id, ROOMS[id].title, ROOM_CONTEXT[id]],
+      keywords: [id, ROOMS[id].title, ROOM_CONTEXT[id], ...ROOM_MNEMONICS[id]],
       section: 'Rooms',
       health: vitals[id]?.health,
       run: () => openRoomFocused(id),

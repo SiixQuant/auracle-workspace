@@ -46,7 +46,7 @@ import {
   type TradeRecord,
 } from '../../../engine/client';
 import { focusStore } from '../../../engine/focusStore';
-import { costBasisNote, EM_DASH, statPercent, tearsheetMetricRows, type TearsheetMetricRow } from '../../../engine/houseStats';
+import { capacityNote, costBasisNote, EM_DASH, statPercent, tearsheetMetricRows, type TearsheetMetricRow } from '../../../engine/houseStats';
 import { prettifyPath } from '../../../engine/humanize';
 import { composeThesis } from '../../../engine/signalThesis';
 import { handOffToAgent, type AgentNote } from '../../aiPanel';
@@ -400,6 +400,7 @@ function Overview({ state }: { state: LoadState }): JSX.Element {
   const chartable = Boolean(result.chartable && result.chart && result.drawdown);
   const provenance = provenanceLine(result);
   const costBasis = costBasisNote(result.stats ?? {});
+  const capacityBasis = capacityNote(result.stats ?? {});
 
   return (
     <>
@@ -446,6 +447,11 @@ function Overview({ state }: { state: LoadState }): JSX.Element {
       {costBasis ? (
         <p className="auracle-tearsheet__provenance" data-testid="tearsheet-cost-basis">
           {costBasis}
+        </p>
+      ) : null}
+      {capacityBasis ? (
+        <p className="auracle-tearsheet__provenance" data-testid="tearsheet-capacity-basis">
+          {capacityBasis}
         </p>
       ) : null}
     </>

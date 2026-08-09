@@ -87,6 +87,9 @@ const RESULT: BacktestResultBody = {
     net_sharpe: 1.31,
     cost_bps: 10,
     avg_turnover: 0.45,
+    // Capacity (Frontier #7) — the AUM ceiling + the participation it assumed.
+    capacity_usd: 2_400_000,
+    capacity_participation: 0.1,
   },
   chart: { labels: LABELS, points: [1.0, 1.4, 0.88, 3.6, 5.97] },
   drawdown: { labels: LABELS, points: [0, -3.2, -30.3, -5.1, -6.1] },
@@ -124,6 +127,8 @@ const EXPECTED_ROWS: Array<[string, string, string]> = [
   // and Sharpe — net_return 4.72 → +472%, net_sharpe 1.31 at three decimals.
   ['net-return', 'Net Return', '472.00%'],
   ['net-sharpe', 'Net Sharpe', '1.310'],
+  // Capacity (Frontier #7): capacity_usd 2.4M humanized to "$2.4M".
+  ['capacity', 'Capacity', '$2.4M'],
 ];
 
 beforeEach(() => {
@@ -152,7 +157,7 @@ describe('the Risk / Return table matches the reference', () => {
 
     const root = screen.getByTestId('tearsheet-metrics');
     const values = root.querySelectorAll('[data-testid^="tearsheet-metric-value-"]');
-    expect(values).toHaveLength(17);
+    expect(values).toHaveLength(18);
 
     // Order and value, row by row.
     const orderedLabels = Array.from(root.children).map(
@@ -344,6 +349,29 @@ describe('the net-of-cost basis line (Frontier #6)', () => {
     expect(screen.getByTestId('tearsheet-metric-value-net-return').textContent).toBe('—');
     expect(screen.getByTestId('tearsheet-metric-value-net-sharpe').textContent).toBe('—');
     expect(screen.queryByTestId('tearsheet-cost-basis')).toBeNull();
+  });
+});
+
+describe('the capacity line (Frontier #7)', () => {
+  it('shows the humanized capacity and states its participation assumption', async () => {
+    render(<StrategyPage host={host} />);
+    await waitFor(() => expect(screen.getByTestId('tearsheet-metric-value-capacity')).toBeTruthy());
+    // capacity_usd 2_400_000 → "$2.4M"; the note names the participation share.
+    expect(screen.getByTestId('tearsheet-metric-value-capacity').textContent).toBe('$2.4M');
+    const note = await screen.findByTestId('tearsheet-capacity-basis');
+    expect(note.textContent).toContain('10% of');
+    expect(note.textContent?.toLowerCase()).toContain('average daily volume');
+  });
+
+  it('drops the capacity row to an em dash and hides the line before capacity modeling', async () => {
+    const stats = { ...RESULT.stats };
+    delete stats.capacity_usd;
+    delete stats.capacity_participation;
+    vi.mocked(tearsheetResult).mockResolvedValue({ ...RESULT, stats });
+    render(<StrategyPage host={host} />);
+    await waitFor(() => expect(screen.getByTestId('tearsheet-metrics')).toBeTruthy());
+    expect(screen.getByTestId('tearsheet-metric-value-capacity').textContent).toBe('—');
+    expect(screen.queryByTestId('tearsheet-capacity-basis')).toBeNull();
   });
 });
 

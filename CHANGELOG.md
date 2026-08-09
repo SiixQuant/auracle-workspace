@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [2.10.0] - 2026-08-09
+
+### Added
+- **Type a strategy and where you want it.** The ⌘K palette now understands a two-word shortcut — a strategy name, then a destination — so `fundpair risk` opens the factor view for FundPair and `target bt` its backtest, focused, in a single keystroke. Destinations are plain words (`bt`, `risk`, `ts`, `val`, `dep`). Typing a single word still works exactly as before.
+
 ## [2.9.0] - 2026-08-09
 
 ### Added

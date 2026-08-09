@@ -201,6 +201,23 @@ describe('the root node is the way in', () => {
       'Open Backtest'
     );
   });
+
+  it('reaches a room by its Bloomberg-style mnemonic', () => {
+    renderGrid();
+    openFromRoot();
+
+    // The short codes a power user types instead of the room's full name.
+    const cases: Array<[string, string]> = [
+      ['bt', 'room-backtest'],
+      ['fac', 'room-factors'],
+      ['val', 'room-validation'],
+      ['dep', 'room-deploys'],
+    ];
+    for (const [mnemonic, roomCommand] of cases) {
+      type(mnemonic);
+      expect(rowIds()).toContain(roomCommand);
+    }
+  });
 });
 
 describe('typing narrows, Enter routes', () => {

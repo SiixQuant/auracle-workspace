@@ -169,6 +169,18 @@ const pctDirect = (v: number | null | undefined): string => {
   return n === null ? EM_DASH : `${n.toFixed(2)}%`;
 };
 
+/** A humanized dollar capacity — "$2.4M", "$850K", "$1.2B", "$740" — or an em
+ *  dash when the engine computed no ceiling (nothing in the book constrains it). */
+const usd = (v: number | null | undefined): string => {
+  const n = num(v);
+  if (n === null) return EM_DASH;
+  const abs = Math.abs(n);
+  if (abs >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
+  if (abs >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
+  if (abs >= 1e3) return `$${(n / 1e3).toFixed(0)}K`;
+  return `$${n.toFixed(0)}`;
+};
+
 /** One label/value line of the Risk / Return table. Values are strings the
  *  component prints verbatim (all white) — never re-derived downstream. */
 export interface TearsheetMetricRow {
@@ -232,6 +244,11 @@ export function tearsheetMetricRows(
     // {@link costBasisNote}, never implied by these numbers alone.
     { label: 'Net Return', value: pct(stats.net_return) },
     { label: 'Net Sharpe', value: ratio(stats.net_sharpe) },
+    // Capacity (#7): the AUM at which the book's largest position would first
+    // exceed the engine's participation cap on a name's average daily volume.
+    // Em dash on a run scored before capacity modeling; the assumption behind
+    // it is stated beneath the table by {@link capacityNote}.
+    { label: 'Capacity', value: usd(stats.capacity_usd) },
   ];
 }
 
@@ -261,6 +278,22 @@ export function costBasisNote(stats: Stats): string | null {
   return churn
     ? `Net rows subtract trading costs — ${rate}, which came to ${churn} here.`
     : `Net rows subtract trading costs — ${rate}.`;
+}
+
+/**
+ * The capacity basis, in plain prose (#7). The Capacity row is only honest if
+ * the reader can see what it assumes: the AUM ceiling is where the strategy's
+ * largest position would first exceed `participation` of a name's average daily
+ * volume. Returns null when the run carries no capacity figure — a run scored
+ * before capacity modeling shows the gross table with no capacity line, never a
+ * fabricated ceiling.
+ */
+export function capacityNote(stats: Stats): string | null {
+  const cap = num(stats.capacity_usd);
+  if (cap === null) return null;
+  const part = num(stats.capacity_participation);
+  const share = part === null ? 'a set share of' : `${(part * 100).toFixed(0)}% of`;
+  return `Capacity is the AUM at which the largest position would first exceed ${share} a name's average daily volume.`;
 }
 
 /**

@@ -28,6 +28,7 @@ import {
   listCommands,
   type GridCommand,
 } from './gridCommands';
+import { refreshEntityCommands } from './gridEntityCommands';
 
 const STYLE_ID = 'auracle-grid-palette-styles';
 
@@ -83,7 +84,7 @@ export function GridPalette(): JSX.Element {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
 
-  const commands = useMemo(() => listCommands({ vitals }), [vitals]);
+  const commands = useMemo(() => listCommands({ vitals, query }), [vitals, query]);
   const shown = useMemo(() => filterCommands(commands, query), [commands, query]);
   // Clamped rather than corrected in an effect: the list can shrink under the
   // highlight mid-keystroke, and a render that draws an out-of-range row (even
@@ -93,6 +94,9 @@ export function GridPalette(): JSX.Element {
   // The palette is mounted only while it is open, so this runs once per opening.
   useEffect(() => {
     inputRef.current?.focus();
+    // Freshen the `<entity> <verb>` grammar's known-strategy list on open
+    // (throttled), so it reflects the latest runs without a per-keystroke fetch.
+    refreshEntityCommands();
   }, []);
 
   // Keep the highlighted row in view when arrows walk past the fold. Guarded:

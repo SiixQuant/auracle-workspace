@@ -224,7 +224,43 @@ export function tearsheetMetricRows(
     // (the engine's deflated PSR, folded into `stats`). An em dash until the
     // engine has recorded a trial — a missing value is never a fabricated one.
     { label: 'Confidence vs Luck', value: pct(stats.deflated_psr) },
+    // Net of trading costs (#6): the engine subtracts an assumed linear cost of
+    // `cost_bps` per unit of turnover from the gross curve, then re-scores it —
+    // so the two rows above (gross Strategy Return / Sharpe) meet their after-
+    // cost twins here. Both are em dashes on a run scored before cost modeling;
+    // the cost basis (rate + turnover) is stated in prose beneath the table by
+    // {@link costBasisNote}, never implied by these numbers alone.
+    { label: 'Net Return', value: pct(stats.net_return) },
+    { label: 'Net Sharpe', value: ratio(stats.net_sharpe) },
   ];
+}
+
+/** A basis-point count without a trailing ".0" — 10.0 → "10", 12.5 → "12.5". */
+function formatBps(bps: number): string {
+  return Number.isInteger(bps) ? String(bps) : String(Number(bps.toFixed(1)));
+}
+
+/**
+ * The trading-cost basis, in plain prose, for the quiet line beneath the
+ * Risk / Return table (#6). The two "Net" rows are only honest if the reader
+ * can see what "net" assumed: the engine's linear cost of `cost_bps` per unit
+ * of turnover, and how much turnover the run actually ran. Returns null when
+ * the run carries no net figures — a run the engine scored before cost modeling
+ * shows the gross table with no cost line, never a fabricated assumption. No
+ * jargon beyond "turnover", which this audience's tearsheet already trades in.
+ */
+export function costBasisNote(stats: Stats): string | null {
+  const netSharpe = num(stats.net_sharpe);
+  const netReturn = num(stats.net_return);
+  if (netSharpe === null && netReturn === null) return null;
+  const bps = num(stats.cost_bps);
+  const turnover = num(stats.avg_turnover);
+  const rate =
+    bps === null ? 'an assumed linear cost' : `an assumed ${formatBps(bps)} bps per unit of turnover`;
+  const churn = turnover === null ? null : `${(turnover * 100).toFixed(0)}% average turnover per rebalance`;
+  return churn
+    ? `Net rows subtract trading costs — ${rate}, which came to ${churn} here.`
+    : `Net rows subtract trading costs — ${rate}.`;
 }
 
 /**

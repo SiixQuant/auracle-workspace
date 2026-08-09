@@ -1,10 +1,11 @@
 /**
  * The strategy tearsheet room (WS-E, AC-5).
  *
- * Two promises are pinned here. HONESTY: the Risk / Return table is the exact
- * 14 rows the owner's reference shows, in order, formatted to it (percentages at
- * two decimals, ratios at three, day-counts whole) — every value the engine's,
- * put through the house formatter. FIDELITY: the performance chart is driven by
+ * Two promises are pinned here. HONESTY: the Risk / Return table is the owner's
+ * reference rows, in order, plus the Frontier additions (Confidence vs Luck #5,
+ * Net Return / Net Sharpe #6), formatted to the reference (percentages at two
+ * decimals, ratios at three, day-counts whole) — every value the engine's, put
+ * through the house formatter. FIDELITY: the performance chart is driven by
  * `Plotly.react` with the reference's own traces (orange strategy line, grey
  * benchmark, steel underwater on the second y-axis) and layout (the two stacked
  * y-domains, the −45° ISO date ticks, `x unified` hover). Plotly is mocked —
@@ -80,6 +81,12 @@ const RESULT: BacktestResultBody = {
     average_drawdown_days: 38,
     excess_sharpe: 0.47,
     deflated_psr: 0.87,
+    // Net of trading costs (Frontier #6) — the engine's after-cost twins of
+    // total_return / sharpe, plus the basis it charged (10 bps, 45% turnover).
+    net_return: 4.72,
+    net_sharpe: 1.31,
+    cost_bps: 10,
+    avg_turnover: 0.45,
   },
   chart: { labels: LABELS, points: [1.0, 1.4, 0.88, 3.6, 5.97] },
   drawdown: { labels: LABELS, points: [0, -3.2, -30.3, -5.1, -6.1] },
@@ -113,6 +120,10 @@ const EXPECTED_ROWS: Array<[string, string, string]> = [
   // into `stats` — the probability this Sharpe beats what the best of every
   // backtest tried on the strategy would reach by luck alone.
   ['confidence-vs-luck', 'Confidence vs Luck', '87.00%'],
+  // Net of trading costs (Frontier #6): the after-cost twins of Strategy Return
+  // and Sharpe — net_return 4.72 → +472%, net_sharpe 1.31 at three decimals.
+  ['net-return', 'Net Return', '472.00%'],
+  ['net-sharpe', 'Net Sharpe', '1.310'],
 ];
 
 beforeEach(() => {
@@ -135,13 +146,13 @@ afterEach(() => {
 });
 
 describe('the Risk / Return table matches the reference', () => {
-  it('renders exactly the 14 rows, in order, with the reference values (all white)', async () => {
+  it('renders exactly the reference rows plus the Frontier additions, in order (all white)', async () => {
     render(<StrategyPage host={host} />);
     await waitFor(() => expect(screen.getByTestId('tearsheet-metrics')).toBeTruthy());
 
     const root = screen.getByTestId('tearsheet-metrics');
     const values = root.querySelectorAll('[data-testid^="tearsheet-metric-value-"]');
-    expect(values).toHaveLength(15);
+    expect(values).toHaveLength(17);
 
     // Order and value, row by row.
     const orderedLabels = Array.from(root.children).map(
@@ -306,6 +317,33 @@ describe('the data-provenance line (Fix 3)', () => {
     render(<StrategyPage host={host} />);
     await waitFor(() => expect(screen.getByTestId('tearsheet-metrics')).toBeTruthy());
     expect(screen.queryByTestId('tearsheet-provenance')).toBeNull();
+  });
+});
+
+describe('the net-of-cost basis line (Frontier #6)', () => {
+  it('states the assumed cost rate and the run’s own average turnover', async () => {
+    render(<StrategyPage host={host} />);
+    const note = await screen.findByTestId('tearsheet-cost-basis');
+    // The rate the engine charged and the turnover it implied — so "Net" is
+    // never an unexplained number. Plain prose, no fabricated figure.
+    expect(note.textContent).toContain('10 bps per unit of turnover');
+    expect(note.textContent).toContain('45% average turnover');
+  });
+
+  it('drops both net rows to an em dash and hides the basis line before cost modeling', async () => {
+    // A run scored before #6 carries no net figures — the gross table stands,
+    // the two Net rows show the house em dash, and no cost basis is invented.
+    const grossOnly = { ...RESULT.stats };
+    delete grossOnly.net_return;
+    delete grossOnly.net_sharpe;
+    delete grossOnly.cost_bps;
+    delete grossOnly.avg_turnover;
+    vi.mocked(tearsheetResult).mockResolvedValue({ ...RESULT, stats: grossOnly });
+    render(<StrategyPage host={host} />);
+    await waitFor(() => expect(screen.getByTestId('tearsheet-metrics')).toBeTruthy());
+    expect(screen.getByTestId('tearsheet-metric-value-net-return').textContent).toBe('—');
+    expect(screen.getByTestId('tearsheet-metric-value-net-sharpe').textContent).toBe('—');
+    expect(screen.queryByTestId('tearsheet-cost-basis')).toBeNull();
   });
 });
 

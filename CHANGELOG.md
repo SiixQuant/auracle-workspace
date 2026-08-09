@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [2.11.0] - 2026-08-09
+
+### Added
+- **A capacity read on every tearsheet.** Alongside the return and risk figures, an estimate of how much capital the strategy could run before its largest position would have to trade more than a small share of a name's daily volume — a plain dollar figure with the assumption stated in one line beneath the table. (Fills in once the engine has scored the run for capacity; a dash until then, never a made-up number.)
+
 ## [2.10.0] - 2026-08-09
 
 ### Added

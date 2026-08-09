@@ -58,6 +58,12 @@ export interface GridCommand {
 /** What a provider gets to decide with. */
 export interface GridCommandContext {
   vitals: GridVitals;
+  /** The palette's current query, when there is one. Most providers ignore it
+   *  and answer statically (the palette filters their rows itself); a
+   *  query-reactive provider — the `<entity> <verb>` grammar — reads it to emit
+   *  rows only for a grammar phrase. Optional so every existing caller and
+   *  provider is unaffected. */
+  query?: string;
 }
 
 export interface GridCommandProvider {

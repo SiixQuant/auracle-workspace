@@ -39,6 +39,8 @@ import { aiRunStore, approveAiAction, declineAiAction } from './gridAiActions';
 // Side-effect import: registers the assistant's palette provider. Done here,
 // at the panel, so the rows exist whether the plan or a room is showing.
 import './gridAiCommands';
+// Same, for the `<entity> <verb>` grammar provider (`fundpair risk`).
+import './gridEntityCommands';
 // Same reason, for what the actions DO: the executors register on import, so an
 // action raised from the palette or a room page finds its lane installed.
 import { registerAgentHost, unregisterAgentHost } from './gridAiExecutors';

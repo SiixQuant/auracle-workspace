@@ -20,6 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [2.8.0] - 2026-08-09
+
+### Added
+- **Factor attribution has its own room.** How much of a run's return is genuine alpha versus market and style-factor exposure, read in plain English, now lives in a standing Factors room instead of a footnote — open it from the palette or the tearsheet's related-rooms row.
+- **A "Confidence vs Luck" reading on every tearsheet.** Alongside the Sharpe, a plain figure for how likely the result is real rather than luck, after accounting for how many strategies were tried. (It fills in once the engine records the run; until then it reads as a dash rather than a made-up number.)
+- **Type-to-jump command shortcuts.** In the ⌘K palette, short codes reach a room without spelling out its name — `bt` for Backtest, `fac` for Factors, `val` for Validation, `dep` for Deployments, and more.
+
 ## [2.7.0] - 2026-08-07
 
 ### Changed

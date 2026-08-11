@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [2.16.0] - 2026-08-11
+
+### Added
+- **A Catalog room — see what data you actually have.** A new room in Research lists every symbol this install holds data for: its date range and how many bars, plus — once the matching engine update is in — where those bars came from (and whether that source is free or needs a key) and any gaps inside the history. Open it from the Research district or the ⌘K palette (`data`). It answers "can I even backtest that?" by looking, not guessing.
+
 ## [2.15.0] - 2026-08-10
 
 ### Added

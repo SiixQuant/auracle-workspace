@@ -41,6 +41,8 @@ import { aiRunStore, approveAiAction, declineAiAction } from './gridAiActions';
 import './gridAiCommands';
 // Same, for the `<entity> <verb>` grammar provider (`fundpair risk`).
 import './gridEntityCommands';
+// Same, for the saved-views provider (#3): save/reopen workspaces from ⌘K.
+import './gridWorkspaceCommands';
 // Same reason, for what the actions DO: the executors register on import, so an
 // action raised from the palette or a room page finds its lane installed.
 import { registerAgentHost, unregisterAgentHost } from './gridAiExecutors';

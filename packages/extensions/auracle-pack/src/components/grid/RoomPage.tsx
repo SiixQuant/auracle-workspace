@@ -30,7 +30,10 @@
  */
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
+import { entityFromFocus, PRIMARY_ROOM } from '../../engine/entityLinks';
+import { focusStore } from '../../engine/focusStore';
 import { gridVitals } from '../../engine/gridVitals';
+import { prettifyPath } from '../../engine/humanize';
 import {
   EmbeddedShellContext,
   ensurePanelKitStyles,
@@ -38,6 +41,7 @@ import {
   prefersReducedMotion,
   tone,
 } from '../panelkit';
+import { EntityLink } from './EntityLink';
 import { getZoomOrigin, openGridHome, openRoomFocused, zoomOriginFrom } from './gridNav';
 import { ROOMS, type RoomId } from './rooms';
 import { WIRED_TO } from './wiring';
@@ -177,6 +181,21 @@ export function RoomPage({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  // The focused strategy, surfaced as a breadcrumb crumb (#2): every room says
+  // WHICH strategy it is about and offers a one-click pivot to its full
+  // tearsheet. Omitted in the tearsheet room itself (you are already there) and
+  // whenever nothing is focused. The label is humanized here; S3 stays path-pure.
+  const focus = useSyncExternalStore(
+    focusStore.subscribe,
+    focusStore.getSnapshot,
+    focusStore.getSnapshot
+  );
+  const focusPath = focus.strategy?.dottedPath ?? focus.strategy?.filePath;
+  const focusedEntity =
+    room === PRIMARY_ROOM
+      ? null
+      : entityFromFocus(focus, focusPath ? (prettifyPath(focusPath) ?? focusPath) : undefined);
+
   const meta = ROOMS[room];
   const statusColor = STATUS_COLOR[status];
   const zoomStyle = { '--auracle-zoom-origin': zoom ?? undefined } as CSSProperties;
@@ -209,6 +228,16 @@ export function RoomPage({
         <span data-testid="room-breadcrumb-here" style={{ fontSize: 12, fontWeight: 600 }}>
           {meta.title}
         </span>
+        {focusedEntity ? (
+          <>
+            <span aria-hidden style={{ fontSize: 11, color: tone.text3 }}>
+              /
+            </span>
+            <span style={{ fontSize: 12 }}>
+              <EntityLink entity={focusedEntity} testId="room-focused-entity" />
+            </span>
+          </>
+        ) : null}
         <span style={{ marginLeft: 'auto', fontSize: 11, color: tone.text3 }}>esc returns to the plan</span>
       </nav>
 

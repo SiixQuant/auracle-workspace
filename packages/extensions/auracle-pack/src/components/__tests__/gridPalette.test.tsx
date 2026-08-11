@@ -196,7 +196,7 @@ describe('the root node is the way in', () => {
     renderGrid();
     openFromRoot();
 
-    expect(rowIds()).toHaveLength(16);
+    expect(rowIds()).toHaveLength(17);
     expect(screen.getByTestId('grid-palette-item-room-backtest').textContent).toContain(
       'Open Backtest'
     );

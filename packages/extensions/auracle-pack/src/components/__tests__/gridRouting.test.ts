@@ -87,7 +87,7 @@ describe('every retired panel id resolves to a room', () => {
     // by the id it inherited.
     const aliased = new Set(Object.values(ROOM_ALIASES));
     const unaliased = ROOM_IDS.filter(id => !aliased.has(id));
-    expect(unaliased).toEqual(['catalog', 'strategies', 'factors', 'scenario', 'portfolio', 'audit']);
+    expect(unaliased).toEqual(['catalog', 'strategies', 'factors', 'scenario', 'portfolio', 'audit', 'ops']);
   });
 });
 

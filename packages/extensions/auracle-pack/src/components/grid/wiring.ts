@@ -34,4 +34,5 @@ export const WIRED_TO: Record<RoomId, RoomId[]> = {
   schedules: ['deploys'],
   runway: ['deploys'],
   audit: ['deploys', 'backtest'],
+  ops: ['deploys', 'blotter', 'incidents', 'schedules'],
 };

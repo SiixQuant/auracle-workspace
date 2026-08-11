@@ -366,6 +366,9 @@ export function deriveRooms(sources: VitalSources): GridVitals {
     // The audit room is a viewer of the append-only ledger — no standing
     // health of its own, so it reads quiet on the plan.
     audit: QUIET,
+    // The ops wall reads the OTHER rooms' health rather than having its own —
+    // its card on the plan stays quiet; the wall itself shows the worst of them.
+    ops: QUIET,
   };
 }
 

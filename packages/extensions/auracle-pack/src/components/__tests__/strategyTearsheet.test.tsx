@@ -375,6 +375,25 @@ describe('the capacity line (Frontier #7)', () => {
   });
 });
 
+describe('the reproducibility line (Frontier #14)', () => {
+  it('shows the run’s reproducibility hash when the engine stamped it', async () => {
+    vi.mocked(tearsheetResult).mockResolvedValue({
+      ...RESULT,
+      stats: { ...RESULT.stats, repro_hash: 'a1b2c3d4e5f6a1b2' } as unknown as typeof RESULT.stats,
+    });
+    render(<StrategyPage host={host} />);
+    const line = await screen.findByTestId('tearsheet-repro');
+    expect(line.textContent).toContain('a1b2c3d4e5f6a1b2');
+    expect(line.textContent?.toLowerCase()).toContain('reproduce');
+  });
+
+  it('hides the line for a run made before the reproducibility stamp', async () => {
+    render(<StrategyPage host={host} />); // default RESULT carries no repro_hash
+    await waitFor(() => expect(screen.getByTestId('tearsheet-metrics')).toBeTruthy());
+    expect(screen.queryByTestId('tearsheet-repro')).toBeNull();
+  });
+});
+
 describe('the in-room segmented controls (WS-E FR-E3)', () => {
   it('Live shows a clean no-deployment rest, and toggles back to the backtest tearsheet', async () => {
     render(<StrategyPage host={host} />);

@@ -82,11 +82,11 @@ describe('every retired panel id resolves to a room', () => {
   });
 
   it('no room is orphaned — each is reachable from the plan or an alias', () => {
-    // `strategies` and `factors` are new with the Grid and have no retired id;
-    // every other room must be reachable by the id it inherited.
+    // `strategies`, `factors` and `portfolio` are new with the Grid and have no
+    // retired id; every other room must be reachable by the id it inherited.
     const aliased = new Set(Object.values(ROOM_ALIASES));
     const unaliased = ROOM_IDS.filter(id => !aliased.has(id));
-    expect(unaliased).toEqual(['strategies', 'factors']);
+    expect(unaliased).toEqual(['strategies', 'factors', 'portfolio']);
   });
 });
 

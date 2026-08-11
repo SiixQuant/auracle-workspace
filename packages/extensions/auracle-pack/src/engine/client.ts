@@ -295,6 +295,35 @@ export async function tearsheetFactors(jobId: number): Promise<FactorBatteryBody
   return getJson<FactorBatteryBody>(`/ui/api/backtest/job/${jobId}/factors`);
 }
 
+/** The blended-portfolio payload (Frontier #8) — the shape the engine's
+ *  `POST /ui/api/portfolio/compose` returns. `correlation`/`contribution`/
+ *  `weights` are keyed by run id (stringified); `members` names each. */
+export interface PortfolioBody {
+  stats: Record<string, number | null>;
+  chart: { labels: string[]; points: number[] };
+  correlation: Record<string, Record<string, number>>;
+  contribution: Record<string, number>;
+  weights: Record<string, number>;
+  members: Array<{ id: string; label: string }>;
+  window: { start: string; end: string };
+  n_days: number;
+}
+
+/**
+ * Blend the given backtest runs into one portfolio (Frontier #8). POSTs the run
+ * ids (and optional per-run weights; omit for equal weight) and returns the
+ * combined stats, equity curve, strategy-correlation matrix, contribution and
+ * applied weights. Null on any non-2xx (no usable run, unreachable engine) — the
+ * room shows an honest rest rather than a fabricated portfolio.
+ */
+export async function composePortfolio(
+  runIds: number[],
+  weights?: Record<string, number>
+): Promise<PortfolioBody | null> {
+  const res = await postJson('/ui/api/portfolio/compose', { run_ids: runIds, weights });
+  return res.ok ? (res.body as PortfolioBody) : null;
+}
+
 /**
  * One recent chartable backtest, as the tearsheet's run picker (and the home
  * hero's auto-focus) lists it. Every figure is the engine's own, already

@@ -134,6 +134,7 @@ const ROOM_MNEMONICS: Record<RoomId, readonly string[]> = {
   backtest: ['bt'],
   validation: ['val', 'gates', 'overfit'],
   factors: ['fac', 'risk', 'attribution', 'alpha'],
+  portfolio: ['pf', 'port', 'blend', 'combine'],
   deploys: ['dep', 'live'],
   blotter: ['blt', 'fills'],
   incidents: ['inc', 'alerts'],

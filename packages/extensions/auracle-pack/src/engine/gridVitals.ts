@@ -349,6 +349,9 @@ export function deriveRooms(sources: VitalSources): GridVitals {
     // Like the tearsheet, the factor room is a viewer of the focused run's
     // attribution — no independent health source of its own, so it reads quiet.
     factors: QUIET,
+    // The portfolio room is a what-if blender the user drives; it has no
+    // standing health of its own, so it reads quiet on the plan.
+    portfolio: QUIET,
     deploys: deploysVital(summary?.deployments, sources.errored),
     blotter: blotterVital(sources.orders),
     incidents: incidentsVital(figure(summary?.open_alerts)),

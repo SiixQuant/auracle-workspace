@@ -142,6 +142,7 @@ const ROOM_MNEMONICS: Record<RoomId, readonly string[]> = {
   incidents: ['inc', 'alerts'],
   schedules: ['sch', 'cron'],
   runway: ['rw'],
+  audit: ['log', 'trail', 'history', 'compliance'],
 };
 
 /* ── the base provider: every room ──────────────────────────────────── */

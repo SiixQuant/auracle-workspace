@@ -520,6 +520,38 @@ export async function dataCatalog(): Promise<DataCatalog | null> {
   return mapUniverseCatalog(uni);
 }
 
+/* ── Audit log (Frontier #17) ────────────────────────────────────────── */
+
+export interface AuditEntry {
+  id: number;
+  ts: string | null;
+  event: string;
+  detail: string | null;
+  userEmail: string | null;
+}
+
+/** The audit read is owner-only (it can carry IPs and login traces), so the
+ *  room must tell "you're not the owner" (forbidden) apart from "engine down"
+ *  (unavailable) apart from real rows. */
+export type AuditResult =
+  | { kind: 'ok'; rows: AuditEntry[]; total: number }
+  | { kind: 'forbidden' }
+  | { kind: 'unavailable' };
+
+export async function auditLog(limit = 100): Promise<AuditResult> {
+  const res = await getJsonDetailed<Record<string, unknown>>(`/ui/api/audit?limit=${limit}`);
+  if (!res.ok) return res.status === 403 ? { kind: 'forbidden' } : { kind: 'unavailable' };
+  if (!res.body || !Array.isArray(res.body.rows)) return { kind: 'unavailable' };
+  const rows = (res.body.rows as Record<string, unknown>[]).map((r) => ({
+    id: catNum(r.id) ?? 0,
+    ts: catStr(r.ts),
+    event: String(r.event ?? ''),
+    detail: catStr(r.detail),
+    userEmail: catStr(r.user_email),
+  }));
+  return { kind: 'ok', rows, total: catNum(res.body.total) ?? rows.length };
+}
+
 /**
  * A structured, logged reason a position was entered (WS-B / FR-B1). `rule` is
  * the engine's rule slug (e.g. "ma_cross_20_50"); `values` are the named facts

@@ -368,6 +368,158 @@ export async function tearsheetRuns(limit = 20): Promise<RecentRun[]> {
   }));
 }
 
+/* ── Data catalog (Frontier #12) ─────────────────────────────────────── */
+
+/** One symbol's line in the data catalog. `gaps`/`source`/`keyed` are null
+ *  until the engine that serves the rich `/catalog` route is deployed — the
+ *  fallback (`/ide/universe`) carries coverage only, and the room shows an em
+ *  dash rather than a fabricated value. */
+export interface CatalogSymbol {
+  symbol: string;
+  exchange: string;
+  assetClass: string;
+  name: string | null;
+  firstBar: string | null;
+  lastBar: string | null;
+  barCount: number;
+  /** Interior missing NYSE trading days, or null when not (yet) known. */
+  gaps: number | null;
+  /** The provider of the newest bar, or null when not (yet) known. */
+  source: string | null;
+  /** Whether that source needs an API key (paid) vs keyless (free). */
+  keyed: boolean | null;
+}
+
+export interface CatalogSummary {
+  nSymbols: number;
+  nBacktestable: number;
+  nRegisteredNoBars: number;
+  span: { earliest: string | null; latest: string | null };
+  assetClasses: Record<string, number>;
+  sources: Array<{ name: string; keyed: boolean | null; nSymbols: number }>;
+}
+
+export interface DataCatalog {
+  symbols: CatalogSymbol[];
+  summary: CatalogSummary;
+  /** True when the rich engine catalog answered (gaps + provenance present);
+   *  false when we fell back to the always-deployed universe endpoint. */
+  enriched: boolean;
+}
+
+const catNum = (v: unknown): number | null =>
+  typeof v === 'number' && Number.isFinite(v) ? v : null;
+const catStr = (v: unknown): string | null =>
+  typeof v === 'string' && v ? v : null;
+
+function mapCatalogSummary(s: Record<string, unknown>): CatalogSummary {
+  const span = (s.span ?? {}) as Record<string, unknown>;
+  const rawSources = Array.isArray(s.sources) ? (s.sources as Record<string, unknown>[]) : [];
+  return {
+    nSymbols: catNum(s.n_symbols) ?? 0,
+    nBacktestable: catNum(s.n_backtestable) ?? 0,
+    nRegisteredNoBars: catNum(s.n_registered_no_bars) ?? 0,
+    span: { earliest: catStr(span.earliest), latest: catStr(span.latest) },
+    assetClasses:
+      s.asset_classes && typeof s.asset_classes === 'object'
+        ? (s.asset_classes as Record<string, number>)
+        : {},
+    sources: rawSources.map((x) => ({
+      name: String(x.name ?? ''),
+      keyed: typeof x.keyed === 'boolean' ? x.keyed : null,
+      nSymbols: catNum(x.n_symbols) ?? 0,
+    })),
+  };
+}
+
+export function mapRichCatalog(body: Record<string, unknown>): DataCatalog {
+  const syms = Array.isArray(body.symbols) ? (body.symbols as Record<string, unknown>[]) : [];
+  return {
+    enriched: true,
+    symbols: syms.map((r) => ({
+      symbol: String(r.symbol ?? ''),
+      exchange: String(r.exchange ?? ''),
+      assetClass: String(r.asset_class ?? ''),
+      name: catStr(r.name),
+      firstBar: catStr(r.first_bar),
+      lastBar: catStr(r.last_bar),
+      barCount: catNum(r.bar_count) ?? 0,
+      gaps: catNum(r.gaps),
+      source: catStr(r.source),
+      keyed: typeof r.keyed === 'boolean' ? r.keyed : null,
+    })),
+    summary: mapCatalogSummary((body.summary ?? {}) as Record<string, unknown>),
+  };
+}
+
+/** Map the always-deployed `/ide/universe` (coverage_summary) shape onto the
+ *  catalog, with gaps/source absent — the pre-deploy fallback. */
+export function mapUniverseCatalog(body: Record<string, unknown>): DataCatalog {
+  const bt = Array.isArray(body.backtestable) ? (body.backtestable as Record<string, unknown>[]) : [];
+  const noBars = Array.isArray(body.registered_no_bars)
+    ? (body.registered_no_bars as unknown[])
+    : [];
+  const symbols: CatalogSymbol[] = [
+    ...bt.map((r) => ({
+      symbol: String(r.symbol ?? ''),
+      exchange: String(r.exchange ?? ''),
+      assetClass: String(r.asset_class ?? ''),
+      name: null,
+      firstBar: catStr(r.first_bar),
+      lastBar: catStr(r.last_bar),
+      barCount: catNum(r.bar_count) ?? 0,
+      gaps: null,
+      source: null,
+      keyed: null,
+    })),
+    ...noBars.map((sym) => ({
+      symbol: String(sym),
+      exchange: '',
+      assetClass: '',
+      name: null,
+      firstBar: null,
+      lastBar: null,
+      barCount: 0,
+      gaps: null,
+      source: null,
+      keyed: null,
+    })),
+  ].sort((a, b) => a.symbol.localeCompare(b.symbol));
+  const span = (body.span ?? {}) as Record<string, unknown>;
+  return {
+    enriched: false,
+    symbols,
+    summary: {
+      nSymbols: symbols.length,
+      nBacktestable: catNum(body.n_backtestable) ?? bt.length,
+      nRegisteredNoBars: noBars.length,
+      span: { earliest: catStr(span.earliest), latest: catStr(span.latest) },
+      assetClasses:
+        body.asset_classes && typeof body.asset_classes === 'object'
+          ? (body.asset_classes as Record<string, number>)
+          : {},
+      sources: [],
+    },
+  };
+}
+
+/**
+ * The install's data catalog. Prefers the rich engine route (`/ui/api/catalog`
+ * — coverage + interior gaps + source provenance); when that engine build is
+ * not deployed yet the route 404s and we fall back to the always-present
+ * `/ui/api/ide/universe` (coverage only). Returns null only when the engine is
+ * unreachable, so the room can tell "nothing ingested" from "engine down".
+ */
+export async function dataCatalog(): Promise<DataCatalog | null> {
+  const rich = await getJsonDetailed<Record<string, unknown>>('/ui/api/catalog');
+  if (rich.ok && rich.body && Array.isArray(rich.body.symbols)) {
+    return mapRichCatalog(rich.body);
+  }
+  const uni = await getJson<Record<string, unknown>>('/ui/api/ide/universe');
+  if (uni == null) return null;
+  return mapUniverseCatalog(uni);
+}
+
 /**
  * A structured, logged reason a position was entered (WS-B / FR-B1). `rule` is
  * the engine's rule slug (e.g. "ma_cross_20_50"); `values` are the named facts

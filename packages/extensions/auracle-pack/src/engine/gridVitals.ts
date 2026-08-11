@@ -339,6 +339,9 @@ export function deriveRooms(sources: VitalSources): GridVitals {
   return {
     findings: findingsVital(summary?.research),
     qc: qcVital(sources.qc),
+    // The catalog is a browsable reference view of what data exists — it has no
+    // standing health of its own, so it reads quiet on the plan.
+    catalog: QUIET,
     strategies: strategiesVital(sources.strategies),
     // The tearsheet is a viewer of whatever run is focused — it has no
     // independent health source of its own, so it reads quiet (nominal, no fact)

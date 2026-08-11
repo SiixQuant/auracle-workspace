@@ -129,6 +129,7 @@ export function filterCommands(commands: GridCommand[], query: string): GridComm
 const ROOM_MNEMONICS: Record<RoomId, readonly string[]> = {
   findings: ['fnd', 'ideas'],
   qc: ['qc', 'lib'],
+  catalog: ['data', 'coverage', 'universe', 'symbols'],
   strategies: ['strat', 'strats'],
   strategy: ['ts', 'tear', 'sheet'],
   backtest: ['bt'],

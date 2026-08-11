@@ -20,6 +20,7 @@ import type { RoomId } from './rooms';
 export const WIRED_TO: Record<RoomId, RoomId[]> = {
   findings: ['strategies', 'qc'],
   qc: ['findings', 'backtest'],
+  catalog: ['backtest', 'strategies', 'findings'],
   strategies: ['strategy', 'backtest', 'findings'],
   strategy: ['backtest', 'validation', 'factors', 'deploys'],
   backtest: ['strategy', 'validation', 'factors', 'deploys', 'strategies'],

@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [2.13.0] - 2026-08-09
+
+### Added
+- **Save a view and jump back to it.** Set a room up on a strategy — the factor view for Target-25, a strategy's backtest — then save it as a workspace from the ⌘K palette. It stays in the palette from then on, so returning to that exact view is one command instead of re-navigating and re-picking the strategy. Type "remove" in the palette to forget one. Saved views persist across restarts.
+
 ## [2.12.0] - 2026-08-09
 
 ### Added

@@ -40,4 +40,5 @@ export const ROOM_CONTEXT: Record<RoomId, string> = {
   incidents: 'What needs attention right now.',
   schedules: 'What runs, and when.',
   runway: 'How far each idea has travelled toward live.',
+  audit: 'The append-only record of what happened on this install — sign-ins, connection changes, backtests and deployments, newest first.',
 };

@@ -363,6 +363,9 @@ export function deriveRooms(sources: VitalSources): GridVitals {
     incidents: incidentsVital(figure(summary?.open_alerts)),
     schedules: schedulesVital(summary?.schedules),
     runway: runwayVital(summary?.runway),
+    // The audit room is a viewer of the append-only ledger — no standing
+    // health of its own, so it reads quiet on the plan.
+    audit: QUIET,
   };
 }
 

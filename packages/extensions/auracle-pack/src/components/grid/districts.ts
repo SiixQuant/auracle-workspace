@@ -31,7 +31,7 @@ export const DISTRICTS: readonly District[] = [
   { id: 'research', number: '01', name: 'Research', rooms: ['findings', 'qc', 'catalog'] },
   { id: 'build-test', number: '02', name: 'Build · Test', rooms: ['strategies', 'strategy', 'backtest', 'validation', 'factors', 'scenario', 'portfolio'] },
   { id: 'operate', number: '03', name: 'Operate', rooms: ['deploys', 'blotter', 'incidents', 'schedules'] },
-  { id: 'system', number: '04', name: 'System', rooms: ['runway'] },
+  { id: 'system', number: '04', name: 'System', rooms: ['runway', 'audit'] },
 ];
 
 /**
@@ -67,6 +67,7 @@ export const ROOM_ICONS: Record<RoomId, string> = {
   incidents: 'warning',
   schedules: 'schedule',
   runway: 'flight_takeoff',
+  audit: 'history',
 };
 
 /**

@@ -23,6 +23,7 @@ vi.mock('../../engine/client', () => ({
   getJson: vi.fn(async () => null),
   getJsonDetailed: vi.fn(async () => ({ ok: false, status: 0, body: null })),
   dataCatalog: vi.fn(async () => null),
+  auditLog: vi.fn(async () => ({ kind: 'unavailable' })),
   postJson: vi.fn(async () => ({ ok: false, status: 0, body: null })),
   putJson: vi.fn(async () => ({ ok: false, status: 0, body: null })),
   runBacktest: vi.fn(async () => ({ ok: false, status: 0, body: null })),

@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [2.14.0] - 2026-08-09
+
+### Added
+- **A Portfolio room — blend your backtests into one book.** Pick two or more finished backtests, set each one's weight, and see the combined result: the blended equity curve and its return, Sharpe and drawdown; how correlated the strategies are (real diversification, or not); and how much each one contributes. Open it from the Build · Test district or the ⌘K palette (`pf`). The assistant can compose and advise on portfolios from the same numbers.
+
 ## [2.13.0] - 2026-08-09
 
 ### Added

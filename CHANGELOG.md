@@ -20,6 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [2.20.0] - 2026-08-11
+
+### Added
+- **An Ops Wall — one screen for everything live.** A new room in System aggregates what's running: how many deployments and connections are up, how fresh your data is, and the health of each operate room (deployments, orders, incidents, schedules), worst first. A red room is one click from its detail. Open it from System or the ⌘K palette (`ops`).
+- **Deploy pre-flight reports backtest ↔ live parity.** The pre-market check now flags any strategy whose live signals aren't certified as the same code as its backtest.
+
 ## [2.19.0] - 2026-08-11
 
 ### Added

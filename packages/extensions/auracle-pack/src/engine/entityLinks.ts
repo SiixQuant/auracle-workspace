@@ -85,6 +85,25 @@ export function entityFocus(entity: EntityRef): Focus {
 }
 
 /**
+ * The inverse of {@link entityFocus} (Frontier #2): recover a resolvable
+ * {@link EntityRef} from the Grid's current focus, so a cross-link can pivot
+ * from wherever the user already is. Returns null when no strategy is focused —
+ * there is then nothing to link to. A focused backtest run yields a `run`
+ * entity (carrying its strategy); any other focus yields a bare `strategy`
+ * entity. `label` is the humanized name the caller wants shown; it defaults to
+ * the path so this stays pure (no dependency on the humanizer).
+ */
+export function entityFromFocus(focus: Focus, label?: string): EntityRef | null {
+  const path = focus.strategy?.dottedPath ?? focus.strategy?.filePath;
+  if (!path) return null;
+  const shown = label ?? path;
+  if (focus.run?.kind === 'backtest' && focus.run.id) {
+    return { kind: 'run', id: focus.run.id, label: shown, strategyPath: path, runId: focus.run.id };
+  }
+  return { kind: 'strategy', id: path, label: shown, strategyPath: path };
+}
+
+/**
  * Resolve a typed verb token to its room, matching the canonical code or any
  * alias, case-insensitively. Returns null for an unknown token — the grammar
  * then degrades to the palette's ordinary fuzzy search (PRD #1 R4).

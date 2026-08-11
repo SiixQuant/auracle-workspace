@@ -352,6 +352,9 @@ export function deriveRooms(sources: VitalSources): GridVitals {
     // Like the tearsheet, the factor room is a viewer of the focused run's
     // attribution — no independent health source of its own, so it reads quiet.
     factors: QUIET,
+    // The scenario room replays the focused run through historical stress
+    // windows — a viewer of that run, no standing health of its own.
+    scenario: QUIET,
     // The portfolio room is a what-if blender the user drives; it has no
     // standing health of its own, so it reads quiet on the plan.
     portfolio: QUIET,

@@ -18,6 +18,7 @@
 import type { ComponentType } from 'react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import { AuditPage } from './pages/AuditPage';
+import { OpsWallPage } from './pages/OpsWallPage';
 import { BacktestPage } from './pages/BacktestPage';
 import { BlotterPage } from './pages/BlotterPage';
 import { CatalogPage } from './pages/CatalogPage';
@@ -52,6 +53,7 @@ export const ROOM_IDS = [
   'schedules',
   'runway',
   'audit',
+  'ops',
 ] as const;
 
 export type RoomId = (typeof ROOM_IDS)[number];
@@ -86,6 +88,7 @@ export const ROOMS: Record<RoomId, GridRoom> = {
   schedules: room('schedules', 'Schedules', SchedulesPage),
   runway: room('runway', 'Runway', RunwayPage),
   audit: room('audit', 'Audit', AuditPage),
+  ops: room('ops', 'Ops Wall', OpsWallPage),
 };
 
 /** The rooms in plan order — `ROOM_IDS` is the single ordering authority. */

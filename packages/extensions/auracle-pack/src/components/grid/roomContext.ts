@@ -41,4 +41,5 @@ export const ROOM_CONTEXT: Record<RoomId, string> = {
   schedules: 'What runs, and when.',
   runway: 'How far each idea has travelled toward live.',
   audit: 'The append-only record of what happened on this install — sign-ins, connection changes, backtests and deployments, newest first.',
+  ops: 'One live screen for everything running — deployments, orders, incidents and schedules, plus connection and data-freshness health, worst first.',
 };

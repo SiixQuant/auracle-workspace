@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [2.17.0] - 2026-08-11
+
+### Added
+- **Every backtest now carries a reproducibility fingerprint.** The tearsheet shows a short hash of the run's code, inputs and data — so you can tell at a glance whether two runs are the same, and ask the assistant to reproduce any run and confirm it still matches (it'll tell you if the code, the inputs, or the underlying data has moved). Appears on runs scored by the matching engine update.
+
 ## [2.16.0] - 2026-08-11
 
 ### Added

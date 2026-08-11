@@ -20,6 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [2.19.0] - 2026-08-11
+
+### Added
+- **An Audit room — the record of what happened.** A new room in System shows this install's append-only trail: sign-ins, connection changes, and (with the matching engine update) every backtest, tied to its reproducibility fingerprint, newest first. Owner-only, since the trail can include sign-in details.
+- **The assistant validates by default.** Ask it for a strategy and it now builds a validated one: it backtests, runs the overfit and walk-forward checks, and gives you an honest verdict instead of an untested draft. A strategy that fails a check is reported as a finding, never hidden or tuned away.
+
 ## [2.18.0] - 2026-08-11
 
 ### Added

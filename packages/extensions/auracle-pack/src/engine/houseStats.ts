@@ -297,6 +297,19 @@ export function capacityNote(stats: Stats): string | null {
 }
 
 /**
+ * The run's reproducibility hash — a short fingerprint of the strategy source,
+ * the run params and the data it saw (Frontier #14). Read through a cast: it is
+ * a STRING, unlike everything else in the numeric {@link Stats} record, so the
+ * type stays untouched (same discipline as capacity's binding symbol). Present
+ * only on runs the engine stamped (after the #14 deploy); older runs return null
+ * and the line is omitted rather than showing a fabricated code.
+ */
+export function reproHash(stats: Stats): string | null {
+  const raw = (stats as Record<string, unknown>).repro_hash;
+  return typeof raw === 'string' && raw ? raw : null;
+}
+
+/**
  * The one-line takeaway beside the DRAWDOWN title — the three tail figures
  * that mean the most where the drawdown is, per the house's risk-profile row.
  */

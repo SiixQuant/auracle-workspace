@@ -46,7 +46,7 @@ import {
   type TradeRecord,
 } from '../../../engine/client';
 import { focusStore } from '../../../engine/focusStore';
-import { capacityNote, costBasisNote, EM_DASH, statPercent, tearsheetMetricRows, type TearsheetMetricRow } from '../../../engine/houseStats';
+import { capacityNote, costBasisNote, EM_DASH, reproHash, statPercent, tearsheetMetricRows, type TearsheetMetricRow } from '../../../engine/houseStats';
 import { prettifyPath } from '../../../engine/humanize';
 import { composeThesis } from '../../../engine/signalThesis';
 import { handOffToAgent, type AgentNote } from '../../aiPanel';
@@ -409,6 +409,7 @@ function Overview({ state }: { state: LoadState }): JSX.Element {
   const provenance = provenanceLine(result);
   const costBasis = costBasisNote(result.stats ?? {});
   const capacityBasis = capacityNote(result.stats ?? {});
+  const repro = reproHash(result.stats ?? {});
 
   return (
     <>
@@ -460,6 +461,14 @@ function Overview({ state }: { state: LoadState }): JSX.Element {
       {capacityBasis ? (
         <p className="auracle-tearsheet__provenance" data-testid="tearsheet-capacity-basis">
           {capacityBasis}
+        </p>
+      ) : null}
+      {repro ? (
+        <p className="auracle-tearsheet__provenance" data-testid="tearsheet-repro">
+          Reproducibility ·{' '}
+          <code style={{ fontFamily: tone.mono, color: tone.text2 }}>{repro}</code> — a fingerprint of
+          this run&rsquo;s code, inputs and data. Ask the assistant to reproduce it and confirm it
+          still matches.
         </p>
       ) : null}
     </>

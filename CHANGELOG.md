@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [2.18.0] - 2026-08-11
+
+### Added
+- **A Scenarios room — how your strategy would have handled the big crashes.** Pick a run and see how it actually moved through the major historical stress windows — 2008, 2011, the 2018 Q4 selloff, the COVID crash, 2022 — each with the return it made, the drawdown it took, and a little in-window curve. It's read straight from your backtest (a window before your strategy's history is left blank), so there's nothing to run. Open it from Build·Test or the ⌘K palette (`stress`).
+
 ## [2.17.0] - 2026-08-11
 
 ### Added

@@ -52,6 +52,7 @@ import { composeThesis } from '../../../engine/signalThesis';
 import { handOffToAgent, type AgentNote } from '../../aiPanel';
 import { Button, CenterState, InlineNote, SkeletonRows, tint, tone } from '../../panelkit';
 import { TearsheetChart } from '../../charts/TearsheetChart';
+import { RecentRunsGrid } from '../RecentRunsGrid';
 import { GRID_ACCENT } from '../gridTheme';
 
 type TearsheetView = 'overview' | 'trades';
@@ -377,10 +378,17 @@ function Overview({ state }: { state: LoadState }): JSX.Element {
   const { phase, result, alphaAnnual, benchmarkReturnPct } = state;
 
   if (phase === 'idle') {
+    // Nothing focused: show the recent backtests as a dense, pickable grid
+    // (Frontier #19), falling back to the empty state when there are none.
     return (
-      <CenterState
-        title="No run focused yet"
-        detail="Open a strategy and run a backtest, or pick a saved run — its tearsheet renders here."
+      <RecentRunsGrid
+        focusedJob={null}
+        fallback={
+          <CenterState
+            title="No run focused yet"
+            detail="Open a strategy and run a backtest, or pick a saved run — its tearsheet renders here."
+          />
+        }
       />
     );
   }

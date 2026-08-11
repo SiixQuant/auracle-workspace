@@ -21,6 +21,7 @@ import { BacktestPage } from './pages/BacktestPage';
 import { BlotterPage } from './pages/BlotterPage';
 import { DeploysPage } from './pages/DeploysPage';
 import { FactorPage } from './pages/FactorPage';
+import { PortfolioPage } from './pages/PortfolioPage';
 import { FindingsPage } from './pages/FindingsPage';
 import { IncidentsPage } from './pages/IncidentsPage';
 import { QcPage } from './pages/QcPage';
@@ -39,6 +40,7 @@ export const ROOM_IDS = [
   'backtest',
   'validation',
   'factors',
+  'portfolio',
   'deploys',
   'blotter',
   'incidents',
@@ -69,6 +71,7 @@ export const ROOMS: Record<RoomId, GridRoom> = {
   backtest: room('backtest', 'Backtest', BacktestPage),
   validation: room('validation', 'Validation', ValidationPage),
   factors: room('factors', 'Factors', FactorPage),
+  portfolio: room('portfolio', 'Portfolio', PortfolioPage),
   deploys: room('deploys', 'Deployments', DeploysPage),
   blotter: room('blotter', 'Blotter', BlotterPage),
   incidents: room('incidents', 'Incidents', IncidentsPage),

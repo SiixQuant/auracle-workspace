@@ -19,6 +19,8 @@ import type { RoomId } from './rooms';
 export const ROOM_CONTEXT: Record<RoomId, string> = {
   findings: 'Papers the engine scanned and ranked for tradability, strongest first.',
   qc: 'Your linked QuantConnect account.',
+  catalog:
+    'Every symbol this install holds data for — its coverage, gaps and where the bars came from.',
   strategies:
     'Every strategy the engine discovered in your workspace, and every file it had to leave out with the reason why.',
   strategy:

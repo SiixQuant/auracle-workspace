@@ -19,6 +19,7 @@ import type { ComponentType } from 'react';
 import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 import { BacktestPage } from './pages/BacktestPage';
 import { BlotterPage } from './pages/BlotterPage';
+import { CatalogPage } from './pages/CatalogPage';
 import { DeploysPage } from './pages/DeploysPage';
 import { FactorPage } from './pages/FactorPage';
 import { PortfolioPage } from './pages/PortfolioPage';
@@ -35,6 +36,7 @@ import { ValidationPage } from './pages/ValidationPage';
 export const ROOM_IDS = [
   'findings',
   'qc',
+  'catalog',
   'strategies',
   'strategy',
   'backtest',
@@ -66,6 +68,7 @@ function room(id: RoomId, title: string, component: ComponentType<PanelHostProps
 export const ROOMS: Record<RoomId, GridRoom> = {
   findings: room('findings', 'Findings', FindingsPage),
   qc: room('qc', 'QC Library', QcPage),
+  catalog: room('catalog', 'Catalog', CatalogPage),
   strategies: room('strategies', 'Strategies', StrategiesPage),
   strategy: room('strategy', 'Tearsheet', StrategyPage),
   backtest: room('backtest', 'Backtest', BacktestPage),

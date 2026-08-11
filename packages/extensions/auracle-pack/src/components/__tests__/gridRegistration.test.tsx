@@ -22,6 +22,7 @@ vi.mock('../../engine/client', () => ({
   engineConfig: vi.fn(async () => ({ engineUrl: '', hasKey: false })),
   getJson: vi.fn(async () => null),
   getJsonDetailed: vi.fn(async () => ({ ok: false, status: 0, body: null })),
+  dataCatalog: vi.fn(async () => null),
   postJson: vi.fn(async () => ({ ok: false, status: 0, body: null })),
   putJson: vi.fn(async () => ({ ok: false, status: 0, body: null })),
   runBacktest: vi.fn(async () => ({ ok: false, status: 0, body: null })),

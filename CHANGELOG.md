@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [2.15.0] - 2026-08-10
+
+### Added
+- **Recent backtests, as a grid you can read.** Where you'd pick a past run from a dropdown, the tearsheet now lists your recent backtests as a compact table — each one's return, Sharpe and worst drawdown side by side, the strong and weak values colour-coded so the standout reads at a glance. Click a strategy to open its tearsheet, or a row to load that run.
+
 ## [2.14.0] - 2026-08-09
 
 ### Added

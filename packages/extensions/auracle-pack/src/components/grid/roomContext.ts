@@ -31,6 +31,8 @@ export const ROOM_CONTEXT: Record<RoomId, string> = {
     'The overfit gates for one strategy, every signal computed by the engine on a real backtest and walk-forward.',
   factors:
     "How much of the focused run's return is genuine alpha versus market and style-factor exposure, read in plain English from the engine's factor regression.",
+  scenario:
+    "How the focused strategy actually moved through each historical stress window — sliced from its own backtest, so a window before its history is left blank.",
   portfolio:
     'Blend several backtests into one book — the combined equity and stats, how correlated the strategies are, and each one’s contribution.',
   deploys: 'Paper and live deployments, and their state.',

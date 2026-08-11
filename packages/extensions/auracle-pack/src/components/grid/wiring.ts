@@ -26,6 +26,7 @@ export const WIRED_TO: Record<RoomId, RoomId[]> = {
   backtest: ['strategy', 'validation', 'factors', 'deploys', 'strategies'],
   validation: ['backtest', 'factors', 'deploys'],
   factors: ['strategy', 'backtest', 'validation', 'portfolio'],
+  scenario: ['backtest', 'strategy', 'validation'],
   portfolio: ['backtest', 'strategy', 'factors'],
   deploys: ['incidents', 'blotter', 'schedules', 'runway'],
   blotter: ['deploys'],

@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [2.12.0] - 2026-08-09
+
+### Added
+- **Every room now names the strategy it's showing.** The header breadcrumb carries the focused strategy — `System Plan / Factors / FundPair` — and its name is a one-click jump to that strategy's full tearsheet. No more losing track of which strategy a room is about, or hunting for the way back to its overview.
+
 ## [2.11.0] - 2026-08-09
 
 ### Added

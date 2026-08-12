@@ -59,6 +59,7 @@ import { refreshEntitlements, quotaNudge, type QuotaNudge } from '../engine/enti
 import { emitCapturedPanelEvent, deployFailedEvent } from '../engine/panelEvents';
 import { parseEngineError, type EngineError } from '../engine/paywall';
 import { UpgradeGate } from './UpgradeGate';
+import { Icon } from './Icon';
 import { useAiPanelContext, handOffToAgent, type AgentNote } from './aiPanel';
 import { money, price, qty, percent } from '../engine/format';
 import {
@@ -516,9 +517,7 @@ function DeployIdentityRow({ locked, onClear }: { locked: StrategyOption; onClea
   return (
     <div style={styles.identityRow}>
       {/* A glyph is READ — the ramp's text tier, not the fill blue. */}
-      <span className="material-symbols-outlined" aria-hidden style={{ fontSize: 18, color: tone.accentText }}>
-        deployed_code
-      </span>
+      <Icon name="deployed_code" size={18} aria-hidden style={{ color: tone.accentText }} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: tone.text }}>{locked.cls}</span>
         <span

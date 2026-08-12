@@ -14,6 +14,7 @@ import { deployStore } from '../engine/deployStore';
 import { focusStore } from '../engine/focusStore';
 import { ensurePanelKitStyles, tone } from './panelkit';
 import { openGridRoom } from './grid/gridNav';
+import { Icon } from './Icon';
 
 /** Props the host hands every document-header component. */
 interface DocumentHeaderComponentProps {
@@ -111,9 +112,7 @@ export const RunStrategyHeader: React.FC<DocumentHeaderComponentProps> = ({
           flex: 'none',
         }}
       >
-        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
-          bolt
-        </span>
+        <Icon name="bolt" size={14} />
       </span>
       <span
         style={{
@@ -152,9 +151,7 @@ export const RunStrategyHeader: React.FC<DocumentHeaderComponentProps> = ({
           opacity: pinged === 'run' ? 0.85 : 1,
         }}
       >
-        <span className="material-symbols-outlined" aria-hidden style={btnIcon}>
-          play_arrow
-        </span>
+        <Icon name="play_arrow" size={15} aria-hidden style={btnIcon} />
         Run backtest
       </button>
       <button
@@ -172,13 +169,7 @@ export const RunStrategyHeader: React.FC<DocumentHeaderComponentProps> = ({
           opacity: pinged === 'deploy' ? 0.7 : 1,
         }}
       >
-        <span
-          className="material-symbols-outlined"
-          aria-hidden
-          style={{ ...btnIcon, color: tone.accentText }}
-        >
-          rocket_launch
-        </span>
+        <Icon name="rocket_launch" size={15} aria-hidden style={{ ...btnIcon, color: tone.accentText }} />
         Deploy
       </button>
     </div>

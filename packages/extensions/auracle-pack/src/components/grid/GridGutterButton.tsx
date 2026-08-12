@@ -16,6 +16,7 @@ import { useSyncExternalStore } from 'react';
 import type { PanelGutterButtonProps } from '@nimbalyst/extension-sdk';
 import { alertStore } from '../../engine/alertStore';
 import { ensurePanelKitStyles, tone } from '../panelkit';
+import { Icon } from '../Icon';
 
 /** Above this the exact number stops mattering and the glyph would not fit. */
 const BADGE_CAP = 99;
@@ -58,9 +59,7 @@ export function GridGutterButton({ isActive, onActivate }: PanelGutterButtonProp
         color: isActive ? tone.accentText : tone.text2,
       }}
     >
-      <span className="material-symbols-outlined" aria-hidden style={{ fontSize: 20 }}>
-        grid_view
-      </span>
+      <Icon name="grid_view" size={20} aria-hidden />
       {alerts > 0 && (
         <span
           data-testid="auracle-grid-gutter-badge"

@@ -15,6 +15,7 @@ import type { PanelHostProps } from '@nimbalyst/extension-sdk';
 
 import { focusStore } from '../../../engine/focusStore';
 import { FactorBatterySection } from '../../FactorBatterySection';
+import { MonteCarloSection } from '../../MonteCarloSection';
 import { CenterState } from '../../panelkit';
 import { RoomPage } from '../RoomPage';
 import { ROOM_CONTEXT } from '../roomContext';
@@ -38,7 +39,10 @@ export function FactorPage(_props: PanelHostProps): JSX.Element {
       context={ROOM_CONTEXT.factors}
     >
       {hasJob ? (
-        <FactorBatterySection jobId={jobId} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <FactorBatterySection jobId={jobId} />
+          <MonteCarloSection jobId={jobId} />
+        </div>
       ) : (
         <CenterState
           title="No run focused yet"

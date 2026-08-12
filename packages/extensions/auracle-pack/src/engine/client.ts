@@ -5,6 +5,7 @@
  * renderer fetch cannot set.
  */
 import type { ConnectCheck } from './model';
+import type { MonteCarloBody } from './monteCarlo';
 
 interface BridgeResponse {
   ok: boolean;
@@ -268,6 +269,22 @@ export async function backtestJobFactors(
 ): Promise<{ ok: true; body: FactorBatteryBody } | { ok: false; status: number; body: unknown }> {
   const res = await getJsonDetailed<FactorBatteryBody>(
     `/ui/api/backtest/job/${jobId}/factors`
+  );
+  if (res.ok) return { ok: true, body: res.body };
+  return { ok: false, status: res.status, body: res.body };
+}
+
+/**
+ * Fetch the Monte-Carlo robustness fan for a job — 5 / 50 / 95th-percentile
+ * equity paths from resampling the run's daily returns with replacement. Keeps
+ * the HTTP status + body on failure so the caller can render the engine's own
+ * reason for a 4xx (insufficient data / not found), not a blank section.
+ */
+export async function backtestJobMonteCarlo(
+  jobId: number
+): Promise<{ ok: true; body: MonteCarloBody } | { ok: false; status: number; body: unknown }> {
+  const res = await getJsonDetailed<MonteCarloBody>(
+    `/ui/api/backtest/job/${jobId}/montecarlo`
   );
   if (res.ok) return { ok: true, body: res.body };
   return { ok: false, status: res.status, body: res.body };

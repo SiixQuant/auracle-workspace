@@ -67,9 +67,13 @@ function MonteCarloFan({ mc }: { mc: MonteCarlo }): JSX.Element | null {
       data-testid="mc-fan"
       style={{ display: 'block', borderRadius: 8, background: tone.sunken }}
     >
-      <line x1="0" y1={baseY} x2={W} y2={baseY} stroke={tone.border} strokeWidth="1" strokeDasharray="3 3" />
+      <line
+        x1="0" y1={baseY} x2={W} y2={baseY}
+        stroke={tone.border} strokeWidth="1" strokeDasharray="3 3"
+        vectorEffect="non-scaling-stroke"
+      />
       <path d={band} fill="rgba(255,255,255,0.07)" stroke="none" />
-      <path d={median} fill="none" stroke={tone.text2} strokeWidth="1.4" />
+      <path d={median} fill="none" stroke={tone.text2} strokeWidth="1.4" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }

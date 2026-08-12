@@ -18,7 +18,7 @@ import {
   type QcValidationReport as Report,
 } from '../engine/quantconnect';
 import { QcValidationReport } from './QcValidationReport';
-import { Button, InlineNote, Select } from './panelkit';
+import { Button, InlineNote, Select, tone } from './panelkit';
 
 type Phase = 'idle' | 'validating' | 'error' | 'done';
 
@@ -100,7 +100,7 @@ export function QcValidateCard({
 
   if (phase === 'done' && report) {
     return (
-      <div data-testid="qc-validate" className="flex flex-col gap-2">
+      <div data-testid="qc-validate" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <QcValidationReport report={report} />
         <div>
           <Button
@@ -120,10 +120,10 @@ export function QcValidateCard({
 
   return (
     <div data-testid="qc-validate" className="flex flex-col gap-2">
-      <span className="text-[11px] text-muted-foreground">
+      <span style={{ fontSize: 11, color: tone.text3 }}>
         Compare a local run of this import against the QuantConnect original.
       </span>
-      <div className="flex flex-wrap items-center gap-2">
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
         <Select
           ariaLabel="Local run to compare"
           placeholder="Pick a local run…"

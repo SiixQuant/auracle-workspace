@@ -267,16 +267,18 @@ export function transmogAction(
 }
 
 /**
- * The exact plugin command the Transmog hand-off prefills — id only. The
- * large strategy-development harness lives in the command's own .md
- * (rides the plugin injection), not in this prompt string.
+ * The exact plugin command the Transmog hand-off prefills — the finding id
+ * handed to `/auracle:strategy`, whose own .md is the validated
+ * build-from-finding harness (it rides the plugin injection), not this string.
+ * (`/auracle:strategy` accepts a finding id and builds + validates from it.)
  */
 export function transmogPrompt(findingId: number): string {
-  return `/auracle:transmog ${findingId}`;
+  return `/auracle:strategy ${findingId}`;
 }
 
-/** The deep-rank hand-off command (whole-feed action, no arguments). */
-export const DEEP_RANK_PROMPT = '/auracle:deep-rank';
+/** The deep-rank hand-off command (whole-feed action, no arguments) — routed to
+ *  `/auracle:research`, whose "re-rank the top findings" branch does exactly this. */
+export const DEEP_RANK_PROMPT = '/auracle:research';
 
 export const DEEP_RANK_SIGNED_OUT_REASON =
   'Sign in to deep-rank — the agent works on your account.';

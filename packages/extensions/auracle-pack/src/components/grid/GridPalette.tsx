@@ -20,6 +20,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { gridVitals } from '../../engine/gridVitals';
 import { tone } from '../panelkit';
+import { Icon } from '../Icon';
 import { HEALTH_COLOR, HEALTH_WORD } from './districts';
 import {
   PALETTE_HINT,
@@ -178,9 +179,7 @@ export function GridPalette(): JSX.Element {
         onKeyDown={onKeyDown}
       >
         <div className="agrid-cmd__field">
-          <span className="material-symbols-outlined agrid-cmd__fico" aria-hidden>
-            search
-          </span>
+          <Icon name="search" size={16} className="agrid-cmd__fico" aria-hidden />
           <input
             ref={inputRef}
             className="agrid-cmd__input"
@@ -241,9 +240,7 @@ export function GridPalette(): JSX.Element {
                       onMouseMove={() => setHighlight(index)}
                       onClick={() => run(command)}
                     >
-                      <span className="material-symbols-outlined agrid-cmd__rico" aria-hidden>
-                        {command.icon}
-                      </span>
+                      <Icon name={command.icon} size={15} className="agrid-cmd__rico" aria-hidden />
                       <span className="agrid-cmd__label">{command.label}</span>
                       {command.badge ? (
                         <span

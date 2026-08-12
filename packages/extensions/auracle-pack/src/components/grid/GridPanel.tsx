@@ -9,13 +9,11 @@
  * reconciles, so no selection is dropped.
  *
  * THE PANEL OPENS ON THE RESTING STATE: one line of status and the standing
- * watches (GridHome). The two legacy faces — the Board and the Plan — remain
- * reachable only by the keyboard cycle in {@link gridFaceStore}, as
- * construction scaffolding while their replacements are built; the deletion
- * issue of the swap removes them and the cycle with them. No on-screen
- * control offers a face, and no face is remembered: opening state is a
- * contract, not a preference. Pressing the shortcut from inside a ROOM comes
- * home first, so the key is never dead where a room happens to be showing.
+ * watches (GridHome). There is one surface and no faces — the earlier Board and
+ * Plan faces, and their keyboard cycle, were removed once their replacements
+ * shipped. The resting home is the only opening state: a contract, not a
+ * preference. Everything else is a room, reached through the ⌘K palette or a
+ * hand-off.
  *
  * Layout responds to the PANEL's width with `@container`, never `@media`: the
  * Grid renders inside a host pane whose width has nothing to do with the
@@ -53,7 +51,6 @@ import { boardGraphStore } from '../../engine/boardGraphStore';
 import { GridHealthLine } from './GridHealthLine';
 import { GridHome } from './GridHome';
 import { GridPalette } from './GridPalette';
-import { GRID_ACCENT } from './gridTheme';
 import { ROOMS, type RoomId } from './rooms';
 
 const STYLE_ID = 'auracle-grid-styles';
@@ -71,14 +68,6 @@ const SHEET = `
 .auracle-grid { container-type: inline-size; container-name: auracle-grid; position: relative; overflow: hidden; display: flex; flex-direction: column; }
 .auracle-grid:focus { outline: none; }
 .auracle-grid__view { flex: 1; min-height: 0; overflow: auto; }
-/* One track, two segments, the moved one lit — a segmented control rather than
-   two buttons, so the pair reads as one thing with two positions. */
-.auracle-grid__face { appearance: none; font: inherit; font-size: 11.5px; font-weight: 600; line-height: 1; padding: 5px 11px; border: 0; border-radius: 6px; background: transparent; color: ${tone.text3}; cursor: pointer; transition: background-color 150ms ease-out, color 150ms ease-out; }
-.auracle-grid__face:hover { color: ${tone.text2}; }
-.auracle-grid__face[aria-pressed='true'] { background: ${tone.surface3}; color: ${tone.text}; }
-.auracle-grid__face:focus-visible { outline: 2px solid ${GRID_ACCENT}; outline-offset: 1px; }
-/* The written shortcut is the first thing to go when the pane is narrow: it is
-   a reminder, not a control, and the segments it explains are still there. */
 `;
 
 function ensureGridStyles(): void {

@@ -276,7 +276,7 @@ describe('transmogAction', () => {
 
 describe('transmogPrompt', () => {
   it('prefills the namespaced plugin command with the id only', () => {
-    expect(transmogPrompt(42)).toBe('/auracle:transmog 42');
+    expect(transmogPrompt(42)).toBe('/auracle:strategy 42');
   });
 });
 
@@ -298,7 +298,7 @@ describe('deep-rank origin labeling and feed order', () => {
   });
 
   it('pins the deep-rank hand-off command', () => {
-    expect(DEEP_RANK_PROMPT).toBe('/auracle:deep-rank');
+    expect(DEEP_RANK_PROMPT).toBe('/auracle:research');
   });
 
   it('renders the feed in server order — no client re-scoring', () => {

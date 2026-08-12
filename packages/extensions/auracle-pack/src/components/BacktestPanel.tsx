@@ -47,6 +47,7 @@ import {
 } from './panelkit';
 import { EquityChartShad } from './charts/EquityChartShad';
 import { FactorBatterySection } from './FactorBatterySection';
+import { MonteCarloSection } from './MonteCarloSection';
 import { PanelHostLike, useAiPanelContext, handOffToAgent, type AgentNote } from './aiPanel';
 import { focusStore } from '../engine/focusStore';
 import { deployFile } from './spineActions';
@@ -567,6 +568,12 @@ export function BacktestPanel({ host }: { host?: PanelHostLike }): JSX.Element {
               jobId={snap.jobId}
               sourceLabel={sourceLabel(snap.result.source) ?? undefined}
             />
+          ) : null}
+          {/* Monte-Carlo robustness — resamples the run's daily returns to show
+              how much of the realised curve is signal vs the ordering of luck.
+              Same job-id keying as the factor battery. */}
+          {snap.result && snap.jobId ? (
+            <MonteCarloSection key={`mc-${snap.jobId}`} jobId={snap.jobId} />
           ) : null}
           {note ? <InlineNote kind={note.kind}>{note.text}</InlineNote> : null}
 

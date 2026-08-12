@@ -152,6 +152,61 @@ export interface QcTranslateReport {
   scaffold?: string;
 }
 
+// ── Translation validation (#274) ─────────────────────────────────
+/** One side-by-side metric row: the QC original vs the Auracle import. */
+export interface QcValidationRow {
+  metric: string;
+  label: string;
+  qc: number | null;
+  auracle: number | null;
+  delta: number | null;
+  limit: number | null;
+  within_tolerance: boolean;
+}
+
+/** How much of the recorded book the local run could price. */
+export interface QcCoverage {
+  total: number;
+  covered: number;
+  coverage_pct: number;
+  missing: string[];
+}
+
+export type QcValidationGrade =
+  | 'reproduced'
+  | 'reproduced_partial'
+  | 'diverged'
+  | 'insufficient_coverage'
+  | 'stats_match';
+
+/** The graded translation-validation report from `POST /validate`. */
+export interface QcValidationReport {
+  grade: QcValidationGrade;
+  pass: boolean;
+  summary: string;
+  coverage: QcCoverage | null;
+  rows: QcValidationRow[];
+}
+
+/** The engine route that validates an import against its QC original (POST). */
+export function qcValidatePath(): string {
+  return '/ui/api/quantconnect/validate';
+}
+
+/**
+ * Safely read a `{report}` body from the validate route into a typed report,
+ * or null when the body isn't a usable report (disconnected / unreadable) —
+ * so the panel renders an honest empty state, never a half-parsed table.
+ */
+export function readValidationReport(body: unknown): QcValidationReport | null {
+  if (!body || typeof body !== 'object') return null;
+  const report = (body as { report?: unknown }).report;
+  if (!report || typeof report !== 'object') return null;
+  const r = report as Record<string, unknown>;
+  if (typeof r.grade !== 'string' || !Array.isArray(r.rows)) return null;
+  return report as QcValidationReport;
+}
+
 /** Ambient context for an active QC import (project + last translation). */
 export function qcContext(
   project: QcProject,

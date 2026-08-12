@@ -162,6 +162,10 @@ export interface QcValidationRow {
   delta: number | null;
   limit: number | null;
   within_tolerance: boolean;
+  /** The local engine didn't produce this metric (a frictionless vectorized
+   *  run has no fees/orders). Optional for back-compat with an engine that
+   *  predates the flag; treated as false when absent. */
+  not_measured?: boolean;
 }
 
 /** How much of the recorded book the local run could price. */

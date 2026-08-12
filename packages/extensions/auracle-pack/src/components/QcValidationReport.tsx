@@ -75,19 +75,31 @@ export function QcValidationReport({ report }: { report: Report }): JSX.Element 
           </tr>
         </thead>
         <tbody>
-          {report.rows.map((row) => (
-            <tr
-              key={row.metric}
-              data-testid={`qc-row-${row.metric}`}
-              data-diverged={row.within_tolerance ? 'false' : 'true'}
-              className={row.within_tolerance ? '' : 'text-rose-500'}
-            >
-              <td className="py-1 pr-3">{row.label}</td>
-              <td className="py-1 px-3 text-right">{fmt(row.metric, row.qc)}</td>
-              <td className="py-1 px-3 text-right">{fmt(row.metric, row.auracle)}</td>
-              <td className="py-1 pl-3 text-right">{fmtDelta(row.metric, row.delta)}</td>
-            </tr>
-          ))}
+          {report.rows.map((row) => {
+            // A metric the local engine never produced is neither a match nor a
+            // divergence — show it as "not measured", muted, with no delta,
+            // rather than a rose-flagged row implying the import failed.
+            const notMeasured = row.not_measured === true;
+            const diverged = !notMeasured && !row.within_tolerance;
+            return (
+              <tr
+                key={row.metric}
+                data-testid={`qc-row-${row.metric}`}
+                data-diverged={diverged ? 'true' : 'false'}
+                data-not-measured={notMeasured ? 'true' : 'false'}
+                className={diverged ? 'text-rose-500' : notMeasured ? 'text-muted-foreground' : ''}
+              >
+                <td className="py-1 pr-3">{row.label}</td>
+                <td className="py-1 px-3 text-right">{fmt(row.metric, row.qc)}</td>
+                <td className="py-1 px-3 text-right">
+                  {notMeasured ? 'not measured' : fmt(row.metric, row.auracle)}
+                </td>
+                <td className="py-1 pl-3 text-right">
+                  {notMeasured ? '—' : fmtDelta(row.metric, row.delta)}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 

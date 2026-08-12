@@ -184,11 +184,12 @@ export function QcBacktestResult({
       ) : equity.length < 2 ? (
         <InlineNote kind="muted">Backtest finished, but QuantConnect returned no statistics.</InlineNote>
       ) : null}
-      {/* Translation validation (#274): compare this QC original against a local
-          run of the import. Stats source (a local run) lands next; until then it
-          honestly prompts to run the import locally first. */}
+      {/* Translation validation (#274): compare this QC original against a
+          completed local run of the import. The card lists your recent local
+          runs to pick from, or prompts to run the import first when there are
+          none — the engine reads the chosen run's own stats and grades it. */}
       <div style={{ marginTop: 8 }}>
-        <QcValidateCard projectId={projectId} backtestId={backtestId} auracleStatistics={null} />
+        <QcValidateCard projectId={projectId} backtestId={backtestId} />
       </div>
     </>
   );

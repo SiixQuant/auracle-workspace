@@ -1,92 +1,152 @@
 /**
- * Interactive "Validate translation" control (#274). Given a completed QC
- * backtest and the imported strategy's own Auracle-run statistics, it POSTs to
- * the engine and renders the graded side-by-side ({@link QcValidationReport}).
- * Honest states throughout: no stats → a prompt to run locally first; a
+ * "Validate translation" control (#274). Given a completed QC backtest, it
+ * compares the QuantConnect original against a completed LOCAL Auracle run of
+ * the imported strategy — the user picks which of their recent runs is the
+ * port. The engine reads that run's own statistics (by id) and grades the
+ * reproduction; this card just sources the run and renders the verdict
+ * ({@link QcValidationReport}).
+ *
+ * Honest throughout: no local runs yet → a prompt to run the import first; a
  * disconnected / unreadable result → a plain reason, never a half-table.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-import { postJson } from '../engine/client';
+import { postJson, tearsheetRuns, type RecentRun } from '../engine/client';
 import {
   qcValidatePath,
   readValidationReport,
   type QcValidationReport as Report,
 } from '../engine/quantconnect';
 import { QcValidationReport } from './QcValidationReport';
-import { Button, InlineNote } from './panelkit';
+import { Button, InlineNote, Select } from './panelkit';
 
-type State =
-  | { phase: 'idle' }
-  | { phase: 'validating' }
-  | { phase: 'error'; message: string }
-  | { phase: 'done'; report: Report };
+type Phase = 'idle' | 'validating' | 'error' | 'done';
+
+/** A recent local run, labelled for the picker: strategy class · as-of · Sharpe. */
+function runLabel(run: RecentRun): string {
+  const cls = run.strategyPath.split('.').pop() || run.strategyPath || `run ${run.jobId}`;
+  const when = run.asOf || run.finishedAt.slice(0, 10) || '';
+  const sharpe = run.sharpe != null ? ` · Sharpe ${run.sharpe.toFixed(2)}` : '';
+  return when ? `${cls} · ${when}${sharpe}` : `${cls}${sharpe}`;
+}
 
 export function QcValidateCard({
   projectId,
   backtestId,
-  auracleStatistics,
 }: {
   projectId: number;
   backtestId: string;
-  /** The imported strategy's own run statistics, keyed by QC statistic name
-   *  (e.g. "Sharpe Ratio"). Null until a local run of the import exists. */
-  auracleStatistics: Record<string, unknown> | null;
 }): JSX.Element {
-  const [state, setState] = useState<State>({ phase: 'idle' });
+  // null = still loading the recent-runs feed; [] = none to pick.
+  const [runs, setRuns] = useState<RecentRun[] | null>(null);
+  const [selected, setSelected] = useState<string>('');
+  const [phase, setPhase] = useState<Phase>('idle');
+  const [message, setMessage] = useState<string>('');
+  const [report, setReport] = useState<Report | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void tearsheetRuns().then((r) => {
+      if (alive) setRuns(r);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const validate = async () => {
-    if (!auracleStatistics) return;
-    setState({ phase: 'validating' });
+    if (!selected) return;
+    setPhase('validating');
     const resp = await postJson(qcValidatePath(), {
       project_id: projectId,
       backtest_id: backtestId,
-      auracle_statistics: auracleStatistics,
+      auracle_job_id: Number(selected),
     });
     if (resp.status === 200) {
-      const report = readValidationReport(resp.body);
-      if (report) {
-        setState({ phase: 'done', report });
+      const parsed = readValidationReport(resp.body);
+      if (parsed) {
+        setReport(parsed);
+        setPhase('done');
         return;
       }
     }
     const body = (resp.body ?? {}) as { error?: string; connected?: boolean };
-    const message =
+    setMessage(
       body.connected === false
         ? 'Connect QuantConnect in Settings to validate.'
         : typeof body.error === 'string'
           ? body.error
-          : `Validation failed (${resp.status || 'engine unreachable'}).`;
-    setState({ phase: 'error', message });
+          : `Validation failed (${resp.status || 'engine unreachable'}).`
+    );
+    setPhase('error');
   };
 
-  if (!auracleStatistics) {
+  if (runs === null) {
+    return (
+      <InlineNote kind="muted" testId="qc-validate-loading">
+        Looking for a local run to compare…
+      </InlineNote>
+    );
+  }
+
+  if (runs.length === 0) {
     return (
       <InlineNote kind="muted" testId="qc-validate-needs-run">
-        Run the imported strategy locally, then validate its results against the
-        QuantConnect original.
+        Run the imported strategy locally, then come back to compare its results
+        against the QuantConnect original.
       </InlineNote>
+    );
+  }
+
+  if (phase === 'done' && report) {
+    return (
+      <div data-testid="qc-validate" className="flex flex-col gap-2">
+        <QcValidationReport report={report} />
+        <div>
+          <Button
+            variant="quiet"
+            testId="qc-validate-reset"
+            onClick={() => {
+              setReport(null);
+              setPhase('idle');
+            }}
+          >
+            Compare another run
+          </Button>
+        </div>
+      </div>
     );
   }
 
   return (
     <div data-testid="qc-validate" className="flex flex-col gap-2">
-      {state.phase !== 'done' && (
+      <span className="text-[11px] text-muted-foreground">
+        Compare a local run of this import against the QuantConnect original.
+      </span>
+      <div className="flex flex-wrap items-center gap-2">
+        <Select
+          ariaLabel="Local run to compare"
+          placeholder="Pick a local run…"
+          minWidth={240}
+          value={selected}
+          onChange={setSelected}
+          options={runs.map((r) => ({ value: String(r.jobId), label: runLabel(r) }))}
+        />
         <Button
           variant="ghost"
-          busy={state.phase === 'validating'}
+          busy={phase === 'validating'}
+          disabled={!selected}
           testId="qc-validate-btn"
           onClick={validate}
         >
           Validate translation
         </Button>
-      )}
-      {state.phase === 'error' && (
+      </div>
+      {phase === 'error' && (
         <InlineNote kind="err" testId="qc-validate-error">
-          {state.message}
+          {message}
         </InlineNote>
       )}
-      {state.phase === 'done' && <QcValidationReport report={state.report} />}
     </div>
   );
 }

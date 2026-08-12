@@ -67,4 +67,21 @@ describe('QcValidationReport', () => {
     expect(screen.getByTestId('qc-validation-grade').textContent).toContain('Stats match');
     expect(screen.getByTestId('qc-validation-coverage').textContent).toMatch(/unverified/i);
   });
+
+  it('shows a metric the local engine did not produce as "not measured", not diverged', () => {
+    const withUnmeasured: Report = {
+      ...BASE,
+      rows: BASE.rows.map((r) =>
+        r.metric === 'fees'
+          ? { ...r, auracle: null, delta: null, within_tolerance: false, not_measured: true }
+          : r
+      ),
+    };
+    render(<QcValidationReport report={withUnmeasured} />);
+    const fees = screen.getByTestId('qc-row-fees');
+    expect(fees.getAttribute('data-not-measured')).toBe('true');
+    // absent from the local engine ≠ a divergence — must not be rose-flagged
+    expect(fees.getAttribute('data-diverged')).toBe('false');
+    expect(fees.textContent).toMatch(/not measured/i);
+  });
 });

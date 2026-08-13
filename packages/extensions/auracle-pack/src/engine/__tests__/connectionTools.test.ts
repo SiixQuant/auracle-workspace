@@ -27,6 +27,7 @@ import {
   disconnectSource,
   listSources,
   pendingConnectionStore,
+  pendingFieldsFor,
 } from '../connectionTools';
 
 function conn(id: string, kind: string, state: string, over: Partial<Connector> = {}): Connector {
@@ -293,3 +294,26 @@ describe('disconnect_source', () => {
     expect(res.error).toContain('polygon');
   });
 });
+
+describe('pendingFieldsFor — inline write-only fields without arming the shared signal', () => {
+  it('returns the keyed connector’s fields for an inline paste form', async () => {
+    vi.mocked(getJson).mockResolvedValue(POLYGON_DETAIL as never);
+    const fields = await pendingFieldsFor('polygon');
+    expect(fields.map((f) => f.name)).toEqual(['api_key']);
+    // The secret field is masked, and no pending signal was armed (this pane
+    // mounts its own field rather than the GridHome paste form).
+    expect(fields[0].sensitive).toBe(true);
+    expect(pendingConnectionStore.getSnapshot()).toBeNull();
+  });
+
+  it('returns [] for a keyless source without touching the engine', async () => {
+    const fields = await pendingFieldsFor('yfinance');
+    expect(fields).toEqual([]);
+    expect(vi.mocked(getJson)).not.toHaveBeenCalled();
+  });
+
+  it('returns [] when the engine does not answer', async () => {
+    vi.mocked(getJson).mockResolvedValue(null as never);
+    expect(await pendingFieldsFor('polygon')).toEqual([]);
+  });
+})

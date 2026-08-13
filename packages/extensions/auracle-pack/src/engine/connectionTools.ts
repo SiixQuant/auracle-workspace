@@ -361,6 +361,23 @@ export async function connectSource(
 }
 
 /**
+ * The write-only field set to render for a keyed connector, WITHOUT arming the
+ * shared pending-connection signal. For a surface that mounts its OWN
+ * {@link ../components/grid/ConnectionSecretField} inline — the live-deploy
+ * wizard on a strategy's Live tab — so a connect begun there does not also pop
+ * the paste form on the home grid. Returns [] for a keyless source, an
+ * unreachable engine, or a fieldless gateway broker (the caller then shows no
+ * form and points at the gateway sign-in). Never a value.
+ */
+export async function pendingFieldsFor(id: string): Promise<PendingField[]> {
+  const slug = typeof id === 'string' ? id.trim() : '';
+  if (!slug || KEYLESS_IDS.has(slug)) return [];
+  const detail = await readConnectionDetail(slug);
+  if (!detail) return [];
+  return pendingFields(detail);
+}
+
+/**
  * Turn a connection OFF. Clears the stored credential/session in the engine's
  * vault (the write-only save has no counterpart the tool can read, so "off" is
  * an explicit disconnect), then re-polls every surface. The keyless data floor

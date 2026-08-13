@@ -39,6 +39,13 @@ vi.mock('../../engine/client', async (importOriginal) => {
   };
 });
 
+// The Live tab's deploy pane fetches connections/entitlements of its own and is
+// pinned in liveDeploy.test.tsx; here it stands in as a marker so this suite
+// stays on the tearsheet's own Backtest↔Live toggle.
+vi.mock('../grid/pages/LiveDeploy', () => ({
+  LiveDeployPane: () => <div data-testid="tearsheet-live-deploy" />,
+}));
+
 import Plotly from 'plotly.js-basic-dist-min';
 import {
   tearsheetFactors,
@@ -179,14 +186,18 @@ describe('the Risk / Return table matches the reference', () => {
     expect(screen.getByTestId('tearsheet-metric-value-benchmark-return').textContent).toBe('173.00%');
   });
 
-  it('shows an em dash for a metric the engine did not compute', async () => {
+  it('hides a metric the engine did not compute rather than printing a half-empty row', async () => {
     vi.mocked(tearsheetResult).mockResolvedValue({
       ...RESULT,
       stats: { ...RESULT.stats, calmar: null },
     });
     render(<StrategyPage host={host} />);
-    await waitFor(() => expect(screen.getByTestId('tearsheet-metric-value-calmar-ratio')).toBeTruthy());
-    expect(screen.getByTestId('tearsheet-metric-value-calmar-ratio').textContent).toBe('—');
+    await waitFor(() => expect(screen.getByTestId('tearsheet-metrics')).toBeTruthy());
+    // The unmeasured metric drops its row — no em-dash cell to render.
+    expect(screen.queryByTestId('tearsheet-metric-value-calmar-ratio')).toBeNull();
+    // The measured rows are untouched, so the table is trimmed, not empty.
+    expect(screen.getByTestId('tearsheet-metric-value-sharpe-ratio').textContent).toBe('1.420');
+    expect(screen.getByTestId('tearsheet-metrics').querySelectorAll('[data-testid^="tearsheet-metric-value-"]')).toHaveLength(17);
   });
 });
 
@@ -251,7 +262,8 @@ describe('the performance chart is a Plotly figure matched to the reference', ()
     const traces = vi.mocked(Plotly.react).mock.calls[0][1] as Array<Record<string, unknown>>;
     expect(traces).toHaveLength(2);
     expect(traces.map((t) => t.name)).toEqual(['Strategy', 'Drawdown']);
-    expect(screen.getByTestId('tearsheet-metric-value-benchmark-return').textContent).toBe('—');
+    // No benchmark → no Benchmark Return row (dropped, not shown as an em dash).
+    expect(screen.queryByTestId('tearsheet-metric-value-benchmark-return')).toBeNull();
   });
 });
 
@@ -335,9 +347,10 @@ describe('the net-of-cost basis line (Frontier #6)', () => {
     expect(note.textContent).toContain('45% average turnover');
   });
 
-  it('drops both net rows to an em dash and hides the basis line before cost modeling', async () => {
+  it('drops both net rows and hides the basis line before cost modeling', async () => {
     // A run scored before #6 carries no net figures — the gross table stands,
-    // the two Net rows show the house em dash, and no cost basis is invented.
+    // the two Net rows are omitted (not shown as half-empty em dashes), and no
+    // cost basis is invented.
     const grossOnly = { ...RESULT.stats };
     delete grossOnly.net_return;
     delete grossOnly.net_sharpe;
@@ -346,8 +359,8 @@ describe('the net-of-cost basis line (Frontier #6)', () => {
     vi.mocked(tearsheetResult).mockResolvedValue({ ...RESULT, stats: grossOnly });
     render(<StrategyPage host={host} />);
     await waitFor(() => expect(screen.getByTestId('tearsheet-metrics')).toBeTruthy());
-    expect(screen.getByTestId('tearsheet-metric-value-net-return').textContent).toBe('—');
-    expect(screen.getByTestId('tearsheet-metric-value-net-sharpe').textContent).toBe('—');
+    expect(screen.queryByTestId('tearsheet-metric-value-net-return')).toBeNull();
+    expect(screen.queryByTestId('tearsheet-metric-value-net-sharpe')).toBeNull();
     expect(screen.queryByTestId('tearsheet-cost-basis')).toBeNull();
   });
 });
@@ -363,14 +376,14 @@ describe('the capacity line (Frontier #7)', () => {
     expect(note.textContent?.toLowerCase()).toContain('average daily volume');
   });
 
-  it('drops the capacity row to an em dash and hides the line before capacity modeling', async () => {
+  it('drops the capacity row and hides the line before capacity modeling', async () => {
     const stats = { ...RESULT.stats };
     delete stats.capacity_usd;
     delete stats.capacity_participation;
     vi.mocked(tearsheetResult).mockResolvedValue({ ...RESULT, stats });
     render(<StrategyPage host={host} />);
     await waitFor(() => expect(screen.getByTestId('tearsheet-metrics')).toBeTruthy());
-    expect(screen.getByTestId('tearsheet-metric-value-capacity').textContent).toBe('—');
+    expect(screen.queryByTestId('tearsheet-metric-value-capacity')).toBeNull();
     expect(screen.queryByTestId('tearsheet-capacity-basis')).toBeNull();
   });
 });
@@ -395,12 +408,12 @@ describe('the reproducibility line (Frontier #14)', () => {
 });
 
 describe('the in-room segmented controls (WS-E FR-E3)', () => {
-  it('Live shows a clean no-deployment rest, and toggles back to the backtest tearsheet', async () => {
+  it('Live shows the deploy pane, and toggles back to the backtest tearsheet', async () => {
     render(<StrategyPage host={host} />);
     await waitFor(() => expect(screen.getByTestId('tearsheet-metrics')).toBeTruthy());
 
     fireEvent.click(screen.getByTestId('tearsheet-mode-live'));
-    expect(screen.getByTestId('tearsheet-live-empty')).toBeTruthy();
+    expect(screen.getByTestId('tearsheet-live-deploy')).toBeTruthy();
     expect(screen.queryByTestId('tearsheet-metrics')).toBeNull();
     expect(screen.queryByTestId('tearsheet-chart')).toBeNull();
 

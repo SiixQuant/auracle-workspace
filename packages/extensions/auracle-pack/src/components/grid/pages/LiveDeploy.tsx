@@ -47,7 +47,17 @@ export function liveAccountConnected(connectors: Connector[]): boolean {
 }
 
 const styles = {
-  page: { display: 'flex', flexDirection: 'column' as const, gap: 16 },
+  // One centered column: the connect card and the wizard share the wizard's
+  // 640px measure and sit on the room's axis, rather than hugging the left
+  // with a dead right column.
+  page: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 16,
+    width: '100%',
+    maxWidth: 640,
+    margin: '0 auto',
+  },
   card: {
     display: 'flex',
     flexDirection: 'column' as const,

@@ -20,6 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [2.22.0] - 2026-08-12
+
+### Added
+- **Deploy to live from a strategy's Live tab.** Opening the Live tab now shows the deployment wizard for the strategy you're viewing, with the account-connect step built in. A live trading account stays disconnected until you enter its credentials in the wizard — nothing goes live before then, and paper trading needs no account.
+
+### Changed
+- **The Risk / Return table shows only what a run measured.** A backtest scored before drawdown, cost, or capacity modeling no longer shows a column of blank "—" rows; unmeasured metrics are omitted rather than dashed. The investor dossier keeps its full fixed table.
+
 ## [2.20.0] - 2026-08-11
 
 ### Added

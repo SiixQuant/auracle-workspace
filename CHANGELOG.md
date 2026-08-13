@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [2.22.1] - 2026-08-13
+
+### Changed
+- **The strategy Live tab sits centered.** The connect card and deployment wizard share one centered column instead of hugging the left edge with empty space beside them.
+
 ## [2.22.0] - 2026-08-12
 
 ### Added

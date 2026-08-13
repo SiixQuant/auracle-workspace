@@ -46,13 +46,14 @@ import {
   type TradeRecord,
 } from '../../../engine/client';
 import { focusStore } from '../../../engine/focusStore';
-import { capacityNote, costBasisNote, EM_DASH, reproHash, statPercent, tearsheetMetricRows, type TearsheetMetricRow } from '../../../engine/houseStats';
+import { capacityNote, costBasisNote, EM_DASH, measuredMetricRows, reproHash, statPercent, tearsheetMetricRows, type TearsheetMetricRow } from '../../../engine/houseStats';
 import { prettifyPath } from '../../../engine/humanize';
 import { composeThesis } from '../../../engine/signalThesis';
 import { handOffToAgent, type AgentNote } from '../../aiPanel';
 import { Button, CenterState, InlineNote, SkeletonRows, tint, tone } from '../../panelkit';
 import { TearsheetChart } from '../../charts/TearsheetChart';
 import { RecentRunsGrid } from '../RecentRunsGrid';
+import { LiveDeployPane } from './LiveDeploy';
 import { GRID_ACCENT } from '../gridTheme';
 
 type TearsheetView = 'overview' | 'trades';
@@ -349,7 +350,10 @@ function RunPicker({ focusedJob }: { focusedJob: number | null }): JSX.Element |
   );
 }
 
-/** The 14-row Risk / Return table, values white and formatted to the reference. */
+/** The Risk / Return table, values white and formatted to the reference. Only
+ *  the rows the engine measured for THIS run render — an unmeasured metric drops
+ *  its row rather than printing an em dash, so a run scored before drawdown /
+ *  cost / capacity modeling never shows a half-empty table. */
 function MetricsTable({
   result,
   alphaAnnual,
@@ -359,7 +363,9 @@ function MetricsTable({
   alphaAnnual: number | null;
   benchmarkReturnPct: number | null;
 }): JSX.Element {
-  const rows = tearsheetMetricRows(result.stats ?? {}, { alphaAnnual, benchmarkReturnPct });
+  const rows = measuredMetricRows(
+    tearsheetMetricRows(result.stats ?? {}, { alphaAnnual, benchmarkReturnPct })
+  );
   return (
     <div className="auracle-tearsheet__metrics" data-testid="tearsheet-metrics">
       {rows.map((row) => (
@@ -1056,12 +1062,7 @@ export function Tearsheet({
       </div>
 
       {mode === 'live' ? (
-        <div data-testid="tearsheet-live-empty">
-          <CenterState
-            title="No live deployment yet"
-            detail="Deploy this strategy to paper or live and its realized equity, fills and metrics will render here."
-          />
-        </div>
+        <LiveDeployPane strategyPath={state.result?.strategy_path ?? null} />
       ) : view === 'trades' ? (
         runId === null ? (
           <div data-testid="tearsheet-trades-norun">

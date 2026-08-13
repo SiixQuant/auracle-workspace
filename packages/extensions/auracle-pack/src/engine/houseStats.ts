@@ -252,6 +252,21 @@ export function tearsheetMetricRows(
   ];
 }
 
+/**
+ * The measured subset of the metric table — the rows the engine actually
+ * produced a value for. A run that didn't measure a metric drops its row here
+ * rather than printing an em dash, so the panel never renders a half-empty
+ * table (a run scored before drawdown-detail / cost / capacity modeling would
+ * otherwise show eight blank "—" rows). This is presentation only: omitting an
+ * unmeasured row is not the same as fabricating one, so the house "never invent
+ * a number" rule still holds, and the prose notes beneath the table still
+ * explain the notable absences (cost basis, capacity, the benchmark). The
+ * investor dossier keeps the full fixed table; this trims only the live panel.
+ */
+export function measuredMetricRows(rows: TearsheetMetricRow[]): TearsheetMetricRow[] {
+  return rows.filter((row) => row.value !== EM_DASH);
+}
+
 /** A basis-point count without a trailing ".0" — 10.0 → "10", 12.5 → "12.5". */
 function formatBps(bps: number): string {
   return Number.isInteger(bps) ? String(bps) : String(Number(bps.toFixed(1)));

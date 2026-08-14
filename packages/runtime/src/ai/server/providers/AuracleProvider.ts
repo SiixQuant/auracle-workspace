@@ -960,12 +960,77 @@ export class AuracleProvider extends BaseAIProvider {
         patternSaver: deps.permissionPatternSaver,
         patternChecker: deps.permissionPatternChecker,
         securityLogger: deps.securityLogger ?? undefined,
-        emit: this.emit.bind(this),
+        // Wrap the provider's own emitter: when the service decides a prompt is
+        // needed it fires `toolPermission:pending`. The ToolPermissionWidget does
+        // NOT render from that event (it only drives the "waiting for input"
+        // indicator) — it renders from a `nimbalyst_tool_use`/`ToolPermission`
+        // agent message projected into the canonical transcript. The service
+        // never logs that message, so we log it here, hooking the pending event
+        // (which fires only AFTER the trust / session-cache / persisted-pattern
+        // pre-checks decide a prompt is genuinely required). Logging on every
+        // request instead would strand a never-resolving widget for
+        // auto-approved tools. Mirrors claudeCode/toolAuthorization.ts +
+        // AgentToolHooks, the claude-code / codex widget path.
+        emit: (event: string, data: unknown) => {
+          if (event === 'toolPermission:pending') {
+            this.logToolPermissionWidget(data);
+          }
+          this.emit(event, data as any);
+        },
       });
     } else {
       this.permissionServiceCache = null;
     }
     return this.permissionServiceCache;
+  }
+
+  /**
+   * Log the synthetic `nimbalyst_tool_use`/`ToolPermission` agent message that the
+   * canonical transcript projects into a ToolPermissionWidget (via
+   * SessionManager.transformAgentMessagesToUI + the ClaudeCodeRawParser fallback,
+   * then the `ToolPermission` CustomToolWidget). Built from the
+   * `toolPermission:pending` payload emitted by ToolPermissionService so it fires
+   * exactly once per genuine prompt. Fire-and-forget, mirroring logToolBlocks.
+   */
+  private logToolPermissionWidget(data: unknown): void {
+    const payload = data as {
+      requestId?: string;
+      sessionId?: string;
+      workspacePath?: string;
+      request?: {
+        toolName?: string;
+        rawCommand?: string;
+        hasDestructiveActions?: boolean;
+        actionsNeedingApproval?: Array<{ action?: { pattern?: string }; warnings?: string[] }>;
+      };
+    };
+    const sessionId = payload?.sessionId;
+    const request = payload?.request;
+    if (!sessionId || !request || !payload.requestId) {
+      return;
+    }
+    const firstAction = request.actionsNeedingApproval?.[0];
+    const pattern = firstAction?.action?.pattern || request.toolName || '';
+    this.logAgentMessage(
+      sessionId,
+      'auracle',
+      'output',
+      JSON.stringify({
+        type: 'nimbalyst_tool_use',
+        id: payload.requestId,
+        name: 'ToolPermission',
+        input: {
+          requestId: payload.requestId,
+          toolName: request.toolName,
+          rawCommand: request.rawCommand ?? '',
+          pattern,
+          patternDisplayName: getPatternDisplayName(pattern),
+          isDestructive: !!request.hasDestructiveActions,
+          warnings: firstAction?.warnings ?? [],
+          workspacePath: payload.workspacePath ?? '',
+        },
+      })
+    );
   }
 
   /**

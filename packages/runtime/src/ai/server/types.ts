@@ -175,6 +175,28 @@ export function isAgentProvider(provider: string | null | undefined): provider i
 }
 
 /**
+ * Providers whose sessions render through the CANONICAL transcript/tool
+ * pipeline — the one that hosts the rich tool_use/tool_result widgets and the
+ * ToolPermissionWidget, and whose sessions get the hookless file-diff watcher.
+ *
+ * This is the UNION of the subprocess/SDK agent providers (`isAgentProvider`)
+ * and the in-process `auracle` chat provider. Auracle runs an agentic tool loop
+ * in-process (Phase 2) — it executes tools itself and gates them through the
+ * shared `ToolPermissionService` — so it needs the SAME canonical rendering +
+ * diff-watcher wiring the agent providers get, WITHOUT being a subprocess / SDK
+ * / MCP agent.
+ *
+ * IMPORTANT: use this predicate ONLY at sites that mean "renders via the
+ * canonical pipeline / gets the diff watcher". Sites that mean "is a
+ * subprocess/SDK agent" — session-coherence provider locks, SDK/MCP wiring,
+ * model-picker grouping — must keep `isAgentProvider`; `auracle` is NOT a
+ * subprocess agent and must not inherit those semantics.
+ */
+export function usesCanonicalToolPipeline(provider: string | null | undefined): boolean {
+  return isAgentProvider(provider) || provider === 'auracle';
+}
+
+/**
  * The Claude Code provider family — both Claude-Code variants that drive the
  * genuine `claude` agent and share the Claude model variant namespace
  * (opus/sonnet/haiku) and the `ClaudeCodeRawParser` transcript shape:

@@ -246,3 +246,78 @@ describe('AuracleProvider agentic tool loop', () => {
     expect(chunks.some(c => c.type === 'error')).toBe(false);
   });
 });
+
+/**
+ * Phase 2, Slice 2 — the "missing link" that makes the ToolPermissionWidget
+ * render for auracle. The widget renders from a logged `nimbalyst_tool_use`
+ * /`ToolPermission` agent message (projected into the canonical transcript), NOT
+ * from the `toolPermission:pending` event. `logToolPermissionWidget` builds that
+ * message from the pending payload the ToolPermissionService emits.
+ */
+describe('AuracleProvider ToolPermissionWidget logging (Slice 2 missing-link)', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function pendingPayload(overrides: Record<string, unknown> = {}) {
+    return {
+      requestId: 'tool-sess-1-abc',
+      sessionId: SID,
+      workspacePath: WS,
+      request: {
+        id: 'tool-sess-1-abc',
+        toolName: 'readFile',
+        rawCommand: 'read a.md',
+        actionsNeedingApproval: [{ action: { pattern: 'readFile' }, warnings: ['careful'] }],
+        hasDestructiveActions: false,
+        createdAt: Date.now(),
+      },
+      ...overrides,
+    };
+  }
+
+  it('logs a nimbalyst_tool_use/ToolPermission agent message the widget can render', () => {
+    const provider = new AuracleProvider();
+    const logSpy = vi
+      .spyOn(provider as unknown as { logAgentMessage: (...a: unknown[]) => Promise<void> }, 'logAgentMessage')
+      .mockResolvedValue(undefined);
+
+    (provider as unknown as { logToolPermissionWidget: (d: unknown) => void }).logToolPermissionWidget(pendingPayload());
+
+    expect(logSpy).toHaveBeenCalledTimes(1);
+    const [sessionId, source, direction, content] = logSpy.mock.calls[0] as [string, string, string, string];
+    expect(sessionId).toBe(SID);
+    expect(source).toBe('auracle');
+    expect(direction).toBe('output');
+
+    const parsed = JSON.parse(content);
+    expect(parsed.type).toBe('nimbalyst_tool_use');
+    expect(parsed.name).toBe('ToolPermission');
+    expect(parsed.id).toBe('tool-sess-1-abc');
+    expect(parsed.input).toMatchObject({
+      requestId: 'tool-sess-1-abc',
+      toolName: 'readFile',
+      pattern: 'readFile',
+      isDestructive: false,
+      warnings: ['careful'],
+      workspacePath: WS,
+    });
+    // The widget reads patternDisplayName; it must be present (derived from pattern).
+    expect(typeof parsed.input.patternDisplayName).toBe('string');
+  });
+
+  it('is a no-op when the pending payload lacks a session / request / requestId', () => {
+    const provider = new AuracleProvider();
+    const logSpy = vi
+      .spyOn(provider as unknown as { logAgentMessage: (...a: unknown[]) => Promise<void> }, 'logAgentMessage')
+      .mockResolvedValue(undefined);
+
+    const log = (provider as unknown as { logToolPermissionWidget: (d: unknown) => void }).logToolPermissionWidget.bind(provider);
+    log(pendingPayload({ sessionId: undefined }));
+    log(pendingPayload({ request: undefined }));
+    log(pendingPayload({ requestId: undefined }));
+    log(undefined);
+
+    expect(logSpy).not.toHaveBeenCalled();
+  });
+});

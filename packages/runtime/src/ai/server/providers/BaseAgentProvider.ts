@@ -417,4 +417,25 @@ export abstract class BaseAgentProvider extends BaseAIProvider {
   static setSecurityLogger(logger: SecurityLogger | null): void {
     BaseAgentProvider.securityLogger = logger;
   }
+
+  /**
+   * Expose the permission dependencies wired once at app startup so non-agent
+   * chat providers (e.g. AuracleProvider) can build their own
+   * ToolPermissionService with the SAME trust semantics, without duplicating
+   * the startup wiring. Returns nulls when the app hasn't wired them (tests,
+   * non-Electron embeddings); callers should treat that as "no gating infra".
+   */
+  static getSharedPermissionDeps(): {
+    trustChecker: TrustChecker | null;
+    permissionPatternSaver: PermissionPatternSaver | null;
+    permissionPatternChecker: PermissionPatternChecker | null;
+    securityLogger: SecurityLogger | null;
+  } {
+    return {
+      trustChecker: BaseAgentProvider.trustChecker,
+      permissionPatternSaver: BaseAgentProvider.permissionPatternSaver,
+      permissionPatternChecker: BaseAgentProvider.permissionPatternChecker,
+      securityLogger: BaseAgentProvider.securityLogger,
+    };
+  }
 }

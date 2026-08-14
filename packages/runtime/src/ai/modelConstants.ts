@@ -201,6 +201,70 @@ export const OPENAI_MODELS: ModelDefinition[] = [
 ];
 
 /**
+ * Auracle's own built-in chat models. These are OpenAI-compatible chat models
+ * (same capability profile as LM Studio) exposed alongside Claude in the picker.
+ * Each model has a user-selectable RUN TARGET (see AuracleRunTargets below):
+ * Local / Remote (no auth) or Cloud (Bearer key). The three modes differ only by
+ * baseUrl, the upstream model id, and whether an Authorization header is sent.
+ *
+ * `id` is the bare model key (`sextant` / `atlas`); combined with the provider it
+ * becomes `auracle:sextant` / `auracle:atlas`. `subtitle` is display-only.
+ */
+export interface AuracleModelDefinition extends ModelDefinition {
+  /** Secondary line shown in the settings panel (not the picker). */
+  subtitle: string;
+}
+
+export const AURACLE_MODELS: AuracleModelDefinition[] = [
+  {
+    id: 'sextant',
+    displayName: 'Sextant',
+    shortName: 'Sextant',
+    subtitle: 'Qwen3.8-27B · local-first',
+    maxTokens: 8192,
+    contextWindow: 32768,
+  },
+  {
+    id: 'atlas',
+    displayName: 'Atlas',
+    shortName: 'Atlas',
+    subtitle: 'Qwen3.8-Max · cloud',
+    maxTokens: 8192,
+    contextWindow: 32768,
+  },
+];
+
+/** The internal model keys for the two Auracle models. */
+export type AuracleModelKey = 'sextant' | 'atlas';
+
+/** How a given Auracle model reaches its OpenAI-compatible endpoint. */
+export type AuracleRunTargetMode = 'local' | 'remote' | 'cloud';
+
+/**
+ * Per-model run target. `baseUrl` is the OpenAI-compatible base (ends in `/v1`);
+ * `model` is the UPSTREAM model id sent to that endpoint (distinct from our
+ * internal `auracle:<key>` id). `apiKey` is used/attached ONLY in `cloud` mode.
+ */
+export interface AuracleRunTarget {
+  mode: AuracleRunTargetMode;
+  baseUrl: string;
+  model: string;
+  apiKey?: string;
+}
+
+export type AuracleRunTargets = Record<AuracleModelKey, AuracleRunTarget>;
+
+/**
+ * Seeded defaults for the two run targets. Sextant defaults to a local Ollama
+ * endpoint; Atlas defaults to OpenRouter cloud with an empty (user-supplied) key.
+ * No real key is ever hardcoded here.
+ */
+export const AURACLE_DEFAULT_RUN_TARGETS: AuracleRunTargets = {
+  sextant: { mode: 'local', baseUrl: 'http://127.0.0.1:11434/v1', model: 'qwen3.8:27b' },
+  atlas: { mode: 'cloud', baseUrl: 'https://openrouter.ai/api/v1', model: 'qwen/qwen3.8-max', apiKey: '' },
+};
+
+/**
  * Claude Code variant display metadata — single source of truth.
  *
  * Both the runtime (`ClaudeCodeProvider` — builds the model catalog that the
@@ -342,6 +406,7 @@ export const DEFAULT_MODELS = {
   lmstudio: 'lmstudio:local-model',
   opencode: 'opencode:anthropic/claude-sonnet-4-5',
   'copilot-cli': 'copilot-cli:default',
+  auracle: 'auracle:sextant',
 };
 
 /**

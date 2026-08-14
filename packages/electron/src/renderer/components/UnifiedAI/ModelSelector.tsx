@@ -128,6 +128,7 @@ export function ModelSelector({
       case 'opencode':
       case 'copilot-cli':
       case 'lmstudio':
+      case 'auracle':
         return provider;
       case 'openai-codex-acp':
         // Settings still live under the OpenAI Codex panel.
@@ -182,6 +183,7 @@ export function ModelSelector({
       case 'opencode': return 'OpenCode';
       case 'copilot-cli': return 'GitHub Copilot';
       case 'lmstudio': return 'LMStudio';
+      case 'auracle': return 'Auracle Models';
       default: {
         // Extension-contributed providers carry their contribution id here
         // (e.g. "antigravity-gemini-agent"). Prettify it for the group header
@@ -207,7 +209,7 @@ export function ModelSelector({
     return getProviderIcon(provider, { size });
   };
 
-  const CHAT_MODEL_PROVIDERS = new Set(['claude', 'openai', 'lmstudio']);
+  const CHAT_MODEL_PROVIDERS = new Set(['claude', 'openai', 'lmstudio', 'auracle']);
   const getProviderType = (provider: string): ProviderType => {
     if (isAgentProvider(provider)) return 'agent';
     if (CHAT_MODEL_PROVIDERS.has(provider)) return 'model';

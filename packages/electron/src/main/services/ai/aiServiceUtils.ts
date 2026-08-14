@@ -20,6 +20,11 @@ import {
   AI_PROVIDER_TYPES,
   type AIProviderType,
 } from '@nimbalyst/runtime/ai/server/types';
+import {
+  AURACLE_DEFAULT_RUN_TARGETS,
+  type AuracleModelKey,
+  type AuracleRunTarget,
+} from '@nimbalyst/runtime/ai/modelConstants';
 import { logger } from '../../utils/logger';
 import { historyManager } from '../../HistoryManager';
 
@@ -281,6 +286,37 @@ export function extractModelForProvider(
   }
 
   return fullModel;
+}
+
+/**
+ * Resolve the run target (baseUrl / upstream model id / apiKey) for an Auracle
+ * session, given the raw providerSettings blob and the session's combined model
+ * id (`auracle:sextant` / `auracle:atlas`).
+ *
+ * Centralizes the per-model injection so both the create-session path
+ * (AIService) and the resume/re-init path (MessageStreamingHandler) agree:
+ * - `baseUrl` and `model` fall back to the seeded defaults when unset.
+ * - `apiKey` is returned ONLY in `cloud` mode (local/remote send no auth), and
+ *   an empty cloud key yields `undefined` so no `Authorization` header is sent.
+ */
+export function resolveAuracleRunTarget(
+  providerSettings: Record<string, any> | undefined | null,
+  sessionModel: string | undefined | null
+): { baseUrl: string; model: string; apiKey: string | undefined } {
+  const parsed = sessionModel ? ModelIdentifier.tryParse(sessionModel) : null;
+  const key: AuracleModelKey = parsed?.model === 'atlas' ? 'atlas' : 'sextant';
+  const fallback = AURACLE_DEFAULT_RUN_TARGETS[key];
+  const configured = providerSettings?.['auracle']?.runTargets?.[key] as AuracleRunTarget | undefined;
+  const runTarget: AuracleRunTarget = configured ?? fallback;
+
+  const baseUrl = (runTarget.baseUrl || fallback.baseUrl).trim();
+  const model = (runTarget.model || fallback.model).trim();
+  const apiKey =
+    runTarget.mode === 'cloud' && runTarget.apiKey && runTarget.apiKey.trim() !== ''
+      ? runTarget.apiKey
+      : undefined;
+
+  return { baseUrl, model, apiKey };
 }
 
 /**

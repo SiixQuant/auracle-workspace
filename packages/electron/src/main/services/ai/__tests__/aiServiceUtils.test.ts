@@ -74,7 +74,9 @@ import {
   detectNimbalystSlashCommand,
   previewForLog,
   LOG_PREVIEW_LENGTH,
+  resolveAuracleRunTarget,
 } from '../aiServiceUtils';
+import { AURACLE_DEFAULT_RUN_TARGETS } from '@nimbalyst/runtime/ai/modelConstants';
 
 describe('aiServiceUtils', () => {
   describe('bucketMessageLength', () => {
@@ -289,6 +291,56 @@ describe('aiServiceUtils', () => {
 
     it('returns the raw model when no provider prefix is present', () => {
       expect(extractModelForProvider('gpt-5-turbo', 'openai')).toBe('gpt-5-turbo');
+    });
+  });
+
+  describe('resolveAuracleRunTarget', () => {
+    it('falls back to the seeded Sextant default when settings are empty', () => {
+      const rt = resolveAuracleRunTarget({}, 'auracle:sextant');
+      expect(rt.baseUrl).toBe(AURACLE_DEFAULT_RUN_TARGETS.sextant.baseUrl);
+      expect(rt.model).toBe(AURACLE_DEFAULT_RUN_TARGETS.sextant.model);
+      // Sextant defaults to local -> no key attached.
+      expect(rt.apiKey).toBeUndefined();
+    });
+
+    it('resolves the Atlas default (cloud) but omits an empty key', () => {
+      const rt = resolveAuracleRunTarget({}, 'auracle:atlas');
+      expect(rt.baseUrl).toBe(AURACLE_DEFAULT_RUN_TARGETS.atlas.baseUrl);
+      expect(rt.model).toBe(AURACLE_DEFAULT_RUN_TARGETS.atlas.model);
+      // Default cloud key is '' -> treated as no key.
+      expect(rt.apiKey).toBeUndefined();
+    });
+
+    it('attaches the key only in cloud mode', () => {
+      const providerSettings = {
+        auracle: {
+          runTargets: {
+            atlas: { mode: 'cloud', baseUrl: 'https://api.example.com/v1', model: 'up-model', apiKey: 'sk-live' },
+          },
+        },
+      };
+      const rt = resolveAuracleRunTarget(providerSettings, 'auracle:atlas');
+      expect(rt.baseUrl).toBe('https://api.example.com/v1');
+      expect(rt.model).toBe('up-model');
+      expect(rt.apiKey).toBe('sk-live');
+    });
+
+    it('ignores a stored key when the mode is not cloud', () => {
+      const providerSettings = {
+        auracle: {
+          runTargets: {
+            sextant: { mode: 'local', baseUrl: 'http://host:11434/v1', model: 'up', apiKey: 'sk-should-ignore' },
+          },
+        },
+      };
+      const rt = resolveAuracleRunTarget(providerSettings, 'auracle:sextant');
+      expect(rt.apiKey).toBeUndefined();
+    });
+
+    it('defaults to the Sextant target when the model id is missing', () => {
+      const rt = resolveAuracleRunTarget({}, undefined);
+      expect(rt.baseUrl).toBe(AURACLE_DEFAULT_RUN_TARGETS.sextant.baseUrl);
+      expect(rt.model).toBe(AURACLE_DEFAULT_RUN_TARGETS.sextant.model);
     });
   });
 

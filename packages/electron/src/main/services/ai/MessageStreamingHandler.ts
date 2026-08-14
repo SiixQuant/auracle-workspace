@@ -92,6 +92,7 @@ import {
   safeSend,
   previewForLog,
   extractModelForProvider,
+  resolveAuracleRunTarget,
   bucketMessageLength,
   bucketResponseTime,
   bucketChunkCount,
@@ -509,6 +510,11 @@ export class MessageStreamingHandler {
             // LMStudio doesn't need an API key, just the base URL
             apiKey = 'not-required'; // Dummy value since LMStudio doesn't need a key
             break;
+          case 'auracle':
+            // No host key required; the cloud (Atlas) key is injected per-model
+            // from the run target below.
+            requiresApiKey = false;
+            break;
           default:
             throw new Error(`Unknown provider: ${session.provider}`);
         }
@@ -605,6 +611,21 @@ export class MessageStreamingHandler {
             }
           }
         }
+      }
+
+      // Per-model run-target injection for Auracle on provider (re)creation —
+      // mirrors AIService.createSession so a resumed/evicted session reaches the
+      // right endpoint with the upstream model id and the cloud key (cloud mode
+      // only). Overrides reinitConfig.model (the internal 'sextant'/'atlas' key).
+      if (session.provider === 'auracle') {
+        const providerSettings = this.svc.getSettingsStore().get('providerSettings', {}) as any;
+        const runTarget = resolveAuracleRunTarget(
+          providerSettings,
+          session.model || (session.providerConfig as any)?.model
+        );
+        reinitConfig.baseUrl = runTarget.baseUrl;
+        reinitConfig.model = runTarget.model;
+        reinitConfig.apiKey = runTarget.apiKey;
       }
 
       if (isProviderClaudeCode) {

@@ -106,6 +106,7 @@ import {
   safeSend,
   getFileExtensionForAnalytics,
   extractModelForProvider,
+  resolveAuracleRunTarget,
   detectNimbalystSlashCommand,
   extractFileMentions,
   isBinaryFile,
@@ -553,6 +554,10 @@ export class AIService {
         return globalApiKeys['openai-codex'];
       case 'lmstudio':
         return 'not-required';
+      case 'auracle':
+        // Auracle never requires a host-level key: the Atlas cloud key is
+        // per-model and injected at spawn from providerSettings.auracle.runTargets.
+        return 'not-required';
       default:
         return globalApiKeys[provider];
     }
@@ -606,10 +611,11 @@ export class AIService {
   private isProviderEnabledForWorkspace(provider: string, workspacePath?: string): boolean {
     const providerSettings = this.getSettingsStore().get('providerSettings', {}) as any;
 
-    // Claude Code is enabled by default (undefined means enabled).
-    // This matches the logic in ai:getModels which uses `claudeCodeSettings.enabled !== false`.
+    // Claude Code and Auracle are enabled by default (undefined means enabled).
+    // This matches the logic in ai:getModels which uses `?.enabled !== false`.
     // Other providers require explicit enabling (undefined means disabled).
-    const globalEnabled = provider === 'claude-code'
+    const defaultOnProvider = provider === 'claude-code' || provider === 'auracle';
+    const globalEnabled = defaultOnProvider
       ? providerSettings[provider]?.enabled !== false
       : providerSettings[provider]?.enabled ?? false;
 
@@ -1774,6 +1780,10 @@ export class AIService {
           case 'lmstudio':
             // LMStudio doesn't need an API key, just the base URL
             break;
+          case 'auracle':
+            // Auracle needs no host-level key; the cloud (Atlas) key is injected
+            // per-model from the run target during endpoint injection below.
+            break;
           default:
             throw new Error(`Unknown provider: ${provider}`);
         }
@@ -1923,6 +1933,22 @@ export class AIService {
         const lmstudioSettings = this.getSettingsStore().get('providerSettings.lmstudio', {}) as any;
         const storedApiKeys = this.getSettingsStore().get('apiKeys', {}) as Record<string, string>;
         initConfig.baseUrl = lmstudioSettings.baseUrl || storedApiKeys['lmstudio_url'] || 'http://127.0.0.1:8234';
+      }
+
+      // Per-model run-target injection for Auracle (Sextant / Atlas). Resolves the
+      // selected model's baseUrl + upstream model id from
+      // providerSettings.auracle.runTargets, and attaches the cloud key only in
+      // cloud mode. Overrides initConfig.model (which is the internal key
+      // 'sextant'/'atlas' at this point) with the upstream id the endpoint expects.
+      if (provider === 'auracle') {
+        const providerSettings = this.getSettingsStore().get('providerSettings', {}) as any;
+        const runTarget = resolveAuracleRunTarget(
+          providerSettings,
+          session.model || (session.providerConfig as any)?.model
+        );
+        initConfig.baseUrl = runTarget.baseUrl;
+        initConfig.model = runTarget.model;
+        initConfig.apiKey = runTarget.apiKey;
       }
 
       // Pass through allowedTools and effort level settings for Claude Code
@@ -3274,6 +3300,36 @@ export class AIService {
       }
     });
 
+    // Per-model reachability test for Auracle run targets. Runs in the MAIN
+    // process (the renderer window enforces same-origin, so a renderer fetch to a
+    // local Ollama / cloud endpoint would be CORS-blocked and report false
+    // negatives). Does GET {baseUrl}/models, attaching a Bearer header only when a
+    // non-empty key is supplied (cloud mode). Reports reachable / not-reachable
+    // honestly — no key is ever logged.
+    safeHandle('ai:auracleTestModel', async (_event, baseUrl?: string, apiKey?: string) => {
+      if (!baseUrl || typeof baseUrl !== 'string' || baseUrl.trim() === '') {
+        return { success: false, error: 'Missing base URL' };
+      }
+      const url = `${baseUrl.replace(/\/$/, '')}/models`;
+      const headers: Record<string, string> = {};
+      if (typeof apiKey === 'string' && apiKey.trim() !== '') {
+        headers['Authorization'] = `Bearer ${apiKey}`;
+      }
+      try {
+        const response = await fetch(url, {
+          method: 'GET',
+          headers,
+          signal: AbortSignal.timeout(5000),
+        });
+        if (!response.ok) {
+          return { success: false, error: `Endpoint returned ${response.status} ${response.statusText}` };
+        }
+        return { success: true };
+      } catch (error: any) {
+        return { success: false, error: error?.message || 'Not reachable' };
+      }
+    });
+
     // Get ALL available models for configuration UI
     safeHandle('ai:getAllModels', async () => {
       // Clear cache to get fresh models
@@ -3290,6 +3346,8 @@ export class AIService {
       if (providerSettings['openai-codex']?.enabled === true) enabledSet.add('openai-codex');
       if (providerSettings['opencode']?.enabled === true) enabledSet.add('opencode');
       if (providerSettings['lmstudio']?.enabled === true) enabledSet.add('lmstudio');
+      // Auracle is enabled by default (its models are a static list, no network call).
+      if (providerSettings['auracle']?.enabled !== false) enabledSet.add('auracle');
 
       const modelsConfig = {
         ...apiKeys,
@@ -3449,6 +3507,11 @@ export class AIService {
         'lmstudio': {
           enabled: providerSettings['lmstudio']?.enabled === true,
           models: providerSettings['lmstudio']?.models
+        },
+        'auracle': {
+          // Enabled by default; static Sextant/Atlas list surfaces without a key.
+          enabled: providerSettings['auracle']?.enabled !== false,
+          models: providerSettings['auracle']?.models
         }
       };
 

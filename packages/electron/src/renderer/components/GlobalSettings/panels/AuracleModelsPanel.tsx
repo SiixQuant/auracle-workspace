@@ -130,7 +130,7 @@ export function AuracleModelsPanel({
                         onClick={() => updateTarget(key, { mode })}
                         className={`px-3 py-1.5 text-sm cursor-pointer transition-all border-r border-[var(--nim-border)] last:border-r-0 ${
                           target.mode === mode
-                            ? 'bg-[var(--nim-primary)] text-white'
+                            ? 'bg-[var(--nim-primary)] text-[var(--nim-on-primary)]'
                             : 'bg-[var(--nim-bg-secondary)] text-[var(--nim-text-muted)] hover:bg-[var(--nim-bg-hover)] hover:text-[var(--nim-text)]'
                         }`}
                       >

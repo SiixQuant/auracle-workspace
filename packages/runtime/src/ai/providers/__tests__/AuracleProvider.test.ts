@@ -40,7 +40,8 @@ describe('AuracleProvider (static contract)', () => {
     const caps = provider.getCapabilities();
     expect(caps.tools).toBe(true);
     expect(caps.mcpSupport).toBe(false);
-    expect(caps.supportsFileTools).toBe(false);
+    // Phase 2, Slice 3: auracle reads AND writes files via its own gated tools.
+    expect(caps.supportsFileTools).toBe(true);
     expect(caps.streaming).toBe(true);
   });
 });

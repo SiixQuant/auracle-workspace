@@ -1976,7 +1976,7 @@ export class AIService {
       await providerInstance.initialize(initConfig);
 
       // Register tool handler - targetFilePath will be determined dynamically per tool call
-      const toolHandler = this.createToolHandler(event.sender, documentContext, session.id, workspacePath);
+      const toolHandler = this.createToolHandler(event.sender, documentContext, session.id, workspacePath, provider);
       providerInstance.registerToolHandler(toolHandler);
 
       // NOTE: No longer tracking provider per-window - ProviderFactory handles per-session tracking
@@ -4016,8 +4016,10 @@ export class AIService {
     });
   }
 
-  private createToolHandler(webContents: Electron.WebContents, documentContext?: DocumentContext, sessionId?: string, workspaceId?: string): ToolHandler {
-    const executor = new ToolExecutor(webContents, sessionId, workspaceId);
+  private createToolHandler(webContents: Electron.WebContents, documentContext?: DocumentContext, sessionId?: string, workspaceId?: string, providerName?: string): ToolHandler {
+    // providerName lets the executor enforce that the auracle-scoped destructive
+    // tools (writeFile/editFile/bash) run ONLY for the gated `auracle` provider.
+    const executor = new ToolExecutor(webContents, sessionId, workspaceId, providerName);
 
     // Capture targetFilePath from documentContext at message-send time
     // This prevents race conditions if user switches tabs while waiting for AI response

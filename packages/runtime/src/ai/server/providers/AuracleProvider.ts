@@ -33,6 +33,7 @@ import {
   StreamChunk,
   AIModel,
   ModelIdentifier,
+  ToolDefinition,
   getPatternDisplayName
 } from '../types';
 import { AURACLE_MODELS, AURACLE_DEFAULT_RUN_TARGETS } from '../../modelConstants';
@@ -40,6 +41,8 @@ import { buildUserMessageAddition } from './documentContextUtils';
 import { BaseAgentProvider } from './BaseAgentProvider';
 import { ToolPermissionService } from '../permissions/ToolPermissionService';
 import { generateToolPattern, buildToolDescription } from '../permissions/toolPermissionHelpers';
+import { hasShellChainingOperators, splitOnShellOperators } from '../permissions/BashCommandAnalyzer';
+import { AURACLE_DESTRUCTIVE_TOOLS } from './auracleTools';
 import type { PermissionDecision } from './ProviderPermissionMixin';
 
 interface AuracleConfig extends ProviderConfig {
@@ -101,6 +104,18 @@ export class AuracleProvider extends BaseAIProvider {
    */
   static readonly MAX_TOOL_ITERATIONS = 25;
 
+  /**
+   * Tool names treated as DESTRUCTIVE for permission gating. Covers the
+   * auracle-scoped tool names (writeFile/editFile/bash) AND the canonical agent
+   * names (Write/Edit/MultiEdit/Bash) so the set is correct whether the caller
+   * passes the raw or canonicalized name. Destructive tools FAIL CLOSED when no
+   * trust infrastructure is available to gate them.
+   */
+  private static readonly DESTRUCTIVE_TOOL_NAMES = new Set<string>([
+    'writeFile', 'editFile', 'bash',
+    'Write', 'Edit', 'MultiEdit', 'Bash',
+  ]);
+
   constructor(deps?: AuracleProviderDeps) {
     super();
     this.injectedPermissionService = deps?.permissionService;
@@ -128,6 +143,23 @@ export class AuracleProvider extends BaseAIProvider {
       headers['Authorization'] = `Bearer ${this.apiKey}`;
     }
     return headers;
+  }
+
+  /**
+   * The toolset auracle OFFERS to the model: the shared read-only tools PLUS the
+   * auracle-scoped DESTRUCTIVE tools (writeFile / editFile / bash).
+   *
+   * CONTAINMENT (Phase 2, Slice 3): the destructive tools are NOT in the shared
+   * `toolRegistry`, so `openai` / `lmstudio` — which inherit the base
+   * `getRegisteredTools()` (shared registry only) and execute tool calls
+   * single-shot with NO permission gate — never see them. Only auracle appends
+   * them here, and auracle gates every call through `ToolPermissionService`
+   * before executing. This override is the single place where the destructive
+   * tools enter the offered set; the OpenAI/Anthropic format getters build on
+   * top of it.
+   */
+  protected getRegisteredTools(): ToolDefinition[] {
+    return [...super.getRegisteredTools(), ...AURACLE_DESTRUCTIVE_TOOLS];
   }
 
   async *sendMessage(
@@ -890,11 +922,18 @@ export class AuracleProvider extends BaseAIProvider {
    * Gate a single tool call through the shared ToolPermissionService, mirroring
    * the ClaudeCode/Codex integration (see claudeCode/toolAuthorization.ts).
    *
-   * Falls back to allow ONLY when no permission infrastructure is available
-   * (no service AND no session/workspace to key a request on) — e.g. a minimal
-   * non-Electron embedding running the safe read-only toolset. In the desktop
-   * app the trust infra is always wired, so every call is really gated.
-   * A thrown request (timeout/abort) fails CLOSED (deny).
+   * FAIL-CLOSED (Phase 2, Slice 3): when no permission infrastructure is
+   * available (no service AND/OR no session/workspace to key a request on),
+   * DESTRUCTIVE tools (writeFile/editFile/bash) are DENIED — they must never run
+   * ungated. Only READ-ONLY tools keep the permissive fallback, for minimal
+   * non-Electron embeddings that ship just the safe read-only toolset. In the
+   * desktop app the trust infra is always wired, so every call is really gated.
+   * A thrown request (timeout/abort/infra failure) also fails CLOSED (deny).
+   *
+   * BASH COMPOUND SAFETY: a chained command (`a && b; c`) is split via
+   * BashCommandAnalyzer and EACH sub-command is gated separately — approving
+   * `git add` must not smuggle a chained `rm -rf`. This mirrors
+   * AgentToolHooks.handleCompoundBashCommand for the SDK agents.
    */
   private async requestToolPermissionForCall(
     toolName: string,
@@ -905,14 +944,75 @@ export class AuracleProvider extends BaseAIProvider {
     signal: AbortSignal
   ): Promise<PermissionDecision> {
     const service = this.getPermissionService();
+    const isDestructive = AuracleProvider.DESTRUCTIVE_TOOL_NAMES.has(toolName);
+
     if (!service || !sessionId || !workspacePath) {
-      return { decision: 'allow', scope: 'once' };
+      // No trust infra to gate on: deny destructive tools, allow read-only.
+      return isDestructive
+        ? { decision: 'deny', scope: 'once' }
+        : { decision: 'allow', scope: 'once' };
     }
 
+    const canonicalName = this.canonicalizeToolName(toolName);
+
+    // Compound bash: gate each sub-command; deny the whole call if any is denied.
+    if (canonicalName === 'Bash') {
+      const command = typeof toolInput?.command === 'string' ? toolInput.command : '';
+      if (command && hasShellChainingOperators(command)) {
+        const subCommands = splitOnShellOperators(command);
+        for (const sub of subCommands) {
+          const decision = await this.gateSingleToolCall(
+            service, 'Bash', { command: sub }, sessionId, workspacePath, permissionsPath, true, signal
+          );
+          if (decision.decision !== 'allow') {
+            return decision;
+          }
+        }
+        return { decision: 'allow', scope: 'once' };
+      }
+    }
+
+    return this.gateSingleToolCall(
+      service, canonicalName, toolInput, sessionId, workspacePath, permissionsPath, isDestructive, signal
+    );
+  }
+
+  /**
+   * Map an auracle tool name to the canonical name the permission helpers key on
+   * (pattern generation, compound-bash detection, widget display). Execution
+   * still uses the ORIGINAL name — only permission metadata is canonicalized.
+   */
+  private canonicalizeToolName(name: string): string {
+    switch (name) {
+      case 'writeFile': return 'Write';
+      case 'editFile': return 'Edit';
+      case 'bash': return 'Bash';
+      default: return name;
+    }
+  }
+
+  /**
+   * Gate ONE (already-canonical) tool call through the shared service. A thrown
+   * request (timeout/abort/infra failure) fails CLOSED (deny).
+   */
+  private async gateSingleToolCall(
+    service: ToolPermissionService,
+    canonicalName: string,
+    toolInput: any,
+    sessionId: string,
+    workspacePath: string,
+    permissionsPath: string | undefined,
+    isDestructive: boolean,
+    signal: AbortSignal
+  ): Promise<PermissionDecision> {
     const requestId = `tool-${sessionId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const pattern = generateToolPattern(toolName, toolInput);
-    const toolDescription = buildToolDescription(toolName, toolInput);
-    const isDestructive = ['Write', 'Edit', 'MultiEdit', 'Bash'].includes(toolName);
+    const pattern = generateToolPattern(canonicalName, toolInput);
+    // buildToolDescription keys file tools on `file_path`; auracle's tools use
+    // `path`, so surface it under both for a readable widget description.
+    const descInput = (canonicalName === 'Write' || canonicalName === 'Edit')
+      ? { ...toolInput, file_path: toolInput?.file_path ?? toolInput?.path }
+      : toolInput;
+    const toolDescription = buildToolDescription(canonicalName, descInput);
     const patternDisplayName = getPatternDisplayName(pattern);
 
     try {
@@ -921,7 +1021,7 @@ export class AuracleProvider extends BaseAIProvider {
         sessionId,
         workspacePath,
         permissionsPath: permissionsPath || workspacePath,
-        toolName,
+        toolName: canonicalName,
         toolInput,
         pattern,
         patternDisplayName,
@@ -1115,10 +1215,15 @@ export class AuracleProvider extends BaseAIProvider {
     return {
       streaming: true,
       tools: true,  // LMStudio supports native OpenAI-style function calling
-      mcpSupport: false,
+      mcpSupport: false,  // MCP is Phase 2b; auracle has no MCP client yet
       edits: true,  // Enable edits through native tool support
       resumeSession: false,
-      supportsFileTools: false  // Files should be attached to messages, not accessed via tools
+      // Phase 2, Slice 3: auracle now READS and WRITES files via its own gated
+      // tools (readFile/searchFiles/listFiles + writeFile/editFile/bash), so it
+      // is file-tool-capable. This also stops the host from auto-inlining
+      // @-mentioned file contents (attachMentionedFiles) — the model fetches
+      // them with tools instead.
+      supportsFileTools: true
     };
   }
 

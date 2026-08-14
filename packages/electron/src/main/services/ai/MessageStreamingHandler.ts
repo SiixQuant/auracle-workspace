@@ -163,6 +163,7 @@ interface AIServiceInternal {
     documentContext?: DocumentContext,
     sessionId?: string,
     workspaceId?: string,
+    providerName?: string,
   ): ToolHandler;
   inferWorktreePathFromFilePath(workspacePath: string, filePath: string): string | null;
   inferWorktreePathFromCommand(command: string | undefined, workspacePath: string): string | null;
@@ -680,7 +681,7 @@ export class MessageStreamingHandler {
       }
 
       // Register tool handler - targetFilePath will be determined dynamically per tool call
-      const toolHandler = this.svc.createToolHandler(event.sender, documentContext, session.id, effectiveWorkspacePath);
+      const toolHandler = this.svc.createToolHandler(event.sender, documentContext, session.id, effectiveWorkspacePath, session.provider);
       provider.registerToolHandler(toolHandler);
     }
 
@@ -728,7 +729,7 @@ export class MessageStreamingHandler {
     //   filePath: documentContext?.filePath,
     //   hasContext: !!documentContext
     // });
-    const toolHandler = this.svc.createToolHandler(event.sender, documentContext, session.id, effectiveWorkspacePath);
+    const toolHandler = this.svc.createToolHandler(event.sender, documentContext, session.id, effectiveWorkspacePath, session.provider);
     provider.registerToolHandler(toolHandler);
 
     // Listen for message:logged events and forward to renderer to trigger UI updates.

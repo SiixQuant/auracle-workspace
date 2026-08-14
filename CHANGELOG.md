@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [2.23.0] - 2026-08-14
+
+### Added
+- **Two new agents, Sextant and Atlas, alongside Claude.** The model picker now offers Sextant and Atlas, Qwen-based agents that work like the Claude agent: they hold a conversation, edit files, run commands, and use the engine and board tools (run a backtest, pull data), with every action behind the same allow / deny approval you already use. Each agent runs where you point it — a local model on your own machine, another machine on your network, or a hosted endpoint — set per agent in Settings > Auracle Models, where a hosted agent also takes its API key. Sextant is tuned for coding and runs locally by default; Atlas is a large cloud model for deeper research.
+
 ## [2.22.1] - 2026-08-13
 
 ### Changed

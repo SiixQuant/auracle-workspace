@@ -443,3 +443,182 @@ describe('AuracleProvider fail-closed permission gate (Slice 3)', () => {
     expect(decision.decision).toBe('deny');
   });
 });
+
+/**
+ * Phase 2b — MCP tool GATING classification (SAFER than the CLI default).
+ *
+ * Auto-allow = internal read-only tools + readOnlyHint. Destructive = destructiveHint
+ * or a known mutating engine/board name (fails CLOSED with no infra). Everything
+ * else prompts. An unknown MCP tool is NEVER silent-allowed.
+ */
+describe('AuracleProvider MCP tool gating (Phase 2b)', () => {
+  const signal = () => new AbortController().signal;
+
+  const gate = (
+    provider: AuracleProvider,
+    name: string,
+    input: unknown,
+    workspacePath: string | undefined,
+  ) =>
+    (provider as unknown as {
+      requestToolPermissionForCall: (
+        n: string, i: unknown, s: string | undefined, w: string | undefined, p: string | undefined, sig: AbortSignal
+      ) => Promise<{ decision: string }>;
+    }).requestToolPermissionForCall(name, input, SID, workspacePath, workspacePath, signal());
+
+  // Stub the hub's annotation lookup the classifier consults.
+  const withHubAnnotations = (provider: AuracleProvider, annotations: Record<string, unknown> | undefined) => {
+    (provider as unknown as { mcpHub: unknown }).mcpHub = { getToolAnnotations: () => annotations };
+  };
+
+  it('AUTO-ALLOWS an internal read-only MCP tool with NO gate call, even with no infra', async () => {
+    const requestToolPermission = vi.fn();
+    const provider = makeProvider(requestToolPermission);
+    // workspacePath omitted → no infra; INTERNAL_MCP_TOOLS still auto-allows.
+    const decision = await gate(provider, 'mcp__nimbalyst-host__get_session_summary', {}, undefined);
+    expect(decision.decision).toBe('allow');
+    expect(requestToolPermission).not.toHaveBeenCalled();
+  });
+
+  it('AUTO-ALLOWS a tool the server marks readOnlyHint (no gate call)', async () => {
+    const requestToolPermission = vi.fn();
+    const provider = makeProvider(requestToolPermission);
+    withHubAnnotations(provider, { readOnlyHint: true });
+    const decision = await gate(provider, 'mcp__auracle-engine__data_coverage', {}, undefined);
+    expect(decision.decision).toBe('allow');
+    expect(requestToolPermission).not.toHaveBeenCalled();
+  });
+
+  it('treats a run_backtest-style MCP tool as DESTRUCTIVE and FAILS CLOSED with no infra', async () => {
+    const requestToolPermission = vi.fn();
+    const provider = makeProvider(requestToolPermission);
+    const decision = await gate(provider, 'mcp__auracle-engine__run_backtest_now', { symbol: 'SPY' }, undefined);
+    expect(decision.decision).toBe('deny');
+    expect(requestToolPermission).not.toHaveBeenCalled();
+  });
+
+  it('routes a destructive MCP tool THROUGH the gate with isDestructive:true when infra is present', async () => {
+    const requestToolPermission = vi.fn().mockResolvedValue({ decision: 'allow', scope: 'once' });
+    const provider = makeProvider(requestToolPermission);
+    const decision = await gate(provider, 'mcp__auracle-engine__ingest_historical_bars', { symbol: 'SPY' }, WS);
+    expect(decision.decision).toBe('allow');
+    expect(requestToolPermission).toHaveBeenCalledTimes(1);
+    expect(requestToolPermission.mock.calls[0][0]).toMatchObject({
+      toolName: 'mcp__auracle-engine__ingest_historical_bars', // namespaced name is the canonical form
+      isDestructive: true,
+      sessionId: SID,
+      workspacePath: WS,
+    });
+  });
+
+  it('DENIES an unknown (not-provably-read-only) MCP tool when no infra is present', async () => {
+    const requestToolPermission = vi.fn();
+    const provider = makeProvider(requestToolPermission);
+    const decision = await gate(provider, 'mcp__auracle-engine__mystery_tool', {}, undefined);
+    expect(decision.decision).toBe('deny');
+    expect(requestToolPermission).not.toHaveBeenCalled();
+  });
+
+  it('PROMPTS an unknown MCP tool (isDestructive:false) when infra is present', async () => {
+    const requestToolPermission = vi.fn().mockResolvedValue({ decision: 'allow', scope: 'once' });
+    const provider = makeProvider(requestToolPermission);
+    const decision = await gate(provider, 'mcp__auracle-engine__mystery_tool', {}, WS);
+    expect(decision.decision).toBe('allow');
+    expect(requestToolPermission).toHaveBeenCalledTimes(1);
+    expect(requestToolPermission.mock.calls[0][0]).toMatchObject({ isDestructive: false });
+  });
+});
+
+/**
+ * Phase 2b — DISPATCH branch: an `mcp__*` tool-call goes to the in-process hub;
+ * a bare tool-call goes to executeToolCall. Driven end-to-end through sendMessage
+ * with an injected server dict + fake client factory (no SDK, no network).
+ */
+describe('AuracleProvider MCP dispatch (Phase 2b)', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function makeMcpProvider(engineCalls: Array<{ name: string; arguments?: unknown }>): AuracleProvider {
+    const requestToolPermission = vi.fn().mockResolvedValue({ decision: 'allow', scope: 'once' });
+    const permissionService = { requestToolPermission } as unknown as ToolPermissionService;
+    const fakeEngineClient = {
+      connect: async () => {},
+      listTools: async () => ({
+        tools: [{
+          name: 'data_coverage',
+          description: 'coverage',
+          inputSchema: { type: 'object', properties: {} },
+          annotations: { readOnlyHint: true },
+        }],
+      }),
+      callTool: async (p: { name: string; arguments?: unknown }) => {
+        engineCalls.push(p);
+        return { rows: 3 };
+      },
+      close: async () => {},
+    };
+    const provider = new AuracleProvider({
+      permissionService,
+      mcpServers: { 'auracle-engine': { type: 'http', url: 'http://engine', headers: { Authorization: 'Bearer x' } } },
+      mcpClientFactory: () => fakeEngineClient,
+    });
+    vi.spyOn(provider as unknown as { logAgentMessage: (...a: unknown[]) => Promise<void> }, 'logAgentMessage')
+      .mockResolvedValue(undefined);
+    vi.spyOn(provider as unknown as { logError: (...a: unknown[]) => void }, 'logError')
+      .mockImplementation(() => {});
+    return provider;
+  }
+
+  it('dispatches an mcp__* tool call to the hub (NOT executeToolCall) and offers the namespaced tool', async () => {
+    const engineCalls: Array<{ name: string; arguments?: unknown }> = [];
+    const provider = makeMcpProvider(engineCalls);
+    const execSpy = vi
+      .spyOn(provider as unknown as { executeToolCall: (n: string, a: unknown) => Promise<unknown> }, 'executeToolCall')
+      .mockResolvedValue({ ok: true });
+
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(sseResponse(toolCallTurn('mcp__auracle-engine__data_coverage', { symbol: 'SPY' })))
+      .mockResolvedValueOnce(sseResponse(textTurn('done')));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const chunks = await drain(
+      provider.sendMessage('coverage?', undefined, SID, [], WS) as AsyncIterableIterator<StreamChunkLike>
+    );
+
+    // Dispatched to the hub's client with the BARE tool name; built-in executor unused.
+    expect(engineCalls).toEqual([{ name: 'data_coverage', arguments: { symbol: 'SPY' } }]);
+    expect(execSpy).not.toHaveBeenCalled();
+
+    // The namespaced MCP tool was OFFERED to the model alongside the built-ins.
+    const firstBody = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+    const offered = firstBody.tools.map((t: { function: { name: string } }) => t.function.name);
+    expect(offered).toContain('mcp__auracle-engine__data_coverage');
+    expect(offered).toContain('readFile'); // built-ins still offered
+
+    // The tool_call chunk surfaced the hub result.
+    const toolChunk = chunks.find(c => c.type === 'tool_call' && c.toolCall?.name === 'mcp__auracle-engine__data_coverage');
+    expect(toolChunk?.toolCall?.result).toEqual({ rows: 3 });
+  });
+
+  it('routes a BARE tool call to executeToolCall even when an MCP hub is connected', async () => {
+    const engineCalls: Array<{ name: string; arguments?: unknown }> = [];
+    const provider = makeMcpProvider(engineCalls);
+    const execSpy = vi
+      .spyOn(provider as unknown as { executeToolCall: (n: string, a: unknown) => Promise<unknown> }, 'executeToolCall')
+      .mockResolvedValue({ success: true });
+
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(sseResponse(toolCallTurn('readFile', { path: 'a.md' })))
+      .mockResolvedValueOnce(sseResponse(textTurn('ok')));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await drain(provider.sendMessage('read', undefined, SID, [], WS) as AsyncIterableIterator<StreamChunkLike>);
+
+    expect(execSpy).toHaveBeenCalledWith('readFile', { path: 'a.md' });
+    expect(engineCalls).toHaveLength(0); // the hub was NOT used for a bare tool
+  });
+});

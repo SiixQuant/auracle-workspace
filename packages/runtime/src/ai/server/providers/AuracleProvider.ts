@@ -44,15 +44,26 @@ import { generateToolPattern, buildToolDescription } from '../permissions/toolPe
 import { hasShellChainingOperators, splitOnShellOperators } from '../permissions/BashCommandAnalyzer';
 import { AURACLE_DESTRUCTIVE_TOOLS } from './auracleTools';
 import type { PermissionDecision } from './ProviderPermissionMixin';
+import { INTERNAL_MCP_TOOLS } from './claudeCode/toolPolicy';
+import { AuracleMcpClientHub } from './auracleMcpClient';
+import type { McpServerDict, McpClientFactory, McpToolAnnotations } from './auracleMcpClient';
 
 interface AuracleConfig extends ProviderConfig {
   baseUrl?: string;  // OpenAI-compatible base, ends in /v1 (e.g. http://127.0.0.1:11434/v1)
   apiKey?: string;   // Bearer key; attached only when non-empty (cloud run target)
+  // Phase 2b: the assembled MCP server dict (internal nimbalyst servers +
+  // per-extension board_* + the local engine) the host injects so the in-process
+  // MCP hub can connect. Absent → no MCP tools (degrade, don't break).
+  mcpServers?: McpServerDict;
 }
 
 /** Optional constructor dependencies (used to inject a mock in tests). */
 export interface AuracleProviderDeps {
   permissionService?: ToolPermissionService;
+  /** Test injection of the MCP server dict (production injects via initialize()). */
+  mcpServers?: McpServerDict;
+  /** Test seam: build a fake MCP client per server instead of importing the SDK. */
+  mcpClientFactory?: McpClientFactory;
 }
 
 /**
@@ -96,6 +107,15 @@ export class AuracleProvider extends BaseAIProvider {
   private permissionServiceCache: ToolPermissionService | null = null;
   private permissionServiceResolved = false;
 
+  // Phase 2b: in-process MCP client hub (see auracleMcpClient). The server dict is
+  // injected by the host (initialize) or a test (deps); the hub connects lazily on
+  // the first sendMessage and is reused across loop iterations + turns until abort/
+  // destroy tears it down.
+  private mcpServersDict: McpServerDict | undefined;
+  private readonly injectedMcpClientFactory?: McpClientFactory;
+  private mcpHub: AuracleMcpClientHub | null = null;
+  private mcpHubPromise: Promise<AuracleMcpClientHub | null> | null = null;
+
   static readonly DEFAULT_MODEL = 'auracle:sextant';
 
   /**
@@ -119,6 +139,8 @@ export class AuracleProvider extends BaseAIProvider {
   constructor(deps?: AuracleProviderDeps) {
     super();
     this.injectedPermissionService = deps?.permissionService;
+    this.mcpServersDict = deps?.mcpServers;
+    this.injectedMcpClientFactory = deps?.mcpClientFactory;
   }
 
   async initialize(config: AuracleConfig): Promise<void> {
@@ -129,6 +151,13 @@ export class AuracleProvider extends BaseAIProvider {
     this.apiKey = config.apiKey && config.apiKey.trim() !== '' ? config.apiKey : undefined;
     // The upstream model id is injected by the host (distinct from auracle:<key>).
     this.resolvedModel = config.model || null;
+
+    // Phase 2b: the host assembles the MCP server dict per session and injects it
+    // here so the in-process hub can connect on the first sendMessage. A ctor-
+    // injected dict (tests) stays as the fallback when config omits it.
+    if (config.mcpServers) {
+      this.mcpServersDict = config.mcpServers;
+    }
 
     // No network discovery here: the models are a static list and reachability is
     // surfaced by the explicit per-model Test button and by sendMessage's own
@@ -317,6 +346,26 @@ export class AuracleProvider extends BaseAIProvider {
     // and reused across every loop iteration.
     const tools = this.getToolsInOpenAIFormat();
 
+    // Phase 2b: connect the in-process MCP hub ONCE per session (lazily, here,
+    // where sessionId + workspacePath exist) and OFFER its namespaced tools
+    // (mcp__<server>__<tool>) alongside the built-ins. These are appended to
+    // auracle's OWN offered set only — never the shared registry — so
+    // openai/lmstudio are unaffected. Best-effort: a hub that can't connect any
+    // server contributes no tools and the chat proceeds normally.
+    const mcpHub = await this.ensureMcpHub();
+    if (mcpHub) {
+      for (const def of mcpHub.listNamespacedToolDefs()) {
+        tools.push({
+          type: 'function',
+          function: {
+            name: def.name,
+            description: def.description,
+            parameters: def.parameters,
+          },
+        });
+      }
+    }
+
     // Path used for trust checks / pattern persistence (worktrees resolve to parent).
     const permissionsPath = documentContext?.permissionsPath || workspacePath;
 
@@ -447,7 +496,18 @@ export class AuracleProvider extends BaseAIProvider {
           let executionError: string | undefined;
           try {
             const toolStartTime = Date.now();
-            executionResult = await this.executeToolCall(pending.name, args);
+            if (pending.name.startsWith('mcp__')) {
+              // Phase 2b: MCP tool calls dispatch to the in-process hub (which
+              // resolves the namespaced name to {server, tool}), NOT the built-in
+              // executor. A missing hub here means the model asked for a tool that
+              // wasn't offered — surface it as a normal tool error.
+              if (!mcpHub) {
+                throw new Error(`MCP tool "${pending.name}" requested but no MCP hub is connected`);
+              }
+              executionResult = await mcpHub.callTool(pending.name, args);
+            } else {
+              executionResult = await this.executeToolCall(pending.name, args);
+            }
             console.log(`[Auracle] ${pending.name} execution completed in ${Date.now() - toolStartTime}ms`);
           } catch (error) {
             executionError = error instanceof Error ? error.message : 'Tool execution failed';
@@ -944,6 +1004,35 @@ export class AuracleProvider extends BaseAIProvider {
     signal: AbortSignal
   ): Promise<PermissionDecision> {
     const service = this.getPermissionService();
+
+    // --- MCP tools (Phase 2b): classify via list-time annotations + policy. This
+    //     is SAFER than the CLI default (which auto-approves every mcp__* in auto
+    //     mode): auracle auto-allows ONLY provably read-only / internal tools, and
+    //     fails CLOSED for mutating tools when no gate infra is present. ---
+    if (toolName.startsWith('mcp__')) {
+      const annotations = this.mcpHub?.getToolAnnotations(toolName);
+      const classification = this.classifyMcpTool(toolName, annotations);
+
+      // Auto-allow: internal read-only + readOnlyHint. No prompt, even w/o infra.
+      if (classification === 'auto-allow') {
+        return { decision: 'allow', scope: 'once' };
+      }
+
+      const mcpDestructive = classification === 'destructive';
+
+      if (!service || !sessionId || !workspacePath) {
+        // No trust infra: ONLY the auto-allow set may run (handled above). Every
+        // other MCP tool — unknown OR mutating — is DENIED. Never silent-allow.
+        return { decision: 'deny', scope: 'once' };
+      }
+
+      // The namespaced `mcp__server__tool` name IS the canonical form the
+      // permission helpers (generateToolPattern/buildToolDescription) key on.
+      return this.gateSingleToolCall(
+        service, toolName, toolInput, sessionId, workspacePath, permissionsPath, mcpDestructive, signal
+      );
+    }
+
     const isDestructive = AuracleProvider.DESTRUCTIVE_TOOL_NAMES.has(toolName);
 
     if (!service || !sessionId || !workspacePath) {
@@ -988,6 +1077,92 @@ export class AuracleProvider extends BaseAIProvider {
       case 'editFile': return 'Edit';
       case 'bash': return 'Bash';
       default: return name;
+    }
+  }
+
+  /**
+   * Classify an `mcp__server__tool` call for gating (Phase 2b). SAFER than the
+   * CLI's blanket auto-approve:
+   *  - `auto-allow` (no prompt): tools in the internal read-only allow set
+   *    (INTERNAL_MCP_TOOLS) OR any tool the server marks `readOnlyHint === true`.
+   *  - `destructive` (isDestructive:true → fails CLOSED with no gate infra): tools
+   *    the server marks `destructiveHint === true`, OR known state-mutating
+   *    engine/board names (run_backtest / ingest / delete / save / write, and
+   *    board_* writes).
+   *  - `prompt` (gate, isDestructive:false): everything else — we can't establish
+   *    it's read-only, but it isn't provably mutating either.
+   */
+  private classifyMcpTool(
+    namespaced: string,
+    annotations?: McpToolAnnotations
+  ): 'auto-allow' | 'destructive' | 'prompt' {
+    if (INTERNAL_MCP_TOOLS.includes(namespaced)) return 'auto-allow';
+    if (annotations?.readOnlyHint === true) return 'auto-allow';
+    if (annotations?.destructiveHint === true) return 'destructive';
+    if (this.isKnownMutatingMcpTool(namespaced)) return 'destructive';
+    return 'prompt';
+  }
+
+  /**
+   * Name-based fallback for tools with no `destructiveHint`: treat known
+   * state-mutating engine/board tools as destructive so they FAIL CLOSED. Operates
+   * on the bare tool segment (internal/engine server names carry no `__`).
+   */
+  private isKnownMutatingMcpTool(namespaced: string): boolean {
+    const bare = namespaced.toLowerCase().split('__').slice(2).join('__');
+    const MUTATING = ['run_backtest', 'ingest', 'delete', 'save', 'write'];
+    if (MUTATING.some((verb) => bare.includes(verb))) return true;
+    // board_* writes (create / update / move / add / remove / set / rename / archive).
+    if (bare.startsWith('board_') && /(create|update|delete|move|add|remove|set|rename|archive|save|write)/.test(bare)) {
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Lazily build + connect the in-process MCP hub, ONCE per provider (session).
+   * Reused across loop iterations and turns. Returns null when no server dict was
+   * injected or the SDK/servers can't connect. NEVER throws — a hub failure must
+   * not break the chat (the built-in tools keep working).
+   */
+  private async ensureMcpHub(): Promise<AuracleMcpClientHub | null> {
+    const servers = this.mcpServersDict;
+    if (!servers || Object.keys(servers).length === 0) {
+      return null;
+    }
+    if (this.mcpHub) return this.mcpHub;
+    if (this.mcpHubPromise) return this.mcpHubPromise;
+
+    this.mcpHubPromise = (async () => {
+      const hub = new AuracleMcpClientHub(servers, {
+        clientFactory: this.injectedMcpClientFactory,
+      });
+      // connectAll swallows per-server failures; this guards the unexpected so a
+      // hub build never rejects into sendMessage.
+      await hub.connectAll().catch(() => undefined);
+      this.mcpHub = hub;
+      return hub;
+    })();
+
+    try {
+      return await this.mcpHubPromise;
+    } catch {
+      this.mcpHubPromise = null;
+      return null;
+    }
+  }
+
+  /**
+   * Close the MCP hub and clear its cache. Best-effort and safe to call
+   * repeatedly. Called from abort()/destroy() so no client connections leak; the
+   * next sendMessage rebuilds + reconnects the hub.
+   */
+  private teardownMcpHub(): void {
+    const hub = this.mcpHub;
+    this.mcpHub = null;
+    this.mcpHubPromise = null;
+    if (hub) {
+      void hub.closeAll().catch(() => undefined);
     }
   }
 
@@ -1209,13 +1384,16 @@ export class AuracleProvider extends BaseAIProvider {
     if (service && typeof service.rejectAllPending === 'function') {
       service.rejectAllPending();
     }
+    // Phase 2b: tear down the in-process MCP hub so no client connections leak.
+    // The next sendMessage rebuilds + reconnects it.
+    this.teardownMcpHub();
   }
 
   getCapabilities(): ProviderCapabilities {
     return {
       streaming: true,
       tools: true,  // LMStudio supports native OpenAI-style function calling
-      mcpSupport: false,  // MCP is Phase 2b; auracle has no MCP client yet
+      mcpSupport: true,  // Phase 2b: in-process MCP client hub (auracleMcpClient)
       edits: true,  // Enable edits through native tool support
       resumeSession: false,
       // Phase 2, Slice 3: auracle now READS and WRITES files via its own gated

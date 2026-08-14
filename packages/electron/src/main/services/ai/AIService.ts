@@ -22,6 +22,7 @@ import {
   isSlashCommandCatalogProvider,
   ClaudeCodeProvider,
   OpenAICodexProvider,
+  getMcpConfigService,
 } from '@nimbalyst/runtime/ai/server';
 import { CLAUDE_CODE_SAFE_FALLBACK_MODEL } from '@nimbalyst/runtime/ai/modelConstants';
 import { getSessionStateManager } from '@nimbalyst/runtime/ai/server/SessionStateManager';
@@ -49,6 +50,8 @@ import { initMobileSessionControlHandler } from './MobileSessionControlHandler';
 import { handleMobileVoiceToolCall } from '../voice/mobileVoiceToolHandler';
 import { SoundNotificationService } from '../SoundNotificationService';
 import { getTerminalSessionManager } from '../TerminalSessionManager';
+import { getShellEnvironment } from '../CLIManager';
+import { resolveEngineMcpServer } from '../../ipc/AuracleEngineHandlers';
 import { flushNextClaudeCliQueuedPromptForSession } from './claudeCliQueueFlushSingleton';
 import { notificationService } from '../NotificationService';
 import { TrayManager } from '../../tray/TrayManager';
@@ -1949,6 +1952,40 @@ export class AIService {
         initConfig.baseUrl = runTarget.baseUrl;
         initConfig.model = runTarget.model;
         initConfig.apiKey = runTarget.apiKey;
+
+        // Phase 2b: assemble the SAME MCP server dict the CLI/SDK agents get
+        // (internal nimbalyst servers + per-extension board_* tools) and merge the
+        // local engine's backtest/data server, then inject it so the provider's
+        // in-process MCP hub (auracleMcpClient) can connect. Mirrors
+        // claudeCliLauncherSingleton + ClaudeCliSessionLauncher. Best-effort and
+        // additive: a down engine or an unconfigured internal server simply omits
+        // those tools; assembly failure leaves auracle a plain chat provider.
+        try {
+          const mcpServers = await getMcpConfigService({
+            mcpConfigLoader: null,
+            claudeSettingsEnvLoader: null,
+            shellEnvironmentLoader: () => getShellEnvironment(),
+          }).getMcpServersConfig({
+            sessionId: session.id,
+            workspacePath,
+            profile: 'standard',
+          });
+          try {
+            const engineMcp = await resolveEngineMcpServer();
+            if (engineMcp) {
+              for (const [name, cfg] of Object.entries(engineMcp)) {
+                if (!(name in mcpServers)) mcpServers[name] = cfg;
+              }
+            }
+          } catch {
+            // engine down or not configured — inject the rest without its tools
+          }
+          initConfig.mcpServers = mcpServers;
+        } catch {
+          // MCP assembly failed entirely — continue as a plain chat provider. Never
+          // log the dict/headers/token (token hygiene).
+          logger.main.warn('[AIService] Auracle MCP server assembly failed; continuing without MCP tools');
+        }
       }
 
       // Pass through allowedTools and effort level settings for Claude Code

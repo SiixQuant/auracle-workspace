@@ -209,10 +209,20 @@ export function ModelSelector({
     return getProviderIcon(provider, { size });
   };
 
-  const CHAT_MODEL_PROVIDERS = new Set(['claude', 'openai', 'lmstudio', 'auracle']);
+  // Built-in chat providers render under "Chat with open document". `auracle` is
+  // deliberately NOT in this set: although it is a BaseAIProvider (NOT an
+  // `isAgentProvider` subprocess/SDK agent), it runs a full in-process agentic
+  // tool loop — write/edit/bash + MCP, permission-gated, canonical transcript
+  // (usesCanonicalToolPipeline) — so it belongs in the "Agents" group beside
+  // Claude Agent. It reaches 'agent' via the fallthrough below. Keep it out of
+  // `isAgentProvider` (that predicate carries subprocess/SDK/session-lock
+  // semantics auracle must not inherit); grouping is a presentation concern only.
+  const CHAT_MODEL_PROVIDERS = new Set(['claude', 'openai', 'lmstudio']);
   const getProviderType = (provider: string): ProviderType => {
     if (isAgentProvider(provider)) return 'agent';
     if (CHAT_MODEL_PROVIDERS.has(provider)) return 'model';
+    // Everything else — extension-contributed agent providers AND the in-process
+    // `auracle` provider (Sextant / Atlas) — groups under "Agents".
     return 'agent';
   };
 

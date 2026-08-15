@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 <!-- Removed features go here -->
 
+## [2.23.1] - 2026-08-14
+
+### Changed
+- **Sextant and Atlas sit with the agents.** The two Auracle Models now appear in the model picker's "Agents" group beside Claude, matching how they run — as full agents that edit files, run commands, and use your engine and board tools — rather than under "Chat with open document".
+
 ## [2.23.0] - 2026-08-14
 
 ### Added

@@ -14,6 +14,7 @@ export type SettingsCategory =
   | 'opencode'
   | 'copilot-cli'
   | 'lmstudio'
+  | 'auracle'
   | 'notifications'
   | 'voice-mode'
   | 'sync'
@@ -237,6 +238,12 @@ Best for quick edits and tasks that do not require multi-file operations.`,
           name: 'LM Studio',
           icon: getProviderIcon('lmstudio', { size: 16 }),
           statusDot: getStatusDot('lmstudio'),
+        },
+        {
+          id: 'auracle',
+          name: 'Auracle Models',
+          icon: getProviderIcon('auracle', { size: 16 }),
+          statusDot: getStatusDot('auracle'),
         },
         // Extension agent providers (e.g. Gemini) are also surfaced under Chat
         // Providers per product request; selection routes through the same

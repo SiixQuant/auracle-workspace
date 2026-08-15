@@ -18,6 +18,7 @@ import {
   ProviderFactory,
   ModelRegistry,
   isAgentProvider,
+  usesCanonicalToolPipeline,
   onAgentMessageBatch,
   buildMetaAgentSystemPrompt,
   buildDevAgentSystemPrompt,
@@ -92,6 +93,7 @@ import {
   safeSend,
   previewForLog,
   extractModelForProvider,
+  resolveAuracleRunTarget,
   bucketMessageLength,
   bucketResponseTime,
   bucketChunkCount,
@@ -161,6 +163,7 @@ interface AIServiceInternal {
     documentContext?: DocumentContext,
     sessionId?: string,
     workspaceId?: string,
+    providerName?: string,
   ): ToolHandler;
   inferWorktreePathFromFilePath(workspacePath: string, filePath: string): string | null;
   inferWorktreePathFromCommand(command: string | undefined, workspacePath: string): string | null;
@@ -382,7 +385,9 @@ export class MessageStreamingHandler {
     // For worktree sessions, use the parent project path for permission lookups
     // This is passed through documentContext to avoid changing sendMessage signature
     let permissionsPath = session.worktreeProjectPath || effectiveWorkspacePath;
-    if (isAgentProvider(session.provider)) {
+    // Canonical-pipeline providers (agent providers + in-process `auracle`) get
+    // the hookless file-diff watcher so their edits produce diffs/baselines.
+    if (usesCanonicalToolPipeline(session.provider)) {
       await this.svc.hooklessWatcher.ensureForSession(session.id, effectiveWorkspacePath);
     }
 
@@ -509,6 +514,11 @@ export class MessageStreamingHandler {
             // LMStudio doesn't need an API key, just the base URL
             apiKey = 'not-required'; // Dummy value since LMStudio doesn't need a key
             break;
+          case 'auracle':
+            // No host key required; the cloud (Atlas) key is injected per-model
+            // from the run target below.
+            requiresApiKey = false;
+            break;
           default:
             throw new Error(`Unknown provider: ${session.provider}`);
         }
@@ -607,6 +617,21 @@ export class MessageStreamingHandler {
         }
       }
 
+      // Per-model run-target injection for Auracle on provider (re)creation —
+      // mirrors AIService.createSession so a resumed/evicted session reaches the
+      // right endpoint with the upstream model id and the cloud key (cloud mode
+      // only). Overrides reinitConfig.model (the internal 'sextant'/'atlas' key).
+      if (session.provider === 'auracle') {
+        const providerSettings = this.svc.getSettingsStore().get('providerSettings', {}) as any;
+        const runTarget = resolveAuracleRunTarget(
+          providerSettings,
+          session.model || (session.providerConfig as any)?.model
+        );
+        reinitConfig.baseUrl = runTarget.baseUrl;
+        reinitConfig.model = runTarget.model;
+        reinitConfig.apiKey = runTarget.apiKey;
+      }
+
       if (isProviderClaudeCode) {
         const safeConfig = { ...reinitConfig, apiKey: reinitConfig.apiKey ? '***' : undefined };
       }
@@ -656,7 +681,7 @@ export class MessageStreamingHandler {
       }
 
       // Register tool handler - targetFilePath will be determined dynamically per tool call
-      const toolHandler = this.svc.createToolHandler(event.sender, documentContext, session.id, effectiveWorkspacePath);
+      const toolHandler = this.svc.createToolHandler(event.sender, documentContext, session.id, effectiveWorkspacePath, session.provider);
       provider.registerToolHandler(toolHandler);
     }
 
@@ -704,7 +729,7 @@ export class MessageStreamingHandler {
     //   filePath: documentContext?.filePath,
     //   hasContext: !!documentContext
     // });
-    const toolHandler = this.svc.createToolHandler(event.sender, documentContext, session.id, effectiveWorkspacePath);
+    const toolHandler = this.svc.createToolHandler(event.sender, documentContext, session.id, effectiveWorkspacePath, session.provider);
     provider.registerToolHandler(toolHandler);
 
     // Listen for message:logged events and forward to renderer to trigger UI updates.
@@ -1265,9 +1290,10 @@ export class MessageStreamingHandler {
         }
       }
 
-      // Start file snapshot cache + watcher for agentic sessions (diff support)
+      // Start file snapshot cache + watcher for canonical-pipeline sessions
+      // (agent providers + in-process `auracle`), for diff support.
       // Only start once per session; persists across turns
-      if (isAgentProvider(session.provider)
+      if (usesCanonicalToolPipeline(session.provider)
         && effectiveWorkspacePath
       ) {
         try {
@@ -1861,12 +1887,18 @@ export class MessageStreamingHandler {
               // tool_call arrives at item.completed, the diff record is
               // already correctly populated.
 
-              // Agent providers (claude-code, codex, opencode) render tool calls
-              // through the canonical transcript pipeline. The legacy addMessage +
-              // streamResponse toolCalls path below is only for chat providers
-              // (claude, openai, lmstudio) that don't have canonical transcripts.
-              // Running both paths creates duplicate tool call entries.
-              if (!isAgentProvider(session.provider)) {
+              // Canonical-pipeline providers (agent providers PLUS the in-process
+              // `auracle` chat provider, which logs tool_use/tool_result agent
+              // messages of its own) render tool calls through the canonical
+              // transcript pipeline. The legacy addMessage + streamResponse
+              // toolCalls path below is only for chat providers (claude, openai,
+              // lmstudio) that don't have canonical transcripts. Running both
+              // paths creates duplicate tool call entries — so auracle must take
+              // the canonical path here, not this legacy one. (Auracle's actual
+              // editor edits still apply via ToolExecutor's ai:applyDiff /
+              // ai:streamEdit* IPC during executeToolCall — independent of this
+              // block — and its edit baselines come from the hookless watcher.)
+              if (!usesCanonicalToolPipeline(session.provider)) {
                 // Save tool call as a separate message in the session
                 const toolResult = chunk.toolCall.result as any;
                 const isFailedResult = toolResult?.success === false;

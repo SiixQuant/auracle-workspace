@@ -22,6 +22,7 @@ import {
   isSlashCommandCatalogProvider,
   ClaudeCodeProvider,
   OpenAICodexProvider,
+  getMcpConfigService,
 } from '@nimbalyst/runtime/ai/server';
 import { CLAUDE_CODE_SAFE_FALLBACK_MODEL } from '@nimbalyst/runtime/ai/modelConstants';
 import { getSessionStateManager } from '@nimbalyst/runtime/ai/server/SessionStateManager';
@@ -49,6 +50,8 @@ import { initMobileSessionControlHandler } from './MobileSessionControlHandler';
 import { handleMobileVoiceToolCall } from '../voice/mobileVoiceToolHandler';
 import { SoundNotificationService } from '../SoundNotificationService';
 import { getTerminalSessionManager } from '../TerminalSessionManager';
+import { getShellEnvironment } from '../CLIManager';
+import { resolveEngineMcpServer } from '../../ipc/AuracleEngineHandlers';
 import { flushNextClaudeCliQueuedPromptForSession } from './claudeCliQueueFlushSingleton';
 import { notificationService } from '../NotificationService';
 import { TrayManager } from '../../tray/TrayManager';
@@ -106,6 +109,7 @@ import {
   safeSend,
   getFileExtensionForAnalytics,
   extractModelForProvider,
+  resolveAuracleRunTarget,
   detectNimbalystSlashCommand,
   extractFileMentions,
   isBinaryFile,
@@ -553,6 +557,10 @@ export class AIService {
         return globalApiKeys['openai-codex'];
       case 'lmstudio':
         return 'not-required';
+      case 'auracle':
+        // Auracle never requires a host-level key: the Atlas cloud key is
+        // per-model and injected at spawn from providerSettings.auracle.runTargets.
+        return 'not-required';
       default:
         return globalApiKeys[provider];
     }
@@ -606,10 +614,11 @@ export class AIService {
   private isProviderEnabledForWorkspace(provider: string, workspacePath?: string): boolean {
     const providerSettings = this.getSettingsStore().get('providerSettings', {}) as any;
 
-    // Claude Code is enabled by default (undefined means enabled).
-    // This matches the logic in ai:getModels which uses `claudeCodeSettings.enabled !== false`.
+    // Claude Code and Auracle are enabled by default (undefined means enabled).
+    // This matches the logic in ai:getModels which uses `?.enabled !== false`.
     // Other providers require explicit enabling (undefined means disabled).
-    const globalEnabled = provider === 'claude-code'
+    const defaultOnProvider = provider === 'claude-code' || provider === 'auracle';
+    const globalEnabled = defaultOnProvider
       ? providerSettings[provider]?.enabled !== false
       : providerSettings[provider]?.enabled ?? false;
 
@@ -1774,6 +1783,10 @@ export class AIService {
           case 'lmstudio':
             // LMStudio doesn't need an API key, just the base URL
             break;
+          case 'auracle':
+            // Auracle needs no host-level key; the cloud (Atlas) key is injected
+            // per-model from the run target during endpoint injection below.
+            break;
           default:
             throw new Error(`Unknown provider: ${provider}`);
         }
@@ -1925,6 +1938,56 @@ export class AIService {
         initConfig.baseUrl = lmstudioSettings.baseUrl || storedApiKeys['lmstudio_url'] || 'http://127.0.0.1:8234';
       }
 
+      // Per-model run-target injection for Auracle (Sextant / Atlas). Resolves the
+      // selected model's baseUrl + upstream model id from
+      // providerSettings.auracle.runTargets, and attaches the cloud key only in
+      // cloud mode. Overrides initConfig.model (which is the internal key
+      // 'sextant'/'atlas' at this point) with the upstream id the endpoint expects.
+      if (provider === 'auracle') {
+        const providerSettings = this.getSettingsStore().get('providerSettings', {}) as any;
+        const runTarget = resolveAuracleRunTarget(
+          providerSettings,
+          session.model || (session.providerConfig as any)?.model
+        );
+        initConfig.baseUrl = runTarget.baseUrl;
+        initConfig.model = runTarget.model;
+        initConfig.apiKey = runTarget.apiKey;
+
+        // Phase 2b: assemble the SAME MCP server dict the CLI/SDK agents get
+        // (internal nimbalyst servers + per-extension board_* tools) and merge the
+        // local engine's backtest/data server, then inject it so the provider's
+        // in-process MCP hub (auracleMcpClient) can connect. Mirrors
+        // claudeCliLauncherSingleton + ClaudeCliSessionLauncher. Best-effort and
+        // additive: a down engine or an unconfigured internal server simply omits
+        // those tools; assembly failure leaves auracle a plain chat provider.
+        try {
+          const mcpServers = await getMcpConfigService({
+            mcpConfigLoader: null,
+            claudeSettingsEnvLoader: null,
+            shellEnvironmentLoader: () => getShellEnvironment(),
+          }).getMcpServersConfig({
+            sessionId: session.id,
+            workspacePath,
+            profile: 'standard',
+          });
+          try {
+            const engineMcp = await resolveEngineMcpServer();
+            if (engineMcp) {
+              for (const [name, cfg] of Object.entries(engineMcp)) {
+                if (!(name in mcpServers)) mcpServers[name] = cfg;
+              }
+            }
+          } catch {
+            // engine down or not configured — inject the rest without its tools
+          }
+          initConfig.mcpServers = mcpServers;
+        } catch {
+          // MCP assembly failed entirely — continue as a plain chat provider. Never
+          // log the dict/headers/token (token hygiene).
+          logger.main.warn('[AIService] Auracle MCP server assembly failed; continuing without MCP tools');
+        }
+      }
+
       // Pass through allowedTools and effort level settings for Claude Code
       if (provider === 'claude-code') {
         const providerSettings = this.getSettingsStore().get('providerSettings', {}) as any;
@@ -1950,7 +2013,7 @@ export class AIService {
       await providerInstance.initialize(initConfig);
 
       // Register tool handler - targetFilePath will be determined dynamically per tool call
-      const toolHandler = this.createToolHandler(event.sender, documentContext, session.id, workspacePath);
+      const toolHandler = this.createToolHandler(event.sender, documentContext, session.id, workspacePath, provider);
       providerInstance.registerToolHandler(toolHandler);
 
       // NOTE: No longer tracking provider per-window - ProviderFactory handles per-session tracking
@@ -3274,6 +3337,36 @@ export class AIService {
       }
     });
 
+    // Per-model reachability test for Auracle run targets. Runs in the MAIN
+    // process (the renderer window enforces same-origin, so a renderer fetch to a
+    // local Ollama / cloud endpoint would be CORS-blocked and report false
+    // negatives). Does GET {baseUrl}/models, attaching a Bearer header only when a
+    // non-empty key is supplied (cloud mode). Reports reachable / not-reachable
+    // honestly — no key is ever logged.
+    safeHandle('ai:auracleTestModel', async (_event, baseUrl?: string, apiKey?: string) => {
+      if (!baseUrl || typeof baseUrl !== 'string' || baseUrl.trim() === '') {
+        return { success: false, error: 'Missing base URL' };
+      }
+      const url = `${baseUrl.replace(/\/$/, '')}/models`;
+      const headers: Record<string, string> = {};
+      if (typeof apiKey === 'string' && apiKey.trim() !== '') {
+        headers['Authorization'] = `Bearer ${apiKey}`;
+      }
+      try {
+        const response = await fetch(url, {
+          method: 'GET',
+          headers,
+          signal: AbortSignal.timeout(5000),
+        });
+        if (!response.ok) {
+          return { success: false, error: `Endpoint returned ${response.status} ${response.statusText}` };
+        }
+        return { success: true };
+      } catch (error: any) {
+        return { success: false, error: error?.message || 'Not reachable' };
+      }
+    });
+
     // Get ALL available models for configuration UI
     safeHandle('ai:getAllModels', async () => {
       // Clear cache to get fresh models
@@ -3290,6 +3383,8 @@ export class AIService {
       if (providerSettings['openai-codex']?.enabled === true) enabledSet.add('openai-codex');
       if (providerSettings['opencode']?.enabled === true) enabledSet.add('opencode');
       if (providerSettings['lmstudio']?.enabled === true) enabledSet.add('lmstudio');
+      // Auracle is enabled by default (its models are a static list, no network call).
+      if (providerSettings['auracle']?.enabled !== false) enabledSet.add('auracle');
 
       const modelsConfig = {
         ...apiKeys,
@@ -3449,6 +3544,11 @@ export class AIService {
         'lmstudio': {
           enabled: providerSettings['lmstudio']?.enabled === true,
           models: providerSettings['lmstudio']?.models
+        },
+        'auracle': {
+          // Enabled by default; static Sextant/Atlas list surfaces without a key.
+          enabled: providerSettings['auracle']?.enabled !== false,
+          models: providerSettings['auracle']?.models
         }
       };
 
@@ -3953,8 +4053,10 @@ export class AIService {
     });
   }
 
-  private createToolHandler(webContents: Electron.WebContents, documentContext?: DocumentContext, sessionId?: string, workspaceId?: string): ToolHandler {
-    const executor = new ToolExecutor(webContents, sessionId, workspaceId);
+  private createToolHandler(webContents: Electron.WebContents, documentContext?: DocumentContext, sessionId?: string, workspaceId?: string, providerName?: string): ToolHandler {
+    // providerName lets the executor enforce that the auracle-scoped destructive
+    // tools (writeFile/editFile/bash) run ONLY for the gated `auracle` provider.
+    const executor = new ToolExecutor(webContents, sessionId, workspaceId, providerName);
 
     // Capture targetFilePath from documentContext at message-send time
     // This prevents race conditions if user switches tabs while waiting for AI response

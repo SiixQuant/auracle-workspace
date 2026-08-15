@@ -58,6 +58,15 @@ const CUSTOM_ICONS: Record<string, (size: number, className: string) => React.Re
     </svg>
   ),
 
+  // Auracle mark (orbital swirl + dot) — used for the built-in Auracle models.
+  'auracle-orbit': (size, className) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+      <circle cx="12" cy="12" r="3.1" fill="currentColor" />
+      <ellipse cx="12" cy="12" rx="10" ry="4.4" stroke="currentColor" strokeWidth="1.6" transform="rotate(-30 12 12)" />
+      <circle cx="20.4" cy="8.1" r="1.7" fill="currentColor" />
+    </svg>
+  ),
+
   // Google Gemini logo (four-point spark)
   'gemini': (size, className) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>

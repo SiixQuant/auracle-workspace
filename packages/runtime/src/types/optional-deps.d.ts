@@ -34,6 +34,48 @@ declare module '@anthropic-ai/claude-agent-sdk' {
   export type AgentDefinition = any;
 }
 
+declare module '@modelcontextprotocol/sdk/client/index.js' {
+  export class Client {
+    constructor(info: any, options?: any);
+    connect(transport: any): Promise<void>;
+    listTools(): Promise<{
+      tools?: Array<{
+        name?: string;
+        description?: string;
+        inputSchema?: any;
+        annotations?: {
+          title?: string;
+          readOnlyHint?: boolean;
+          destructiveHint?: boolean;
+          idempotentHint?: boolean;
+          openWorldHint?: boolean;
+          [key: string]: unknown;
+        };
+      }>;
+    }>;
+    callTool(params: { name: string; arguments?: any }): Promise<any>;
+    close(): Promise<void>;
+  }
+}
+
+declare module '@modelcontextprotocol/sdk/client/streamableHttp.js' {
+  export class StreamableHTTPClientTransport {
+    constructor(url: URL, options?: any);
+  }
+}
+
+declare module '@modelcontextprotocol/sdk/client/sse.js' {
+  export class SSEClientTransport {
+    constructor(url: URL, options?: any);
+  }
+}
+
+declare module '@modelcontextprotocol/sdk/client/stdio.js' {
+  export class StdioClientTransport {
+    constructor(options: any);
+  }
+}
+
 declare module '@modelcontextprotocol/sdk/server/index.js' {
   export class Server {
     constructor(info: any, options?: any);

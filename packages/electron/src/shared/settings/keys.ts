@@ -20,6 +20,7 @@
  */
 
 import { z } from 'zod';
+import { AURACLE_DEFAULT_RUN_TARGETS } from '@nimbalyst/runtime/ai/modelConstants';
 
 // ---------- Reusable schemas ----------
 
@@ -125,6 +126,14 @@ export const SETTINGS_REGISTRY = {
     ProviderConfigSchema,
     { store: 'ai-settings', path: 'providerSettings.lmstudio' },
     { enabled: false, baseUrl: 'http://127.0.0.1:8234', testStatus: 'idle' },
+  ),
+  // Auracle's own built-in chat models (Sextant / Atlas). Enabled by default.
+  // Per-model run targets ride ProviderConfigSchema's .passthrough() (no schema
+  // rewrite needed); the cast bypasses the excess-property check on runTargets.
+  'ai.provider.auracle': setting(
+    ProviderConfigSchema,
+    { store: 'ai-settings', path: 'providerSettings.auracle' },
+    { enabled: true, testStatus: 'idle', runTargets: AURACLE_DEFAULT_RUN_TARGETS } as ProviderConfig,
   ),
 
   // ---- API keys (per-key) ----

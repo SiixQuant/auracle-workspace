@@ -151,7 +151,7 @@ export interface Message {
  * Add new providers here -- the type, runtime array, and exhaustiveness
  * checks all derive from this one definition.
  */
-export const AI_PROVIDER_TYPES = ['claude', 'claude-code', 'claude-code-cli', 'openai', 'openai-codex', 'openai-codex-acp', 'lmstudio', 'opencode', 'copilot-cli'] as const;
+export const AI_PROVIDER_TYPES = ['claude', 'claude-code', 'claude-code-cli', 'openai', 'openai-codex', 'openai-codex-acp', 'lmstudio', 'opencode', 'copilot-cli', 'auracle'] as const;
 
 export type AIProviderType = typeof AI_PROVIDER_TYPES[number];
 
@@ -172,6 +172,28 @@ export function assertExhaustiveProvider(provider: never): never {
 
 export function isAgentProvider(provider: string | null | undefined): provider is 'claude-code' | 'claude-code-cli' | 'openai-codex' | 'openai-codex-acp' | 'opencode' | 'copilot-cli' {
   return provider === 'claude-code' || provider === 'claude-code-cli' || provider === 'openai-codex' || provider === 'openai-codex-acp' || provider === 'opencode' || provider === 'copilot-cli';
+}
+
+/**
+ * Providers whose sessions render through the CANONICAL transcript/tool
+ * pipeline — the one that hosts the rich tool_use/tool_result widgets and the
+ * ToolPermissionWidget, and whose sessions get the hookless file-diff watcher.
+ *
+ * This is the UNION of the subprocess/SDK agent providers (`isAgentProvider`)
+ * and the in-process `auracle` chat provider. Auracle runs an agentic tool loop
+ * in-process (Phase 2) — it executes tools itself and gates them through the
+ * shared `ToolPermissionService` — so it needs the SAME canonical rendering +
+ * diff-watcher wiring the agent providers get, WITHOUT being a subprocess / SDK
+ * / MCP agent.
+ *
+ * IMPORTANT: use this predicate ONLY at sites that mean "renders via the
+ * canonical pipeline / gets the diff watcher". Sites that mean "is a
+ * subprocess/SDK agent" — session-coherence provider locks, SDK/MCP wiring,
+ * model-picker grouping — must keep `isAgentProvider`; `auracle` is NOT a
+ * subprocess agent and must not inherit those semantics.
+ */
+export function usesCanonicalToolPipeline(provider: string | null | undefined): boolean {
+  return isAgentProvider(provider) || provider === 'auracle';
 }
 
 /**

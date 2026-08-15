@@ -14,6 +14,8 @@ const PROVIDER_ICON_MAP: Record<string, string> = {
   // Gemini Antigravity extension provider -> Gemini brand glyph.
   'antigravity-gemini-agent': 'gemini',
   'antigravity-gemini': 'gemini',
+  // Auracle's built-in models -> orbital mark (custom SVG in MaterialSymbol).
+  'auracle': 'auracle-orbit',
 };
 
 export function resolveProviderIcon(provider: string): string {

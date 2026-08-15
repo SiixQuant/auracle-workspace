@@ -24,6 +24,7 @@ import { AlphaFeatureTag, getDefaultAlphaFeatures } from '../../../shared/alphaF
 import { BetaFeatureTag } from '../../../shared/betaFeatures';
 import { DeveloperFeatureTag, DEVELOPER_FEATURES, getDefaultDeveloperFeatures, enableAllDeveloperFeatures, disableAllDeveloperFeatures, areAllDeveloperFeaturesEnabled } from '../../../shared/developerFeatures';
 import { normalizeCodexProviderConfig, stripTransientProviderFields } from '@nimbalyst/runtime/ai/server/utils/modelConfigUtils';
+import { AURACLE_DEFAULT_RUN_TARGETS, type AuracleRunTargets } from '@nimbalyst/runtime/ai/modelConstants';
 import { onSettingChanged } from './settingAtomFamily';
 
 // Voice type - all available OpenAI Realtime voices
@@ -1128,6 +1129,12 @@ export interface ProviderConfig {
   updateAvailable?: boolean;
   installStatus?: 'not-installed' | 'installing' | 'installed' | 'error';
   authMethod?: string;
+  /**
+   * Auracle-only: per-model run targets (Sextant / Atlas). Rides
+   * ProviderConfigSchema's .passthrough() on the persistence side; declared here
+   * so the settings panel and defaults are typed.
+   */
+  runTargets?: AuracleRunTargets;
 }
 
 /**
@@ -1160,6 +1167,7 @@ const defaultProviders: Record<string, ProviderConfig> = {
   opencode: { enabled: false, testStatus: 'idle', installStatus: 'not-installed' },
   'copilot-cli': { enabled: false, testStatus: 'idle', installStatus: 'not-installed' },
   lmstudio: { enabled: false, baseUrl: 'http://127.0.0.1:8234', testStatus: 'idle' },
+  auracle: { enabled: true, testStatus: 'idle', runTargets: AURACLE_DEFAULT_RUN_TARGETS },
 };
 
 /**

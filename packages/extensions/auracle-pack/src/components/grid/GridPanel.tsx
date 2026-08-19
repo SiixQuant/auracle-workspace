@@ -39,6 +39,9 @@ import { aiRunStore, approveAiAction, declineAiAction } from './gridAiActions';
 import './gridAiCommands';
 // Same, for the `<entity> <verb>` grammar provider (`fundpair risk`).
 import './gridEntityCommands';
+// Registers the desk-command provider: the engine's own list of what a
+// person can ask, offered here exactly as it is on the browser's slash menu.
+import './deskCommands';
 // Same, for the saved-views provider (#3): save/reopen workspaces from ⌘K.
 import './gridWorkspaceCommands';
 // Same reason, for what the actions DO: the executors register on import, so an

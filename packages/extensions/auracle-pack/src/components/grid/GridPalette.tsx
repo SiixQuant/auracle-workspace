@@ -30,6 +30,7 @@ import {
   type GridCommand,
 } from './gridCommands';
 import { refreshEntityCommands } from './gridEntityCommands';
+import { refreshDeskCommands } from '../../engine/deskCatalogue';
 
 const STYLE_ID = 'auracle-grid-palette-styles';
 
@@ -98,6 +99,7 @@ export function GridPalette(): JSX.Element {
     // Freshen the `<entity> <verb>` grammar's known-strategy list on open
     // (throttled), so it reflects the latest runs without a per-keystroke fetch.
     refreshEntityCommands();
+    refreshDeskCommands();
   }, []);
 
   // Keep the highlighted row in view when arrows walk past the fold. Guarded:

@@ -123,7 +123,7 @@ describe('registering one request', () => {
     // `requestAiAction` PARKS a mutation and resolves null; the result comes
     // from `approveAiAction`. Getting this wrong is silent — an action whose
     // class field is misspelled skips the dialog entirely and still "passes".
-    expect(await requestAiAction({ id: 'x', label: 'x', class: 'mutation', icon: 'x', intent })).toBeNull();
+    expect(await requestAiAction({ id: 'x', room: intent.room, label: 'x', class: 'mutation', icon: 'x', intent })).toBeNull();
     await approveAiAction();
 
     expect(posted.mock.calls[0]?.[1]).toEqual({
@@ -140,7 +140,7 @@ describe('registering one request', () => {
     const { requestAiAction, approveAiAction } = await import('../../components/grid/gridAiActions');
     expect(
       await requestAiAction({
-        id: 'x', label: 'x', class: 'mutation', icon: 'x',
+        id: 'x', room: 'runway', label: 'x', class: 'mutation', icon: 'x',
         intent: intentFromConfirmation(confirmation),
       }),
     ).toBeNull();

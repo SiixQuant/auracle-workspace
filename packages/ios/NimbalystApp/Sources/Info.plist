@@ -22,10 +22,10 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.nimbalyst.app</string>
+			<string>com.auracle.app</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>nimbalyst</string>
+				<string>auracle</string>
 			</array>
 		</dict>
 	</array>

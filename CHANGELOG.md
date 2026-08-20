@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 <!-- New features go here -->
+- **See where prices come from and where orders go.** The Auracle plan now carries a line naming what's connected, with the rest of the picture on hover, and a new Connections section in Settings lists every broker and data feed so you can test one or disconnect it.
 
 ### Changed
 <!-- Changes go here -->

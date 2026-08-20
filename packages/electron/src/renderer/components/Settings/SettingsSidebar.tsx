@@ -7,6 +7,7 @@ import { developerModeAtom } from '../../store/atoms/appSettings';
 
 export type SettingsCategory =
   | 'agent-permissions'
+  | 'connections'
   | 'claude-code'
   | 'claude'
   | 'openai'
@@ -137,6 +138,14 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
           id: 'notifications',
           name: 'Notifications',
           icon: <MaterialSymbol icon="notifications" size={16} />,
+        },
+        {
+          // Broker and market-data connections. Deliberately here rather
+          // than beside 'auracle' (Auracle Models), which configures chat
+          // providers: what routes an order is not a model setting.
+          id: 'connections',
+          name: 'Connections',
+          icon: <MaterialSymbol icon="cable" size={16} />,
         },
         {
           id: 'themes',

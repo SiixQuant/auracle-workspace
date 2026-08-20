@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 <!-- Changes go here -->
+- **The wait says what the desk is doing.** While the assistant is working, the indicator now reads "Generating Alpha..." rather than "Thinking...".
 
 ### Fixed
 <!-- Bug fixes go here -->

@@ -120,7 +120,7 @@ test('opencode: AskUserQuestion roundtrip and file edit tracking', async () => {
 
   // Wait for the agent to finish its second turn after receiving the answer.
   const sessionPanel = page.locator(PLAYWRIGHT_TEST_SELECTORS.activeSession);
-  await expect(sessionPanel.getByText('Thinking...')).not.toBeVisible({ timeout: 60000 });
+  await expect(sessionPanel.getByText('Generating Alpha...')).not.toBeVisible({ timeout: 60000 });
 
   await page.screenshot({ path: 'e2e_test_output/opencode-askuserquestion-answered.png' });
 

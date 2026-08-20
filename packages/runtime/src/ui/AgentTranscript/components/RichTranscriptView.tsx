@@ -1287,7 +1287,9 @@ export const RichTranscriptView = React.forwardRef<
       const label = runningTeammates.length === 1 ? singular : plural;
       return `Waiting for ${runningTeammates.length} ${label} to complete...`;
     }
-    return 'Thinking...';
+    // The desk's own word for the wait. Only this branch changes: the
+    // teammate-count branch above already says what it is waiting for.
+    return 'Generating Alpha...';
   }, [isProcessing, isWaitingForResponse, runningTeammates, sessionStatus, waitingForNoun]);
 
   // Compute effective target index for prompt additions display

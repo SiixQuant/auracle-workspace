@@ -653,6 +653,11 @@ export async function tearsheetSummary(
  * file itself — it opens the engine's download URL (see {@link openReport}).
  */
 export interface DossierReport {
+  /**
+   * Normalised to a string HERE, at the seam. The engine sends a database row
+   * id, which is a NUMBER on the wire — see the note in {@link buildDossier}
+   * for what assuming otherwise cost.
+   */
   id: string;
   filename: string;
   path: string;
@@ -680,12 +685,39 @@ export async function buildDossier(
   });
   const body = (res.body ?? {}) as {
     ok?: boolean;
-    report?: DossierReport;
+    // ★ `id` is a NUMBER on the wire. The engine returns a database row id
+    // (`int(row.id)`), not a uuid.
+    report?: (Omit<DossierReport, 'id'> & { id?: string | number }) | undefined;
     error?: string;
     detail?: string;
   };
-  if (res.ok && body.ok && body.report && typeof body.report.id === 'string') {
-    return { ok: true, report: body.report };
+
+  /**
+   * ★ THIS CHECK USED TO BE `typeof body.report.id === 'string'`, AND IT
+   * REJECTED EVERY SUCCESSFUL BUILD.
+   *
+   * The engine returns the report's database row id, so `id` arrives as a
+   * number. `typeof 42 === 'string'` is false, so a 200 carrying a freshly
+   * rendered PDF fell through to the failure branch — and because a success
+   * carries no `error` field, the card showed its last-resort sentence, "The
+   * dossier could not be generated."
+   *
+   * Every layer said it worked: the engine logged 200, the PDF was on disk at
+   * full size. Only the panel disagreed, and it disagreed in the words of a
+   * generator failure — so the search went to WeasyPrint, which was fine.
+   *
+   * Accept what the engine actually sends, and normalise once, here.
+   */
+  const rawId = body.report?.id;
+  const id =
+    typeof rawId === 'number' && Number.isFinite(rawId)
+      ? String(rawId)
+      : typeof rawId === 'string' && rawId.trim()
+        ? rawId
+        : null;
+
+  if (res.ok && body.ok && body.report && id !== null) {
+    return { ok: true, report: { ...(body.report as DossierReport), id } };
   }
   const error = body.error ?? (typeof body.detail === 'string' ? body.detail : undefined);
   return { ok: false, status: res.status, error };

@@ -52,6 +52,7 @@ import { useRoomAiContext } from './gridFocus';
 import { getActiveRoom, subscribeGrid } from './gridNav';
 import { boardGraphStore } from '../../engine/boardGraphStore';
 import { GridHealthLine } from './GridHealthLine';
+import { GridConnectionLine } from './GridConnectionLine';
 import { GridHome } from './GridHome';
 import { GridPalette } from './GridPalette';
 import { ROOMS, type RoomId } from './rooms';
@@ -208,6 +209,12 @@ export function GridPanel(props: PanelHostProps): JSX.Element {
           status surface, so a second health line over it would state the
           room's condition twice. Part of the header flow — never an overlay. */}
       {roomId === null ? <GridHealthLine /> : null}
+      {/* Beneath the health line and above the view: the health line says
+          whether the platform is well, this says what it is wired to. Both
+          are header flow, so neither covers the plan. Unlike the health
+          line this shows on a room page too, because what routes an order
+          does not stop mattering when you open a room. */}
+      <GridConnectionLine />
       <div className="auracle-grid__view">
         {roomId === null ? (
           <GridHome host={props.host} />

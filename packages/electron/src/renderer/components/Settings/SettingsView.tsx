@@ -16,6 +16,7 @@ import { OpenCodePanel } from '../GlobalSettings/panels/OpenCodePanel';
 import { CopilotCLIPanel } from '../GlobalSettings/panels/CopilotCLIPanel';
 import { LMStudioPanel } from '../GlobalSettings/panels/LMStudioPanel';
 import { AuracleModelsPanel } from '../GlobalSettings/panels/AuracleModelsPanel';
+import { ConnectionsPanel } from '../GlobalSettings/panels/ConnectionsPanel';
 import { AdvancedPanel } from '../GlobalSettings/panels/AdvancedPanel';
 import { DatabasePanel } from '../GlobalSettings/panels/DatabasePanel';
 import { AgentFeaturesPanel } from './AgentFeaturesPanel';
@@ -847,6 +848,11 @@ export function SettingsView({
         return wrapWithOverride('lmstudio', 'LM Studio', <LMStudioPanel {...commonProps} />);
       case 'auracle':
         return wrapWithOverride('auracle', 'Auracle Models', <AuracleModelsPanel {...commonProps} />);
+      case 'connections':
+        // Self-contained like AdvancedPanel: it reads the engine over the
+        // IPC bridge rather than taking chat-provider props it has no use
+        // for.
+        return <ConnectionsPanel />;
       case 'advanced':
         // AdvancedPanel is self-contained - uses Jotai atoms and IPC directly
         return <AdvancedPanel />;

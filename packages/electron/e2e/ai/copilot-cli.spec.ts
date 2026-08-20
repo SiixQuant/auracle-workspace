@@ -97,8 +97,8 @@ test('should run a copilot-cli session through the UI and get a real response', 
   const sessionPanel = page.locator(PLAYWRIGHT_TEST_SELECTORS.activeSession);
   await expect(sessionPanel).toBeVisible({ timeout: 5000 });
 
-  // Wait for "Thinking..." to disappear (session finished processing)
-  await expect(sessionPanel.getByText('Thinking...')).not.toBeVisible({ timeout: 60000 });
+  // Wait for the waiting indicator to disappear (session finished processing)
+  await expect(sessionPanel.getByText('Generating Alpha...')).not.toBeVisible({ timeout: 60000 });
 
   // Trigger transcript reload -- the assistant response message was stored
   // after streaming completed, so the transcript view needs to re-fetch.
